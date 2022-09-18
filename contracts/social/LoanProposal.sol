@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "hardhat/console.sol";
 import "./ALoanManager.sol";
 
@@ -17,14 +16,8 @@ contract LoanProposal is ALoanManager {
             _tokenContract != address(0),
             "Collateral cannot be address 0."
         );
-
-        // Verify msg.sender access rights to token
-        IERC721 _erc721 = IERC721(_tokenContract);
-        address _borrower = _erc721.ownerOf(_tokenId);
         require(
-            msg.sender == _borrower ||
-                msg.sender == _erc721.getApproved(_tokenId) ||
-                _erc721.isApprovedForAll(_borrower, msg.sender),
+            isApproved(msg.sender, _tokenContract, _tokenId),
             "The caller must be the token owner, approver, or the owner's operator."
         );
 
@@ -41,25 +34,103 @@ contract LoanProposal is ALoanManager {
         _loanAgreements[_loanId].principal = _principal;
         _loanAgreements[_loanId].fixedInterestRate = _fixedInterestRate;
         _loanAgreements[_loanId].duration = _duration;
-        _loanAgreements[_loanId].state = LoanState.PENDING_UNSPONSORED;
+        _loanAgreements[_loanId].state = LoanState.UNSPONSORED;
 
         emit LoanStateChanged(_prevState, _loanAgreements[_loanId].state);
-        emit LoanAgreementCreated(_loanId, _tokenContract, _tokenId);
+        emit LoanProposalCreated(_loanId, _tokenContract, _tokenId);
     }
 
     function setLender(
         address _tokenContract,
         uint256 _tokenId,
         uint256 _loanId
-    ) public {
-        LoanAgreement storage _loanAgreement = loanAgreements[
-            _tokenContract
-        ][_tokenId][_loanId];
+    ) public payable override {
+        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
+            _tokenId
+        ][_loanId];
 
         LoanState _prevState = _loanAgreement.state;
-        _loanAgreement.lender = msg.sender;
-        _loanAgreement.state = LoanState.PENDING_SPONSORED;
+        address _prevLender = _loanAgreement.lender;
+        bool _isLender = !isApproved(msg.sender, _tokenContract, _tokenId);
+
+        if (_isLender) {
+            _loanAgreement.lender = msg.sender;
+            sign(_tokenContract, _tokenId, _loanId);
+            _fundLoanProposal(_tokenContract, _tokenId, _loanId);
+        } else {
+            _defundLoanProposal(_tokenContract, _tokenId, _loanId);
+            _unsignLender(_tokenContract, _tokenId, _loanId);
+            _loanAgreement.lender = address(0);
+        }
 
         emit LoanStateChanged(_prevState, _loanAgreement.state);
+        emit LoanLenderChanged(_prevLender, _loanAgreement.lender);
     }
+
+    function sign(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId
+    ) public {
+        isApproved(msg.sender, _tokenContract, _tokenId)
+            ? _signBorrower(_tokenContract, _tokenId, _loanId)
+            : _signLender(_tokenContract, _tokenId, _loanId);
+    }
+
+    function unsign(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId
+    ) public {
+        isApproved(msg.sender, _tokenContract, _tokenId)
+            ? _unsignBorrower(_tokenContract, _tokenId, _loanId)
+            : _unsignLender(_tokenContract, _tokenId, _loanId);
+    }
+
+    function setLoanParam(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId,
+        string[] memory _params,
+        uint256[] memory _newValues
+    ) external override {
+        require(
+            isExistingLoanProposal(_tokenContract, _tokenId, _loanId),
+            "The loan does not exist."
+        );
+
+        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
+            _tokenId
+        ][_loanId];
+
+        uint256 _prevValue;
+
+        for (uint256 i; i < _params.length; i++) {
+            bytes32 _paramHash = keccak256(bytes(_params[i]));
+
+            if (_paramHash == keccak256(bytes("principal"))) {
+                _prevValue = _loanAgreement.principal;
+                _loanAgreement.principal = _newValues[i];
+            } else if (_paramHash == keccak256(bytes("fixed_interest_rate"))) {
+                _prevValue = _loanAgreement.fixedInterestRate;
+                _loanAgreement.fixedInterestRate = _newValues[i];
+            } else if (_paramHash == keccak256(bytes("duration"))) {
+                _prevValue = _loanAgreement.duration;
+                _loanAgreement.duration = _newValues[i];
+            } else {
+                require(
+                    false,
+                    "Input `_params` must be one of the strings 'principal', 'fixed_interest_rate', or 'duration'."
+                );
+            }
+        }
+
+        emit LoanParamChanged(
+            keccak256(bytes(_params[_params.length - 1])),
+            _prevValue,
+            _newValues[_params.length - 1]
+        );
+    }
+
+    receive() external payable {}
 }

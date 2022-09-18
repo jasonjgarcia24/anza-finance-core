@@ -7,13 +7,12 @@
 const hre = require("hardhat");
 
 async function main() {
-  const LoanRequest = await hre.ethers.getContractFactory("LoanRequest");
-  const loanRequest = await LoanRequest.deploy();
-
-  await loanRequest.deployed();
+  const LoanProposalFactory = await hre.ethers.getContractFactory("LoanProposal");
+  const loanProposal = await LoanProposalFactory.deploy();
+  await loanProposal.deployed();
 
   console.log(
-    `LoanRequest deployed to ${loanRequest.address}`
+    `LoanProposal deployed to ${loanProposal.address}`
   );
 }
 
