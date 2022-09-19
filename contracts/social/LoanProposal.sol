@@ -42,6 +42,7 @@ contract LoanProposal is ALoanManager {
     }
 
     function setLender(
+        address _lender,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _loanId
@@ -52,17 +53,20 @@ contract LoanProposal is ALoanManager {
 
         LoanState _prevState = _loanAgreement.state;
         address _prevLender = _loanAgreement.lender;
-        bool _isLender = !isApproved(msg.sender, _tokenContract, _tokenId);
+        bool _isBorrower = isApproved(msg.sender, _tokenContract, _tokenId);
+        bool _isWithdrawal = _isBorrower || (msg.sender == _loanAgreement.lender && _lender == address(0));
+        require(!_isBorrower || _lender == address(0), "The borrower can only set the lender to address(0).");
 
-        if (_isLender) {
-            _loanAgreement.lender = msg.sender;
-            sign(_tokenContract, _tokenId, _loanId);
-            _fundLoanProposal(_tokenContract, _tokenId, _loanId);
-        } else {
+        if (_isWithdrawal) {
             _defundLoanProposal(_tokenContract, _tokenId, _loanId);
             _unsignLender(_tokenContract, _tokenId, _loanId);
             _loanAgreement.lender = address(0);
             _loanAgreement.state = LoanState.UNSPONSORED;
+            
+        } else {
+            _loanAgreement.lender = msg.sender;
+            sign(_tokenContract, _tokenId, _loanId);
+            _fundLoanProposal(_tokenContract, _tokenId, _loanId);
         }
 
         emit LoanStateChanged(_prevState, _loanAgreement.state);
@@ -74,20 +78,9 @@ contract LoanProposal is ALoanManager {
         uint256 _tokenId,
         uint256 _loanId
     ) public {
-        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
-            _tokenId
-        ][_loanId];
-
-        LoanState _prevState = _loanAgreement.state;
-        bool _isBorrower = isApproved(msg.sender, _tokenContract, _tokenId);
-
-        if (isBorrower) {
-            _signBorrower(_tokenContract, _tokenId, _loanId);
-        } else {
-            _signLender(_tokenContract, _tokenId, _loanId);
-        }
-
-        emit LoanStateChanged(_prevState, _loanAgreement.state);
+        isApproved(msg.sender, _tokenContract, _tokenId)
+            ? _signBorrower(_tokenContract, _tokenId, _loanId)
+            : _signLender(_tokenContract, _tokenId, _loanId);
     }
 
     function unsign(
@@ -95,21 +88,12 @@ contract LoanProposal is ALoanManager {
         uint256 _tokenId,
         uint256 _loanId
     ) public {
-        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
-            _tokenId
-        ][_loanId];
-
-        LoanState _prevState = _loanAgreement.state;
-        bool _isBorrower = isApproved(msg.sender, _tokenContract, _tokenId);
-
-        if (isBorrower) {
+        if (isBorrower(_tokenContract, _tokenId, _loanId)) {
             _unsignBorrower(_tokenContract, _tokenId, _loanId);
         } else {
             _defundLoanProposal(_tokenContract, _tokenId, _loanId);
             _unsignLender(_tokenContract, _tokenId, _loanId);
         }
-        
-        emit LoanStateChanged(_prevState, _loanAgreement.state);
     }
 
     function setLoanParam(

@@ -47,6 +47,7 @@ abstract contract ALoanManager is ALoanAffirm {
      * Emits {LoanStateChanged} and {LoanLenderChanged} events.
      */
     function setLender(
+        address lender,
         address tokenContract,
         uint256 tokenId,
         uint256 loanId
