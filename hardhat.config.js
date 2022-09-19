@@ -1,7 +1,7 @@
 require("dotenv").config();
 require("@nomicfoundation/hardhat-toolbox");
+const { BLOCK_NUMBER } = require("./config");
 
-/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: "0.8.17",
   defaultNetwork: 'hardhat',
@@ -10,12 +10,12 @@ module.exports = {
     hardhat: {
       forking: {
         url: process.env.ALCHEMY_MAINNET_URL,
-        blockNumber: 14407300,
+        blockNumber: BLOCK_NUMBER
       }
     },
     goerli: {
       url: process.env.ALCHEMY_GOERLI_URL,
-      accounts: [process.env.PRIVATE_KEY_02]
+      accounts: [process.env.PRIVATE_KEY_01]
     }
   }
 };

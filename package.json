@@ -1,4 +1,17 @@
 {
+  "scripts": {
+    "impersonate": "npx hardhat run --network localhost test/impersonate.js",
+    "reset": "npx hardhat run --network localhost test/resetFork.js",
+    "test": "npx hardhat test --network localhost",
+    "test-loanProposal": "npx hardhat test test/testLoanProposal.js --network localhost",
+    "test-0-0-00": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-00\"",
+    "test-0-0-01": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-01\"",
+    "test-0-0-02": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-02\"",
+    "test-0-0-03": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-03\"",
+    "test-0-0-04": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-04\"",
+    "test-0-0-05": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-05\"",
+    "test-0-0-99": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-99\""
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
     "hardhat": "^2.11.2"

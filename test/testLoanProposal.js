@@ -1,8 +1,8 @@
 const { assert, expect } = require("chai");
-const { ethers } = require("hardhat");
-const hre = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
-const erc721 = require("../artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json").abi;
+const { ethers, network } = require("hardhat");
+const { TRANSFERIBLES } = require("../config");
+const { reset } = require("./resetFork");
+const { impersonate } = require("./impersonate");
 
 let loanProposal;
 let borrower, lender, approver, operator;
@@ -12,33 +12,24 @@ let loanFixedInterestRate = 2;
 let loanDuration = 3;
 
 describe("0-0 :: LoanProposal tests", function () {
-  /* Setup tokenContract
-   *    Ceate tokenContract and mint NFT for borrower.
-  **/
-  before(async () => {
-    provider = new ethers.providers.Web3Provider(hre.network.provider);
-    [borrower, lender, approver, operator, ..._] = await hre.ethers.getSigners();
-
-    // Deploy NFT contract
-    const DemoTokenFactory = await hre.ethers.getContractFactory("DemoToken", borrower);
-    tokenContract = await DemoTokenFactory.deploy();
-    await tokenContract.deployed();
-
-    // Set operator
-    await tokenContract.setApprovalForAll(operator.address, true);
-
-    // Mint NFT
-    await tokenContract.mint(borrower.address);
-    tokenId = (await tokenContract.getTokenId()).toNumber();
-
-    // Set NFT approver
-    await tokenContract.approve(approver.address, tokenId);
-  })
-
-  /* Test LoanProposal functions */
+  /* NFT and LoanProposal setup */
   beforeEach(async () => {
-    const LoanProposalFactory = await hre.ethers.getContractFactory("LoanProposal");
+    // MAINNET fork setup
+    await reset();
+    await impersonate();
+    provider = new ethers.providers.Web3Provider(network.provider);
+    [borrower, lender, approver, operator, ..._] = await ethers.getSigners();
+
+    // Establish NFT identifiers
+    tokenContract = new ethers.Contract(
+      TRANSFERIBLES[0].nft, TRANSFERIBLES[0].abi, borrower
+    );
+    tokenId = TRANSFERIBLES[0].tokenId;
+
+    // Create LoanProposal for NFT
+    const LoanProposalFactory = await ethers.getContractFactory("LoanProposal");
     loanProposal = await LoanProposalFactory.deploy();
+    await loanProposal.deployed();
 
     await loanProposal.connect(borrower).createLoanProposal(
       tokenContract.address,
@@ -47,6 +38,13 @@ describe("0-0 :: LoanProposal tests", function () {
       loanFixedInterestRate,
       loanDuration
     );
+
+    // Set operator
+    await tokenContract.setApprovalForAll(operator.address, true);
+    await tokenContract.setApprovalForAll(loanProposal.address, true);
+
+    // Set NFT approver
+    await tokenContract.approve(approver.address, tokenId);
   });
 
   it("0-0-99 :: PASS", async function () { });
@@ -201,6 +199,110 @@ describe("0-0 :: LoanProposal tests", function () {
       _newLoanTerms[2].eq(_newLoanDuration),
       "Loan duration change is not correct."
     );
+  });
+
+  it("0-0-04 :: Test LoanProposal borrower signoffs.", async function () {
+    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
+    const _topic = loanProposal.interface.getEventTopic('LoanSignoffChanged');
+
+    // Borrower signs LoanProposal and transfers NFT to LoanProposal
+    let _tx = await loanProposal.connect(borrower).sign(tokenContract.address, tokenId, _loanId);
+    let _receipt = await _tx.wait();
+    let _log = _receipt.logs.find(x => x.topics.indexOf(_topic) >= 0); 
+    let _event = loanProposal.interface.parseLog(_log);
+    
+    let _signer = _event.args['signer'];
+    let _action = _event.args['action'];
+    let _borrowerSignStatus = _event.args['borrowerSignStatus'];
+    let _lenderSignStatus = _event.args['lenderSignStatus'];
+
+    assert.equal(borrower.address, _signer, "Borrower and signer are not the same.");
+    assert.isTrue(_action.eq(1), "Unsign action is not expected.");
+    assert.isTrue(_borrowerSignStatus, "Borrower sign status is not true.");
+    assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
+
+    let _owner = await tokenContract.ownerOf(tokenId);
+    assert.equal(_owner, loanProposal.address, "The LoanProposal contract is not the token owner.");
+
+    // Borrower unsigns LoanProposal and LoanProposal transfers NFT to borrower
+    _tx = await loanProposal.connect(borrower).unsign(tokenContract.address, tokenId, _loanId);
+    _receipt = await _tx.wait();
+    _log = _receipt.logs.find(x => x.topics.indexOf(_topic) >= 0);
+    _event = loanProposal.interface.parseLog(_log);
+    
+    _signer = _event.args['signer'];
+    _action = _event.args['action'];
+    _borrowerSignStatus = _event.args['borrowerSignStatus'];
+    _lenderSignStatus = _event.args['lenderSignStatus'];
+
+    assert.equal(borrower.address, _signer, "Borrower and signer are not the same.");
+    assert.isFalse(_action.eq(1), "Sign action is not expected.");
+    assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
+    assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
+
+    _owner = await tokenContract.ownerOf(tokenId);
+    assert.equal(_owner, borrower.address, "The borrower is not the token owner.");
+  });
+
+  it("0-0-05 :: Test LoanProposal lender signoffs.", async function () {
+    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
+    const _topic = loanProposal.interface.getEventTopic('LoanSignoffChanged');
+
+    // Lender signs LoanProposal via setLender and transfers funds to LoanProposal
+    let _tx = await loanProposal.connect(lender).setLender(
+      tokenContract.address, tokenId, _loanId, { value: loanPrincipal }
+    );
+    let _receipt = await _tx.wait();
+    let _log = _receipt.logs.find(x => x.topics.indexOf(_topic) >= 0); 
+    let _event = loanProposal.interface.parseLog(_log);
+    
+    let _signer = _event.args['signer'];
+    let _action = _event.args['action'];
+    let _borrowerSignStatus = _event.args['borrowerSignStatus'];
+    let _lenderSignStatus = _event.args['lenderSignStatus'];
+
+    assert.equal(lender.address, _signer, "Lender and signer are not the same.");
+    assert.isTrue(_action.eq(1), "Unsign action is not expected.");
+    assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
+    assert.isTrue(_lenderSignStatus, "Lender sign status is not true.");
+
+    // Lender unsigns LoanProposal and LoanProposal transfers funds to lender
+    _tx = await loanProposal.connect(lender).unsign(tokenContract.address, tokenId, _loanId);
+    _receipt = await _tx.wait();
+    _log = _receipt.logs.find(x => x.topics.indexOf(_topic) >= 0);
+    _event = loanProposal.interface.parseLog(_log);
+    
+    _signer = _event.args['signer'];
+    _action = _event.args['action'];
+    _borrowerSignStatus = _event.args['borrowerSignStatus'];
+    _lenderSignStatus = _event.args['lenderSignStatus'];
+
+    assert.equal(lender.address, _signer, "Lender and signer are not the same.");
+    assert.isFalse(_action.eq(1), "Sign action is not expected.");
+    assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
+    assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
+
+    // _owner = await tokenContract.ownerOf(tokenId);
+    // assert.equal(_owner, borrower.address, "The borrower is not the token owner.");
+
+    // // Lender signs LoanProposal and transfers funds to LoanProposal
+    // _tx = await loanProposal.connect(borrower).sign(tokenContract.address, tokenId, _loanId);
+    // _receipt = await _tx.wait();
+    // _log = _receipt.logs.find(x => x.topics.indexOf(_topic) >= 0); 
+    // _event = loanProposal.interface.parseLog(_log);
+    
+    // _signer = _event.args['signer'];
+    // _action = _event.args['action'];
+    // _borrowerSignStatus = _event.args['borrowerSignStatus'];
+    // _lenderSignStatus = _event.args['lenderSignStatus'];
+
+    // assert.equal(borrower.address, _signer, "Borrower and signer are not the same.");
+    // assert.isTrue(_action.eq(1), "Unsign action is not expected.");
+    // assert.isTrue(_borrowerSignStatus, "Borrower sign status is not true.");
+    // assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
+
+    // let _owner = await tokenContract.ownerOf(tokenId);
+    // assert.equal(_owner, loanProposal.address, "The LoanProposal contract is not the token owner.");
   });
 });
 

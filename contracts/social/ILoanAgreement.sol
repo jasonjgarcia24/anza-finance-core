@@ -18,6 +18,7 @@ interface ILoanAgreement {
     }
 
     struct LoanAgreement {
+        address borrower;
         address lender;
         uint256 priority;
         uint256 principal;

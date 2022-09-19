@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./ILoanAgreement.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./ALoanAffirm.sol";
 
 abstract contract ALoanManager is ALoanAffirm {
@@ -101,6 +101,35 @@ abstract contract ALoanManager is ALoanAffirm {
     }
 
     /**
+     * @dev Returns the balance of the loan agreements for `tokenContract`, `tokenId`, `loanId` loan.
+     *
+     * Requirements: NONE
+     */
+    function getLoanBalance(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId
+    ) public view returns (uint256) {
+        return loanAgreements[_tokenContract][_tokenId][_loanId].balance;
+    }
+
+    /**
+     * @dev Returns the signoff status of the loan agreements for `tokenContract`, `tokenId`, `loanId` loan.
+     *
+     * Requirements: NONE
+     */
+    function getLoanSignoffs(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId
+    ) public view returns (bool[2] memory) {
+        return [
+            loanAgreements[_tokenContract][_tokenId][_loanId].borrowerSigned,
+            loanAgreements[_tokenContract][_tokenId][_loanId].lenderSigned
+        ];
+    }
+
+    /**
      * @dev Returns the loan agreements status for `tokenContract`, `tokenId`, and `loanId` loan.
      *
      * Requirements: NONE
@@ -158,10 +187,25 @@ abstract contract ALoanManager is ALoanAffirm {
             _tokenId
         ][_loanId];
 
-        require(msg.sender == _loanAgreement.lender, "The caller must be the lender.");
-        require(_loanAgreement.state == LoanState.SPONSORED, "The loan state must be LoanState.SPONSORED.");
+        require(
+            msg.sender == _loanAgreement.lender,
+            "The caller must be the lender."
+        );
+        require(
+            _loanAgreement.state == LoanState.SPONSORED,
+            "The loan state must be LoanState.SPONSORED."
+        );
 
-        payable(address(this)).transfer(msg.value);
+        accountWithdrawalLimit[_loanAgreement.lender] += msg.value;
+        require(
+            accountWithdrawalLimit[_loanAgreement.lender] >=
+                _loanAgreement.principal,
+            "The caller's account balance is insufficient."
+        );
+
+        accountWithdrawalLimit[_loanAgreement.lender] -= _loanAgreement.balance;
+        payable(address(this)).transfer(_loanAgreement.principal);
+        _loanAgreement.balance = _loanAgreement.principal;
         _loanAgreement.state = LoanState.FUNDED;
     }
 
@@ -185,12 +229,16 @@ abstract contract ALoanManager is ALoanAffirm {
 
         require(
             msg.sender == _loanAgreement.lender ||
-            isApproved(msg.sender, _tokenContract, _tokenId),
+                isApproved(msg.sender, _tokenContract, _tokenId),
             "The caller must be the owner, approver, owner's operator, or lender."
         );
-        require(_loanAgreement.state == LoanState.FUNDED, "The loan state must be LoanState.FUNDED.");
+        require(
+            _loanAgreement.state == LoanState.FUNDED,
+            "The loan state must be LoanState.FUNDED."
+        );
 
+        accountWithdrawalLimit[_loanAgreement.lender] += _loanAgreement.balance;
         _loanAgreement.balance = 0;
-        accountWithdrawalLimit[_loanAgreement.lender] = _loanAgreement.balance;
+        _loanAgreement.state = LoanState.SPONSORED;
     }
 }
