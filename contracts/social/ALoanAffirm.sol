@@ -50,14 +50,18 @@ abstract contract ALoanAffirm is ILoanAgreement {
         LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
             _tokenId
         ][_loanId];
+
         require(
             isApproved(msg.sender, _tokenContract, _tokenId),
             "Account is not approved."
         );
-
         require(
             _loanAgreement.borrowerSigned == false,
             "The borrower must not currently be signed off."
+        );
+        require(
+            _loanAgreement.state < LoanState.ACTIVE_GRACE_COMMITTED,
+            "Funds withdrawal illegal once the loan is active."
         );
 
         // Transfer token to contract
@@ -84,7 +88,7 @@ abstract contract ALoanAffirm is ILoanAgreement {
      *
      * Emits {LoanSignoffChanged} events.
      */
-    function _unsignBorrower(
+    function _withdrawBorrower(
         address _tokenContract,
         uint256 _tokenId,
         uint256 _loanId
@@ -97,8 +101,12 @@ abstract contract ALoanAffirm is ILoanAgreement {
             _loanAgreement.borrowerSigned == true,
             "The borrower must currently be signed off."
         );
+        require(
+            _loanAgreement.state < LoanState.ACTIVE_GRACE_COMMITTED,
+            "Collateral withdrawal illegal once the loan is active."
+        );
 
-        // Transfer token to borrowe
+        // Transfer token to borrower
         IERC721(_tokenContract).safeTransferFrom(
             address(this),
             msg.sender,
@@ -107,6 +115,7 @@ abstract contract ALoanAffirm is ILoanAgreement {
 
         // Update loan agreement
         _loanAgreement.borrowerSigned = false;
+        _loanAgreement.state = LoanState.NONLEVERAGED;
 
         emit LoanSignoffChanged(
             msg.sender, 0,  _loanAgreement.borrowerSigned, _loanAgreement.lenderSigned
@@ -137,14 +146,16 @@ abstract contract ALoanAffirm is ILoanAgreement {
         require(_loanAgreement.lenderSigned == false, "The lender must not currently be signed off.");
         require(msg.value >= _loanAgreement.principal, "Paid value must equal the loan agreement principal.");
 
+        LoanState _prevState = _loanAgreement.state;
+
         // Update loan agreement
         _loanAgreement.lenderSigned = true;
-        _loanAgreement.balance = msg.value;
         _loanAgreement.state = LoanState.SPONSORED;
 
         emit LoanSignoffChanged(
             msg.sender, 1, _loanAgreement.borrowerSigned, _loanAgreement.lenderSigned
         );
+        emit LoanStateChanged(_prevState, _loanAgreement.state);
     }
 
     /**
@@ -156,7 +167,7 @@ abstract contract ALoanAffirm is ILoanAgreement {
      *
      * Emits {LoanSignoffChanged} events.
      */
-    function _unsignLender(
+    function _withdrawLender(
         address _tokenContract,
         uint256 _tokenId,
         uint256 _loanId
@@ -171,6 +182,8 @@ abstract contract ALoanAffirm is ILoanAgreement {
             "The caller must be the owner, approver, owner's operator, or the lender."
         );
 
+        LoanState _prevState = _loanAgreement.state;
+
         // Update loan agreement
         _loanAgreement.lenderSigned = false;
         _loanAgreement.state = LoanState.UNSPONSORED;
@@ -178,6 +191,7 @@ abstract contract ALoanAffirm is ILoanAgreement {
         emit LoanSignoffChanged(
             msg.sender, 0, _loanAgreement.borrowerSigned, _loanAgreement.lenderSigned
         );
+        emit LoanStateChanged(_prevState, _loanAgreement.state);
     }
 
     /**
@@ -190,7 +204,7 @@ abstract contract ALoanAffirm is ILoanAgreement {
         address _approver,
         address _tokenContract,
         uint256 _tokenId
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         IERC721 _erc721 = IERC721(_tokenContract);
         address _owner = _erc721.ownerOf(_tokenId);
 
@@ -212,11 +226,32 @@ abstract contract ALoanAffirm is ILoanAgreement {
         address _tokenContract,
         uint256 _tokenId,
         uint256 _loanId
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
             _tokenId
         ][_loanId];
 
         return msg.sender == _loanAgreement.borrower;
+    }
+
+    /**
+     * @dev Returns the status of the lender and owner,
+     * approver, or owner's operator signoff.
+     *
+     * Requirements: NONE
+     */
+    function isSigned(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId
+    ) public view returns (uint256) {
+        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
+            _tokenId
+        ][_loanId];
+
+        if (_loanAgreement.lenderSigned && _loanAgreement.borrowerSigned) { return 3; }
+        else if (_loanAgreement.borrowerSigned) { return 2; }
+        else if (_loanAgreement.lenderSigned) { return 1; }
+        else { return 0; }
     }
 }

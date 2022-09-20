@@ -13,23 +13,24 @@ const { listenerLoanSignoffChanged } = require("../utils/listenersALoanAffirm");
 
 const loanState = {
   UNDEFINED: 0,
-  UNSPONSORED: 1,
-  SPONSORED: 2,
-  FUNDED: 3,
-  ACTIVE_GRACE_COMMITTED: 4,
-  ACTIVE_GRACE_OPEN: 5,
-  ACTIVE_COMMITTED: 6,
-  ACTIVE_OPEN: 7,
-  PAID: 8,
-  DEFAULT: 9,
-  AUCTION: 10,
-  CLOSED: 11
+  NONLEVERAGED: 1,
+  UNSPONSORED: 2,
+  SPONSORED: 3,
+  FUNDED: 4,
+  ACTIVE_GRACE_COMMITTED: 5,
+  ACTIVE_GRACE_OPEN: 6,
+  ACTIVE_COMMITTED: 7,
+  ACTIVE_OPEN: 8,
+  PAID: 9,
+  DEFAULT: 10,
+  AUCTION: 11,
+  CLOSED: 12
 };
 
-let loanProposal;
-let borrower, lender, approver, operator;
+let loanProposal, loanId;
+let borrower, lender, lenderAlt, approver, operator;
 let tokenContract, tokenId;
-let loanPrincipal = 1;
+let loanPrincipal = 10;
 let loanFixedInterestRate = 2;
 let loanDuration = 3;
 
@@ -40,7 +41,7 @@ describe("0-0 :: LoanProposal tests", function () {
     await reset();
     await impersonate();
     provider = new ethers.providers.Web3Provider(network.provider);
-    [borrower, lender, approver, operator, ..._] = await ethers.getSigners();
+    [borrower, lender, lenderAlt, approver, operator, ..._] = await ethers.getSigners();
 
     // Establish NFT identifiers
     tokenContract = new ethers.Contract(
@@ -52,6 +53,7 @@ describe("0-0 :: LoanProposal tests", function () {
     const LoanProposalFactory = await ethers.getContractFactory("LoanProposal");
     loanProposal = await LoanProposalFactory.deploy();
     await loanProposal.deployed();
+    await tokenContract.setApprovalForAll(loanProposal.address, true);
 
     await loanProposal.connect(borrower).createLoanProposal(
       tokenContract.address,
@@ -60,10 +62,11 @@ describe("0-0 :: LoanProposal tests", function () {
       loanFixedInterestRate,
       loanDuration
     );
+    loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
+    await loanProposal.withdraw(tokenContract.address, tokenId, loanId);
 
     // Set operator
     await tokenContract.setApprovalForAll(operator.address, true);
-    await tokenContract.setApprovalForAll(loanProposal.address, true);
 
     // Set NFT approver
     await tokenContract.approve(approver.address, tokenId);
@@ -73,12 +76,11 @@ describe("0-0 :: LoanProposal tests", function () {
 
   it("0-0-00 :: Test LoanProposal getter functions", async function () {
     // Check loan ID
-    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
-    expect(_loanId).to.equal(0, "Loan ID should be 0.");
+    expect(loanId).to.equal(0, "Loan ID should be 0.");
 
     // Check loan principal
     const _loanTerms = await loanProposal.getLoanTerms(
-      tokenContract.address, tokenId, _loanId
+      tokenContract.address, tokenId, loanId
     );
     assert.isTrue(
       _loanTerms[0].eq(loanPrincipal) &&
@@ -89,66 +91,70 @@ describe("0-0 :: LoanProposal tests", function () {
 
     // Check loan state
     const _loanState = await loanProposal.getLoanState(
-      tokenContract.address, tokenId, _loanId
+      tokenContract.address, tokenId, loanId
     );
     expect(_loanState).to.equal(1, "Loan state should be 1.");
 
     // Check loan lender
     const _lenderAddress = await loanProposal.getLender(
-      tokenContract.address, tokenId, _loanId
+      tokenContract.address, tokenId, loanId
     );
     expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
   });
 
   it("0-0-01 :: Test LoanProposal setLender function", async function () {
-    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
-    let _, _prevLoanState, _newLoanState;
+    let _, _currentLoanState, _prevLoanState, _newLoanState, _newestLoanState;
 
     // Check initial lender address
     let _lenderAddress = await loanProposal.getLender(
-      tokenContract.address, tokenId, _loanId
+      tokenContract.address, tokenId, loanId
     );
     expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
 
     // Check added lender with lender
-    [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(lender, _loanId, lender.address);
-    expect(_prevLoanState).to.equal(loanState.UNSPONSORED, `Previous loan proposal state should be ${loanState.UNSPONSORED}.`);
-    expect(_newLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
+    [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(lender, loanId);
+    _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
+    expect(_prevLoanState).to.equal(loanState.NONLEVERAGED, `Previous loan proposal state should be ${loanState.NONLEVERAGED}.`);
+    expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
+    expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
     expect(_lenderAddress).to.equal(lender.address, `Loan lender should be ${lender.address}.`);
 
     // Check removed lender with borrower
-    [_, _newLoanState, _lenderAddress] = await updateLender(borrower, _loanId);
+    [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(borrower, loanId);
+    expect(_prevLoanState).to.equal(loanState.SPONSORED, `Previous loan proposal state should be ${loanState.SPONSORED}.`);
     expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
     expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
 
     // Check removed lender with approver
-    await updateLender(lender, _loanId, lender.address);
-    [_, _newLoanState, _lenderAddress] = await updateLender(approver, _loanId);
+    await updateLender(lender, loanId);
+    [_, _newLoanState, _lenderAddress] = await updateLender(approver, loanId);
     expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
     expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
 
     // Check removed lender with operator
-    await updateLender(lender, _loanId, lender.address);
-    [_, _newLoanState, _lenderAddress] = await updateLender(operator, _loanId);
+    await updateLender(lender, loanId);
+    [_, _newLoanState, _lenderAddress] = await updateLender(operator, loanId);
     expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
     expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
     
-    // Check removed lender with lender
-    await updateLender(lender, _loanId, lender.address);
-    [_, _newLoanState, _lenderAddress] = await updateLender(operator, _loanId);
-    expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
-    expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    // Check new lender with lenderAlt
+    await updateLender(lender, loanId);
+    await loanProposal.connect(lender).withdraw(tokenContract.address, tokenId, loanId);
+    [_, _newLoanState, _lenderAddress] = await updateLender(lenderAlt, loanId);
+    _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
+    expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
+    expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
+    expect(_lenderAddress).to.equal(lenderAlt.address, "Loan lender should be the alternate lender's address.");
   });
 
   it("0-0-02 :: Test LoanProposal setLoanParm function for single changes", async function () {
-    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
     const _newLoanPrincipal = 5000;
     const _newLoanFixedInterestRate = 33;
     const _newLoanDuration = 60;
 
     // Collect and check original loan terms
     const _prevLoanTerms = await loanProposal.getLoanTerms(
-      tokenContract.address, tokenId, _loanId
+      tokenContract.address, tokenId, loanId
     );
 
     assert.isTrue(
@@ -160,7 +166,7 @@ describe("0-0 :: LoanProposal tests", function () {
 
     // Check loan principal
     let _newLoanTerms = await updateLoanParams(
-      _loanId, ['principal'], [_newLoanPrincipal], [_prevLoanTerms[0]]
+      loanId, ['principal'], [_newLoanPrincipal], [_prevLoanTerms[0]]
     );
 
     assert.isTrue(
@@ -172,7 +178,7 @@ describe("0-0 :: LoanProposal tests", function () {
 
     // Check loan fixed interest rate
     _newLoanTerms = await updateLoanParams(
-      _loanId, ['fixed_interest_rate'], [_newLoanFixedInterestRate], [_prevLoanTerms[1]]
+      loanId, ['fixed_interest_rate'], [_newLoanFixedInterestRate], [_prevLoanTerms[1]]
     );
 
     assert.isTrue(
@@ -184,7 +190,7 @@ describe("0-0 :: LoanProposal tests", function () {
 
     // Check loan duration
     _newLoanTerms = await updateLoanParams(
-      _loanId, ['duration'], [_newLoanDuration], [_prevLoanTerms[2]]
+      loanId, ['duration'], [_newLoanDuration], [_prevLoanTerms[2]]
     );
 
     assert.isTrue(
@@ -196,14 +202,13 @@ describe("0-0 :: LoanProposal tests", function () {
   });
 
   it("0-0-03 :: Test LoanProposal setLoanParm function for multiple changes", async function () {
-    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
     const _newLoanPrincipal = 5000;
     const _newLoanFixedInterestRate = 33;
     const _newLoanDuration = 60;
 
     // Collect and check original loan terms
     const _prevLoanTerms = await loanProposal.getLoanTerms(
-      tokenContract.address, tokenId, _loanId
+      tokenContract.address, tokenId, loanId
     );
 
     assert.isTrue(
@@ -215,7 +220,7 @@ describe("0-0 :: LoanProposal tests", function () {
 
     // Check loan all loan parameters
     let _newLoanTerms = await updateLoanParams(
-      _loanId,
+      loanId,
       ['principal', 'fixed_interest_rate', 'duration'],
       [_newLoanPrincipal, _newLoanFixedInterestRate, _newLoanDuration],
       _prevLoanTerms
@@ -238,22 +243,20 @@ describe("0-0 :: LoanProposal tests", function () {
   });
 
   it("0-0-04 :: Test LoanProposal borrower signoffs.", async function () {
-    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
-
     // Borrower signs LoanProposal and transfers NFT to LoanProposal
-    let _tx = await loanProposal.connect(borrower).sign(tokenContract.address, tokenId, _loanId);
+    let _tx = await loanProposal.connect(borrower).sign(tokenContract.address, tokenId, loanId);
     let [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
 
     expect(_signer).to.equal(borrower.address, "Borrower and signer are not the same.");
-    assert.isTrue(_action.eq(1), "Unsign action is not expected.");
+    assert.isTrue(_action.eq(1), "withdraw action is not expected.");
     assert.isTrue(_borrowerSignStatus, "Borrower sign status is not true.");
     assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
 
     let _owner = await tokenContract.ownerOf(tokenId);
     expect(_owner).to.equal(loanProposal.address, "The LoanProposal contract is not the token owner.");
 
-    // Borrower unsigns LoanProposal and LoanProposal transfers NFT to borrower
-    _tx = await loanProposal.connect(borrower).unsign(tokenContract.address, tokenId, _loanId);
+    // Borrower withdraws LoanProposal and LoanProposal transfers NFT to borrower
+    _tx = await loanProposal.connect(borrower).withdraw(tokenContract.address, tokenId, loanId);
     [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
 
     expect(_signer).to.equal(borrower.address, "Borrower and signer are not the same.");
@@ -266,50 +269,48 @@ describe("0-0 :: LoanProposal tests", function () {
   });
 
   it("0-0-05 :: Test LoanProposal lender signoffs.", async function () {
-    const _loanId = await loanProposal.getLoanCount(tokenContract.address, tokenId);
+    let _, _prevLoanState, _newLoanState;
 
     // Lender signs LoanProposal via setLender and transfers funds to LoanProposal
     let _tx = await loanProposal.connect(lender).setLender(
-      lender.address, tokenContract.address, tokenId, _loanId, { value: loanPrincipal }
+      tokenContract.address, tokenId, loanId, { value: loanPrincipal }
     );
     [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
 
     expect(_signer).to.equal(lender.address, "Lender and signer are not the same.");
-    assert.isTrue(_action.eq(1), "Unsign action is not expected.");
+    assert.isTrue(_action.eq(1), "withdraw action is not expected.");
     assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
     assert.isTrue(_lenderSignStatus, "Lender sign status is not true.");
 
-    // Lender unsigns LoanProposal and LoanProposal transfers funds to lender
-    _tx = await loanProposal.connect(lender).unsign(tokenContract.address, tokenId, _loanId);
+    // Lender withdraws from LoanProposal
+    _tx = await loanProposal.connect(lender).withdraw(tokenContract.address, tokenId, loanId);
     [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
-
+    [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanProposal);
 
     expect(_signer).to.equal(lender.address, "Lender and signer are not the same.");
     assert.isFalse(_action.eq(1), "Sign action is not expected.");
     assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
     assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
+    
+    expect(_prevLoanState).to.equal(loanState.SPONSORED, `Previous loan proposal state should be ${loanState.SPONSORED}.`);
+    expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
 
-    let _owner = await tokenContract.ownerOf(tokenId);
-    expect(_owner).to.equal(_owner, borrower.address, "The borrower is not the token owner.");
+    // Lender cannot signs LoanProposal with sign function
+    assert.eventually.throws(
+      loanProposal.connect(lender).sign(
+        tokenContract.address, tokenId, loanId, { value: loanPrincipal },
+        /Only the borrower can sign. If lending, use setLender()/
+      ),
+    );
+  });
 
-    // Lender signs LoanProposal and transfers funds to LoanProposal
-    _tx = await loanProposal.connect(borrower).sign(tokenContract.address, tokenId, _loanId);
-    [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
-
-
-    expect(_signer).to.equal(borrower.address, "Borrower and signer are not the same.");
-    assert.isTrue(_action.eq(1), "Unsign action is not expected.");
-    assert.isTrue(_borrowerSignStatus, "Borrower sign status is not true.");
-    assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
-
-    _owner = await tokenContract.ownerOf(tokenId);
-    expect(_owner).to.equal(loanProposal.address, "The LoanProposal contract is not the token owner.");
+  it("0-0-06 :: Test LoanProposal borrower removal of signature.", async function () {
   });
 });
 
-const updateLender = async (_sender, _loanId, _setAddress=ethers.constants.AddressZero) => {
+const updateLender = async (_sender, loanId) => {
   const _tx = await loanProposal.connect(_sender).setLender(
-    _setAddress, tokenContract.address, tokenId, _loanId, { value: loanPrincipal }
+    tokenContract.address, tokenId, loanId, { value: loanPrincipal }
   );
 
   const [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanProposal);
@@ -318,17 +319,17 @@ const updateLender = async (_sender, _loanId, _setAddress=ethers.constants.Addre
   return [_prevLoanState, _newLoanState, _newLender];
 }
 
-const updateLoanParams = async (_loanId, _params, _newValues, _prevValues) => {
+const updateLoanParams = async (loanId, _params, _newValues, _prevValues) => {
   const _tx = await loanProposal.setLoanParam(
     tokenContract.address,
     tokenId,
-    _loanId,
+    loanId,
     _params,
     _newValues
   );
 
   const _newLoanTerms = await loanProposal.getLoanTerms(
-    tokenContract.address, tokenId, _loanId
+    tokenContract.address, tokenId, loanId
   );
 
   // Check LoanParamChanged event triggered

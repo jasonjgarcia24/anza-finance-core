@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 interface ILoanAgreement {
     enum LoanState {
         UNDEFINED,
+        NONLEVERAGED,
         UNSPONSORED,
         SPONSORED,
         FUNDED,
@@ -54,4 +55,12 @@ interface ILoanAgreement {
         LoanState indexed prevState,
         LoanState indexed newState
     );
+
+    /**
+     * @dev Returns the loan proposal state for `tokenContract`, `tokenId`, `loanId` loan proposal.
+     *
+     * Requirements: NONE
+     *
+     */
+    function getState(address tokenContract, uint256 tokenId, uint256 loanId) external view returns (LoanState state);
 }

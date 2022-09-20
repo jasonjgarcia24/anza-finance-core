@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./ALoanAffirm.sol";
 
 abstract contract ALoanManager is ALoanAffirm {
-    address[] internal borrowers;
+    address[] internal lenders;
     mapping(address => uint256) internal accountWithdrawalLimit;
 
     /**
@@ -47,7 +47,6 @@ abstract contract ALoanManager is ALoanAffirm {
      * Emits {LoanStateChanged} and {LoanLenderChanged} events.
      */
     function setLender(
-        address lender,
         address tokenContract,
         uint256 tokenId,
         uint256 loanId
@@ -155,6 +154,19 @@ abstract contract ALoanManager is ALoanAffirm {
     ) public view returns (address) {
         return loanAgreements[_tokenContract][_tokenId][_loanId].lender;
     }
+    
+    /**
+     * @dev Returns the loan lender.
+     *
+     * Requirements: NONE
+     */
+    function getState(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId
+    ) public view returns (LoanState) {
+        return loanAgreements[_tokenContract][_tokenId][_loanId].state;
+    }
 
     /**
      * @dev Returns if the `_tokenContract`, `tokenId`, and `_loanId`
@@ -204,10 +216,14 @@ abstract contract ALoanManager is ALoanAffirm {
             "The caller's account balance is insufficient."
         );
 
-        accountWithdrawalLimit[_loanAgreement.lender] -= _loanAgreement.balance;
+        LoanState _prevState = _loanAgreement.state;
+
+        accountWithdrawalLimit[_loanAgreement.lender] -= _loanAgreement.principal;
         payable(address(this)).transfer(_loanAgreement.principal);
         _loanAgreement.balance = _loanAgreement.principal;
         _loanAgreement.state = LoanState.FUNDED;
+
+        emit LoanStateChanged(_prevState, _loanAgreement.state);
     }
 
     /**
