@@ -28,6 +28,7 @@ const loanState = {
   CLOSED: 12
 };
 
+let provider;
 let loanProposal, loanId, loanContract;
 let borrower, lender, lenderAlt, approver, operator;
 let tokenContract, tokenId;
@@ -311,7 +312,10 @@ describe("0-0 :: LoanProposal tests", function () {
     _tx = await loanProposal.connect(borrower).sign(tokenContract.address, tokenId, loanId);
     [loanContractAddress, borrower, lender, tokenContract, tokenId] = await listenerLoanContractDeployed(_tx, loanProposal);
 
-    console.log(loanContractAddress);
+    let loanContract = await ethers.getContractAt("LoanContract", loanContractAddress);
+    let _var = await provider.getStorageAt(loanContract.address, 0);
+
+    console.log(_var);
   });
 });
 

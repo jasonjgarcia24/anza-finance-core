@@ -170,6 +170,11 @@ contract LoanProposal is AProposalManager, AProposalContractInteractions {
 
         address _loanContractAddress = address(_loanContract);
 
+        IERC721(_tokenContract).approve(
+            _loanContractAddress,
+            _tokenId
+        );
+
         IERC721(_tokenContract).safeTransferFrom(
             address(this),
             _loanContractAddress,

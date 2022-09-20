@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./IContract.sol";
+import "./AContractManager.sol";
 
-contract LoanContract is IContract {
+contract LoanContract is AContractManager {
     LoanContract public loanContract;
 
     constructor(

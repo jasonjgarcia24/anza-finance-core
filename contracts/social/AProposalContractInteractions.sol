@@ -4,16 +4,16 @@ pragma solidity ^0.8.9;
 import "./AProposalAffirm.sol";
 
 abstract contract AProposalContractInteractions is AProposalAffirm {
-    /**
+     /**
      * @dev Emitted when a loan contract is deployed.
      */
-    event LoanContractDeployed(
-        address indexed loanContract,
-        address indexed borrower,
-        address indexed lender,
-        address tokenContract,
-        uint256 tokenId
-    );
+     event LoanContractDeployed(
+          address indexed loanContract,
+          address indexed borrower,
+          address indexed lender,
+          address tokenContract,
+          uint256 tokenId
+     );
 
      /**
      * @dev Create the loan contract from the loan proposal terms when loan proposal `tokenContract`, `tokenId`, and `loanId` is signed off by both borrower and lender.
