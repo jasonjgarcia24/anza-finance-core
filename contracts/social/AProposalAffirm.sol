@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./ILoanAgreement.sol";
-import "hardhat/console.sol";
+import "./IProposal.sol";
 
-abstract contract ALoanAffirm is ILoanAgreement {
+abstract contract AProposalAffirm is IProposal {
     // NFT => Token ID => LoanAgreement[Loan ID]
     mapping(address => mapping(uint256 => LoanAgreement[]))
         internal loanAgreements;

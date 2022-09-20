@@ -7,9 +7,10 @@ const {
   listenerLoanLenderChanged,
   listenerLoanParamChanged,
   listenerLoanStateChanged
-} = require("../utils/listenersILoanAgreement");
-const { listenerLoanProposalCreated } = require("../utils/listenersALoanManager");
-const { listenerLoanSignoffChanged } = require("../utils/listenersALoanAffirm");
+} = require("../utils/listenersIProposal");
+const { listenerLoanProposalCreated } = require("../utils/listenersAProposalManager");
+const { listenerLoanSignoffChanged } = require("../utils/listenersAProposalAffirm");
+const { listenerLoanContractDeployed } = require("../utils/listenersAProposalContractInteractions");
 
 const loanState = {
   UNDEFINED: 0,
@@ -27,7 +28,7 @@ const loanState = {
   CLOSED: 12
 };
 
-let loanProposal, loanId;
+let loanProposal, loanId, loanContract;
 let borrower, lender, lenderAlt, approver, operator;
 let tokenContract, tokenId;
 let loanPrincipal = 10;
@@ -304,7 +305,13 @@ describe("0-0 :: LoanProposal tests", function () {
     );
   });
 
-  it("0-0-06 :: Test LoanProposal borrower removal of signature.", async function () {
+  it("0-0-06 :: Test LoanProposal deploy LoanContract.", async function () {
+    let loanContractAddress;
+    let _tx = await loanProposal.connect(lender).setLender(tokenContract.address, tokenId, loanId, { value: loanPrincipal });
+    _tx = await loanProposal.connect(borrower).sign(tokenContract.address, tokenId, loanId);
+    [loanContractAddress, borrower, lender, tokenContract, tokenId] = await listenerLoanContractDeployed(_tx, loanProposal);
+
+    console.log(loanContractAddress);
   });
 });
 

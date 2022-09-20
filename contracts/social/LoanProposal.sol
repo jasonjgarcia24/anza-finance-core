@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "hardhat/console.sol";
-import "./ALoanManager.sol";
+import "./AProposalManager.sol";
+import "./AProposalContractInteractions.sol";
+import "./LoanContract.sol";
 
-contract LoanProposal is ALoanManager {
+contract LoanProposal is AProposalManager, AProposalContractInteractions {
     function createLoanProposal(
         address _tokenContract,
         uint256 _tokenId,
@@ -83,6 +84,10 @@ contract LoanProposal is ALoanManager {
         );
 
         _signBorrower(_tokenContract, _tokenId, _loanId);
+
+        if (_isDeployable(_tokenContract, _tokenId, _loanId)) {
+            _deployLoanContract(_tokenContract, _tokenId, _loanId);
+        }
     }
 
     function withdraw(
@@ -140,6 +145,43 @@ contract LoanProposal is ALoanManager {
             keccak256(bytes(_params[_params.length - 1])),
             _prevValue,
             _newValues[_params.length - 1]
+        );
+    }
+
+    function _deployLoanContract(
+        address _tokenContract,
+        uint256 _tokenId,
+        uint256 _loanId
+    ) internal override {
+        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
+            _tokenId
+        ][_loanId];
+
+        LoanContract _loanContract = new LoanContract(
+            _loanAgreement.borrower,
+            _loanAgreement.lender,
+            _tokenContract,
+            _tokenId,
+            _loanAgreement.priority,
+            _loanAgreement.fixedInterestRate,
+            _loanAgreement.duration,
+            _loanAgreement.balance
+        );
+
+        address _loanContractAddress = address(_loanContract);
+
+        IERC721(_tokenContract).safeTransferFrom(
+            address(this),
+            _loanContractAddress,
+            _tokenId
+        );
+
+        emit LoanContractDeployed(
+            _loanContractAddress,
+            _loanAgreement.borrower,
+            _loanAgreement.lender,
+            _tokenContract,
+            _tokenId
         );
     }
 

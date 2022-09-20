@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "./ALoanAffirm.sol";
+import "./AProposalAffirm.sol";
 
-abstract contract ALoanManager is ALoanAffirm {
+abstract contract AProposalManager is AProposalAffirm {
     address[] internal lenders;
     mapping(address => uint256) internal accountWithdrawalLimit;
 
