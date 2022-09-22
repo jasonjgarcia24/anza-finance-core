@@ -25,6 +25,7 @@ abstract contract AContractGlobals {
     bytes32 public constant _ARBITER_ROLE_ = "ARBITER";
     bytes32 public constant _BORROWER_ROLE_ = "BORROWER";
     bytes32 public constant _LENDER_ROLE_ = "LENDER";
+    bytes32 public constant _PARTICIPANT_ROLE_ = "PARTICIPANT";
 
     address public borrower;
     address public lender;
@@ -38,6 +39,8 @@ abstract contract AContractGlobals {
     bool internal borrowerSigned;
     bool internal lenderSigned;
     LoanState internal state;
+
+    mapping(address => uint256) internal accountBalance;
 
     /**
      * @dev Emitted when a loan contract state is changed.

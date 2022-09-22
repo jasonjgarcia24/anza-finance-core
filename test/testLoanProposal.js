@@ -144,48 +144,48 @@ describe("0-0 :: LoanProposal tests", function () {
   });
 
   it("0-0-02 :: Test LoanProposal setLender function", async function () {
-    let _, _currentLoanState, _prevLoanState, _newLoanState, _newestLoanState;
-
     // Check initial lender address
-    let _lenderAddress = await loanProposal.getLender(
-      tokenContract.address, tokenId, loanId
-    );
-    expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    let _isLender = await loanContract.connect(lender).isLender();
+    assert.isFalse(_isLender, "Loan lender should not be set.");
 
-    // Check added lender with lender
-    [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(lender, loanId);
-    _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
-    expect(_prevLoanState).to.equal(loanState.NONLEVERAGED, `Previous loan proposal state should be ${loanState.NONLEVERAGED}.`);
-    expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
-    expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
-    expect(_lenderAddress).to.equal(lender.address, `Loan lender should be ${lender.address}.`);
+    await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    _isLender = await loanContract.connect(lender).isLender();
+    assert.isTrue(_isLender, "Loan lender should be set.");
 
-    // Check removed lender with borrower
-    [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(borrower, loanId);
-    expect(_prevLoanState).to.equal(loanState.SPONSORED, `Previous loan proposal state should be ${loanState.SPONSORED}.`);
-    expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
-    expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    // // Check added lender with lender
+    // [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(lender, loanId);
+    // _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
+    // expect(_prevLoanState).to.equal(loanState.NONLEVERAGED, `Previous loan proposal state should be ${loanState.NONLEVERAGED}.`);
+    // expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
+    // expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
+    // expect(_lenderAddress).to.equal(lender.address, `Loan lender should be ${lender.address}.`);
 
-    // Check removed lender with approver
-    await updateLender(lender, loanId);
-    [_, _newLoanState, _lenderAddress] = await updateLender(approver, loanId);
-    expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
-    expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    // // Check removed lender with borrower
+    // [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(borrower, loanId);
+    // expect(_prevLoanState).to.equal(loanState.SPONSORED, `Previous loan proposal state should be ${loanState.SPONSORED}.`);
+    // expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
+    // expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
 
-    // Check removed lender with operator
-    await updateLender(lender, loanId);
-    [_, _newLoanState, _lenderAddress] = await updateLender(operator, loanId);
-    expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
-    expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    // // Check removed lender with approver
+    // await updateLender(lender, loanId);
+    // [_, _newLoanState, _lenderAddress] = await updateLender(approver, loanId);
+    // expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
+    // expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+
+    // // Check removed lender with operator
+    // await updateLender(lender, loanId);
+    // [_, _newLoanState, _lenderAddress] = await updateLender(operator, loanId);
+    // expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
+    // expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
     
-    // Check new lender with lenderAlt
-    await updateLender(lender, loanId);
-    await loanProposal.connect(lender).withdraw(tokenContract.address, tokenId, loanId);
-    [_, _newLoanState, _lenderAddress] = await updateLender(lenderAlt, loanId);
-    _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
-    expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
-    expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
-    expect(_lenderAddress).to.equal(lenderAlt.address, "Loan lender should be the alternate lender's address.");
+    // // Check new lender with lenderAlt
+    // await updateLender(lender, loanId);
+    // await loanProposal.connect(lender).withdraw(tokenContract.address, tokenId, loanId);
+    // [_, _newLoanState, _lenderAddress] = await updateLender(lenderAlt, loanId);
+    // _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
+    // expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
+    // expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
+    // expect(_lenderAddress).to.equal(lenderAlt.address, "Loan lender should be the alternate lender's address.");
   });
 
   it("0-0-03 :: Test LoanProposal setLoanParm function for single changes", async function () {

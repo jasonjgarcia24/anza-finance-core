@@ -98,75 +98,67 @@ abstract contract AProposalNotary is AProposalAffirm {
         // );
     }
 
-    /**
-     * @dev Sign lender for loan agreement.
-     *
-     * Requirements:
-     *
-     * - The caller must be the lender.
-     * - The lender must not currently be signed off.
-     * - The msg.value must equal the loan agreement principal.
-     *
-     * Emits {LoanSignoffChanged} events.
-     */
-    function _signLender(
-        address _tokenContract,
-        uint256 _tokenId,
-        uint256 _loanId
-    ) internal {
-        // LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
-        //     _tokenId
-        // ][_loanId];
+    // /**
+    //  * @dev Sign lender for loan agreement.
+    //  *
+    //  * Requirements:
+    //  *
+    //  * - The caller must be the lender.
+    //  * - The lender must not currently be signed off.
+    //  * - The msg.value must equal the loan agreement principal.
+    //  *
+    //  * Emits {LoanSignoffChanged} events.
+    //  */
+    // function _signLender(
+    //     address _tokenContract,
+    //     uint256 _tokenId,
+    //     uint256 _loanId
+    // ) internal {
+    //     // LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
+    //     //     _tokenId
+    //     // ][_loanId];
 
-        // require(msg.sender == _loanAgreement.lender, "The caller must be the lender.");
-        // require(_loanAgreement.lenderSigned == false, "The lender must not currently be signed off.");
-        // require(msg.value >= _loanAgreement.principal, "Paid value must equal the loan agreement principal.");
+    //     // require(msg.sender == _loanAgreement.lender, "The caller must be the lender.");
+    //     // require(_loanAgreement.lenderSigned == false, "The lender must not currently be signed off.");
+    //     // require(msg.value >= _loanAgreement.principal, "Paid value must equal the loan agreement principal.");
 
-        // LoanState _prevState = _loanAgreement.state;
+    //     // LoanState _prevState = _loanAgreement.state;
 
-        // // Update loan agreement
-        // _loanAgreement.lenderSigned = true;
-        // _loanAgreement.state = LoanState.SPONSORED;
+    //     // // Update loan agreement
+    //     // _loanAgreement.lenderSigned = true;
+    //     // _loanAgreement.state = LoanState.SPONSORED;
 
-        // emit LoanSignoffChanged(
-        //     msg.sender, 1, _loanAgreement.borrowerSigned, _loanAgreement.lenderSigned
-        // );
-        // emit LoanStateChanged(_prevState, _loanAgreement.state);
-    }
+    //     // emit LoanSignoffChanged(
+    //     //     msg.sender, 1, _loanAgreement.borrowerSigned, _loanAgreement.lenderSigned
+    //     // );
+    //     // emit LoanStateChanged(_prevState, _loanAgreement.state);
+    // }
 
-    /**
-     * @dev Remove lender signoff for loan agreement.
-     *
-     * Requirements:
-     *
-     * - The msg.sender must be the owner, approver, owner's operator, or the lender.
-     *
-     * Emits {LoanSignoffChanged} events.
-     */
-    function _withdrawLender(
-        address _tokenContract,
-        uint256 _tokenId,
-        uint256 _loanId
-    ) internal {
-        // LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
-        //     _tokenId
-        // ][_loanId];
+    // /**
+    //  * @dev Remove lender signoff for loan agreement.
+    //  *
+    //  * Requirements:
+    //  *
+    //  * - The msg.sender must be the owner, approver, owner's operator, or the lender.
+    //  *
+    //  * Emits {LoanSignoffChanged} events.
+    //  */
+    // function _withdrawLender() internal {
+    //     require(
+    //         msg.sender == _loanAgreement.lender ||
+    //         isApproved(msg.sender, _tokenContract, _tokenId),
+    //         "The caller must be the owner, approver, owner's operator, or the lender."
+    //     );
 
-        // require(
-        //     msg.sender == _loanAgreement.lender ||
-        //     isApproved(msg.sender, _tokenContract, _tokenId),
-        //     "The caller must be the owner, approver, owner's operator, or the lender."
-        // );
+    //     // LoanState _prevState = _loanAgreement.state;
 
-        // LoanState _prevState = _loanAgreement.state;
+    //     // // Update loan agreement
+    //     // _loanAgreement.lenderSigned = false;
+    //     // _loanAgreement.state = LoanState.UNSPONSORED;
 
-        // // Update loan agreement
-        // _loanAgreement.lenderSigned = false;
-        // _loanAgreement.state = LoanState.UNSPONSORED;
-
-        // emit LoanSignoffChanged(
-        //     msg.sender, 0, _loanAgreement.borrowerSigned, _loanAgreement.lenderSigned
-        // );
-        // emit LoanStateChanged(_prevState, _loanAgreement.state);
-    }
+    //     // emit LoanSignoffChanged(
+    //     //     msg.sender, 0, _loanAgreement.borrowerSigned, _loanAgreement.lenderSigned
+    //     // );
+    //     // emit LoanStateChanged(_prevState, _loanAgreement.state);
+    // }
 }

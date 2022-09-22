@@ -10,7 +10,7 @@ abstract contract AContractAffirm is AccessControl, AContractGlobals {
      *
      * Requirements: NONE
      */
-    function isBorrower() external view returns (bool) {
+    function isBorrower() public view returns (bool) {
         return hasRole(_BORROWER_ROLE_, _msgSender());
     }
 
@@ -19,7 +19,7 @@ abstract contract AContractAffirm is AccessControl, AContractGlobals {
      *
      * Requirements: NONE
      */
-    function isLender() external view returns (bool) {
+    function isLender() public view returns (bool) {
         return hasRole(_LENDER_ROLE_, _msgSender());
     }
 }

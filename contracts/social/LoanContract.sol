@@ -20,7 +20,6 @@ contract LoanContract is AContractManager {
         principal = _principal;
         fixedInterestRate = _fixedInterestRate;
         duration = _duration;
-        balance = 0;
         borrowerSigned = false;
         lenderSigned = false;
         state = LoanState.NONLEVERAGED;
@@ -30,8 +29,36 @@ contract LoanContract is AContractManager {
         __sign();
     }
 
+    function setLender() external payable {
+        if (isBorrower()) {
+            _defundLoan();
+            _revokeRole(_LENDER_ROLE_, lender);
+            _withdrawLender();
+        } else {
+            _signLender();
+            _setupRole(_LENDER_ROLE_, lender);
+            _fundLoan();
+        }
+    }
+
     function withdrawNft() external onlyRole(_BORROWER_ROLE_) {
         _withdrawBorrower();
+    }
+
+    /**
+     * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
+     * recipient.
+     *
+     * WARNING: Forwarding all gas opens the door to reentrancy vulnerabilities.
+     * Make sure you trust the recipient, or are either following the
+     * checks-effects-interactions pattern or using {ReentrancyGuard}.
+     *
+     * @param payee The address whose funds will be withdrawn and transferred to.
+     *
+     * Emits a {Withdrawn} event.
+     */
+    function withdraw() public onlyRole(_PARTICIPANT_ROLE_) {
+        _withdrawFunds(_msgSender());
     }
     
     function sign() external onlyRole(_BORROWER_ROLE_) {
