@@ -18,17 +18,18 @@ const listenerLoanParamChanged = async (tx, contractLoanProposal) => {
     return [param, prevValue, newValue];
 }
 
-const listenerLoanStateChanged = async (tx, contractLoanProposal) => {
-    const event = await eventHandler(tx, contractLoanProposal, 'LoanStateChanged');
+const listenerLoanContractCreated = async (tx, contract) => {
+    const event = await eventHandler(tx, contract, 'LoanContractCreated');
 
-    const prevState = event.args['prevState'];
-    const newState = event.args['newState'];
+    const loanContract = event.args['loanContract'];
+    const tokenContract = event.args['tokenContract'];
+    const tokenId = event.args['tokenId'];
 
-    return [prevState, newState];
-}
+    return [loanContract, tokenContract, tokenId];
+};
 
 module.exports = {
+    listenerLoanContractCreated,
     listenerLoanLenderChanged,
-    listenerLoanParamChanged,
-    listenerLoanStateChanged
+    listenerLoanParamChanged
 };

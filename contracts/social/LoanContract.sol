@@ -1,28 +1,48 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./AContractManager.sol";
+import "./LoanContract/AContractManager.sol";
 
 contract LoanContract is AContractManager {
-    LoanContract public loanContract;
-
     constructor(
-        address _borrower,
-        address _lender,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,
+        uint256 _principal,
         uint256 _fixedInterestRate,
-        uint256 _duration,
-        uint256 _balance
+        uint256 _duration
     ) {
-        loanContract.borrower = _borrower;
-        loanContract.lender = _lender;
-        loanContract.tokenContract = _tokenContract;
-        loanContract.tokenId = _tokenId;
-        loanContract.priority = _priority;
-        loanContract.fixedInterestRate = _fixedInterestRate;
-        loanContract.duration = _duration;
-        loanContract.balance = _balance;
+        borrower = IERC721(_tokenContract).ownerOf(_tokenId);
+        lender = address(0);
+        tokenContract = _tokenContract;
+        tokenId = _tokenId;
+        priority = _priority;
+        principal = _principal;
+        fixedInterestRate = _fixedInterestRate;
+        duration = _duration;
+        balance = 0;
+        borrowerSigned = false;
+        lenderSigned = false;
+        state = LoanState.NONLEVERAGED;
+
+        _setupRole(_ARBITER_ROLE_, address(this));
+        _setupRole(_BORROWER_ROLE_, borrower);
+        __sign();
+    }
+
+    function withdrawNft() external onlyRole(_BORROWER_ROLE_) {
+        _withdrawBorrower();
+    }
+    
+    function sign() external onlyRole(_BORROWER_ROLE_) {
+        _signBorrower();
+
+        // if (_isDeployable(_tokenContract, _tokenId, _loanId)) {
+        //     _deployLoanContract(_tokenContract, _tokenId, _loanId);
+        // }
+    }
+    
+    function __sign() private {
+        _signBorrower();
     }
 }

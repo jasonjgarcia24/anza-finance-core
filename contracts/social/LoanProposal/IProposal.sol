@@ -38,6 +38,15 @@ interface IProposal {
     /**
      * @dev Emitted when a loan lender is changed.
      */
+    event LoanContractCreated(
+        address indexed loanContract,
+        address indexed tokenContract,
+        uint256 indexed tokenId
+    );
+
+    /**
+     * @dev Emitted when a loan lender is changed.
+     */
     event LoanLenderChanged(
         address indexed prevLender,
         address indexed newLender

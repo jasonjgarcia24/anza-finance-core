@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./IContract.sol";
+import "./AContractAffirm.sol";
 
-abstract contract AContractAffirm is IContract {
+abstract contract AContractTreasurer is AContractAffirm {
+    mapping(address => uint256) internal accountBalance;
+    
     function onERC721Received(
         address,
         address,
@@ -15,4 +17,6 @@ abstract contract AContractAffirm is IContract {
                 keccak256("onERC721Received(address,address,uint256,bytes)")
             );
     }
+
+    receive() external payable {}
 }

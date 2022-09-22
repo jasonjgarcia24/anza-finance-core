@@ -2,20 +2,14 @@
 pragma solidity ^0.8.9;
 
 import "./AProposalAffirm.sol";
+import "./AProposalNotary.sol";
+import "./AProposalTreasurer.sol";
 
-abstract contract AProposalManager is AProposalAffirm {
-    address[] internal lenders;
-    mapping(address => uint256) internal accountWithdrawalLimit;
-
-    /**
-     * @dev Emitted when a loan agreement is created for a ERC721 token.
-     */
-    event LoanProposalCreated(
-        uint256 indexed loanId,
-        address indexed tokenContract,
-        uint256 indexed tokenId
-    );
-
+abstract contract AProposalManager is
+    AProposalAffirm,
+    AProposalNotary,
+    AProposalTreasurer
+{
     /**
      * @dev Open a loan agreement.
      *
@@ -26,7 +20,7 @@ abstract contract AProposalManager is AProposalAffirm {
      *
      * Emits {LoanStateChanged} and {LoanProposalCreated} events.
      */
-    function createLoanProposal(
+    function createLoanContract(
         address tokenContract,
         uint256 tokenId,
         uint256 principal,
@@ -152,7 +146,7 @@ abstract contract AProposalManager is AProposalAffirm {
     ) public view returns (address) {
         return loanAgreements[_tokenContract][_tokenId][_loanId].lender;
     }
-    
+
     /**
      * @dev Returns the loan lender.
      *
@@ -164,96 +158,5 @@ abstract contract AProposalManager is AProposalAffirm {
         uint256 _loanId
     ) public view returns (LoanState) {
         return loanAgreements[_tokenContract][_tokenId][_loanId].state;
-    }
-
-    /**
-     * @dev Returns if the `_tokenContract`, `tokenId`, and `_loanId`
-     * loan exists.
-     *
-     * Requirements: NONE
-     */
-    function isExistingLoanProposal(
-        address _tokenContract,
-        uint256 _tokenId,
-        uint256 _loanId
-    ) public view returns (bool) {
-        return loanAgreements[_tokenContract][_tokenId].length >= _loanId;
-    }
-
-    /**
-     * @dev Funds the loan proposal.
-     *
-     * Requirements:
-     *
-     * - The caller must be the lender.
-     * - The loan proposal state must be `LoanState.SPONSORED`.
-     *
-     */
-    function _fundLoanProposal(
-        address _tokenContract,
-        uint256 _tokenId,
-        uint256 _loanId
-    ) internal {
-        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
-            _tokenId
-        ][_loanId];
-
-        require(
-            msg.sender == _loanAgreement.lender,
-            "The caller must be the lender."
-        );
-        require(
-            _loanAgreement.state == LoanState.SPONSORED,
-            "The loan state must be LoanState.SPONSORED."
-        );
-
-        accountWithdrawalLimit[_loanAgreement.lender] += msg.value;
-        require(
-            accountWithdrawalLimit[_loanAgreement.lender] >=
-                _loanAgreement.principal,
-            "The caller's account balance is insufficient."
-        );
-
-        LoanState _prevState = _loanAgreement.state;
-
-        accountWithdrawalLimit[_loanAgreement.lender] -= _loanAgreement.principal;
-        payable(address(this)).transfer(_loanAgreement.principal);
-        _loanAgreement.balance = _loanAgreement.principal;
-        _loanAgreement.state = LoanState.FUNDED;
-
-        emit LoanStateChanged(_prevState, _loanAgreement.state);
-    }
-
-    /**
-     * @dev Defunds the loan proposal.
-     *
-     * Requirements:
-     *
-     * - The caller must be the owner, approver, owner's operator, or lender.
-     * - The loan proposal state must be LoanState.FUNDED.
-     *
-     */
-    function _defundLoanProposal(
-        address _tokenContract,
-        uint256 _tokenId,
-        uint256 _loanId
-    ) internal {
-        LoanAgreement storage _loanAgreement = loanAgreements[_tokenContract][
-            _tokenId
-        ][_loanId];
-
-        require(
-            msg.sender == _loanAgreement.lender ||
-                isApproved(msg.sender, _tokenContract, _tokenId),
-            "The caller must be the owner, approver, owner's operator, or lender."
-        );
-        require(
-            _loanAgreement.state == LoanState.FUNDED,
-            "The loan state must be LoanState.FUNDED."
-        );
-
-        accountWithdrawalLimit[_loanAgreement.lender] += _loanAgreement.balance;
-        _loanAgreement.balance = 0;
-        _loanAgreement.state = LoanState.SPONSORED;
     }
 }
