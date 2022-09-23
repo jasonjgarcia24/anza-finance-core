@@ -9,8 +9,11 @@ const {
   listenerLoanParamChanged
 } = require("../utils/listenersIProposal");
 const { listenerLoanSignoffChanged } = require("../utils/listenersAProposalAffirm");
-const { listenerLoanContractDeployed } = require("../utils/listenersAProposalContractInteractions");
 const { listenerLoanStateChanged } = require("../utils/listenersAContractGlobals");
+const {
+  listenerDeposited,
+  listenerWithdrawn
+} = require("../utils/listenersAContractTreasurer");
 
 const loanState = {
   UNDEFINED: 0,
@@ -25,7 +28,8 @@ const loanState = {
   PAID: 9,
   DEFAULT: 10,
   AUCTION: 11,
-  CLOSED: 12
+  AWARDED: 12,
+  CLOSED: 13
 };
 
 let provider;
@@ -37,6 +41,12 @@ const loanExpectedPriority = 1;
 const loanPrincipal = ethers.utils.parseEther('0.0001');
 const loanFixedInterestRate = 23;
 const loanDuration = 3;
+
+const _ARBITER_ROLE_ = ethers.utils.formatBytes32String("ARBITER");
+const _BORROWER_ROLE_ = ethers.utils.formatBytes32String("BORROWER");
+const _LENDER_ROLE_ = ethers.utils.formatBytes32String("LENDER");
+const _PARTICIPANT_ROLE_ = ethers.utils.formatBytes32String("PARTICIPANT");
+const _COLLATERAL_OWNER_ROLE_ = ethers.utils.formatBytes32String("COLLATERAL_OWNER");
 
 describe("0-0 :: LoanProposal tests", function () {
   /* NFT and LoanProposal setup */
@@ -82,7 +92,7 @@ describe("0-0 :: LoanProposal tests", function () {
 
     // Connect loanContract
     loanContract = await ethers.getContractAt("LoanContract", _loanContractAddress, borrower);
-    let _isBorrower = await loanContract.connect(borrower).isBorrower();
+    let _isBorrower = await loanContract.hasRole(_BORROWER_ROLE_, borrower.address);
     assert.isTrue(_isBorrower, "The borrower is not set.");
 
     let _owner = await tokenContract.ownerOf(tokenId);
@@ -121,71 +131,75 @@ describe("0-0 :: LoanProposal tests", function () {
 
   it("0-0-01 :: Test LoanProposal borrower signoffs", async function () {
     let _owner = await tokenContract.ownerOf(tokenId);
-    expect(_owner).to.equal(loanContract.address, "The LoanProposal contract is not the token owner.");
+    expect(_owner).to.equal(loanContract.address, "The LoanContract is not the token owner.");
 
-    // Borrower withdraws LoanProposal and LoanProposal transfers NFT to borrower
+    // Borrower withdraws LoanContract and LoanContract transfers NFT to borrower
     let _tx = await loanContract.connect(borrower).withdrawNft();
-    let [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract);
+    let [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
+    let [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
     _owner = await tokenContract.ownerOf(tokenId);
 
-    expect(_prevLoanState).to.equal(loanState.UNSPONSORED, "The previous loan must be UNSPONSORED.");
-    expect(_newLoanState).to.equal(loanState.NONLEVERAGED, "The new loan must be NONLEVERAGED.");
+    expect(_prevLoanState).to.equal(loanState.UNSPONSORED, "The previous loan state must be UNSPONSORED.");
+    expect(_newLoanState).to.equal(loanState.NONLEVERAGED, "The new loan state must be NONLEVERAGED.");
     expect(_owner).to.equal(borrower.address, "The token owner should be the borrower.");
     
-    // Borrower signs LoanProposal and transfers NFT to LoanProposal
+    // Borrower signs LoanContract and transfers NFT to LoanProposal
     await tokenContract.setApprovalForAll(loanContract.address, true);
     _tx = await loanContract.connect(borrower).sign();
-    [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract);
+    [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
+    [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
     _owner = await tokenContract.ownerOf(tokenId);
 
-    expect(_prevLoanState).to.equal(loanState.NONLEVERAGED, "The previous loan must be NONLEVERAGED.");
-    expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan must be UNSPONSORED.");
+    expect(_prevLoanState).to.equal(loanState.NONLEVERAGED, "The previous loan state must be NONLEVERAGED.");
+    expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan state must be UNSPONSORED.");
     expect(_owner).to.equal(loanContract.address, "The token owner should be the LoanContract.");
   });
 
   it("0-0-02 :: Test LoanProposal setLender function", async function () {
-    // Check initial lender address
+    // Set lender
     let _isLender = await loanContract.connect(lender).isLender();
     assert.isFalse(_isLender, "Loan lender should not be set.");
 
-    await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    let _tx = await loanContract.connect(lender).setLender({ value: loanPrincipal });
     _isLender = await loanContract.connect(lender).isLender();
     assert.isTrue(_isLender, "Loan lender should be set.");
 
-    // // Check added lender with lender
-    // [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(lender, loanId);
-    // _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
-    // expect(_prevLoanState).to.equal(loanState.NONLEVERAGED, `Previous loan proposal state should be ${loanState.NONLEVERAGED}.`);
-    // expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
-    // expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
-    // expect(_lenderAddress).to.equal(lender.address, `Loan lender should be ${lender.address}.`);
+    let [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
+    let [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
+    let [_payee, _weiAmount] = await listenerDeposited(_tx, loanContract);
+    expect(_prevLoanState).to.equal(loanState.UNSPONSORED, "The previous loan state should be UNSPONSORED.");
+    expect(_newLoanState).to.equal(loanState.FUNDED, "The new loan state should be FUNDED.");
+    expect(_payee).to.equal(lender.address, "The payee should be the lender.");
+    assert.isTrue(_weiAmount.eq(loanPrincipal), `The deposited amount should be ${loanPrincipal} WEI.`);
 
-    // // Check removed lender with borrower
-    // [_prevLoanState, _newLoanState, _lenderAddress] = await updateLender(borrower, loanId);
-    // expect(_prevLoanState).to.equal(loanState.SPONSORED, `Previous loan proposal state should be ${loanState.SPONSORED}.`);
-    // expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
-    // expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    // Attempt to steal sponsorship
+    assert.eventually.throws(
+      loanContract.connect(lenderAlt).setLender(
+        { value: loanPrincipal },
+        /The lender must not currently be signed off./
+      ),
+    );    
 
-    // // Check removed lender with approver
-    // await updateLender(lender, loanId);
-    // [_, _newLoanState, _lenderAddress] = await updateLender(approver, loanId);
-    // expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
-    // expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    // Remove lender with borrower
+    _tx = await loanContract.connect(borrower).setLender();
+    _isLender = await loanContract.connect(lender).isLender();
+    assert.isFalse(_isLender, "Loan lender should be set.");
 
-    // // Check removed lender with operator
-    // await updateLender(lender, loanId);
-    // [_, _newLoanState, _lenderAddress] = await updateLender(operator, loanId);
-    // expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
-    // expect(_lenderAddress).to.equal(ethers.constants.AddressZero, "Loan lender should be address zero.");
+    [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
+    [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
+    expect(_prevLoanState).to.equal(loanState.FUNDED, "The previous loan state should be FUNDED.");
+    expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan state should be UNSPONSORED.");
+
+    // Remove lender with lender
+    await loanContract.connect(lender).setLender();
+    _tx = await loanContract.connect(lender).withdrawSponsorship();
     
-    // // Check new lender with lenderAlt
-    // await updateLender(lender, loanId);
-    // await loanProposal.connect(lender).withdraw(tokenContract.address, tokenId, loanId);
-    // [_, _newLoanState, _lenderAddress] = await updateLender(lenderAlt, loanId);
-    // _newestLoanState = await loanProposal.getState(tokenContract.address, tokenId, loanId);
-    // expect(_newLoanState).to.equal(loanState.SPONSORED, `Loan proposal state should be ${loanState.SPONSORED}.`);
-    // expect(_newestLoanState).to.equal(loanState.FUNDED, `Loan proposal state should be ${loanState.FUNDED}.`);
-    // expect(_lenderAddress).to.equal(lenderAlt.address, "Loan lender should be the alternate lender's address.");
+    [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
+    [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
+    [_payee, _weiAmount] = await listenerWithdrawn(_tx, loanContract);
+    expect(_prevLoanState).to.equal(loanState.FUNDED, "The previous loan state should be FUNDED.");
+    expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan state should be UNSPONSORED.");
+    assert.isTrue(_weiAmount.eq(loanPrincipal), `The withdrawn amount should be ${loanPrincipal} WEI.`);
   });
 
   it("0-0-03 :: Test LoanProposal setLoanParm function for single changes", async function () {

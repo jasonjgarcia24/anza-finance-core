@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./AContractAffirm.sol";
+import "./AContractGlobals.sol";
 
-abstract contract AContractNotary is AContractAffirm {
+abstract contract AContractNotary is AContractGlobals {
+    using StateControlUint for StateControlUint.Property;
+    using StateControlAddress for StateControlAddress.Property;
+    using StateControlBool for StateControlBool.Property;
+
     /**
      * @dev The borrower signs the loan contract and transfers the collateral token.
      *
@@ -16,24 +20,21 @@ abstract contract AContractNotary is AContractAffirm {
      */
     function _signBorrower() internal {
         require(
-            borrowerSigned == false && state <= LoanState.NONLEVERAGED,
+            borrowerSigned.get() == false,
             "The borrower must not currently be signed off."
         );
         LoanState _prevState = state;
 
-        // If called by borrower, transfer token to contract
-        if (_msgSender() == borrower) {
-            IERC721(tokenContract).safeTransferFrom(borrower, address(this), tokenId);
-        }
-
         // Update loan contract
-        borrowerSigned = true;
-        _grantRole(_PARTICIPANT_ROLE_, borrower);
-        state = lenderSigned ? LoanState.FUNDED : LoanState.UNSPONSORED;
+        borrowerSigned.set(true, uint256(state));
+        _grantRole(_PARTICIPANT_ROLE_, borrower.get());
+        state = state > LoanState.NONLEVERAGED
+            ? lenderSigned.get() ? LoanState.FUNDED : LoanState.UNSPONSORED
+            : state;
 
         emit LoanStateChanged(_prevState, state);
     }
-    
+
     /**
      * @dev Withdraws the borrower's collateralized token from the loan contract.
      *
@@ -45,28 +46,20 @@ abstract contract AContractNotary is AContractAffirm {
      *
      * Emits {LoanStateChanged} events.
      */
-    function _withdrawBorrower() internal {
+    function _unsignBorrower() internal {
         require(
-            borrowerSigned == true && state > LoanState.NONLEVERAGED,
+            borrowerSigned.get() == true,
             "The borrower must currently be signed off."
-        );
-        require(
-            state < LoanState.FUNDED,
-            "Collateral withdrawal illegal once the loan is active."
         );
         LoanState _prevState = state;
 
-        // Transfer token to borrower
-        IERC721(tokenContract).safeTransferFrom(address(this), borrower, tokenId);
-
-        // Update loan agreement
-        borrowerSigned = false;
-        _revokeRole(_PARTICIPANT_ROLE_, borrower);
-        state = LoanState.NONLEVERAGED;
+        // Update loan contract
+        borrowerSigned.set(false, uint256(state));
+        _revokeRole(_PARTICIPANT_ROLE_, borrower.get());
 
         emit LoanStateChanged(_prevState, state);
     }
-    
+
     /**
      * @dev The lender signs and funds the loan contract.
      *
@@ -80,19 +73,19 @@ abstract contract AContractNotary is AContractAffirm {
      */
     function _signLender() internal {
         require(
-            lenderSigned == false && state <= LoanState.FUNDED,
+            lenderSigned.get() == false,
             "The lender must not currently be signed off."
         );
         require(
-            msg.value + accountBalance[lender] >= principal,
+            msg.value + accountBalance[_msgSender()] >= principal.get(),
             "Paid value and the account balance must be at least the loan principal."
         );
         LoanState _prevState = state;
 
         // Update loan contract
-        lender = _msgSender();
-        lenderSigned = true;
-        _grantRole(_PARTICIPANT_ROLE_, lender);
+        lender.set(_msgSender(), uint256(state));
+        lenderSigned.set(true, uint256(state));
+        _grantRole(_PARTICIPANT_ROLE_, lender.get());
         state = LoanState.SPONSORED;
 
         emit LoanStateChanged(_prevState, state);
@@ -105,17 +98,17 @@ abstract contract AContractNotary is AContractAffirm {
      *
      * Emits {LoanStateChanged} events.
      */
-    function _withdrawLender() internal {
+    function _unsignLender() internal {
         require(
-            lenderSigned == true && state <= LoanState.FUNDED,
+            lenderSigned.get() == true,
             "The lender must currently be signed off."
         );
         LoanState _prevState = state;
 
         // Update loan agreement
-        lender = address(0);
-        lenderSigned = false;
-        _revokeRole(_PARTICIPANT_ROLE_, lender);
+        lender.set(address(0), uint256(state));
+        lenderSigned.set(false, uint256(state));
+        _revokeRole(_PARTICIPANT_ROLE_, lender.get());
         state = LoanState.UNSPONSORED;
 
         emit LoanStateChanged(_prevState, state);
