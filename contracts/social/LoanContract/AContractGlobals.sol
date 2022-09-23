@@ -6,6 +6,10 @@ import "../../utils/StateControl.sol";
 import "hardhat/console.sol";
 
 abstract contract AContractGlobals is AccessControl {
+    using StateControlUint for StateControlUint.Property;
+    using StateControlAddress for StateControlAddress.Property;
+    using StateControlBool for StateControlBool.Property;
+
     enum LoanState {
         UNDEFINED,
         NONLEVERAGED,
@@ -49,4 +53,8 @@ abstract contract AContractGlobals is AccessControl {
      * @dev Emitted when a loan contract state is changed.
      */
     event LoanStateChanged(LoanState indexed prevState, LoanState indexed newState);
+
+    function getBorrower() external view returns (address) {
+        return borrower.get();
+    }
 }

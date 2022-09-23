@@ -149,11 +149,11 @@ describe("0-0 :: LoanProposal tests", function () {
 
   it("0-0-02 :: Test LoanProposal setLender function", async function () {
     // Set lender
-    let _isLender = await loanContract.connect(lender).isLender();
+    let _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);;
     assert.isFalse(_isLender, "Loan lender should not be set.");
 
     let _tx = await loanContract.connect(lender).setLender({ value: loanPrincipal });
-    _isLender = await loanContract.connect(lender).isLender();
+    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);;
     assert.isTrue(_isLender, "Loan lender should be set.");
 
     let [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
@@ -170,28 +170,26 @@ describe("0-0 :: LoanProposal tests", function () {
         { value: loanPrincipal },
         /The lender must not currently be signed off./
       ),
-    );    
+    );
 
     // Remove lender with borrower
     _tx = await loanContract.connect(borrower).setLender();
-    _isLender = await loanContract.connect(lender).isLender();
-    assert.isFalse(_isLender, "Loan lender should be set.");
-
+    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);;
     [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
     [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
     expect(_prevLoanState).to.equal(loanState.FUNDED, "The previous loan state should be FUNDED.");
     expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan state should be UNSPONSORED.");
+    assert.isFalse(_isLender, "Loan lender should be set.");
 
     // Remove lender with lender
     await loanContract.connect(lender).setLender();
     _tx = await loanContract.connect(lender).withdrawSponsorship();
-    
+    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);;
     [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
     [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
-    [_payee, _weiAmount] = await listenerWithdrawn(_tx, loanContract);
     expect(_prevLoanState).to.equal(loanState.FUNDED, "The previous loan state should be FUNDED.");
     expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan state should be UNSPONSORED.");
-    assert.isTrue(_weiAmount.eq(loanPrincipal), `The withdrawn amount should be ${loanPrincipal} WEI.`);
+    assert.isFalse(_isLender, "Loan lender should be set.");
   });
 
   it("0-0-03 :: Test LoanProposal setLoanParm function for single changes", async function () {

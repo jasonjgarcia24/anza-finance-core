@@ -1,4 +1,5 @@
 const eventHandler = async (tx, contract, eventStr, first=true) => {
+    // console.log(contract);
     const topic = contract.interface.getEventTopic(eventStr);
     const receipt = await tx.wait();
     const logs = first ? receipt.logs : receipt.logs.reverse();

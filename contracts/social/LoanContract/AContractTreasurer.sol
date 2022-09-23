@@ -15,6 +15,11 @@ abstract contract AContractTreasurer is AContractGlobals {
     /**
      * @dev Emitted when loan contract funding is withdrawn.
      */
+    event Deposited(address indexed payee, uint256 weiAmount);
+
+    /**
+     * @dev Emitted when loan contract funding is withdrawn.
+     */
     event Withdrawn(address indexed payee, uint256 weiAmount);
 
     /**
@@ -36,6 +41,8 @@ abstract contract AContractTreasurer is AContractGlobals {
      */
     receive() external payable onlyRole(_PARTICIPANT_ROLE_) {        
         payable(address(this)).transfer(msg.value);
+
+        emit Deposited(_msgSender(), msg.value);
     }
 
     /**
@@ -144,6 +151,7 @@ abstract contract AContractTreasurer is AContractGlobals {
         accountBalance[lender.get()] -= principal.get();
 
         emit LoanStateChanged(_prevState, state);
+        emit Deposited(_msgSender(), msg.value);
     }
     
     /**
