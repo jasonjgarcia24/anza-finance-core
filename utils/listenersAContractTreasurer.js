@@ -7,7 +7,7 @@ const listenerDeposited = async (tx, contract, first=true) => {
     const weiAmount = event.args['weiAmount'];
 
     return [payee, weiAmount];
-}
+};
 
 const listenerWithdrawn = async (tx, contract, first=true) => {
     const event = await eventHandler(tx, contract, 'Withdrawn', first);
@@ -16,7 +16,7 @@ const listenerWithdrawn = async (tx, contract, first=true) => {
     const weiAmount = event.args['weiAmount'];
 
     return [payee, weiAmount];
-}
+};
 
 module.exports = {
     listenerDeposited,

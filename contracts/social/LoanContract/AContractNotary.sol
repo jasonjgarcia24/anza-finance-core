@@ -55,7 +55,6 @@ abstract contract AContractNotary is AContractGlobals {
 
         // Update loan contract
         borrowerSigned.set(false, uint256(state));
-        _revokeRole(_PARTICIPANT_ROLE_, borrower.get());
 
         emit LoanStateChanged(_prevState, state);
     }
@@ -108,7 +107,6 @@ abstract contract AContractNotary is AContractGlobals {
         // Update loan agreement
         lender.set(address(0), uint256(state));
         lenderSigned.set(false, uint256(state));
-        _revokeRole(_PARTICIPANT_ROLE_, lender.get());
         state = LoanState.UNSPONSORED;
 
         emit LoanStateChanged(_prevState, state);

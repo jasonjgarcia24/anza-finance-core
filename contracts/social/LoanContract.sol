@@ -18,33 +18,17 @@ contract LoanContract is AContractManager {
         uint256 _fixedInterestRate,
         uint256 _duration
     ) {       
-        uint256 _uintState = uint256(state);
-        uint256 _uintUndefined = uint256(LoanState.UNDEFINED);
-        uint256 _uintFunded = uint256(LoanState.FUNDED);
-
         // Initialize state controlled variables
-        borrower.init(_uintUndefined);
-        tokenContract.init(_uintUndefined);
-        tokenId.init(_uintUndefined);
+        borrower.init(IERC721(_tokenContract).ownerOf(_tokenId), 0);
+        tokenContract.init(_tokenContract, 0);
+        tokenId.init(_tokenId, 0);
 
-        lender.init(_uintFunded);
-        principal.init(_uintFunded);
-        fixedInterestRate.init(_uintFunded);
-        duration.init(_uintFunded);
-        borrowerSigned.init(_uintFunded);
-        lenderSigned.init(_uintFunded);
-
-        // Set state controlled variable values
-        borrower.set(IERC721(_tokenContract).ownerOf(_tokenId), _uintState);
-        tokenContract.set(_tokenContract, _uintState);
-        tokenId.set(_tokenId, _uintState);
-
-        lender.set(address(0), _uintState);
-        principal.set(_principal, _uintState);
-        fixedInterestRate.set(_fixedInterestRate, _uintState);
-        duration.set(_duration, _uintState);
-        borrowerSigned.set(false, _uintState);
-        lenderSigned.set(false, _uintState);
+        lender.init(address(0), 4);
+        principal.init(_principal, 4);
+        fixedInterestRate.init(_fixedInterestRate, 4);
+        duration.init(_duration, 4);
+        borrowerSigned.init(false, 4);
+        lenderSigned.init(false, 4);
 
         // Set state variables
         priority = _priority;
@@ -99,6 +83,7 @@ contract LoanContract is AContractManager {
     function withdrawSponsorship() external onlyRole(_LENDER_ROLE_) {
         _revokeFunding();
         _revokeRole(_LENDER_ROLE_, lender.get());
+        _revokeRole(_PARTICIPANT_ROLE_, lender.get());
         _unsignLender();
     }
 

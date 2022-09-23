@@ -3,6 +3,7 @@ const { ethers, network, artifacts } = require("hardhat");
 const { TRANSFERIBLES } = require("../config");
 const { reset } = require("./resetFork");
 const { impersonate } = require("./impersonate");
+const { listenerLoanContractCreated } = require("../utils/listenersLoanContractFactory");
 const { listenerLoanStateChanged } = require("../utils/listenersAContractGlobals");
 const { listenerDeposited, listenerWithdrawn } = require("../utils/listenersAContractTreasurer");
 

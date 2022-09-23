@@ -22,7 +22,19 @@ library StateControlUint {
         require(!_property._lock, "Initialization is locked.");
         _property._lock = true;
 
-        _property._stateThreshold = _stateThreshold;
+        unchecked {
+            _property._stateThreshold = _stateThreshold;
+        }
+    }
+
+    function init(Property storage _property, uint256 _value, uint256 _stateThreshold) internal {
+        require(!_property._lock, "Initialization is locked.");
+        _property._lock = true;
+
+        unchecked {
+            _property._stateThreshold = _stateThreshold;
+            _property._value = _value;
+        }
     }
 
     function get(Property storage _property) internal view returns (uint256) {
@@ -61,7 +73,19 @@ library StateControlAddress {
         require(!_property._lock, "Initialization is locked.");
         _property._lock = true;
 
-        _property._stateThreshold = _stateThreshold;
+        unchecked {
+            _property._stateThreshold = _stateThreshold;
+        }
+    }
+
+    function init(Property storage _property, address _value, uint256 _stateThreshold) internal {
+        require(!_property._lock, "Initialization is locked.");
+        _property._lock = true;
+
+        unchecked {
+            _property._stateThreshold = _stateThreshold;
+            _property._value = _value;
+        }
     }
 
     function get(Property storage _property) internal view returns (address) {
@@ -100,7 +124,19 @@ library StateControlBool {
         require(!_property._lock, "Init locked.");
         _property._lock = true;
 
-        _property._stateThreshold = _stateThreshold;
+        unchecked {
+            _property._stateThreshold = _stateThreshold;
+        }
+    }
+
+    function init(Property storage _property, bool _value, uint256 _stateThreshold) internal {
+        require(!_property._lock, "Init locked.");
+        _property._lock = true;
+
+        unchecked {
+            _property._stateThreshold = _stateThreshold;
+            _property._value = _value;
+        }
     }
 
     function get(Property storage _property) internal view returns (bool) {
