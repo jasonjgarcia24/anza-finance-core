@@ -3,17 +3,8 @@ const { ethers, network, artifacts } = require("hardhat");
 const { TRANSFERIBLES } = require("../config");
 const { reset } = require("./resetFork");
 const { impersonate } = require("./impersonate");
-const {
-  listenerLoanContractCreated,
-  listenerLoanLenderChanged,
-  listenerLoanParamChanged
-} = require("../utils/listenersIProposal");
-const { listenerLoanSignoffChanged } = require("../utils/listenersAProposalAffirm");
 const { listenerLoanStateChanged } = require("../utils/listenersAContractGlobals");
-const {
-  listenerDeposited,
-  listenerWithdrawn
-} = require("../utils/listenersAContractTreasurer");
+const { listenerDeposited, listenerWithdrawn } = require("../utils/listenersAContractTreasurer");
 
 const loanState = {
   UNDEFINED: 0,
