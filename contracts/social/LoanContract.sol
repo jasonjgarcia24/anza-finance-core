@@ -39,6 +39,7 @@ contract LoanContract is AContractManager {
         _setupRole(_ARBITER_ROLE_, address(this));
         _setupRole(_BORROWER_ROLE_, borrower_.get());
         _setupRole(_COLLATERAL_OWNER_ROLE_, factory);
+        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
 
@@ -109,6 +110,7 @@ contract LoanContract is AContractManager {
         
         // Clear loan contract approval
         IERC721(tokenContract_.get()).approve(address(0), tokenId_.get());
+        state = LoanState.CLOSED;
     }
 
     function __sign() private {

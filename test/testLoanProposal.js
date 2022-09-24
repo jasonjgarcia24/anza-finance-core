@@ -108,36 +108,49 @@ describe("0 :: LoanProposal tests", function () {
     // Verify roles
     await assert.eventually.isTrue(
       loanContract.hasRole(_ARBITER_ROLE_, loanContract.address),
-      "The loan contract is not set as arbiter."
+      "The loan contract is not set with ARBITER role."
     );
     await assert.eventually.isTrue(
-      loanContract.hasRole(_COLLATERAL_CUSTODIAN_ROLE_, loanProposal.address),
-      "The loan proposal is not set as collateral approver."
+      loanContract.hasRole(_BORROWER_ROLE_, borrower.address),
+      "The borrower is not set with BORROWER role."
     );
-
-    // assert.isTrue(_isCollateralApprover, "The loan proposal is not set as collateral approver.");
-
-    // let _isArbiter = await loanContract.hasRole(_ARBITER_ROLE_, loanContract.address);
-    // _isCollateralApprover = await loanContract.hasRole(_COLLATERAL_CUSTODIAN_ROLE_, loanContract.address);
-    // assert.isTrue(_isArbiter, "The arbiter is not set.");
-    // assert.isTrue(_isCollateralApprover, "The loan contract is not set as collateral approver.");
-
-    // let _isBorrower = await loanContract.hasRole(_BORROWER_ROLE_, borrower.address);
-    // let _isParticipant = await loanContract.hasRole(_PARTICIPANT_ROLE_, borrower.address);
-    // _isCollateralApprover = await loanContract.hasRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower.address);
-    // assert.isTrue(_isBorrower, "The borrower is not set.");
-    // assert.isTrue(_isParticipant, "The borrower is not set as participant.");
-    // assert.isTrue(_isCollateralApprover, "The borrower is not set as collateral approver.");
+    await assert.eventually.isFalse(
+      loanContract.hasRole(_COLLATERAL_OWNER_ROLE_, loanProposal.address),
+      "The loan proposal is set with COLLATERAL_OWNER role."
+    );
+    await assert.eventually.isFalse(
+      loanContract.hasRole(_COLLATERAL_CUSTODIAN_ROLE_, loanProposal.address),
+      "The loan proposal is set with COLLATERAL_CUSTODIAN role."
+    );
+    await assert.eventually.isFalse(
+      loanContract.hasRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower.address),
+      "The borrower is set with COLLATERAL_CUSTODIAN role."
+    );
+    await assert.eventually.isTrue(
+      loanContract.hasRole(_PARTICIPANT_ROLE_, borrower.address),
+      "The borrower is not set with PARTICIPANT role."
+    );
+    await assert.eventually.isTrue(
+      loanContract.hasRole(_COLLATERAL_OWNER_ROLE_, borrower.address),
+      "The borrower is not set with COLLATERAL_OWNER role."
+    );
+    await assert.eventually.isTrue(
+      loanContract.hasRole(_COLLATERAL_CUSTODIAN_ROLE_, loanContract.address),
+      "The loan contract is not set with COLLATERAL_CUSTODIAN role."
+    );
     
-    // // Verify loan contract's collateral ownership
-    // let _owner = await tokenContract.ownerOf(tokenId);
-    // expect(_owner).to.equal(loanContract.address, "The LoanContract must be the token owner.");
+    // Verify collateral's owner and approver status
+    await expect(tokenContract.ownerOf(tokenId)).to.eventually.equal(
+      loanContract.address,
+      "The LoanContract must be the token owner."
+    );
+    await expect(tokenContract.getApproved(tokenId)).to.eventually.equal(
+      ethers.constants.AddressZero,
+      "There must be no token approver."
+    );
   });
 
   it("0-0-01 :: Test LoanProposal borrower signoffs", async function () {
-    let _owner = await tokenContract.ownerOf(tokenId);
-    expect(_owner).to.equal(loanContract.address, "The LoanContract is not the token owner.");
-
     // Borrower withdraws LoanContract and LoanContract transfers NFT to borrower
     let _tx = await loanContract.connect(borrower).withdrawNft();
     let [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
@@ -162,13 +175,11 @@ describe("0 :: LoanProposal tests", function () {
 
   it("0-0-02 :: Test LoanProposal setLender function", async function () {
     // Set lender with lender
-    let _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);
-    let _isParticipant = await loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address);
-    assert.isFalse(_isLender, "The lender is set as lender.");
-    assert.isFalse(_isParticipant, "The lender is set as participant.");
+    await assert.eventually.isFalse(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is set with LENDER role.");
+    await assert.eventually.isFalse(loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address), "The lender is set with PARTICIPANT role.");
 
     let _tx = await loanContract.connect(lender).setLender({ value: loanPrincipal });
-    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);;
+    await assert.eventually.isTrue(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is not set with LENDER role.");
 
     let [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
     let [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
@@ -176,48 +187,37 @@ describe("0 :: LoanProposal tests", function () {
     expect(_prevLoanState).to.equal(loanState.UNSPONSORED, "The previous loan state should be UNSPONSORED.");
     expect(_newLoanState).to.equal(loanState.FUNDED, "The new loan state should be FUNDED.");
     expect(_payee).to.equal(lender.address, "The payee should be the lender.");
-    assert.isTrue(_weiAmount.eq(loanPrincipal), `The deposited amount should be ${loanPrincipal} WEI.`);
+    expect(_weiAmount.eq(loanPrincipal)).to.equal(true, `The deposited amount should be ${loanPrincipal} WEI.`);
 
-    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);
-    _isParticipant = await loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address);
-    assert.isTrue(_isParticipant, "The lender is not set as participant.");
-    assert.isTrue(_isParticipant, "The lender is not set as participant.");
+    await assert.eventually.isTrue(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is not set with LENDER role.");
+    await assert.eventually.isTrue(loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address), "The lender not is set with PARTICIPANT role.");
 
     // Attempt to steal sponsorship
-    await assert.eventually.throws(
-      loanContract.connect(lenderAlt).setLender(
-        { value: loanPrincipal },
-        /The lender must not currently be signed off./
-      ),
-    );
+    await expect(loanContract.connect(lenderAlt).setLender(
+      { value: loanPrincipal }
+    )).to.be.rejectedWith(/The lender must not currently be signed off./);
 
     // Remove lender with borrower
     _tx = await loanContract.setLender();
-    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);;
     [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
     [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
     expect(_prevLoanState).to.equal(loanState.FUNDED, "The previous loan state should be FUNDED.");
     expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan state should be UNSPONSORED.");
-    assert.isFalse(_isLender, "Loan lender should be set.");
-
-    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);
-    _isParticipant = await loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address);
-    assert.isFalse(_isLender, "The lender is set as lender.");
-    assert.isTrue(_isParticipant, "The lender is not set as participant.");
+    await expect(loanContract.lender()).to.eventually.equal(ethers.constants.AddressZero, "The lender is not set to AddressZero.");
+    
+    await assert.eventually.isFalse(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is set with LENDER role.");
+    await assert.eventually.isTrue(loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address), "The lender not is set with PARTICIPANT role.");
 
     // Remove lender with lender
     await loanContract.connect(lender).setLender();
     _tx = await loanContract.connect(lender).withdrawSponsorship();
-    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);;
     [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
     [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
     expect(_prevLoanState).to.equal(loanState.FUNDED, "The previous loan state should be FUNDED.");
     expect(_newLoanState).to.equal(loanState.UNSPONSORED, "The new loan state should be UNSPONSORED.");
 
-    _isLender = await loanContract.hasRole(_LENDER_ROLE_, lender.address);
-    _isParticipant = await loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address);
-    assert.isFalse(_isLender, "The lender is set as lender.");
-    assert.isFalse(_isParticipant, "The lender is set as participant.");
+    await assert.eventually.isFalse(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is set with LENDER role.");
+    await assert.eventually.isFalse(loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address), "The lender is set with PARTICIPANT role.");
   });
 
   it("0-0-03 :: Test LoanProposal updateTerms function for single changes", async function () {

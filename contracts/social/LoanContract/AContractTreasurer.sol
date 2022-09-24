@@ -74,11 +74,10 @@ abstract contract AContractTreasurer is AContractGlobals {
         IERC721(tokenContract_.get()).safeTransferFrom(borrower_.get(), address(this), tokenId_.get());
 
         // Update loan contract
-        _revokeRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
+        _revokeRole(_COLLATERAL_OWNER_ROLE_, factory);
         _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
         _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
 
-        _setupRole(_COLLATERAL_OWNER_ROLE_, address(this));
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, address(this));
 
         state = state > LoanState.UNSPONSORED ? state : LoanState.UNSPONSORED;
@@ -112,7 +111,7 @@ abstract contract AContractTreasurer is AContractGlobals {
         _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
 
-        state = LoanState.CLOSED;
+        state = LoanState.NONLEVERAGED;
 
         emit LoanStateChanged(_prevState, state);
     }
