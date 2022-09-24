@@ -83,10 +83,10 @@ abstract contract AContractTreasurer is AContractGlobals {
         LoanState _prevState = state;
 
         // Transfer ERC721 token to loan contract
-        IERC721(tokenContract.get()).safeTransferFrom(borrower.get(), address(this), tokenId.get());
+        IERC721(tokenContract_.get()).safeTransferFrom(borrower_.get(), address(this), tokenId_.get());
 
         // Update loan contract
-        _grantRole(_COLLATERAL_OWNER_ROLE_, borrower.get());
+        _grantRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
         state = state > LoanState.UNSPONSORED ? state : LoanState.UNSPONSORED;
 
         emit LoanStateChanged(_prevState, state);
@@ -111,10 +111,10 @@ abstract contract AContractTreasurer is AContractGlobals {
         LoanState _prevState = state;
 
         // Transfer token to borrower
-        IERC721(tokenContract.get()).safeTransferFrom(address(this), borrower.get(), tokenId.get());
+        IERC721(tokenContract_.get()).safeTransferFrom(address(this), borrower_.get(), tokenId_.get());
 
         // Update loan contract
-        _revokeRole(_COLLATERAL_OWNER_ROLE_, borrower.get());
+        _revokeRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
         state = LoanState.NONLEVERAGED;
 
         emit LoanStateChanged(_prevState, state);
@@ -131,7 +131,7 @@ abstract contract AContractTreasurer is AContractGlobals {
      */
     function _depositFunding() public payable onlyRole(_LENDER_ROLE_) {
         require(
-            _msgSender() == lender.get(),
+            _msgSender() == lender_.get(),
             "The caller must be the lender."
         );
         require(
@@ -140,15 +140,15 @@ abstract contract AContractTreasurer is AContractGlobals {
         );
         LoanState _prevState = state;
 
-        accountBalance[lender.get()] += msg.value;
+        accountBalance[lender_.get()] += msg.value;
         require(
-            accountBalance[lender.get()] >= principal.get(),
+            accountBalance[lender_.get()] >= principal_.get(),
             "The caller's account balance is insufficient."
         );
 
         // Update loan contract
         state = LoanState.FUNDED;
-        accountBalance[lender.get()] -= principal.get();
+        accountBalance[lender_.get()] -= principal_.get();
 
         emit LoanStateChanged(_prevState, state);
         emit Deposited(_msgSender(), msg.value);
@@ -172,7 +172,7 @@ abstract contract AContractTreasurer is AContractGlobals {
 
         // Update loan contract
         state = LoanState.SPONSORED;
-        accountBalance[lender.get()] += principal.get();
+        accountBalance[lender_.get()] += principal_.get();
 
         emit LoanStateChanged(_prevState, state);
     }

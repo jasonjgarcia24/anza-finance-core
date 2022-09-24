@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./LoanContract.sol";
 
-contract LoanProposal {
+contract LoanContractFactory {
     using Counters for Counters.Counter;
 
     /**

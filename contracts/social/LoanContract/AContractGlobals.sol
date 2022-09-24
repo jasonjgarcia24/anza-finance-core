@@ -34,16 +34,15 @@ abstract contract AContractGlobals is AccessControl {
     bytes32 public constant _COLLATERAL_APPROVER_ROLE_ = "COLLATERAL_APPROVER";
     bytes32 public constant _COLLATERAL_OWNER_ROLE_ = "COLLATERAL_OWNER";
 
-    StateControlAddress.Property public borrower;
-    StateControlAddress.Property public lender;
-    StateControlAddress.Property public tokenContract;
-    StateControlUint.Property public tokenId;
-    StateControlUint.Property public principal;
-    StateControlUint.Property public fixedInterestRate;
-    StateControlUint.Property public duration;
-    StateControlUint.Property public balance;
-    StateControlBool.Property public borrowerSigned;
-    StateControlBool.Property public lenderSigned;
+    StateControlAddress.Property internal borrower_;
+    StateControlAddress.Property internal lender_;
+    StateControlAddress.Property internal tokenContract_;
+    StateControlUint.Property internal tokenId_;
+    StateControlUint.Property internal principal_;
+    StateControlUint.Property internal fixedInterestRate_;
+    StateControlUint.Property internal duration_;
+    StateControlBool.Property internal borrowerSigned_;
+    StateControlBool.Property internal lenderSigned_;
 
     LoanState internal state;
 
@@ -54,7 +53,39 @@ abstract contract AContractGlobals is AccessControl {
      */
     event LoanStateChanged(LoanState indexed prevState, LoanState indexed newState);
 
-    function getBorrower() external view returns (address) {
-        return borrower.get();
+    function borrower() external view returns (address) {
+        return borrower_.get();
+    }
+
+    function lender() external view returns (address) {
+        return lender_.get();
+    }
+
+    function tokenContract() external view returns (address) {
+        return tokenContract_.get();
+    }
+
+    function tokenId() external view returns (uint256) {
+        return tokenId_.get();
+    }
+
+    function principal() external view returns (uint256) {
+        return principal_.get();
+    }
+
+    function fixedInterestRate() external view returns (uint256) {
+        return fixedInterestRate_.get();
+    }
+
+    function duration() external view returns (uint256) {
+        return duration_.get();
+    }
+
+    function borrowerSigned() external view returns (bool) {
+        return borrowerSigned_.get();
+    }
+
+    function lenderSigned() external view returns (bool) {
+        return lenderSigned_.get();
     }
 }

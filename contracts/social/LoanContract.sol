@@ -19,27 +19,29 @@ contract LoanContract is AContractManager {
         uint256 _duration
     ) {       
         // Initialize state controlled variables
-        borrower.init(IERC721(_tokenContract).ownerOf(_tokenId), 0);
-        tokenContract.init(_tokenContract, 0);
-        tokenId.init(_tokenId, 0);
+        borrower_.init(IERC721(_tokenContract).ownerOf(_tokenId), 0);
+        tokenContract_.init(_tokenContract, 0);
+        tokenId_.init(_tokenId, 0);
 
-        lender.init(address(0), 4);
-        principal.init(_principal, 4);
-        fixedInterestRate.init(_fixedInterestRate, 4);
-        duration.init(_duration, 4);
-        borrowerSigned.init(false, 4);
-        lenderSigned.init(false, 4);
+        lender_.init(address(0), 4);
+        principal_.init(_principal, 4);
+        fixedInterestRate_.init(_fixedInterestRate, 4);
+        duration_.init(_duration, 4);
+        borrowerSigned_.init(false, 4);
+        lenderSigned_.init(false, 4);
 
         // Set state variables
         priority = _priority;
         state = LoanState.NONLEVERAGED;
 
         // Set roles
+        _setupRole(_COLLATERAL_APPROVER_ROLE_, _msgSender());
+
         _setupRole(_ARBITER_ROLE_, address(this));
         _setupRole(_COLLATERAL_APPROVER_ROLE_, address(this));
-        _setupRole(_COLLATERAL_APPROVER_ROLE_, _msgSender());
-        _setupRole(_COLLATERAL_APPROVER_ROLE_, borrower.get());
-        _setupRole(_BORROWER_ROLE_, borrower.get());
+
+        _setupRole(_BORROWER_ROLE_, borrower_.get());
+        _setupRole(_COLLATERAL_APPROVER_ROLE_, borrower_.get());
 
         // Sign off borrower
         __sign();
@@ -48,11 +50,11 @@ contract LoanContract is AContractManager {
     function setLender() external payable {
         if (hasRole(_BORROWER_ROLE_, _msgSender())) {
             _revokeFunding();
-            _revokeRole(_LENDER_ROLE_, lender.get());
+            _revokeRole(_LENDER_ROLE_, lender_.get());
             _unsignLender();
         } else {
             _signLender();
-            _setupRole(_LENDER_ROLE_, lender.get());
+            _setupRole(_LENDER_ROLE_, lender_.get());
             _depositFunding();
         }
     }
@@ -82,8 +84,8 @@ contract LoanContract is AContractManager {
      */
     function withdrawSponsorship() external onlyRole(_LENDER_ROLE_) {
         _revokeFunding();
-        _revokeRole(_LENDER_ROLE_, lender.get());
-        _revokeRole(_PARTICIPANT_ROLE_, lender.get());
+        _revokeRole(_LENDER_ROLE_, lender_.get());
+        _revokeRole(_PARTICIPANT_ROLE_, lender_.get());
         _unsignLender();
     }
 
