@@ -11,9 +11,9 @@ library StateControlUint {
     struct Property {
         // This variable should never be directly accessed by users of the library: interactions must be restricted to
         // the library's function.
-        uint256 _value; // default: 0
-        uint256 _stateThreshold;
-        bool _lock;
+        uint256 _value;             // default: 0
+        uint256 _stateThreshold;    // default: 0
+        bool _lock;                 // default: false
     }
 
     function init(Property storage _property, uint256 _stateThreshold) internal {
@@ -62,9 +62,9 @@ library StateControlAddress {
     struct Property {
         // This variable should never be directly accessed by users of the library: interactions must be restricted to
         // the library's function.
-        address _value; // default: address(0)
-        uint256 _stateThreshold;
-        bool _lock;
+        address _value;             // default: address(0)
+        uint256 _stateThreshold;    // default: 0
+        bool _lock;                 // default: false
     }
 
     function init(Property storage _property, uint256 _stateThreshold) internal {
@@ -113,9 +113,9 @@ library StateControlBool {
     struct Property {
         // This variable should never be directly accessed by users of the library: interactions must be restricted to
         // the library's function.
-        bool _value; // default: false
-        uint256 _stateThreshold;
-        bool _lock;
+        bool _value;                // default: false
+        uint256 _stateThreshold;    // default: 0
+        bool _lock;                 // default: false
     }
 
     function init(Property storage _property, uint256 _stateThreshold) internal {

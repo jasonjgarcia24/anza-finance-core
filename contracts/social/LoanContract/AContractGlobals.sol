@@ -88,4 +88,13 @@ abstract contract AContractGlobals is AccessControl {
     function lenderSigned() external view returns (bool) {
         return lenderSigned_.get();
     }
+
+    /**
+     * @dev Returns the terms of the loan contract.
+     *
+     * Requirements: NONE
+     */
+    function getLoanTerms() external view returns (uint256[3] memory) {
+        return [principal_.get(), fixedInterestRate_.get(), duration_.get()];
+    }
 }

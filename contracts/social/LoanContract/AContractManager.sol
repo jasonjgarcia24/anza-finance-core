@@ -69,13 +69,4 @@ abstract contract AContractManager is AContractNotary, AContractTreasurer {
 
         emit LoanStateChanged(_prevState, state);
     }
-
-    /**
-     * @dev Returns the terms of the loan contract.
-     *
-     * Requirements: NONE
-     */
-    function getLoanTerms() public view returns (uint256[3] memory) {
-        return [principal_.get() ,fixedInterestRate_.get() , duration_.get()];
-    }
 }
