@@ -12,9 +12,6 @@ abstract contract AContractManager is AContractNotary, AContractTreasurer {
     /**
      * @dev Emitted when loan contract term(s) are updated.
      */
-    // event TermsChanged(string[1] param, uint256[1] prevValues, uint256[1] newValues);
-    // event TermsChanged(string[2] param, uint256[2] prevValues, uint256[2] newValues);
-    // event TermsChanged(string[3] param, uint256[3] prevValues, uint256[3] newValues);
     event TermsChanged(string[] params, uint256[] prevValues, uint256[] newValues);
 
     function updateTerms(string[] memory _params, uint256[] memory _newValues) external onlyRole(_BORROWER_ROLE_) {

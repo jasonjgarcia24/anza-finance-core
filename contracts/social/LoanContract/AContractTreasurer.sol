@@ -13,7 +13,7 @@ abstract contract AContractTreasurer is AContractGlobals {
     using Address for address payable;
 
     /**
-     * @dev Emitted when loan contract funding is withdrawn.
+     * @dev Emitted when loan contract funding is deposited.
      */
     event Deposited(address indexed payee, uint256 weiAmount);
 
@@ -23,21 +23,9 @@ abstract contract AContractTreasurer is AContractGlobals {
     event Withdrawn(address indexed payee, uint256 weiAmount);
 
     /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {_approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-
-    /**
      * @dev The contract should be able to receive Eth.
+     * 
+     * Emits {Deposited} event.
      */
     receive() external payable onlyRole(_PARTICIPANT_ROLE_) {        
         payable(address(this)).transfer(msg.value);
@@ -70,12 +58,12 @@ abstract contract AContractTreasurer is AContractGlobals {
      *
      * Requirements:
      *
-     * - The caller must have been granted the `_BORROWER_ROLE_` (handled in the calling function).
+     * - The caller must have been granted the `_BORROWER_ROLE_`.
      * - The loan contract state must be `LoanState.NONLEVERAGED`.
      *
-     * Emits {LoanStateChanged} and {Leveraged} events.
+     * Emits {LoanStateChanged} event.
      */
-    function depositCollateral() public onlyRole(_COLLATERAL_APPROVER_ROLE_) {
+    function depositCollateral() public onlyRole(_COLLATERAL_OWNER_ROLE_) {
         require(
             state == LoanState.NONLEVERAGED,
             "The loan state must be LoanState.NONLEVERAGED."
@@ -86,7 +74,13 @@ abstract contract AContractTreasurer is AContractGlobals {
         IERC721(tokenContract_.get()).safeTransferFrom(borrower_.get(), address(this), tokenId_.get());
 
         // Update loan contract
-        _grantRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
+        _revokeRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
+        _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
+        _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
+
+        _setupRole(_COLLATERAL_OWNER_ROLE_, address(this));
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, address(this));
+
         state = state > LoanState.UNSPONSORED ? state : LoanState.UNSPONSORED;
 
         emit LoanStateChanged(_prevState, state);
@@ -97,28 +91,32 @@ abstract contract AContractTreasurer is AContractGlobals {
      *
      * Requirements:
      *
-     * - The caller must have been granted the `_COLLATERAL_OWNER_ROLE_` (handled in the calling function).
-     * - The loan contract state must be inclusively between `LoanState.UNSPONSORED` and `LoanState.FUNDED`
-     * or at least `LoanState.PAID`.
+     * - The caller must have been granted the `_COLLATERAL_OWNER_ROLE_` (handled in the
+     *   calling function).
+     * - The loan contract must be retainable.
      *
-     * Emits {LoanStateChanged} and {Deposited} events.
+     * Emits {LoanStateChanged} event.
      */
     function _revokeCollateral() internal {
-        require(
-            state >= LoanState.UNSPONSORED && state <= LoanState.FUNDED,
-            "The loan state must be inclusively between UNSPONSORED and FUNDED."
-        );
+        require(isRetainable(), "The loan state must be retainable.");
         LoanState _prevState = state;
 
         // Transfer token to borrower
         IERC721(tokenContract_.get()).safeTransferFrom(address(this), borrower_.get(), tokenId_.get());
+        // IERC721(tokenContract_.get()).approve(address(this), true);
 
         // Update loan contract
-        _revokeRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
-        state = LoanState.NONLEVERAGED;
+        _revokeRole(_COLLATERAL_OWNER_ROLE_, address(this));
+        _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, address(this));
+
+        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
+
+        state = LoanState.CLOSED;
 
         emit LoanStateChanged(_prevState, state);
     }
+
     /**
      * @dev Funds the loan contract.
      *
@@ -161,7 +159,7 @@ abstract contract AContractTreasurer is AContractGlobals {
      *
      * - The loan contract state must be LoanState.FUNDED.
      *
-     * Emits a {LoanStateChanged} event.
+     * Emits {LoanStateChanged} event.
      */
     function _revokeFunding() internal {
         require(
@@ -179,7 +177,6 @@ abstract contract AContractTreasurer is AContractGlobals {
 
     /**
      * @dev Withdraws funds from loan.
-     * 
      * @param _payee The address whose funds will be withdrawn and transferred to.
      * 
      * Requirements: NONE

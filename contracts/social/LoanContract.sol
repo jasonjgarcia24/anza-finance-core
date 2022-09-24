@@ -31,24 +31,23 @@ contract LoanContract is AContractManager {
         lenderSigned_.init(false, 4);
 
         // Set state variables
+        factory = _msgSender();
         priority = _priority;
         state = LoanState.NONLEVERAGED;
 
         // Set roles
-        _setupRole(_COLLATERAL_APPROVER_ROLE_, _msgSender());
-
         _setupRole(_ARBITER_ROLE_, address(this));
-        _setupRole(_COLLATERAL_APPROVER_ROLE_, address(this));
-
         _setupRole(_BORROWER_ROLE_, borrower_.get());
-        _setupRole(_COLLATERAL_APPROVER_ROLE_, borrower_.get());
+        _setupRole(_COLLATERAL_OWNER_ROLE_, factory);
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
 
         // Sign off borrower
         __sign();
     }
 
     function setLender() external payable {
-        if (hasRole(_BORROWER_ROLE_, _msgSender())) {
+        if (_hasRole(_BORROWER_ROLE_)) {
             _revokeFunding();
             _revokeRole(_LENDER_ROLE_, lender_.get());
             _unsignLender();
@@ -64,7 +63,7 @@ contract LoanContract is AContractManager {
      * recipient.
      *
      */
-    function withdraw() external {
+    function withdrawFunds() external {
         _withdrawFunds(payable(_msgSender()));
     }
 
@@ -90,16 +89,26 @@ contract LoanContract is AContractManager {
     }
 
     function sign() external onlyRole(_PARTICIPANT_ROLE_) {
-        if (hasRole(_BORROWER_ROLE_, _msgSender())) {
+        if (_hasRole(_BORROWER_ROLE_)) {
             _signBorrower();
             depositCollateral();
-            
-            if (state == LoanState.FUNDED) {
-                _activateLoan();
-            }
-        } else {
-            _signLender();
         }
+    }
+
+    /**
+     * @dev Revoke collateralized token and revoke LoanContract approval. This
+     * effectively renders the LoanContract closed.
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
+     *
+     */
+    function close() external onlyRole(_COLLATERAL_OWNER_ROLE_) {
+        _revokeCollateral();
+        
+        // Clear loan contract approval
+        IERC721(tokenContract_.get()).approve(address(0), tokenId_.get());
     }
 
     function __sign() private {

@@ -40,6 +40,7 @@ library StateControlUint {
     }
 
     function set(Property storage _property, uint256 _value, uint256 _state) internal {
+        require(_property._lock, "State controller not initialized.");
         require(__stateController(_property, _state), "Access to change value is denied.");
 
         unchecked {
@@ -91,6 +92,7 @@ library StateControlAddress {
     }
 
     function set(Property storage _property, address _value, uint256 _state) internal {
+        require(_property._lock, "State controller not initialized.");
         require(__stateController(_property, _state), "Access to change value is denied.");
 
         unchecked {
@@ -142,6 +144,7 @@ library StateControlBool {
     }
 
     function set(Property storage _property, bool _value, uint256 _state) internal {
+        require(_property._lock, "State controller not initialized.");
         require(__stateController(_property, _state), "Access to change value is denied.");
 
         unchecked {
