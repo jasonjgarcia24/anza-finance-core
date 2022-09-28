@@ -71,24 +71,27 @@ describe("0 :: LoanProposal tests", function () {
     tokenId = TRANSFERIBLES[0].tokenId;
 
     // Create LoanProposal for NFT
+    const LoanContractFactory = await ethers.getContractFactory("LoanContract");
+    loanContract = await LoanContractFactory.deploy();
     const LoanProposalFactory = await ethers.getContractFactory("LoanContractFactory");
     loanProposal = await LoanProposalFactory.deploy();
     await loanProposal.deployed();
 
-    // // Set loanProposal to operator
+    // Set loanProposal to operator
     await tokenContract.setApprovalForAll(loanProposal.address, true);
 
     let _tx = await loanProposal.connect(borrower).createLoanContract(
+      loanContract.address,
       tokenContract.address,
       tokenId,
       loanPrincipal,
       loanFixedInterestRate,
       loanDuration
     );
-    let [_loanContractAddress, _tokenContractAddress, _tokenId, _borrower] = await listenerLoanContractCreated(_tx, loanProposal);
+    let [_clone, _tokenContractAddress, _tokenId, _borrower] = await listenerLoanContractCreated(_tx, loanProposal);
 
     // Connect loanContract
-    loanContract = await ethers.getContractAt("LoanContract", _loanContractAddress, borrower);
+    loanContract = await ethers.getContractAt("LoanContract", _clone, borrower);
   });
 
   it("0-0-99 :: PASS", async function () {});
@@ -316,44 +319,44 @@ describe("0 :: LoanProposal tests", function () {
     expect(_newValues[1]).to.equal(_newLoanDuration, "Emitted event new duration value incorrect.");
   });
 
-  it("0-0-05 :: Test LoanProposal lender signoffs", async function () {
-  //   let _, _prevLoanState, _newLoanState;
+  it("0-0-05 :: Test loan activation", async function () {
+    let _, _prevLoanState, _newLoanState;
 
-  //   // Lender signs LoanProposal via setLender and transfers funds to LoanProposal
+    // Lender signs LoanProposal via setLender and transfers funds to LoanProposal
 
-  //   let _tx = await loanProposal.connect(lender).setLender(
-  //     tokenContract.address, tokenId, loanId, { value: loanPrincipal }
-  //   );
-  //   [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
+    let _tx = await loanProposal.connect(lender).setLender(
+      tokenContract.address, tokenId, loanId, { value: loanPrincipal }
+    );
+    [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
 
-  //   expect(_signer).to.equal(lender.address, "Lender and signer are not the same.");
-  //   assert.isTrue(_action.eq(1), "withdraw action is not expected.");
-  //   assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
-  //   assert.isTrue(_lenderSignStatus, "Lender sign status is not true.");
+    expect(_signer).to.equal(lender.address, "Lender and signer are not the same.");
+    assert.isTrue(_action.eq(1), "withdraw action is not expected.");
+    assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
+    assert.isTrue(_lenderSignStatus, "Lender sign status is not true.");
 
-  //   // Lender withdraws from LoanProposal
-  //   _tx = await loanProposal.connect(lender).withdraw(tokenContract.address, tokenId, loanId);
-  //   [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
-  //   [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanProposal);
+    // Lender withdraws from LoanProposal
+    _tx = await loanProposal.connect(lender).withdraw(tokenContract.address, tokenId, loanId);
+    [_signer, _action, _borrowerSignStatus, _lenderSignStatus] = await listenerLoanSignoffChanged(_tx, loanProposal);
+    [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanProposal);
 
-  //   expect(_signer).to.equal(lender.address, "Lender and signer are not the same.");
-  //   assert.isFalse(_action.eq(1), "Sign action is not expected.");
-  //   assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
-  //   assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
+    expect(_signer).to.equal(lender.address, "Lender and signer are not the same.");
+    assert.isFalse(_action.eq(1), "Sign action is not expected.");
+    assert.isFalse(_borrowerSignStatus, "Borrower sign status is not false.");
+    assert.isFalse(_lenderSignStatus, "Lender sign status is not false.");
     
-  //   expect(_prevLoanState).to.equal(loanState.SPONSORED, `Previous loan proposal state should be ${loanState.SPONSORED}.`);
-  //   expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
+    expect(_prevLoanState).to.equal(loanState.SPONSORED, `Previous loan proposal state should be ${loanState.SPONSORED}.`);
+    expect(_newLoanState).to.equal(loanState.UNSPONSORED, `Loan proposal state should be ${loanState.UNSPONSORED}.`);
 
-  //   // Lender cannot signs LoanProposal with sign function
-  //   await assert.eventually.throws(
-  //     loanProposal.connect(lender).sign(
-  //       tokenContract.address, tokenId, loanId, { value: loanPrincipal },
-  //       /Only the borrower can sign. If lending, use setLender()/
-  //     ),
-  //   );
-  // });
+    // Lender cannot signs LoanProposal with sign function
+    await assert.eventually.throws(
+      loanProposal.connect(lender).sign(
+        tokenContract.address, tokenId, loanId, { value: loanPrincipal },
+        /Only the borrower can sign. If lending, use setLender()/
+      ),
+    );
+  });
 
-  // it("0-0-06 :: Test LoanProposal deploy LoanContract", async function () {
+  it("0-0-06 :: Test LoanProposal deploy LoanContract", async function () {
   //   let _borrowerBalance = await provider.getBalance(borrower.address);
   //   let _proposalBalance = await provider.getBalance(loanProposal.address);
   //   console.log(`Initial borrower balance: ${_borrowerBalance}`);

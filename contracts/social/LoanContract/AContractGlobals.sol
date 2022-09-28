@@ -27,19 +27,20 @@ abstract contract AContractGlobals is AccessControl {
         CLOSED
     }
 
-    address internal factory;
+    bytes32 public constant _ADMIN_ROLE_ = "ADMIN";
     bytes32 public constant _ARBITER_ROLE_ = "ARBITER";
     bytes32 public constant _BORROWER_ROLE_ = "BORROWER";
     bytes32 public constant _LENDER_ROLE_ = "LENDER";
     bytes32 public constant _PARTICIPANT_ROLE_ = "PARTICIPANT";
     bytes32 public constant _COLLATERAL_CUSTODIAN_ROLE_ = "COLLATERAL_CUSTODIAN";
     bytes32 public constant _COLLATERAL_OWNER_ROLE_ = "COLLATERAL_OWNER";
-    bool private factoryLock = false;
 
-    StateControlAddress.Property internal borrower_;
+    address internal factory;
+    address internal borrower_;
+    address internal tokenContract_;
+    uint256 internal tokenId_;
+
     StateControlAddress.Property internal lender_;
-    StateControlAddress.Property internal tokenContract_;
-    StateControlUint.Property internal tokenId_;
     StateControlUint.Property internal principal_;
     StateControlUint.Property internal fixedInterestRate_;
     StateControlUint.Property internal duration_;
@@ -56,7 +57,7 @@ abstract contract AContractGlobals is AccessControl {
     event LoanStateChanged(LoanState indexed prevState, LoanState indexed newState);
 
     function borrower() external view returns (address) {
-        return borrower_.get();
+        return borrower_;
     }
 
     function lender() external view returns (address) {
@@ -64,11 +65,11 @@ abstract contract AContractGlobals is AccessControl {
     }
 
     function tokenContract() external view returns (address) {
-        return tokenContract_.get();
+        return tokenContract_;
     }
 
     function tokenId() external view returns (uint256) {
-        return tokenId_.get();
+        return tokenId_;
     }
 
     function principal() external view returns (uint256) {

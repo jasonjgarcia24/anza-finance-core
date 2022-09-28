@@ -2,7 +2,10 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./LoanContract.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./LoanContract/Interfaces/ILoanContract.sol";
+import "hardhat/console.sol";
 
 contract LoanContractFactory {
     using Counters for Counters.Counter;
@@ -16,35 +19,53 @@ contract LoanContractFactory {
         uint256 indexed tokenId
     );
 
-    mapping(address => mapping(uint256 => Counters.Counter)) private loanPriorityMap;
-    
+    struct LoanStruct {
+        Counters.Counter loanId;
+        address[] clones;
+    }
+
+    mapping(address => mapping(uint256 => LoanStruct)) private loanMap;
+
     function createLoanContract(
+        address _loanContract,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _principal,
         uint256 _fixedInterestRate,
         uint256 _duration
     ) public {
-        require(_tokenContract != address(0), "Collateral cannot be address 0.");
+        require(
+            _tokenContract != address(0),
+            "Collateral cannot be address 0."
+        );
 
         // Create new loan contract
-        loanPriorityMap[_tokenContract][_tokenId].increment();
+        address _clone = Clones.clone(_loanContract);
 
-        LoanContract _loanContract = new LoanContract(
+        loanMap[_tokenContract][_tokenId].loanId.increment();
+        loanMap[_tokenContract][_tokenId].clones.push(_clone);
+
+        ILoanContract(payable(_clone)).initialize(
             _tokenContract,
             _tokenId,
-            loanPriorityMap[_tokenContract][_tokenId].current(),
+            __getCurrentPriority(_tokenContract, _tokenId),
             _principal,
             _fixedInterestRate,
             _duration
         );
 
         // Transfer collateral to LoanContract
-        address _loanContractAddress = address(_loanContract);
+        IERC721(_tokenContract).approve(_clone, _tokenId);
+        ILoanContract(payable(_clone)).depositCollateral();
 
-        IERC721(_tokenContract).approve(_loanContractAddress, _tokenId);
-        LoanContract(payable(_loanContractAddress)).depositCollateral();
+        emit LoanContractCreated(_clone, _tokenContract, _tokenId);
+    }
 
-        emit LoanContractCreated(_loanContractAddress, _tokenContract, _tokenId);
+    function __getCurrentPriority(address _tokenContract, uint256 _tokenId)
+        private
+        view
+        returns (uint256)
+    {
+        return loanMap[_tokenContract][_tokenId].loanId.current() - 1;
     }
 }

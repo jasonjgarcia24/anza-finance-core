@@ -1,34 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./LoanContract/AContractManager.sol";
 
-contract LoanContract is AContractManager {
+contract LoanContract is Initializable, Ownable, AContractManager {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
     using StateControlBool for StateControlBool.Property;
 
-    uint256 public immutable priority;
+    uint256 public priority;
 
-    constructor(
+    function initialize(
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,
         uint256 _principal,
         uint256 _fixedInterestRate,
         uint256 _duration
-    ) {       
-        // Initialize state controlled variables
-        borrower_.init(IERC721(_tokenContract).ownerOf(_tokenId), 0);
-        tokenContract_.init(_tokenContract, 0);
-        tokenId_.init(_tokenId, 0);
+    ) public initializer() {  
+        _transferOwnership(_msgSender());
 
-        lender_.init(address(0), 4);
-        principal_.init(_principal, 4);
-        fixedInterestRate_.init(_fixedInterestRate, 4);
-        duration_.init(_duration, 4);
-        borrowerSigned_.init(false, 4);
-        lenderSigned_.init(false, 4);
+        // Initialize state controlled variables
+        borrower_ = IERC721(_tokenContract).ownerOf(_tokenId);
+        tokenContract_ = _tokenContract;
+        tokenId_ = _tokenId;
+
+        uint256 _fundedState = uint256(LoanState.FUNDED);
+        lender_.init(address(0), _fundedState);
+        principal_.init(_principal, _fundedState);
+        fixedInterestRate_.init(_fixedInterestRate, _fundedState);
+        duration_.init(_duration, _fundedState);
+        borrowerSigned_.init(false, _fundedState);
+        lenderSigned_.init(false, _fundedState);
 
         // Set state variables
         factory = _msgSender();
@@ -36,12 +41,13 @@ contract LoanContract is AContractManager {
         state = LoanState.NONLEVERAGED;
 
         // Set roles
+        _setupRole(_ADMIN_ROLE_, _msgSender());
         _setupRole(_ARBITER_ROLE_, address(this));
-        _setupRole(_BORROWER_ROLE_, borrower_.get());
+        _setupRole(_BORROWER_ROLE_, borrower_);
         _setupRole(_COLLATERAL_OWNER_ROLE_, factory);
-        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
+        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_);
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
-        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_);
 
         // Sign off borrower
         __sign();
@@ -56,6 +62,10 @@ contract LoanContract is AContractManager {
             _signLender();
             _setupRole(_LENDER_ROLE_, lender_.get());
             _depositFunding();
+
+            if (borrowerSigned_.get()) {
+                __activate();
+            }
         }
     }
 
@@ -65,7 +75,12 @@ contract LoanContract is AContractManager {
      *
      */
     function withdrawFunds() external {
-        _withdrawFunds(payable(_msgSender()));
+        if (state <= LoanState.FUNDED) {
+            _checkRole(_LENDER_ROLE_);
+            _withdrawFunds(payable(_msgSender()));
+        } else {
+            _withdrawFunds(payable(_msgSender()));
+        }
     }
 
     /**
@@ -93,6 +108,10 @@ contract LoanContract is AContractManager {
         if (_hasRole(_BORROWER_ROLE_)) {
             _signBorrower();
             depositCollateral();
+
+            if (lenderSigned_.get()) {
+                __activate();
+            }
         }
     }
 
@@ -109,11 +128,15 @@ contract LoanContract is AContractManager {
         _revokeCollateral();
         
         // Clear loan contract approval
-        IERC721(tokenContract_.get()).approve(address(0), tokenId_.get());
+        IERC721(tokenContract_).approve(address(0), tokenId_);
         state = LoanState.CLOSED;
     }
 
     function __sign() private {
         _signBorrower();
+    }
+
+    function __activate() private {
+        _activateLoan();
     }
 }

@@ -71,12 +71,12 @@ abstract contract AContractTreasurer is AContractGlobals {
         LoanState _prevState = state;
 
         // Transfer ERC721 token to loan contract
-        IERC721(tokenContract_.get()).safeTransferFrom(borrower_.get(), address(this), tokenId_.get());
+        IERC721(tokenContract_).safeTransferFrom(borrower_, address(this), tokenId_);
 
         // Update loan contract
         _revokeRole(_COLLATERAL_OWNER_ROLE_, factory);
         _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
-        _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
+        _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_);
 
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, address(this));
 
@@ -101,15 +101,15 @@ abstract contract AContractTreasurer is AContractGlobals {
         LoanState _prevState = state;
 
         // Transfer token to borrower
-        IERC721(tokenContract_.get()).safeTransferFrom(address(this), borrower_.get(), tokenId_.get());
-        // IERC721(tokenContract_.get()).approve(address(this), true);
+        IERC721(tokenContract_).safeTransferFrom(address(this), borrower_, tokenId_);
+        // IERC721(tokenContract_).approve(address(this), true);
 
         // Update loan contract
         _revokeRole(_COLLATERAL_OWNER_ROLE_, address(this));
         _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, address(this));
 
-        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_.get());
-        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_.get());
+        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_);
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_);
 
         state = LoanState.NONLEVERAGED;
 
