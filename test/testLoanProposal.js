@@ -30,6 +30,7 @@ const loanState = {
 
 let provider;
 let loanProposal, loanId, loanContract;
+let blockTime;
 let borrower, lender, lenderAlt, approver, operator;
 let tokenContract, tokenId;
 
@@ -71,9 +72,19 @@ describe("0 :: LoanProposal tests", function () {
     tokenId = TRANSFERIBLES[0].tokenId;
 
     // Create LoanProposal for NFT
-    const LoanContractFactory = await ethers.getContractFactory("LoanContract");
-    loanContract = await LoanContractFactory.deploy();
+    const StateControlUintFactory = await ethers.getContractFactory("StateControlUint");
+    stateControlUint = await StateControlUintFactory.deploy();
+    const BlockTimeFactory = await ethers.getContractFactory("BlockTime");
+    blockTime = await BlockTimeFactory.deploy();
+
+    const LoanContractFactory = await ethers.getContractFactory("LoanContract", {
+      libraries: {
+        StateControlUint: stateControlUint.address,
+        BlockTime: blockTime.address,
+      },
+    });
     const LoanProposalFactory = await ethers.getContractFactory("LoanContractFactory");
+    loanContract = await LoanContractFactory.deploy();
     loanProposal = await LoanProposalFactory.deploy();
     await loanProposal.deployed();
 
@@ -96,7 +107,7 @@ describe("0 :: LoanProposal tests", function () {
 
   it("0-0-99 :: PASS", async function () {});
 
-  it("0-0-00 :: verify constructor", async function () {
+  it("0-0-00 :: Verify constructor", async function () {
     // Verify LoanProposal getter functions
     await expect(loanContract.borrower()).to.eventually.equal(borrower.address, "The borrower address is not correct.");
     await expect(loanContract.lender()).to.eventually.equal(ethers.constants.AddressZero, "The lender address is not correct.");
@@ -153,7 +164,7 @@ describe("0 :: LoanProposal tests", function () {
     );
   });
 
-  it("0-0-01 :: Test LoanProposal borrower signoffs", async function () {
+  it("0-0-01 :: Verify LoanProposal borrower signoffs", async function () {
     // Borrower withdraws LoanContract and LoanContract transfers NFT to borrower
     let _tx = await loanContract.connect(borrower).withdrawNft();
     let [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
@@ -176,7 +187,10 @@ describe("0 :: LoanProposal tests", function () {
     expect(_owner).to.equal(loanContract.address, "The token owner should be the LoanContract.");
   });
 
-  it("0-0-02 :: Test LoanProposal setLender function", async function () {
+  it("0-0-02 :: Verify LoanProposal setLender function", async function () {
+    // Remove collateral leveraged
+    await loanContract.withdrawNft();
+
     // Set lender with lender
     await assert.eventually.isFalse(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is set with LENDER role.");
     await assert.eventually.isFalse(loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address), "The lender is set with PARTICIPANT role.");
@@ -187,7 +201,7 @@ describe("0 :: LoanProposal tests", function () {
     let [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
     let [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
     let [_payee, _weiAmount] = await listenerDeposited(_tx, loanContract);
-    expect(_prevLoanState).to.equal(loanState.UNSPONSORED, "The previous loan state should be UNSPONSORED.");
+    expect(_prevLoanState).to.equal(loanState.NONLEVERAGED, "The previous loan state should be NONLEVERAGED.");
     expect(_newLoanState).to.equal(loanState.FUNDED, "The new loan state should be FUNDED.");
     expect(_payee).to.equal(lender.address, "The payee should be the lender.");
     expect(_weiAmount.eq(loanPrincipal)).to.equal(true, `The deposited amount should be ${loanPrincipal} WEI.`);
@@ -221,9 +235,26 @@ describe("0 :: LoanProposal tests", function () {
 
     await assert.eventually.isFalse(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is set with LENDER role.");
     await assert.eventually.isFalse(loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address), "The lender is set with PARTICIPANT role.");
+
+    // Set lender with lender with collateral leveraged
+    await tokenContract.approve(loanContract.address, tokenId);
+    await loanContract.sign();
+    await assert.eventually.isFalse(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is set with LENDER role.");
+    await assert.eventually.isFalse(loanContract.hasRole(_PARTICIPANT_ROLE_, lender.address), "The lender is set with PARTICIPANT role.");
+
+    _tx = await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    await assert.eventually.isTrue(loanContract.hasRole(_LENDER_ROLE_, lender.address), "The lender is not set with LENDER role.");
+
+    [_prevLoanState, _] = await listenerLoanStateChanged(_tx, loanContract);
+    [__, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract, false);
+    [_payee, _weiAmount] = await listenerDeposited(_tx, loanContract);
+    expect(_prevLoanState).to.equal(loanState.UNSPONSORED, "The previous loan state should be UNSPONSORED.");
+    expect(_newLoanState).to.equal(loanState.ACTIVE_OPEN, "The new loan state should be ACTIVE_OPEN.");
+    expect(_payee).to.equal(lender.address, "The payee should be the lender.");
+    expect(_weiAmount.eq(loanPrincipal)).to.equal(true, `The deposited amount should be ${loanPrincipal} WEI.`);
   });
 
-  it("0-0-03 :: Test LoanProposal updateTerms function for single changes", async function () {
+  it("0-0-03 :: Verify LoanProposal updateTerms function for single changes", async function () {
     const _newLoanPrincipal = 5000;
     const _newLoanFixedInterestRate = 33;
     const _newLoanDuration = 60;
@@ -232,14 +263,14 @@ describe("0 :: LoanProposal tests", function () {
     let [_loanPrincipal, _loanFixedInterestRate, _loanDuration] = await loanContract.getLoanTerms();
     expect(_loanPrincipal).to.equal(loanPrincipal, "The loan principal is not set as expected.");
     expect(_loanFixedInterestRate).to.equal(loanFixedInterestRate, "The loan fixed interest rate is not set as expected.");
-    expect(_loanDuration).to.equal(loanDuration, "The loan duration is not set as expected.");
+    await expect(blockTime.blocksToDays(_loanDuration)).to.eventually.equal(loanDuration, "The loan duration is not set as expected.");
 
     // Update loan principal
     _tx = await loanContract.updateTerms(['principal'], [_newLoanPrincipal]);
     [_loanPrincipal, _loanFixedInterestRate, _loanDuration] = await loanContract.getLoanTerms();
     expect(_loanPrincipal).to.equal(_newLoanPrincipal, "The loan principal is not set as expected.");
     expect(_loanFixedInterestRate).to.equal(loanFixedInterestRate, "The loan fixed interest rate is not set as expected.");
-    expect(_loanDuration).to.equal(loanDuration, "The loan duration is not set as expected.");
+    await expect(blockTime.blocksToDays(_loanDuration)).to.eventually.equal(loanDuration, "The loan duration is not set as expected.");
 
     let [_params, _prevValues, _newValues] = await listenerTermsChanged(_tx, loanContract);
     expect('principal').to.equal(_params[0], "Emitted event params incorrect.");
@@ -251,7 +282,7 @@ describe("0 :: LoanProposal tests", function () {
     [_loanPrincipal, _loanFixedInterestRate, _loanDuration] = await loanContract.getLoanTerms();
     expect(_loanPrincipal).to.equal(_newLoanPrincipal, "The loan principal is not set as expected.");
     expect(_loanFixedInterestRate).to.equal(_newLoanFixedInterestRate, "The loan fixed interest rate is not set as expected.");
-    expect(_loanDuration).to.equal(loanDuration, "The loan duration is not set as expected.");
+    await expect(blockTime.blocksToDays(_loanDuration)).to.eventually.equal(loanDuration, "The loan duration is not set as expected.");
 
     [_params, _prevValues, _newValues] = await listenerTermsChanged(_tx, loanContract);
     expect('fixed_interest_rate').to.equal(_params[0], "Emitted event params incorrect.");
@@ -263,15 +294,15 @@ describe("0 :: LoanProposal tests", function () {
     [_loanPrincipal, _loanFixedInterestRate, _loanDuration] = await loanContract.getLoanTerms();
     expect(_loanPrincipal).to.equal(_newLoanPrincipal, "The loan principal is not set as expected.");
     expect(_loanFixedInterestRate).to.equal(_newLoanFixedInterestRate, "The loan fixed interest rate is not set as expected.");
-    expect(_loanDuration).to.equal(_newLoanDuration, "The loan duration is not set as expected.");
+    await expect(blockTime.blocksToDays(_loanDuration)).to.eventually.equal(_newLoanDuration, "The loan duration is not set as expected.");
 
     [_params, _prevValues, _newValues] = await listenerTermsChanged(_tx, loanContract);
     expect('duration').to.equal(_params[0], "Emitted event params incorrect.");
-    expect(_prevValues[0].toNumber()).to.equal(loanDuration, "Emitted event previous duration value incorrect.");
-    expect(_newValues[0].toNumber()).to.equal(_newLoanDuration, "Emitted event new duration value incorrect.");
+    await expect(blockTime.blocksToDays(_prevValues[0].toNumber())).to.eventually.equal(loanDuration, "Emitted event previous duration value incorrect.");
+    await expect(blockTime.blocksToDays(_newValues[0].toNumber())).to.eventually.equal(_newLoanDuration, "Emitted event new duration value incorrect.");
   });
 
-  it("0-0-04 :: Test LoanProposal updateTerms function for multiple changes", async function () {
+  it("0-0-04 :: Verify LoanProposal updateTerms function for multiple changes", async function () {
     const _newLoanPrincipal = 5000;
     const _newLoanFixedInterestRate = 33;
     const _newLoanDuration = 60;
@@ -279,10 +310,19 @@ describe("0 :: LoanProposal tests", function () {
     // Collect and check original loan terms
     const _prevLoanTerms = await loanContract.getLoanTerms();
     assert.isTrue(
-      _prevLoanTerms[0].eq(loanPrincipal) &&
-      _prevLoanTerms[1].eq(loanFixedInterestRate) &&
-      _prevLoanTerms[2].eq(loanDuration),
-      "Loan terms have been modified."
+      _prevLoanTerms[0].eq(loanPrincipal),
+      "Loan principal has been modified."
+    );
+
+    assert.isTrue(
+      _prevLoanTerms[1].eq(loanFixedInterestRate),
+      "Loan fixed interest rate has been modified."
+    );
+
+    const _prevDuration = await blockTime.blocksToDays(_prevLoanTerms[2]);
+    assert.isTrue(
+      _prevDuration.eq(loanDuration),
+      "Loan duration has been modified."
     );
 
     // Update all loan parameters
@@ -304,8 +344,9 @@ describe("0 :: LoanProposal tests", function () {
       "Loan fixed interest rate change is not correct."
     );
 
+    const _newDuration = await blockTime.blocksToDays(_loanDuration);
     assert.isTrue(
-      _loanDuration.eq(_newLoanDuration),
+      _newDuration.eq(_newLoanDuration),
       "Loan duration change is not correct."
     );
 
@@ -315,11 +356,11 @@ describe("0 :: LoanProposal tests", function () {
     expect(_newValues[0].toNumber()).to.equal(_newLoanPrincipal, "Emitted event new principal value incorrect.");
     expect(_prevValues[2].toNumber()).to.equal(loanFixedInterestRate, "Emitted event previous fixed interest rate value incorrect.");
     expect(_newValues[2].toNumber()).to.equal(_newLoanFixedInterestRate, "Emitted event new fixed interest rate value incorrect.");
-    expect(_prevValues[1]).to.equal(loanDuration, "Emitted event previous duration value incorrect.");
-    expect(_newValues[1]).to.equal(_newLoanDuration, "Emitted event new duration value incorrect.");
+    await expect(blockTime.blocksToDays(_prevValues[1])).to.eventually.equal(loanDuration, "Emitted event previous duration value incorrect.");
+    await expect(blockTime.blocksToDays(_newValues[1])).to.eventually.equal(_newLoanDuration, "Emitted event new duration value incorrect.");
   });
 
-  it("0-0-05 :: Test loan activation", async function () {
+  it("0-0-05 :: Verify loan activation", async function () {
     let _, _prevLoanState, _newLoanState;
 
     // Lender signs LoanProposal via setLender and transfers funds to LoanProposal
@@ -356,7 +397,7 @@ describe("0 :: LoanProposal tests", function () {
     );
   });
 
-  it("0-0-06 :: Test LoanProposal deploy LoanContract", async function () {
+  it("0-0-06 :: Verify LoanProposal deploy LoanContract", async function () {
   //   let _borrowerBalance = await provider.getBalance(borrower.address);
   //   let _proposalBalance = await provider.getBalance(loanProposal.address);
   //   console.log(`Initial borrower balance: ${_borrowerBalance}`);
@@ -377,14 +418,14 @@ describe("0 :: LoanProposal tests", function () {
   //   console.log(`Final borrower balance: ${_borrowerBalance}`);
   //   console.log(`Final proposal balance: ${_proposalBalance}`);
 
-  //   // Test LoanContractDeployed event output
+  //   // Verify LoanContractDeployed event output
   //   let [_loanContractAddress, _borrowerAddress, _lenderAddress, _tokenContractAddress, _tokenId] = await listenerLoanContractDeployed(_tx, loanProposal);
   //   expect(_borrowerAddress).to.equal(borrower.address, "The borrower address does not match.");
   //   expect(_lenderAddress).to.equal(lender.address, "The lender address does not match.");
   //   expect(_tokenContractAddress).to.equal(tokenContract.address, "The token contract address does not match.");
   //   expect(_tokenId).to.equal(tokenId, "The token ID does not match.");
 
-  //   // Test LoanContract storage values
+  //   // Verify LoanContract storage values
   //   let loanContract = await ethers.getContractAt("LoanContract", _loanContractAddress);
   //   let results = await getLoanContractStateVars(loanContract.address);
   //   // console.log(`prev prop balance: ${_prevProposalBalance}`)

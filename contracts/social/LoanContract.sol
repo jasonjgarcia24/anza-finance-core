@@ -9,8 +9,7 @@ contract LoanContract is Initializable, Ownable, AContractManager {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
     using StateControlBool for StateControlBool.Property;
-
-    uint256 public priority;
+    using BlockTime for uint256;
 
     function initialize(
         address _tokenContract,
@@ -31,9 +30,12 @@ contract LoanContract is Initializable, Ownable, AContractManager {
         lender_.init(address(0), _fundedState);
         principal_.init(_principal, _fundedState);
         fixedInterestRate_.init(_fixedInterestRate, _fundedState);
-        duration_.init(_duration, _fundedState);
+        duration_.init(_duration.daysToBlocks(), _fundedState);
         borrowerSigned_.init(false, _fundedState);
         lenderSigned_.init(false, _fundedState);
+
+        balance_.init(uint256(LoanState.PAID));
+        stopBlockstamp_.init(_fundedState);
 
         // Set state variables
         factory = _msgSender();
@@ -137,6 +139,9 @@ contract LoanContract is Initializable, Ownable, AContractManager {
     }
 
     function __activate() private {
+        stopBlockstamp_.onlyState(uint256(state));
+
+        _initSchedule();
         _activateLoan();
     }
 }

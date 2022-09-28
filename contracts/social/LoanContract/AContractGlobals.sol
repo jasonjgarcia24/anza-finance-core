@@ -3,12 +3,14 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../../utils/StateControl.sol";
+import "../../utils/BlockTime.sol";
 import "hardhat/console.sol";
 
 abstract contract AContractGlobals is AccessControl {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
     using StateControlBool for StateControlBool.Property;
+    using BlockTime for uint256;
 
     enum LoanState {
         UNDEFINED,
@@ -39,6 +41,7 @@ abstract contract AContractGlobals is AccessControl {
     address internal borrower_;
     address internal tokenContract_;
     uint256 internal tokenId_;
+    uint256 internal priority;
 
     StateControlAddress.Property internal lender_;
     StateControlUint.Property internal principal_;
@@ -46,6 +49,8 @@ abstract contract AContractGlobals is AccessControl {
     StateControlUint.Property internal duration_;
     StateControlBool.Property internal borrowerSigned_;
     StateControlBool.Property internal lenderSigned_;
+    StateControlUint.Property internal balance_;
+    StateControlUint.Property internal stopBlockstamp_;
 
     LoanState internal state;
 
@@ -56,41 +61,57 @@ abstract contract AContractGlobals is AccessControl {
      */
     event LoanStateChanged(LoanState indexed prevState, LoanState indexed newState);
 
-    function borrower() external view returns (address) {
-        return borrower_;
-    }
+    // function borrower() external view returns (address) {
+    //     return borrower_;
+    // }
 
-    function lender() external view returns (address) {
-        return lender_.get();
-    }
+    // function lender() external view returns (address) {
+    //     return lender_.get();
+    // }
 
-    function tokenContract() external view returns (address) {
-        return tokenContract_;
-    }
+    // function tokenContract() external view returns (address) {
+    //     return tokenContract_;
+    // }
 
-    function tokenId() external view returns (uint256) {
-        return tokenId_;
-    }
+    // function tokenId() external view returns (uint256) {
+    //     return tokenId_;
+    // }
 
-    function principal() external view returns (uint256) {
-        return principal_.get();
-    }
+    // function principal() external view returns (uint256) {
+    //     return principal_.get();
+    // }
 
-    function fixedInterestRate() external view returns (uint256) {
-        return fixedInterestRate_.get();
-    }
+    // function fixedInterestRate() external view returns (uint256) {
+    //     return fixedInterestRate_.get();
+    // }
 
-    function duration() external view returns (uint256) {
-        return duration_.get();
-    }
+    // function duration() external view returns (uint256) {
+    //     return duration_.get()._blocksToDays();
+    // }
 
-    function borrowerSigned() external view returns (bool) {
-        return borrowerSigned_.get();
-    }
+    // function stopBlockstamp() external view returns (uint256) {
+    //     return stopBlockstamp_.get();
+    // }
 
-    function lenderSigned() external view returns (bool) {
-        return lenderSigned_.get();
-    }
+    // function borrowerSigned() external view returns (bool) {
+    //     return borrowerSigned_.get();
+    // }
+
+    // function lenderSigned() external view returns (bool) {
+    //     return lenderSigned_.get();
+    // }
+
+    // function borrowerBalance() external view returns (uint256) {
+    //     return accountBalance[borrower_];
+    // }
+
+    // function lenderBalance() external view returns (uint256) {
+    //     return accountBalance[lender_.get()];
+    // }
+
+    // function contractBalance() external view returns (uint256) {
+    //     return balance_.get();
+    // }
 
     /**
      * @dev Returns the terms of the loan contract.

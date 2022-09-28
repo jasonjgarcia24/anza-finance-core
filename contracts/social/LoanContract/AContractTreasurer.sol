@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./AContractGlobals.sol";
 
@@ -11,6 +12,7 @@ abstract contract AContractTreasurer is AContractGlobals {
     using StateControlAddress for StateControlAddress.Property;
     using StateControlBool for StateControlBool.Property;
     using Address for address payable;
+    using SafeMath for uint256;
 
     /**
      * @dev Emitted when loan contract funding is deposited.
@@ -64,14 +66,16 @@ abstract contract AContractTreasurer is AContractGlobals {
      * Emits {LoanStateChanged} event.
      */
     function depositCollateral() public onlyRole(_COLLATERAL_OWNER_ROLE_) {
+        IERC721 _erc721 = IERC721(tokenContract_);
         require(
-            state == LoanState.NONLEVERAGED,
-            "The loan state must be LoanState.NONLEVERAGED."
+            _erc721.ownerOf(tokenId_) == borrower_,
+            "The borrower is not the token owner."
         );
         LoanState _prevState = state;
 
         // Transfer ERC721 token to loan contract
-        IERC721(tokenContract_).safeTransferFrom(borrower_, address(this), tokenId_);
+        console.logAddress(address(this));
+        _erc721.safeTransferFrom(borrower_, address(this), tokenId_);
 
         // Update loan contract
         _revokeRole(_COLLATERAL_OWNER_ROLE_, factory);
@@ -145,7 +149,7 @@ abstract contract AContractTreasurer is AContractGlobals {
 
         // Update loan contract
         state = LoanState.FUNDED;
-        accountBalance[lender_.get()] -= principal_.get();
+        accountBalance[lender_.get()] += principal_.get();
 
         emit LoanStateChanged(_prevState, state);
         emit Deposited(_msgSender(), msg.value);
@@ -189,5 +193,13 @@ abstract contract AContractTreasurer is AContractGlobals {
         _payee.sendValue(_payment);
 
         emit Withdrawn(_payee, _payment);
+    }
+
+    function calculateInterest() public view returns (uint256) {
+        uint256 _daysPassed = (block.timestamp - stopBlockstamp_.get()) / 60 / 60 / 24;
+
+        return balance_.get().mul(
+            fixedInterestRate_.get()
+        ).div(100).mul(_daysPassed).div(365);
     }
 }
