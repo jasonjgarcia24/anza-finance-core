@@ -27,7 +27,7 @@ abstract contract AContractNotary is AContractGlobals {
 
         // Update loan contract
         borrowerSigned_.set(true, uint256(state));
-        _grantRole(_PARTICIPANT_ROLE_, borrower_.get());
+        _grantRole(_PARTICIPANT_ROLE_, borrower_);
         state = state > LoanState.NONLEVERAGED
             ? lenderSigned_.get() ? LoanState.FUNDED : LoanState.UNSPONSORED
             : state;

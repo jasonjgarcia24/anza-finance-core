@@ -53,16 +53,12 @@ abstract contract AContractManager is AContractNotary, AContractTreasurer {
      * Emits {LoanStateChanged} events.
      */
     function _activateLoan() internal {
-        require(
-            borrowerSigned_.get() == true && lenderSigned_.get() == true,
-            "The loan contract must be fully signed off."
-        );
         LoanState _prevState = state;
 
         // Update loan contract and activate loan
         state = LoanState.ACTIVE_OPEN;
         accountBalance[lender_.get()] -= principal_.get();
-        accountBalance[borrower_.get()] += principal_.get();
+        accountBalance[borrower_] += principal_.get();
 
         emit LoanStateChanged(_prevState, state);
     }
