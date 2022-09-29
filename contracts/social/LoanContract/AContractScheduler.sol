@@ -9,7 +9,7 @@ abstract contract AContractScheduler is AContractGlobals {
     using StateControlBool for StateControlBool.Property;
 
     function _initSchedule() internal {
-        uint256 _blockNumber = block.number + duration_.get();
-        stopBlockstamp_.set(_blockNumber, uint256(state));
+        uint256 _blockNumber = block.number + duration.get();
+        stopBlockstamp.set(_blockNumber, uint16(state));
     }
 }

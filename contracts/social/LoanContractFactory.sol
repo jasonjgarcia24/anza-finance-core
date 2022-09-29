@@ -33,7 +33,7 @@ contract LoanContractFactory {
         uint256 _principal,
         uint256 _fixedInterestRate,
         uint256 _duration
-    ) public {
+    ) external {
         require(
             _tokenContract != address(0),
             "Collateral cannot be address 0."

@@ -20,16 +20,16 @@ abstract contract AContractNotary is AContractGlobals {
      */
     function _signBorrower() internal {
         require(
-            borrowerSigned_.get() == false,
+            borrowerSigned.get() == false,
             "The borrower must not currently be signed off."
         );
         LoanState _prevState = state;
 
         // Update loan contract
-        borrowerSigned_.set(true, uint256(state));
-        _grantRole(_PARTICIPANT_ROLE_, borrower_);
+        borrowerSigned.set(true, uint256(state));
+        _grantRole(_PARTICIPANT_ROLE_, borrower);
         state = state > LoanState.NONLEVERAGED
-            ? lenderSigned_.get() ? LoanState.FUNDED : LoanState.UNSPONSORED
+            ? lenderSigned.get() ? LoanState.FUNDED : LoanState.UNSPONSORED
             : state;
 
         emit LoanStateChanged(_prevState, state);
@@ -48,13 +48,13 @@ abstract contract AContractNotary is AContractGlobals {
      */
     function _unsignBorrower() internal {
         require(
-            borrowerSigned_.get() == true,
+            borrowerSigned.get() == true,
             "The borrower must currently be signed off."
         );
         LoanState _prevState = state;
 
         // Update loan contract
-        borrowerSigned_.set(false, uint256(state));
+        borrowerSigned.set(false, uint256(state));
 
         emit LoanStateChanged(_prevState, state);
     }
@@ -72,19 +72,19 @@ abstract contract AContractNotary is AContractGlobals {
      */
     function _signLender() internal {
         require(
-            lenderSigned_.get() == false,
+            lenderSigned.get() == false,
             "The lender must not currently be signed off."
         );
         require(
-            msg.value + accountBalance[_msgSender()] >= principal_.get(),
+            msg.value + accountBalance[_msgSender()] >= principal.get(),
             "Paid value and the account balance must be at least the loan principal."
         );
         LoanState _prevState = state;
 
         // Update loan contract
-        lender_.set(_msgSender(), uint256(state));
-        lenderSigned_.set(true, uint256(state));
-        _grantRole(_PARTICIPANT_ROLE_, lender_.get());
+        lender.set(_msgSender(), uint256(state));
+        lenderSigned.set(true, uint256(state));
+        _grantRole(_PARTICIPANT_ROLE_, lender.get());
         state = LoanState.SPONSORED;
 
         emit LoanStateChanged(_prevState, state);
@@ -99,14 +99,14 @@ abstract contract AContractNotary is AContractGlobals {
      */
     function _unsignLender() internal {
         require(
-            lenderSigned_.get() == true,
+            lenderSigned.get() == true,
             "The lender must currently be signed off."
         );
         LoanState _prevState = state;
 
         // Update loan agreement
-        lender_.set(address(0), uint256(state));
-        lenderSigned_.set(false, uint256(state));
+        lender.set(address(0), uint256(state));
+        lenderSigned.set(false, uint256(state));
         state = LoanState.UNSPONSORED;
 
         emit LoanStateChanged(_prevState, state);

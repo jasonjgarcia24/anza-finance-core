@@ -66,21 +66,20 @@ abstract contract AContractTreasurer is AContractGlobals {
      * Emits {LoanStateChanged} event.
      */
     function depositCollateral() public onlyRole(_COLLATERAL_OWNER_ROLE_) {
-        IERC721 _erc721 = IERC721(tokenContract_);
+        IERC721 _erc721 = IERC721(tokenContract);
         require(
-            _erc721.ownerOf(tokenId_) == borrower_,
+            _erc721.ownerOf(tokenId) == borrower,
             "The borrower is not the token owner."
         );
         LoanState _prevState = state;
 
         // Transfer ERC721 token to loan contract
-        console.logAddress(address(this));
-        _erc721.safeTransferFrom(borrower_, address(this), tokenId_);
+        _erc721.safeTransferFrom(borrower, address(this), tokenId);
 
         // Update loan contract
         _revokeRole(_COLLATERAL_OWNER_ROLE_, factory);
         _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
-        _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_);
+        _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower);
 
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, address(this));
 
@@ -105,15 +104,15 @@ abstract contract AContractTreasurer is AContractGlobals {
         LoanState _prevState = state;
 
         // Transfer token to borrower
-        IERC721(tokenContract_).safeTransferFrom(address(this), borrower_, tokenId_);
-        // IERC721(tokenContract_).approve(address(this), true);
+        IERC721(tokenContract).safeTransferFrom(address(this), borrower, tokenId);
+        // IERC721(tokenContract).approve(address(this), true);
 
         // Update loan contract
         _revokeRole(_COLLATERAL_OWNER_ROLE_, address(this));
         _revokeRole(_COLLATERAL_CUSTODIAN_ROLE_, address(this));
 
-        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_);
-        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_);
+        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower);
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower);
 
         state = LoanState.NONLEVERAGED;
 
@@ -132,7 +131,7 @@ abstract contract AContractTreasurer is AContractGlobals {
      */
     function _depositFunding() public payable onlyRole(_LENDER_ROLE_) {
         require(
-            _msgSender() == lender_.get(),
+            _msgSender() == lender.get(),
             "The caller must be the lender."
         );
         require(
@@ -141,15 +140,15 @@ abstract contract AContractTreasurer is AContractGlobals {
         );
         LoanState _prevState = state;
 
-        accountBalance[lender_.get()] += msg.value;
+        accountBalance[lender.get()] += msg.value;
         require(
-            accountBalance[lender_.get()] >= principal_.get(),
+            accountBalance[lender.get()] >= principal.get(),
             "The caller's account balance is insufficient."
         );
 
         // Update loan contract
         state = LoanState.FUNDED;
-        accountBalance[lender_.get()] += principal_.get();
+        accountBalance[lender.get()] += principal.get();
 
         emit LoanStateChanged(_prevState, state);
         emit Deposited(_msgSender(), msg.value);
@@ -173,7 +172,7 @@ abstract contract AContractTreasurer is AContractGlobals {
 
         // Update loan contract
         state = LoanState.SPONSORED;
-        accountBalance[lender_.get()] += principal_.get();
+        accountBalance[lender.get()] += principal.get();
 
         emit LoanStateChanged(_prevState, state);
     }
@@ -196,10 +195,10 @@ abstract contract AContractTreasurer is AContractGlobals {
     }
 
     function calculateInterest() public view returns (uint256) {
-        uint256 _daysPassed = (block.timestamp - stopBlockstamp_.get()) / 60 / 60 / 24;
+        uint256 _daysPassed = (block.timestamp - stopBlockstamp.get()) / 60 / 60 / 24;
 
-        return balance_.get().mul(
-            fixedInterestRate_.get()
+        return balance.get().mul(
+            fixedInterestRate.get()
         ).div(100).mul(_daysPassed).div(365);
     }
 }

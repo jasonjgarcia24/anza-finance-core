@@ -11,6 +11,18 @@ contract LoanContract is Initializable, Ownable, AContractManager {
     using StateControlBool for StateControlBool.Property;
     using BlockTime for uint256;
 
+    /**
+     * @dev Emitted when loan contract term(s) are updated.
+     */
+    event LoanActivated(
+        address indexed loanContract,
+        address indexed borrower,
+        address indexed lender,
+        address tokenContract,
+        uint256 tokenId,
+        uint256 state
+    );
+
     function initialize(
         address _tokenContract,
         uint256 _tokenId,
@@ -18,24 +30,24 @@ contract LoanContract is Initializable, Ownable, AContractManager {
         uint256 _principal,
         uint256 _fixedInterestRate,
         uint256 _duration
-    ) public initializer() {  
+    ) external initializer() {  
         _transferOwnership(_msgSender());
 
         // Initialize state controlled variables
-        borrower_ = IERC721(_tokenContract).ownerOf(_tokenId);
-        tokenContract_ = _tokenContract;
-        tokenId_ = _tokenId;
+        borrower = IERC721(_tokenContract).ownerOf(_tokenId);
+        tokenContract = _tokenContract;
+        tokenId = _tokenId;
 
         uint256 _fundedState = uint256(LoanState.FUNDED);
-        lender_.init(address(0), _fundedState);
-        principal_.init(_principal, _fundedState);
-        fixedInterestRate_.init(_fixedInterestRate, _fundedState);
-        duration_.init(_duration.daysToBlocks(), _fundedState);
-        borrowerSigned_.init(false, _fundedState);
-        lenderSigned_.init(false, _fundedState);
+        lender.init(address(0), _fundedState);
+        principal.init(_principal, _fundedState);
+        fixedInterestRate.init(_fixedInterestRate, _fundedState);
+        duration.init(_duration.daysToBlocks(), _fundedState);
+        borrowerSigned.init(false, _fundedState);
+        lenderSigned.init(false, _fundedState);
 
-        balance_.init(uint256(LoanState.PAID));
-        stopBlockstamp_.init(_fundedState);
+        balance.init(0, uint256(LoanState.PAID));
+        stopBlockstamp.init(type(uint256).max, _fundedState);
 
         // Set state variables
         factory = _msgSender();
@@ -45,11 +57,11 @@ contract LoanContract is Initializable, Ownable, AContractManager {
         // Set roles
         _setupRole(_ADMIN_ROLE_, _msgSender());
         _setupRole(_ARBITER_ROLE_, address(this));
-        _setupRole(_BORROWER_ROLE_, borrower_);
+        _setupRole(_BORROWER_ROLE_, borrower);
         _setupRole(_COLLATERAL_OWNER_ROLE_, factory);
-        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower_);
+        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower);
         _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
-        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower_);
+        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower);
 
         // Sign off borrower
         __sign();
@@ -58,14 +70,14 @@ contract LoanContract is Initializable, Ownable, AContractManager {
     function setLender() external payable {
         if (_hasRole(_BORROWER_ROLE_)) {
             _revokeFunding();
-            _revokeRole(_LENDER_ROLE_, lender_.get());
+            _revokeRole(_LENDER_ROLE_, lender.get());
             _unsignLender();
         } else {
             _signLender();
-            _setupRole(_LENDER_ROLE_, lender_.get());
+            _setupRole(_LENDER_ROLE_, lender.get());
             _depositFunding();
 
-            if (borrowerSigned_.get()) {
+            if (borrowerSigned.get()) {
                 __activate();
             }
         }
@@ -101,8 +113,8 @@ contract LoanContract is Initializable, Ownable, AContractManager {
      */
     function withdrawSponsorship() external onlyRole(_LENDER_ROLE_) {
         _revokeFunding();
-        _revokeRole(_LENDER_ROLE_, lender_.get());
-        _revokeRole(_PARTICIPANT_ROLE_, lender_.get());
+        _revokeRole(_LENDER_ROLE_, lender.get());
+        _revokeRole(_PARTICIPANT_ROLE_, lender.get());
         _unsignLender();
     }
 
@@ -111,7 +123,7 @@ contract LoanContract is Initializable, Ownable, AContractManager {
             _signBorrower();
             depositCollateral();
 
-            if (lenderSigned_.get()) {
+            if (lenderSigned.get()) {
                 __activate();
             }
         }
@@ -130,7 +142,7 @@ contract LoanContract is Initializable, Ownable, AContractManager {
         _revokeCollateral();
         
         // Clear loan contract approval
-        IERC721(tokenContract_).approve(address(0), tokenId_);
+        IERC721(tokenContract).approve(address(0), tokenId);
         state = LoanState.CLOSED;
     }
 
@@ -139,9 +151,18 @@ contract LoanContract is Initializable, Ownable, AContractManager {
     }
 
     function __activate() private {
-        stopBlockstamp_.onlyState(uint256(state));
+        stopBlockstamp.onlyState(uint256(state));
 
         _initSchedule();
         _activateLoan();
+
+        emit LoanActivated(
+            address(this),
+            borrower,
+            lender.get(),
+            tokenContract,
+            tokenId,
+            uint256(state)
+        );
     }
 }

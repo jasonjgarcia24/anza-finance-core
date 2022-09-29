@@ -1,3 +1,4 @@
+const { ethers } = require("ethers");
 const erc721 = require("./artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json").abi;
 
 module.exports = {
@@ -24,5 +25,29 @@ module.exports = {
             recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
             abi: erc721
         }
-    ],    
+    ],
+    ROLES: {
+        _ARBITER_ROLE_: ethers.utils.formatBytes32String("ARBITER"),
+        _BORROWER_ROLE_: ethers.utils.formatBytes32String("BORROWER"),
+        _LENDER_ROLE_: ethers.utils.formatBytes32String("LENDER"),
+        _PARTICIPANT_ROLE_: ethers.utils.formatBytes32String("PARTICIPANT"),
+        _COLLATERAL_CUSTODIAN_ROLE_: ethers.utils.formatBytes32String("COLLATERAL_CUSTODIAN"),
+        _COLLATERAL_OWNER_ROLE_: ethers.utils.formatBytes32String("COLLATERAL_OWNER"),
+    },
+    LOANSTATE: {
+        UNDEFINED: 0,
+        NONLEVERAGED: 1,
+        UNSPONSORED: 2,
+        SPONSORED: 3,
+        FUNDED: 4,
+        ACTIVE_GRACE_COMMITTED: 5,
+        ACTIVE_GRACE_OPEN: 6,
+        ACTIVE_COMMITTED: 7,
+        ACTIVE_OPEN: 8,
+        PAID: 9,
+        DEFAULT: 10,
+        AUCTION: 11,
+        AWARDED: 12,
+        CLOSED: 13
+    }
 }

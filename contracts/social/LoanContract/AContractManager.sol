@@ -37,7 +37,7 @@ abstract contract AContractManager is
             "Input array parameters must be no more than 3."
         );
 
-        if (lenderSigned_.get()) {
+        if (lenderSigned.get()) {
             _unsignLender();
         }
 
@@ -47,15 +47,15 @@ abstract contract AContractManager is
             bytes32 _thisParam = keccak256(bytes(_params[i]));
 
             if (_thisParam == keccak256(bytes("principal"))) {
-                _prevValues[i] = principal_.get();
-                principal_.set(_newValues[i], uint256(state));
+                _prevValues[i] = principal.get();
+                principal.set(_newValues[i], uint16(state));
             } else if (_thisParam == keccak256(bytes("fixed_interest_rate"))) {
-                _prevValues[i] = fixedInterestRate_.get();
-                fixedInterestRate_.set(_newValues[i], uint256(state));
+                _prevValues[i] = fixedInterestRate.get();
+                fixedInterestRate.set(_newValues[i], uint16(state));
             } else if (_thisParam == keccak256(bytes("duration"))) {
-                _prevValues[i] = duration_.get();
+                _prevValues[i] = duration.get();
                 _newValues[i] = _newValues[i].daysToBlocks();
-                duration_.set(_newValues[i], uint256(state));
+                duration.set(_newValues[i], uint16(state));
             } else {
                 revert(
                     "`_params` must include strings 'principal', 'fixed_interest_rate', or 'duration' only."
@@ -81,9 +81,9 @@ abstract contract AContractManager is
 
         // Update loan contract and activate loan
         state = LoanState.ACTIVE_OPEN;
-        balance_.set(principal_.get(), uint256(state));
-        accountBalance[lender_.get()] -= principal_.get();
-        accountBalance[borrower_] += principal_.get();
+        balance.set(principal.get(), uint16(state));
+        accountBalance[lender.get()] -= principal.get();
+        accountBalance[borrower] += principal.get();
 
         emit LoanStateChanged(_prevState, state);
     }

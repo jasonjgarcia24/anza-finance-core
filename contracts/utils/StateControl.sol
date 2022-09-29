@@ -13,7 +13,7 @@ library StateControlUint {
         // the library's function.
         uint256 _value; // default: 0
         uint256 _stateThreshold; // default: 0
-        bool _lock; // default: false
+        uint256 _lock; // default: false
     }
 
     /**
@@ -25,24 +25,13 @@ library StateControlUint {
         StateControlUtils._checkState(_property, _state);
     }
 
-    function init(Property storage _property, uint256 _stateThreshold)
-        internal
-    {
-        require(!_property._lock, "Initialization is locked.");
-        _property._lock = true;
-
-        unchecked {
-            _property._stateThreshold = _stateThreshold;
-        }
-    }
-
     function init(
         Property storage _property,
         uint256 _value,
         uint256 _stateThreshold
     ) internal {
-        require(!_property._lock, "Initialization is locked.");
-        _property._lock = true;
+        require(_property._lock == 0, "Initialization is locked.");
+        _property._lock++;
 
         unchecked {
             _property._stateThreshold = _stateThreshold;
@@ -51,7 +40,7 @@ library StateControlUint {
     }
 
     function get(Property storage _property) internal view returns (uint256) {
-        require(_property._lock, "State controller not initialized.");
+        require(_property._lock == 1, "State controller not initialized.");
 
         return _property._value;
     }
@@ -62,7 +51,7 @@ library StateControlUint {
         uint256 _state
     ) internal {
         onlyState(_property, _state);
-        require(_property._lock, "State controller not initialized.");
+        require(_property._lock == 1, "State controller not initialized.");
 
         unchecked {
             _property._value = _value;
@@ -82,7 +71,7 @@ library StateControlAddress {
         // the library's function.
         address _value; // default: address(0)
         uint256 _stateThreshold; // default: 0
-        bool _lock; // default: false
+        uint256 _lock; // default: 0 (uint for gas saving)
     }
 
     /**
@@ -94,24 +83,13 @@ library StateControlAddress {
         StateControlUtils._checkState(_property, _state);
     }
 
-    function init(Property storage _property, uint256 _stateThreshold)
-        internal
-    {
-        require(!_property._lock, "Initialization is locked.");
-        _property._lock = true;
-
-        unchecked {
-            _property._stateThreshold = _stateThreshold;
-        }
-    }
-
     function init(
         Property storage _property,
         address _value,
         uint256 _stateThreshold
     ) internal {
-        require(!_property._lock, "Initialization is locked.");
-        _property._lock = true;
+        require(_property._lock == 0, "Initialization is locked.");
+        _property._lock++;
 
         unchecked {
             _property._stateThreshold = _stateThreshold;
@@ -120,6 +98,8 @@ library StateControlAddress {
     }
 
     function get(Property storage _property) internal view returns (address) {
+        require(_property._lock == 1, "State controller not initialized.");
+
         return _property._value;
     }
 
@@ -129,7 +109,7 @@ library StateControlAddress {
         uint256 _state
     ) internal {
         onlyState(_property, _state);
-        require(_property._lock, "State controller not initialized.");
+        require(_property._lock == 1, "State controller not initialized.");
 
         unchecked {
             _property._value = _value;
@@ -149,7 +129,7 @@ library StateControlBool {
         // the library's function.
         bool _value; // default: false
         uint256 _stateThreshold; // default: 0
-        bool _lock; // default: false
+        uint256 _lock; // default: 0 (uint for gas saving)
     }
 
     /**
@@ -161,24 +141,13 @@ library StateControlBool {
         StateControlUtils._checkState(_property, _state);
     }
 
-    function init(Property storage _property, uint256 _stateThreshold)
-        internal
-    {
-        require(!_property._lock, "Init locked.");
-        _property._lock = true;
-
-        unchecked {
-            _property._stateThreshold = _stateThreshold;
-        }
-    }
-
     function init(
         Property storage _property,
         bool _value,
         uint256 _stateThreshold
     ) internal {
-        require(!_property._lock, "Init locked.");
-        _property._lock = true;
+        require(_property._lock == 0, "Init locked.");
+        _property._lock++;
 
         unchecked {
             _property._stateThreshold = _stateThreshold;
@@ -187,6 +156,8 @@ library StateControlBool {
     }
 
     function get(Property storage _property) internal view returns (bool) {
+        require(_property._lock == 1, "State controller not initialized.");
+
         return _property._value;
     }
 
@@ -196,7 +167,7 @@ library StateControlBool {
         uint256 _state
     ) internal {
         onlyState(_property, _state);
-        require(_property._lock, "State controller not initialized.");
+        require(_property._lock == 1, "State controller not initialized.");
 
         unchecked {
             _property._value = _value;
