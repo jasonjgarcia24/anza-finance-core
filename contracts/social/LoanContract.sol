@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -108,19 +109,18 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         }
     }
 
-    // /**
-    //  * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
-    //  * recipient.
-    //  *
-    //  */
-    // function withdrawFunds() external {
-    //     if (state <= LoanState.FUNDED) {
-    //         _checkRole(_LENDER_ROLE_);
-    //         _withdrawFunds(payable(_msgSender()));
-    //     } else {
-    //          _withdrawFunds(payable(_msgSender()));
-    //     }
-    // }
+    /**
+     * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
+     * recipient.
+     *
+     */
+    function withdrawFunds() external {
+        if (loanGlobals.state <= cg.LoanState.FUNDED) {
+            _checkRole(cg._LENDER_ROLE_);
+        }
+
+        ERC20Tx._withdrawFunds(payable(_msgSender()), accountBalance);
+    }
 
     /**
      * @dev Withdraw collateral token.
@@ -154,22 +154,22 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         }
     }
 
-    // /**
-    //  * @dev Revoke collateralized token and revoke LoanContract approval. This
-    //  * effectively renders the LoanContract closed.
-    //  *
-    //  * Requirements:
-    //  *
-    //  * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
-    //  *
-    //  */
-    // function close() external onlyRole(_COLLATERAL_OWNER_ROLE_) {
-    //     _revokeCollateral();
+    /**
+     * @dev Revoke collateralized token and revoke LoanContract approval. This
+     * effectively renders the LoanContract closed.
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
+     *
+     */
+    function close() external onlyRole(cg._COLLATERAL_OWNER_ROLE_) {
+        ERC721Tx._revokeCollateral(loanParticipants, loanGlobals);
         
-    //     // Clear loan contract approval
-    //     IERC721(tokenContract).approve(address(0), tokenId);
-    //     state = LoanState.CLOSED;
-    // }
+        // Clear loan contract approval
+        IERC721(loanParticipants.tokenContract).approve(address(0), loanParticipants.tokenId);
+        loanGlobals.state = cg.LoanState.CLOSED;
+    }
 
     function __sign() private {
         cn._signBorrower(loanParticipants, loanProperties, loanGlobals);

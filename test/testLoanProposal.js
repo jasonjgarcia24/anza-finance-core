@@ -244,7 +244,7 @@ describe("0 :: LoanContract initialization tests", function () {
     expect(_weiAmount.eq(loanPrincipal)).to.equal(true, `The deposited amount should be ${loanPrincipal} WEI.`);
   });
 
-  it("0-0-03 :: Verify LoanProposal updateTerms function for single changes", async function () {
+  it("x-0-03 :: Verify LoanProposal updateTerms function for single changes", async function () {
     const _newLoanPrincipal = 5000;
     const _newLoanFixedInterestRate = 33;
     const _newLoanDuration = 60;
@@ -304,7 +304,7 @@ describe("0 :: LoanContract initialization tests", function () {
     await expect(blockTime.blocksToDays(_newValues[0].toNumber())).to.eventually.equal(_newLoanDuration, "Emitted event new duration value incorrect.");
   });
 
-  it("0-0-04 :: Verify LoanProposal updateTerms function for multiple changes", async function () {
+  it("x-0-04 :: Verify LoanProposal updateTerms function for multiple changes", async function () {
     const _newLoanPrincipal = 5000;
     const _newLoanFixedInterestRate = 33;
     const _newLoanDuration = 60;

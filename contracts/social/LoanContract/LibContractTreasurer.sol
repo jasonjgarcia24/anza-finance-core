@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import { LibContractGlobals as cg } from "./LibContractMaster.sol";
 import { StateControlUint, StateControlAddress } from "../../utils/StateControl.sol";
 
@@ -100,6 +101,18 @@ library ERC721Transactions {
 library ERC20Transactions {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
+    using Address for address payable;
+
+    /**
+     * @dev Emitted when loan contract funding is deposited.
+     */
+    event Deposited(address indexed payee, uint256 weiAmount);
+
+    /**
+     * @dev Emitted when loan contract funding is withdrawn.
+     */
+    event Withdrawn(address indexed payee, uint256 weiAmount);
+
 
     /**
      * @dev Funds the loan contract.
@@ -137,7 +150,7 @@ library ERC20Transactions {
         _accountBalance[_properties.lender.get()] += _properties.principal.get();
 
         emit cg.LoanStateChanged(_prevState, _globals.state);
-        emit cg.Deposited(msg.sender, msg.value);
+        emit Deposited(msg.sender, msg.value);
     }
     
     /**
@@ -165,5 +178,25 @@ library ERC20Transactions {
         _accountBalance[_properties.lender.get()] += _properties.principal.get();
 
         emit cg.LoanStateChanged(_prevState, _globals.state);
+    }
+
+    /**
+     * @dev Withdraws funds from loan.
+     * @param _payee The address whose funds will be withdrawn and transferred to.
+     * 
+     * Requirements: NONE
+     * 
+     * Emits a {Withdrawn} event.
+     */
+    function _withdrawFunds(
+        address payable _payee,
+        mapping(address => uint256) storage _accountBalance
+    ) internal {     
+        uint256 _payment = _accountBalance[_payee];
+        _accountBalance[_payee] = 0;
+
+        _payee.sendValue(_payment);
+
+        emit Withdrawn(_payee, _payment);
     }
 }

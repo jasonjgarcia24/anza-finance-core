@@ -13,17 +13,6 @@ library LibContractGlobals {
      */
     event LoanStateChanged(LoanState indexed prevState, LoanState indexed newState);
 
-    /**
-     * @dev Emitted when loan contract funding is deposited.
-     */
-    event Deposited(address indexed payee, uint256 weiAmount);
-
-    /**
-     * @dev Emitted when loan contract funding is withdrawn.
-     */
-    event Withdrawn(address indexed payee, uint256 weiAmount);
-
-
     enum LoanState {
         UNDEFINED,
         NONLEVERAGED,
