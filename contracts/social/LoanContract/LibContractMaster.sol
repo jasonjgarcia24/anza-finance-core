@@ -132,52 +132,6 @@ library LibContractInit {
     }
 }
 
-library LibContractUpdate {
-    using StateControlUint for StateControlUint.Property;
-    using StateControlAddress for StateControlAddress.Property;
-    using BlockTime for uint256;
-
-    function _updateTerms(
-        LibContractGlobals.Property storage _property,
-        LibContractGlobals.Global storage _globals,
-        string[] memory _params,
-        uint256[] memory _newValues
-    ) internal {
-        require(
-            _params.length == _newValues.length,
-            "Input array parameters must be of equal length."
-        );
-        require(
-            _params.length <= 3,
-            "Input array parameters must be no more than 3."
-        );
-
-        uint256[] memory _prevValues = new uint256[](_params.length);
-
-        for (uint256 i; i < _params.length; i++) {
-            bytes32 _thisParam = keccak256(bytes(_params[i]));
-
-            if (_thisParam == keccak256(bytes("principal"))) {
-                _prevValues[i] = _property.principal.get();
-                _property.principal.set(_newValues[i], uint256(_globals.state));
-            } else if (_thisParam == keccak256(bytes("fixed_interest_rate"))) {
-                _prevValues[i] = _property.fixedInterestRate.get();
-                _property.fixedInterestRate.set(_newValues[i], uint256(_globals.state));
-            } else if (_thisParam == keccak256(bytes("duration"))) {
-                _prevValues[i] = _property.duration.get();
-                _newValues[i] = _newValues[i].daysToBlocks();
-                _property.duration.set(_newValues[i], uint256(_globals.state));
-            } else {
-                revert(
-                    "`_params` must include strings 'principal', 'fixed_interest_rate', or 'duration' only."
-                );
-            }
-        }
-
-        emit LibContractGlobals.TermsChanged(_params, _prevValues, _newValues);
-    }
-}
-
 library LibContractActivate {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;

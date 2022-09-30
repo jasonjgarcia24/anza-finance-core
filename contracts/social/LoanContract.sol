@@ -5,12 +5,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-import {
-    LibContractGlobals as cg,
-    LibContractInit as ci,
-    LibContractUpdate as cu,
-    LibContractActivate as ca
-} from "./LoanContract/LibContractMaster.sol";
+import { LibContractGlobals as cg, LibContractInit as ci, LibContractActivate as ca } from "./LoanContract/LibContractMaster.sol";
 import { LibContractNotary as cn } from "./LoanContract/LibContractNotary.sol";
 import { LibContractScheduler as cs } from "./LoanContract/LibContractScheduler.sol";
 import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./LoanContract/LibContractTreasurer.sol";
@@ -91,17 +86,6 @@ contract LoanContract is AccessControl, Initializable, Ownable {
 
         // // Sign off borrower
         __sign();
-    }
-    
-    function updateTerms(string[] memory _params, uint256[] memory _newValues)
-        external
-        onlyRole(cg._BORROWER_ROLE_)
-    {
-        if (loanProperties.lenderSigned.get()) {
-            cn._unsignLender(loanProperties, loanGlobals);
-        }
-
-        cu._updateTerms(loanProperties, loanGlobals, _params, _newValues);
     }
 
     function depositCollateral() external payable onlyRole(cg._COLLATERAL_OWNER_ROLE_) {
