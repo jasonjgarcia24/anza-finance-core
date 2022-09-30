@@ -109,7 +109,6 @@ library ERC20Transactions {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
     using Address for address payable;
-    using SafeMath for uint256;
 
     /**
      * @dev Emitted when loan contract funding is deposited.
@@ -204,12 +203,17 @@ library ERC20Transactions {
         mapping(address => uint256) storage _accountBalance
     ) public {
         require(
-            _globals.state > States.LoanState.FUNDED,
-            "The loan state must greater than LoanState.FUNDED."
+            _globals.state > States.LoanState.FUNDED && _globals.state < States.LoanState.PAID,
+            "The loan state must between LoanState.FUNDED and LoanState.PAID."
         );
 
         // Update loan contract
-        uint256 _balance = _properties.balance.get() + __calculateInterest(_properties);
+        uint256 _balance = _properties.balance.get() + TreasureyUtils.calculateInterest_(
+            _properties.balance.get(),
+            _properties.fixedInterestRate.get(),
+            _properties.duration.get(),
+            _properties.stopBlockstamp.get()
+        );
 
         if (_balance >= msg.value) {
             _properties.balance.set(_balance - msg.value, _globals.state);
@@ -251,19 +255,38 @@ library ERC20Transactions {
 
         emit Withdrawn(_payee, _payment);
     }
+}
 
-    function __calculateInterest(Globals.Property storage _properties) private view returns (uint256) {
-        // Reference_Block: block.number + _properties.duration.get()
-        // Blocks_Active: Reference_Block - _properties.stopBlockstamp.get()
+library TreasureyUtils {
+    using SafeMath for uint256;
+
+    function calculateInterest_(
+        uint256 _balance,
+        uint256 _fixedInterestRate,
+        uint256 _duration,
+        uint256 _stopBlockstamp
+    ) public view returns (uint256) {
+        // Reference_Block: block.number + _duration
+        // Blocks_Active: Reference_Block - _stopBlockstamp
         uint256 _daysActive = BlockTime.blocksToDays(
             (
-                block.number + _properties.duration.get()
-            ) - _properties.stopBlockstamp.get()
+                block.number + _duration
+            ) - _stopBlockstamp
         );
-        uint256 _interest = _properties.balance.get().mul(
-            _properties.fixedInterestRate.get()
+        uint256 _interest = _balance.mul(
+            _fixedInterestRate
         ).div(100).mul(_daysActive).div(365);
 
         return _interest;
     }
+
+    function isMatured_(
+        uint256 _balance,
+        uint256 _fixedInterestRate,
+        uint256 _duration,
+        uint256 _stopBlockstamp
+    ) public view returns (bool) {
+
+    }
+
 }

@@ -19,6 +19,7 @@ import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./
 
 import "../utils/StateControl.sol";
 import "../utils/BlockTime.sol";
+import "hardhat/console.sol";
 
 contract LoanContract is AccessControl, Initializable, Ownable {
     using StateControlUint for StateControlUint.Property;
@@ -204,6 +205,10 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         // Clear loan contract approval
         IERC721(loanParticipants.tokenContract).approve(address(0), loanParticipants.tokenId);
         loanGlobals.state = States.LoanState.CLOSED;
+    }
+
+    function initDefault() external onlyRole(Globals._TREASURER_ROLE_) {
+        loanGlobals.state = States.LoanState.DEFAULT;
     }
 
     function __sign() private {

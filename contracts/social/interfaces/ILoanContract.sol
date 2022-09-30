@@ -63,5 +63,15 @@ interface ILoanContract {
      */
     function close() external;
 
+    /**
+     * @dev Transition the loan state to default.
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _TREASURER_ROLE_.
+     *
+     */
+    function initDefault() external;
+
     function __sign() external;
 }

@@ -26,7 +26,7 @@ let ERC20Transactions;
 let ERC721Transactions;
 
 let loanContractFactory, loanContract, loanTreasurey;
-let borrower, lender, lenderAlt;
+let borrower, lender, lenderAlt, owner;
 let tokenContract, tokenId;
 
 const loanPrincipal = ethers.utils.parseEther('0.0001');
@@ -40,7 +40,7 @@ describe("0 :: LoanContract initialization tests", function () {
     await reset();
     await impersonate();
     provider = new ethers.providers.Web3Provider(network.provider);
-    [borrower, lender, lenderAlt, approver, operator, ..._] = await ethers.getSigners();
+    [borrower, lender, lenderAlt, owner, ..._] = await ethers.getSigners();
 
     // Establish NFT identifiers
     tokenContract = new ethers.Contract(
@@ -64,10 +64,10 @@ describe("0 :: LoanContract initialization tests", function () {
      ] = await deploy();
 
     const loanTreasureyFactory = await ethers.getContractFactory("LoanTreasurey");
-    loanTreasurey = await loanTreasureyFactory.deploy();
+    loanTreasurey = await loanTreasureyFactory.connect(owner).deploy();
 
     const Factory = await ethers.getContractFactory("LoanContractFactory");
-    loanContractFactory = await Factory.deploy(loanTreasurey.address);
+    loanContractFactory = await Factory.connect(owner).deploy(loanTreasurey.address);
 
     const LoanContractFactory = await ethers.getContractFactory("LoanContract", {
       libraries: {
