@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 interface ILoanContract {
 
     function initialize(
+        address _loanTreasurer,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,

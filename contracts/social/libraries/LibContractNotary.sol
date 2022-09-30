@@ -2,7 +2,10 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/IAccessControl.sol";
-import { LibContractGlobals as cg } from "./LibContractMaster.sol";
+import {
+    LibContractGlobals as Globals,
+    LibContractStates as States
+} from "./LibContractMaster.sol";
 import "../../utils/StateControl.sol";
 
 library LibContractNotary {
@@ -20,29 +23,29 @@ library LibContractNotary {
      *
      * Emits {LoanStateChanged} events.
      */
-    function _signBorrower(
-        cg.Participants storage _participants,
-        cg.Property storage _properties,
-        cg.Global storage _globals
-    ) internal {
+    function signBorrower_(
+        Globals.Participants storage _participants,
+        Globals.Property storage _properties,
+        Globals.Global storage _globals
+    ) public {
         require(
             _properties.borrowerSigned.get() == false,
             "The borrower must not currently be signed off."
         );
-        cg.LoanState _prevState = _globals.state;
+        States.LoanState _prevState = _globals.state;
 
         // Update loan contract
         IAccessControl ac = IAccessControl(address(this));
-        _properties.borrowerSigned.set(true, uint256(_globals.state));
-        ac.grantRole(cg._PARTICIPANT_ROLE_, _participants.borrower);
+        _properties.borrowerSigned.set(true, _globals.state);
+        ac.grantRole(Globals._PARTICIPANT_ROLE_, _participants.borrower);
 
-        _globals.state = _globals.state > cg.LoanState.NONLEVERAGED
+        _globals.state = _globals.state > States.LoanState.NONLEVERAGED
             ? _properties.lenderSigned.get()
-                ? cg.LoanState.FUNDED
-                : cg.LoanState.UNSPONSORED
+                ? States.LoanState.FUNDED
+                : States.LoanState.UNSPONSORED
             : _globals.state;
 
-        emit cg.LoanStateChanged(_prevState, _globals.state);
+        emit States.LoanStateChanged(_prevState, _globals.state);
     }
     
     /**
@@ -56,20 +59,20 @@ library LibContractNotary {
      *
      * Emits {LoanStateChanged} events.
      */
-    function _unsignBorrower(
-        cg.Property storage _properties,
-        cg.Global storage _globals
-    ) internal {
+    function unsignBorrower_(
+        Globals.Property storage _properties,
+        Globals.Global storage _globals
+    ) public {
         require(
             _properties.borrowerSigned.get() == true,
             "The borrower must currently be signed off."
         );
-        cg.LoanState _prevState = _globals.state;
+        States.LoanState _prevState = _globals.state;
 
         // Update loan contract
-        _properties.borrowerSigned.set(false, uint256(_globals.state));
+        _properties.borrowerSigned.set(false, _globals.state);
 
-        emit cg.LoanStateChanged(_prevState, _globals.state);
+        emit States.LoanStateChanged(_prevState, _globals.state);
     }
 
     /**
@@ -83,11 +86,11 @@ library LibContractNotary {
      *
      * Emits {LoanStateChanged} events.
      */
-    function _signLender(
-        cg.Property storage _properties,
-        cg.Global storage _globals,
+    function signLender_(
+        Globals.Property storage _properties,
+        Globals.Global storage _globals,
         mapping(address => uint256) storage _accountBalance
-    ) internal {
+    ) public {
         require(
             _properties.lenderSigned.get() == false,
             "The lender must not currently be signed off."
@@ -96,16 +99,16 @@ library LibContractNotary {
             msg.value + _accountBalance[msg.sender] >= _properties.principal.get(),
             "Paid value and the account balance must be at least the loan principal."
         );
-        cg.LoanState _prevState = _globals.state;
+        States.LoanState _prevState = _globals.state;
 
         // Update loan contract
         IAccessControl ac = IAccessControl(address(this));
-        _properties.lender.set(msg.sender, uint256(_globals.state));
-        _properties.lenderSigned.set(true, uint256(_globals.state));
-        ac.grantRole(cg._PARTICIPANT_ROLE_, _properties.lender.get());
-        _globals.state = cg.LoanState.SPONSORED;
+        _properties.lender.set(msg.sender, _globals.state);
+        _properties.lenderSigned.set(true, _globals.state);
+        ac.grantRole(Globals._PARTICIPANT_ROLE_, _properties.lender.get());
+        _globals.state = States.LoanState.SPONSORED;
 
-        emit cg.LoanStateChanged(_prevState, _globals.state);
+        emit States.LoanStateChanged(_prevState, _globals.state);
     }
 
     /**
@@ -116,20 +119,20 @@ library LibContractNotary {
      * Emits {LoanStateChanged} events.
      */
     function _unsignLender(
-        cg.Property storage _properties,
-        cg.Global storage _globals
-    ) internal {
+        Globals.Property storage _properties,
+        Globals.Global storage _globals
+    ) public {
         require(
             _properties.lenderSigned.get() == true,
             "The lender must currently be signed off."
         );
-        cg.LoanState _prevState = _globals.state;
+        States.LoanState _prevState = _globals.state;
 
         // Update loan agreement
-        _properties.lender.set(address(0), uint256(_globals.state));
-        _properties.lenderSigned.set(false, uint256(_globals.state));
-        _globals.state = cg.LoanState.UNSPONSORED;
+        _properties.lender.set(address(0), _globals.state);
+        _properties.lenderSigned.set(false, _globals.state);
+        _globals.state = States.LoanState.UNSPONSORED;
 
-        emit cg.LoanStateChanged(_prevState, _globals.state);
+        emit States.LoanStateChanged(_prevState, _globals.state);
     }
 }

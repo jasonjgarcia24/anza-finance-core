@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./LoanContract/Interfaces/ILoanContract.sol";
+import "./interfaces/ILoanContract.sol";
 import "hardhat/console.sol";
 
 contract LoanContractFactory {
@@ -26,8 +26,15 @@ contract LoanContractFactory {
 
     mapping(address => mapping(uint256 => LoanStruct)) private loanMap;
 
+    address immutable public loanTreasurer;
+
+    constructor (address _loanTreasurer) {
+        loanTreasurer = _loanTreasurer;
+    }
+
     function createLoanContract(
         address _loanContract,
+        address _loanTreasurer,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _principal,
@@ -46,6 +53,7 @@ contract LoanContractFactory {
         loanMap[_tokenContract][_tokenId].clones.push(_clone);
 
         ILoanContract(payable(_clone)).initialize(
+            _loanTreasurer,
             _tokenContract,
             _tokenId,
             __getCurrentPriority(_tokenContract, _tokenId),

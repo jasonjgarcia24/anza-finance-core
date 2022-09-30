@@ -6,10 +6,16 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-import { LibContractGlobals as cg, LibContractInit as ci, LibContractActivate as ca } from "./LoanContract/LibContractMaster.sol";
-import { LibContractNotary as cn } from "./LoanContract/LibContractNotary.sol";
-import { LibContractScheduler as cs } from "./LoanContract/LibContractScheduler.sol";
-import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./LoanContract/LibContractTreasurer.sol";
+import {
+    LibContractGlobals as Globals,
+    LibContractStates as States,
+    LibContractInit as Init,
+     LibContractUpdate as Update,
+    LibContractActivate as Activate
+} from "./libraries/LibContractMaster.sol";
+import { LibContractNotary as Notary } from "./libraries/LibContractNotary.sol";
+import { LibContractScheduler as Scheduler } from "./libraries/LibContractScheduler.sol";
+import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./libraries/LibContractTreasurer.sol";
 
 import "../utils/StateControl.sol";
 import "../utils/BlockTime.sol";
@@ -31,11 +37,20 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         uint256 tokenId,
         uint256 state
     );
-    
+
+    /**
+     * @dev Emitted when loan contract term(s) are updated.
+     */
+    event TermsChanged(
+        string[] params,
+        uint256[] prevValues,
+        uint256[] newValues
+    );  
+
     /**
      * @dev Emitted when a loan contract state is changed.
      */
-    event LoanStateChanged(cg.LoanState indexed prevState, cg.LoanState indexed newState);
+    event LoanStateChanged(States.LoanState indexed prevState, States.LoanState indexed newState);
 
     /**
      * @dev Emitted when loan contract funding is deposited.
@@ -47,13 +62,14 @@ contract LoanContract is AccessControl, Initializable, Ownable {
      */
     event Withdrawn(address indexed payee, uint256 weiAmount);
 
-    cg.Participants public loanParticipants;
-    cg.Property public loanProperties;
-    cg.Global public loanGlobals;
+    Globals.Participants public loanParticipants;
+    Globals.Property public loanProperties;
+    Globals.Global public loanGlobals;
 
     mapping(address => uint256) internal accountBalance;
 
     function initialize(
+        address _loanTreasurer,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,
@@ -63,20 +79,24 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     ) external initializer() {  
         _transferOwnership(_msgSender());
 
-        _setupRole(cg._ADMIN_ROLE_, address(this));
-        _setRoleAdmin(cg._ADMIN_ROLE_, cg._ADMIN_ROLE_);
-        _setRoleAdmin(cg._ARBITER_ROLE_, cg._ADMIN_ROLE_);
-        _setRoleAdmin(cg._BORROWER_ROLE_, cg._ADMIN_ROLE_);
-        _setRoleAdmin(cg._LENDER_ROLE_, cg._ADMIN_ROLE_);
-        _setRoleAdmin(cg._PARTICIPANT_ROLE_, cg._ADMIN_ROLE_);
-        _setRoleAdmin(cg._COLLATERAL_CUSTODIAN_ROLE_, cg._ADMIN_ROLE_);
-        _setRoleAdmin(cg._COLLATERAL_OWNER_ROLE_, cg._ADMIN_ROLE_);
+        _setupRole(Globals._ADMIN_ROLE_, address(this));
+        _setRoleAdmin(Globals._ADMIN_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._TREASURER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._ARBITER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._BORROWER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._LENDER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._PARTICIPANT_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._COLLATERAL_CUSTODIAN_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._COLLATERAL_OWNER_ROLE_, Globals._ADMIN_ROLE_);
+
+        _setupRole(Globals._TREASURER_ROLE_, _loanTreasurer);
 
         // Initialize state controlled variables
-        ci._initializeContract(
+        Init.initializeContract_(
             loanParticipants,
             loanProperties,
             loanGlobals,
+            _loanTreasurer,
             _tokenContract,
             _tokenId,
             _priority,
@@ -89,24 +109,39 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         __sign();
     }
 
-    function depositCollateral() external payable onlyRole(cg._COLLATERAL_OWNER_ROLE_) {
-        ERC721Tx._depositCollateral(loanParticipants, loanGlobals);
+    function updateTerms(string[] memory _params, uint256[] memory _newValues)
+        external
+        onlyRole(Globals._BORROWER_ROLE_)
+    {
+        if (loanProperties.lenderSigned.get()) {
+            Notary._unsignLender(loanProperties, loanGlobals);
+        }
+
+        Update._updateTerms(loanProperties, loanGlobals, _params, _newValues);
+    }
+
+    function depositCollateral() external payable onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
+        ERC721Tx.depositCollateral_(loanParticipants, loanGlobals);
     }
 
     function setLender() external payable {
-        if (hasRole(cg._BORROWER_ROLE_, _msgSender())) {
-            ERC20Tx._revokeFunding(loanProperties, loanGlobals, accountBalance);
-            _revokeRole(cg._LENDER_ROLE_, loanProperties.lender.get());
-            cn._unsignLender(loanProperties, loanGlobals);
+        if (hasRole(Globals._BORROWER_ROLE_, _msgSender())) {
+            ERC20Tx.revokeFunding_(loanProperties, loanGlobals, accountBalance);
+            _revokeRole(Globals._LENDER_ROLE_, loanProperties.lender.get());
+            Notary._unsignLender(loanProperties, loanGlobals);
         } else {
-            cn._signLender(loanProperties, loanGlobals, accountBalance);
-            _setupRole(cg._LENDER_ROLE_, loanProperties.lender.get());
-            ERC20Tx._depositFunding(loanProperties, loanGlobals, accountBalance);
+            Notary.signLender_(loanProperties, loanGlobals, accountBalance);
+            _setupRole(Globals._LENDER_ROLE_, loanProperties.lender.get());
+            ERC20Tx.depositFunding_(loanProperties, loanGlobals, accountBalance);
 
             if (loanProperties.borrowerSigned.get()) {
                 __activate();
             }
         }
+    }
+
+    function makePayment() external payable onlyRole(Globals._BORROWER_ROLE_) {
+            ERC20Tx.depositPayment_(loanParticipants, loanProperties, loanGlobals, accountBalance);
     }
 
     /**
@@ -115,20 +150,20 @@ contract LoanContract is AccessControl, Initializable, Ownable {
      *
      */
     function withdrawFunds() external {
-        if (loanGlobals.state <= cg.LoanState.FUNDED) {
-            _checkRole(cg._LENDER_ROLE_);
+        if (loanGlobals.state <= States.LoanState.FUNDED) {
+            _checkRole(Globals._LENDER_ROLE_);
         }
 
-        ERC20Tx._withdrawFunds(payable(_msgSender()), accountBalance);
+        ERC20Tx.withdrawFunds_(payable(_msgSender()), accountBalance);
     }
 
     /**
      * @dev Withdraw collateral token.
      *
      */
-    function withdrawNft() external onlyRole(cg._COLLATERAL_OWNER_ROLE_) {
-        cn._unsignBorrower(loanProperties, loanGlobals);
-        ERC721Tx._revokeCollateral(loanParticipants, loanGlobals);
+    function withdrawNft() external onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
+        Notary.unsignBorrower_(loanProperties, loanGlobals);
+        ERC721Tx.revokeCollateral_(loanParticipants, loanGlobals);
     }
 
     /**
@@ -136,17 +171,17 @@ contract LoanContract is AccessControl, Initializable, Ownable {
      * recipient.
      *
      */
-    function withdrawSponsorship() external onlyRole(cg._LENDER_ROLE_) {
-        ERC20Tx._revokeFunding(loanProperties, loanGlobals, accountBalance);
-        _revokeRole(cg._LENDER_ROLE_, loanProperties.lender.get());
-        _revokeRole(cg._PARTICIPANT_ROLE_, loanProperties.lender.get());
-        cn._unsignLender(loanProperties, loanGlobals);
+    function withdrawSponsorship() external onlyRole(Globals._LENDER_ROLE_) {
+        ERC20Tx.revokeFunding_(loanProperties, loanGlobals, accountBalance);
+        _revokeRole(Globals._LENDER_ROLE_, loanProperties.lender.get());
+        _revokeRole(Globals._PARTICIPANT_ROLE_, loanProperties.lender.get());
+        Notary._unsignLender(loanProperties, loanGlobals);
     }
 
-    function sign() external onlyRole(cg._PARTICIPANT_ROLE_) {
-        if (hasRole(cg._BORROWER_ROLE_, _msgSender())) {
-            cn._signBorrower(loanParticipants, loanProperties, loanGlobals);
-            ERC721Tx._depositCollateral(loanParticipants, loanGlobals);
+    function sign() external onlyRole(Globals._PARTICIPANT_ROLE_) {
+        if (hasRole(Globals._BORROWER_ROLE_, _msgSender())) {
+            Notary.signBorrower_(loanParticipants, loanProperties, loanGlobals);
+            ERC721Tx.depositCollateral_(loanParticipants, loanGlobals);
 
             if (loanProperties.lenderSigned.get()) {
                 __activate();
@@ -163,23 +198,23 @@ contract LoanContract is AccessControl, Initializable, Ownable {
      * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
      *
      */
-    function close() external onlyRole(cg._COLLATERAL_OWNER_ROLE_) {
-        ERC721Tx._revokeCollateral(loanParticipants, loanGlobals);
+    function close() external onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
+        ERC721Tx.revokeCollateral_(loanParticipants, loanGlobals);
         
         // Clear loan contract approval
         IERC721(loanParticipants.tokenContract).approve(address(0), loanParticipants.tokenId);
-        loanGlobals.state = cg.LoanState.CLOSED;
+        loanGlobals.state = States.LoanState.CLOSED;
     }
 
     function __sign() private {
-        cn._signBorrower(loanParticipants, loanProperties, loanGlobals);
+        Notary.signBorrower_(loanParticipants, loanProperties, loanGlobals);
     }
 
     function __activate() private {
-        loanProperties.stopBlockstamp.onlyState(uint256(loanGlobals.state));
+        loanProperties.stopBlockstamp.onlyState(loanGlobals.state);
 
-        cs._initSchedule(loanProperties, loanGlobals);
-        ca._activateLoan(loanParticipants, loanProperties, loanGlobals, accountBalance);
+        Scheduler.initSchedule_(loanProperties, loanGlobals);
+        Activate.activateLoan_(loanParticipants, loanProperties, loanGlobals, accountBalance);
 
         emit LoanActivated(
             address(this),
