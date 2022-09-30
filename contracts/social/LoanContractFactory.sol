@@ -54,7 +54,7 @@ contract LoanContractFactory {
             _duration
         );
 
-        // Transfer collateral to LoanContract
+        // // Transfer collateral to LoanContract
         IERC721(_tokenContract).approve(_clone, _tokenId);
         ILoanContract(payable(_clone)).depositCollateral();
 

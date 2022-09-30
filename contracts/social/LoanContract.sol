@@ -1,11 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "./LoanContract/AContractManager.sol";
 
-contract LoanContract is Initializable, Ownable, AContractManager {
+import {
+    LibContractGlobals as cg,
+    LibContractInit as ci,
+    LibContractUpdate as cu,
+    LibContractActivate as ca
+} from "./LoanContract/LibContractMaster.sol";
+import { LibContractNotary as cn } from "./LoanContract/LibContractNotary.sol";
+import { LibContractScheduler as cs } from "./LoanContract/LibContractScheduler.sol";
+import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./LoanContract/LibContractTreasurer.sol";
+
+import "../utils/StateControl.sol";
+import "../utils/BlockTime.sol";
+
+contract LoanContract is AccessControl, Initializable, Ownable {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
     using StateControlBool for StateControlBool.Property;
@@ -22,6 +35,27 @@ contract LoanContract is Initializable, Ownable, AContractManager {
         uint256 tokenId,
         uint256 state
     );
+    
+    /**
+     * @dev Emitted when a loan contract state is changed.
+     */
+    event LoanStateChanged(cg.LoanState indexed prevState, cg.LoanState indexed newState);
+
+    /**
+     * @dev Emitted when loan contract funding is deposited.
+     */
+    event Deposited(address indexed payee, uint256 weiAmount);
+
+    /**
+     * @dev Emitted when loan contract funding is withdrawn.
+     */
+    event Withdrawn(address indexed payee, uint256 weiAmount);
+
+    cg.Participants public loanParticipants;
+    cg.Property public loanProperties;
+    cg.Global public loanGlobals;
+
+    mapping(address => uint256) internal accountBalance;
 
     function initialize(
         address _tokenContract,
@@ -33,77 +67,84 @@ contract LoanContract is Initializable, Ownable, AContractManager {
     ) external initializer() {  
         _transferOwnership(_msgSender());
 
+        _setupRole(cg._ADMIN_ROLE_, address(this));
+        _setRoleAdmin(cg._ADMIN_ROLE_, cg._ADMIN_ROLE_);
+        _setRoleAdmin(cg._ARBITER_ROLE_, cg._ADMIN_ROLE_);
+        _setRoleAdmin(cg._BORROWER_ROLE_, cg._ADMIN_ROLE_);
+        _setRoleAdmin(cg._LENDER_ROLE_, cg._ADMIN_ROLE_);
+        _setRoleAdmin(cg._PARTICIPANT_ROLE_, cg._ADMIN_ROLE_);
+        _setRoleAdmin(cg._COLLATERAL_CUSTODIAN_ROLE_, cg._ADMIN_ROLE_);
+        _setRoleAdmin(cg._COLLATERAL_OWNER_ROLE_, cg._ADMIN_ROLE_);
+
         // Initialize state controlled variables
-        borrower = IERC721(_tokenContract).ownerOf(_tokenId);
-        tokenContract = _tokenContract;
-        tokenId = _tokenId;
+        ci._initializeContract(
+            loanParticipants,
+            loanProperties,
+            loanGlobals,
+            _tokenContract,
+            _tokenId,
+            _priority,
+            _principal,
+            _fixedInterestRate,
+            _duration
+        );
 
-        uint256 _fundedState = uint256(LoanState.FUNDED);
-        lender.init(address(0), _fundedState);
-        principal.init(_principal, _fundedState);
-        fixedInterestRate.init(_fixedInterestRate, _fundedState);
-        duration.init(_duration.daysToBlocks(), _fundedState);
-        borrowerSigned.init(false, _fundedState);
-        lenderSigned.init(false, _fundedState);
-
-        balance.init(0, uint256(LoanState.PAID));
-        stopBlockstamp.init(type(uint256).max, _fundedState);
-
-        // Set state variables
-        factory = _msgSender();
-        priority = _priority;
-        state = LoanState.NONLEVERAGED;
-
-        // Set roles
-        _setupRole(_ADMIN_ROLE_, _msgSender());
-        _setupRole(_ARBITER_ROLE_, address(this));
-        _setupRole(_BORROWER_ROLE_, borrower);
-        _setupRole(_COLLATERAL_OWNER_ROLE_, factory);
-        _setupRole(_COLLATERAL_OWNER_ROLE_, borrower);
-        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, factory);
-        _setupRole(_COLLATERAL_CUSTODIAN_ROLE_, borrower);
-
-        // Sign off borrower
+        // // Sign off borrower
         __sign();
+    }
+    
+    function updateTerms(string[] memory _params, uint256[] memory _newValues)
+        external
+        onlyRole(cg._BORROWER_ROLE_)
+    {
+        if (loanProperties.lenderSigned.get()) {
+            cn._unsignLender(loanProperties, loanGlobals);
+        }
+
+        cu._updateTerms(loanProperties, loanGlobals, _params, _newValues);
+    }
+
+    function depositCollateral() external payable onlyRole(cg._COLLATERAL_OWNER_ROLE_) {
+        ERC721Tx._depositCollateral(loanParticipants, loanGlobals);
     }
 
     function setLender() external payable {
-        if (_hasRole(_BORROWER_ROLE_)) {
-            _revokeFunding();
-            _revokeRole(_LENDER_ROLE_, lender.get());
-            _unsignLender();
+        if (hasRole(cg._BORROWER_ROLE_, _msgSender())) {
+            ERC20Tx._revokeFunding(loanProperties, loanGlobals, accountBalance);
+            _revokeRole(cg._LENDER_ROLE_, loanProperties.lender.get());
+            cn._unsignLender(loanProperties, loanGlobals);
         } else {
-            _signLender();
-            _setupRole(_LENDER_ROLE_, lender.get());
-            _depositFunding();
+            cn._signLender(loanProperties, loanGlobals, accountBalance);
+            _setupRole(cg._LENDER_ROLE_, loanProperties.lender.get());
+            ERC20Tx._depositFunding(loanProperties, loanGlobals, accountBalance);
 
-            if (borrowerSigned.get()) {
+            if (loanProperties.borrowerSigned.get()) {
                 __activate();
             }
         }
     }
 
-    /**
-     * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
-     * recipient.
-     *
-     */
-    function withdrawFunds() external {
-        if (state <= LoanState.FUNDED) {
-            _checkRole(_LENDER_ROLE_);
-            _withdrawFunds(payable(_msgSender()));
-        } else {
-            _withdrawFunds(payable(_msgSender()));
-        }
-    }
+    // /**
+    //  * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
+    //  * recipient.
+    //  *
+    //  */
+    // function withdrawFunds() external {
+    //     if (state <= LoanState.FUNDED) {
+    //         _checkRole(_LENDER_ROLE_);
+    //         _withdrawFunds(payable(_msgSender()));
+    //     } else {
+    //          _withdrawFunds(payable(_msgSender()));
+    //     }
+    // }
 
     /**
      * @dev Withdraw collateral token.
      *
      */
-    function withdrawNft() external onlyRole(_COLLATERAL_OWNER_ROLE_) {
-        _unsignBorrower();
-        _revokeCollateral();
+    function withdrawNft() external onlyRole(cg._COLLATERAL_OWNER_ROLE_) {
+        cn._unsignBorrower(loanProperties, loanGlobals);
+        ERC721Tx._revokeCollateral(loanParticipants, loanGlobals);
     }
 
     /**
@@ -111,58 +152,78 @@ contract LoanContract is Initializable, Ownable, AContractManager {
      * recipient.
      *
      */
-    function withdrawSponsorship() external onlyRole(_LENDER_ROLE_) {
-        _revokeFunding();
-        _revokeRole(_LENDER_ROLE_, lender.get());
-        _revokeRole(_PARTICIPANT_ROLE_, lender.get());
-        _unsignLender();
+    function withdrawSponsorship() external onlyRole(cg._LENDER_ROLE_) {
+        ERC20Tx._revokeFunding(loanProperties, loanGlobals, accountBalance);
+        _revokeRole(cg._LENDER_ROLE_, loanProperties.lender.get());
+        _revokeRole(cg._PARTICIPANT_ROLE_, loanProperties.lender.get());
+        cn._unsignLender(loanProperties, loanGlobals);
     }
 
-    function sign() external onlyRole(_PARTICIPANT_ROLE_) {
-        if (_hasRole(_BORROWER_ROLE_)) {
-            _signBorrower();
-            depositCollateral();
+    function sign() external onlyRole(cg._PARTICIPANT_ROLE_) {
+        if (hasRole(cg._BORROWER_ROLE_, _msgSender())) {
+            cn._signBorrower(loanParticipants, loanProperties, loanGlobals);
+            ERC721Tx._depositCollateral(loanParticipants, loanGlobals);
 
-            if (lenderSigned.get()) {
+            if (loanProperties.lenderSigned.get()) {
                 __activate();
             }
         }
     }
 
-    /**
-     * @dev Revoke collateralized token and revoke LoanContract approval. This
-     * effectively renders the LoanContract closed.
-     *
-     * Requirements:
-     *
-     * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
-     *
-     */
-    function close() external onlyRole(_COLLATERAL_OWNER_ROLE_) {
-        _revokeCollateral();
+    // /**
+    //  * @dev Revoke collateralized token and revoke LoanContract approval. This
+    //  * effectively renders the LoanContract closed.
+    //  *
+    //  * Requirements:
+    //  *
+    //  * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
+    //  *
+    //  */
+    // function close() external onlyRole(_COLLATERAL_OWNER_ROLE_) {
+    //     _revokeCollateral();
         
-        // Clear loan contract approval
-        IERC721(tokenContract).approve(address(0), tokenId);
-        state = LoanState.CLOSED;
-    }
+    //     // Clear loan contract approval
+    //     IERC721(tokenContract).approve(address(0), tokenId);
+    //     state = LoanState.CLOSED;
+    // }
 
     function __sign() private {
-        _signBorrower();
+        cn._signBorrower(loanParticipants, loanProperties, loanGlobals);
     }
 
     function __activate() private {
-        stopBlockstamp.onlyState(uint256(state));
+        loanProperties.stopBlockstamp.onlyState(uint256(loanGlobals.state));
 
-        _initSchedule();
-        _activateLoan();
+        cs._initSchedule(loanProperties, loanGlobals);
+        ca._activateLoan(loanParticipants, loanProperties, loanGlobals, accountBalance);
 
         emit LoanActivated(
             address(this),
-            borrower,
-            lender.get(),
-            tokenContract,
-            tokenId,
-            uint256(state)
+            loanParticipants.borrower,
+            loanProperties.lender.get(),
+            loanParticipants.tokenContract,
+            loanParticipants.tokenId,
+            uint256(loanGlobals.state)
         );
+    }
+    
+    /**
+     * @dev Whenever an {IERC721} `tokenId` token is transferred to this contract via {IERC721-safeTransferFrom}
+     * by `operator` from `from`, this function is called.
+     *
+     * It must return its Solidity selector to confirm the token transfer.
+     * If any other value is returned or the interface is not implemented by the recipient, the transfer will be reverted.
+     *
+     */
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return
+            bytes4(
+                keccak256("onERC721Received(address,address,uint256,bytes)")
+            );
     }
 }
