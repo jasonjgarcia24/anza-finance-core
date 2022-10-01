@@ -3,7 +3,10 @@ const chai = require('chai');
 chai.use(require('chai-as-promised'));
 
 const { ethers, network } = require("hardhat");
-const { TRANSFERIBLES, ROLES, LOANSTATE } = require("../config");
+const {
+  TRANSFERIBLES, ROLES, LOANSTATE,
+  loanPrincipal, loanFixedInterestRate, loanDuration
+} = require("../config");
 const { reset } = require("./resetFork");
 const { impersonate } = require("./impersonate");
 const { deploy } = require("../scripts/deploy");
@@ -13,34 +16,19 @@ const { listenerTermsChanged } = require("../utils/listenersAContractManager");
 const { listenerLoanStateChanged } = require("../utils/listenersAContractGlobals");
 const { listenerDeposited, listenerWithdrawn } = require("../utils/listenersAContractTreasurer");
 
-let StateControlUint;
-let StateControlAddress;
-let StateControlBool;
 let BlockTime;
-let LibContractActivate;
-let LibContractInit;
-let LibContractUpdate;
-let LibContractNotary;
-let LibContractScheduler;
-let ERC20Transactions;
-let ERC721Transactions;
-
 let loanContractFactory, loanContract, loanTreasurey;
-let borrower, lender, lenderAlt, owner;
+let owner, borrower, lender, lenderAlt, treasurer;
 let tokenContract, tokenId;
 
-const loanPrincipal = ethers.utils.parseEther('0.0001');
-const loanFixedInterestRate = 23;
-const loanDuration = 3;
-
-describe("0 :: LoanContract initialization tests", function () {
+describe("0-0 :: LoanContract initialization tests", function () {
   /* NFT and LoanProposal setup */
   beforeEach(async () => {
     // MAINNET fork setup
     await reset();
     await impersonate();
     provider = new ethers.providers.Web3Provider(network.provider);
-    [borrower, lender, lenderAlt, owner, ..._] = await ethers.getSigners();
+    [owner, borrower, lender, lenderAlt, treasurer, ..._] = await ethers.getSigners();
 
     // Establish NFT identifiers
     tokenContract = new ethers.Contract(
@@ -49,66 +37,12 @@ describe("0 :: LoanContract initialization tests", function () {
     tokenId = TRANSFERIBLES[0].tokenId;
 
     // Create LoanProposal for NFT
-    [
-      StateControlUint,
-      StateControlAddress,
-      StateControlBool,
-      BlockTime,
-      LibContractActivate,
-      LibContractInit,
-      LibContractUpdate,
-      LibContractNotary,
-      LibContractScheduler,
-      LibContractCollector,
-      TreasurerUtils,
-      ERC20Transactions,
-      ERC721Transactions
-     ] = await deploy();
-
-    const loanTreasureyFactory = await ethers.getContractFactory("LoanTreasurey", {
-      libraries: {
-        TreasurerUtils: TreasurerUtils.address
-      }
-    });
-    loanTreasurey = await loanTreasureyFactory.connect(owner).deploy();
-
-    const Factory = await ethers.getContractFactory("LoanContractFactory");
-    loanContractFactory = await Factory.connect(owner).deploy(loanTreasurey.address);
-
-    const LoanContractFactory = await ethers.getContractFactory("LoanContract", {
-      libraries: {
-        StateControlUint: StateControlUint.address,
-        StateControlAddress: StateControlAddress.address,
-        StateControlBool: StateControlBool.address,
-        LibContractActivate: LibContractActivate.address,
-        LibContractInit: LibContractInit.address,
-        LibContractUpdate: LibContractUpdate.address,
-        LibContractNotary: LibContractNotary.address,
-        LibContractScheduler: LibContractScheduler.address,
-        LibContractCollector: LibContractCollector.address,
-        ERC20Transactions: ERC20Transactions.address,
-        ERC721Transactions: ERC721Transactions.address
-      },
-    });
-    loanContract = await LoanContractFactory.deploy();
-    await loanContract.deployed();
-
-    // Set loanContract to operator
-    await tokenContract.setApprovalForAll(loanContractFactory.address, true);
-
-    let _tx = await loanContractFactory.connect(borrower).createLoanContract(
-      loanContract.address,
-      loanTreasurey.address,
-      tokenContract.address,
-      tokenId,
-      loanPrincipal,
-      loanFixedInterestRate,
-      loanDuration
-    );
-    let [_clone, _tokenContractAddress, _tokenId, _borrower] = await listenerLoanContractCreated(_tx, loanContractFactory);
-
-    // Connect loanContract
-    loanContract = await ethers.getContractAt("LoanContract", _clone, borrower);    
+    ({
+      loanContractFactory,
+      loanContract,
+      loanTreasurey,
+      BlockTime
+    } = await deploy(tokenContract, tokenId));   
   });
 
   it("0-0-99 :: PASS", async function () {});

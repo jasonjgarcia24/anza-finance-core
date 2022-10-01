@@ -8,10 +8,12 @@ import {
     LibContractGlobals as Globals,
     LibContractStates as States
 } from "./libraries/LibContractMaster.sol";
-import { TreasurerUtils as Utils } from "./libraries/LibContractTreasurer.sol";
+import { 
+    LibLoanTreasurey as Treasurey,
+    TreasurerUtils as Utils
+} from "./libraries/LibContractTreasurer.sol";
 
 import "./interfaces/ILoanContract.sol";
-import "./LoanContract.sol";
 import {
     StateControlUint as scUint,
     StateControlAddress as scAddress
@@ -19,28 +21,29 @@ import {
 
 
 contract LoanTreasurey is Ownable {
-    ILoanContract internal loanContract;
 
-    function assessMaturity(address _loanContractAddress) external {
-        loanContract = ILoanContract(_loanContractAddress);
+    constructor(address _owner) {
+        transferOwnership(_owner);
+    }
 
-        (,,States.LoanState _originalState) = loanContract.loanGlobals();
-        require(_originalState > States.LoanState.FUNDED, "Loan contract must be active.");
-        
-        (
-            ,,,,,,
-            scUint.Property memory _balance,
-            scUint.Property memory _stopBlockstamp
-        ) = loanContract.loanProperties();
+    function updateBalance(address _loanContractAddress) external onlyOwner() {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        _loanContract.updateBalance();
 
-        bool _isDefaulted = Utils.isDefaulted_(
-            _balance._value, _stopBlockstamp._value, _originalState
-        );
-        
-        if (_isDefaulted) {
-            loanContract.initDefault();
-            (,,States.LoanState _newState) = loanContract.loanGlobals();
-            emit States.LoanStateChanged(_originalState, _newState);
+        Treasurey.assessMaturity_(_loanContractAddress);
+    }
+
+    function assessMaturity(address _loanContractAddress) external onlyOwner() {
+        Treasurey.assessMaturity_(_loanContractAddress);
+
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        (,,States.LoanState _state) = _loanContract.loanGlobals();
+
+        if (_state >= States.LoanState.PAID) { return; }
+        _loanContract.updateBalance();
+
+        if (_state == States.LoanState.DEFAULT) {
+            
         }
     }
 }

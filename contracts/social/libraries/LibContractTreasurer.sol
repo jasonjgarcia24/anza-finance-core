@@ -11,9 +11,58 @@ import {
     LibContractGlobals as Globals,
     LibContractStates as States
 } from "./LibContractMaster.sol";
-import { StateControlUint, StateControlAddress } from "../../utils/StateControl.sol";
+import { TreasurerUtils as Utils } from "./LibContractTreasurer.sol";
+import {
+    StateControlUint as scUint,
+    StateControlAddress as scAddress
+} from "../../utils/StateControl.sol";
 
+import "../interfaces/ILoanContract.sol";
 import "../../utils/BlockTime.sol";
+
+library LibLoanTreasurey {
+    using scUint for scUint.Property;
+
+    function assessMaturity_(address _loanContractAddress) public {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+
+        (,,States.LoanState _originalState) = _loanContract.loanGlobals();
+        require(_originalState > States.LoanState.FUNDED, "Loan contract must be active.");
+        
+        (
+            ,,,,,,
+            scUint.Property memory _balance,
+            scUint.Property memory _stopBlockstamp
+        ) = _loanContract.loanProperties();
+
+        bool _isDefaulted = Utils.isDefaulted_(
+            _balance._value, _stopBlockstamp._value, _originalState
+        );
+        
+        if (_isDefaulted) {
+            _loanContract.initDefault();
+            (,,States.LoanState _newState) = _loanContract.loanGlobals();
+            emit States.LoanStateChanged(_originalState, _newState);
+        }
+    }
+
+    function updateBalance_(
+        Globals.Property storage _properties,
+        Globals.Global storage _globals
+    ) public {
+       console.logUint(_properties.balance.get());
+        _properties.balance.set(
+            _properties.balance.get() + TreasurerUtils.calculateInterest_(
+                _properties.balance.get(),
+                _properties.fixedInterestRate.get(),
+                _properties.duration.get(),
+                _properties.stopBlockstamp.get()
+            ),
+        _globals.state
+       );
+       console.logUint(_properties.balance.get());
+    }
+}
 
 library ERC721Transactions {
     /**
@@ -107,8 +156,8 @@ library ERC721Transactions {
 }
 
 library ERC20Transactions {
-    using StateControlUint for StateControlUint.Property;
-    using StateControlAddress for StateControlAddress.Property;
+    using scUint for scUint.Property;
+    using scAddress for scAddress.Property;
     using Address for address payable;
 
     /**
@@ -270,28 +319,16 @@ library TreasurerUtils {
         // Reference_Block: block.number + _duration
         // Blocks_Active: Reference_Block - _stopBlockstamp
         uint256 _daysActive = BlockTime.blocksToDays(
-            (
-                block.number + _duration
-            ) - _stopBlockstamp
+            (block.number + _duration) - _stopBlockstamp
         );
+
         uint256 _interest = _balance.mul(
             _fixedInterestRate
         ).div(100).mul(_daysActive).div(365);
+        console.logUint(_interest);
 
         return _interest;
     }
-
-    function updateBalance_(
-        uint256 _balance,
-        uint256 _fixedInterestRate,
-        uint256 _duration,
-        uint256 _stopBlockstamp
-    ) public view returns (uint256) {
-        return _balance + calculateInterest_(
-            _balance, _fixedInterestRate, _duration, _stopBlockstamp
-        );
-    }
-
 
     function isDefaulted_(
         uint256 _balance,

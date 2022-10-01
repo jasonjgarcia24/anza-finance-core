@@ -53,6 +53,7 @@ interface ILoanContract {
 
     function initialize(
         address _loanTreasurer,
+        address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,
@@ -96,6 +97,16 @@ interface ILoanContract {
     function withdrawSponsorship() external;
 
     function sign() external;
+
+    /**
+     * @dev Update loan contract balance
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _TREASURER_ROLE_.
+     *
+     */
+    function updateBalance() external;
 
     /**
      * @dev Revoke collateralized token and revoke LoanContract approval. This

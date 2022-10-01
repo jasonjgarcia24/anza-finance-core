@@ -35,6 +35,7 @@ contract LoanContractFactory {
     function createLoanContract(
         address _loanContract,
         address _loanTreasurer,
+        address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _principal,
@@ -54,6 +55,7 @@ contract LoanContractFactory {
 
         ILoanContract(payable(_clone)).initialize(
             _loanTreasurer,
+            _loanCollector,
             _tokenContract,
             _tokenId,
             __getCurrentPriority(_tokenContract, _tokenId),

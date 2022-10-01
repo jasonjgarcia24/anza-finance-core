@@ -10,12 +10,17 @@ import {
     LibContractGlobals as Globals,
     LibContractStates as States,
     LibContractInit as Init,
-     LibContractUpdate as Update,
+    LibContractUpdate as Update,
     LibContractActivate as Activate
 } from "./libraries/LibContractMaster.sol";
 import { LibContractNotary as Notary } from "./libraries/LibContractNotary.sol";
 import { LibContractScheduler as Scheduler } from "./libraries/LibContractScheduler.sol";
-import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./libraries/LibContractTreasurer.sol";
+import {
+    LibLoanTreasurey as Treasurey,
+    ERC721Transactions as ERC721Tx,
+    ERC20Transactions as ERC20Tx,
+    TreasurerUtils
+} from "./libraries/LibContractTreasurer.sol";
 import { LibContractCollector as Collector } from "./libraries/LibContractCollections.sol";
 
 import "../utils/StateControl.sol";
@@ -72,6 +77,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
 
     function initialize(
         address _loanTreasurer,
+        address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,
@@ -87,6 +93,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         _setRoleAdmin(Globals._ARBITER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._BORROWER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._LENDER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._COLLECTOR_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._PARTICIPANT_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_CUSTODIAN_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_OWNER_ROLE_, Globals._ADMIN_ROLE_);
@@ -119,7 +126,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
             Notary._unsignLender(loanProperties, loanGlobals);
         }
 
-        Update._updateTerms(loanProperties, loanGlobals, _params, _newValues);
+        Update.updateTerms_(loanProperties, loanGlobals, _params, _newValues);
     }
 
     function depositCollateral() external payable onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
@@ -191,6 +198,11 @@ contract LoanContract is AccessControl, Initializable, Ownable {
                 __activate();
             }
         }
+    }
+
+    function updateBalance() external onlyRole(Globals._TREASURER_ROLE_) {
+        Update.checkActiveState_(loanGlobals);
+        Treasurey.updateBalance_(loanProperties, loanGlobals);
     }
 
     /**
