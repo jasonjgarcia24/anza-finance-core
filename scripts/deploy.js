@@ -79,20 +79,28 @@ const deploy = async () => {
     },
   });
   const LibContractScheduler = await LibContractSchedulerFactory.deploy();
+    
+  // * contracts/social/libraries/LibContractCollections.sol:LibContractCollector
+  const LibContractCollectorFactory = await ethers.getContractFactory("LibContractCollector", {
+    libraries: {
+      // StateControlUint: StateControlUint.address,
+    },
+  });
+  const LibContractCollector = await LibContractCollectorFactory.deploy();
 
-    // * contracts/social/libraries/LibContractTreasurer.sol:TreasureyUtils
-    const TreasureyUtilsFactory = await ethers.getContractFactory("TreasureyUtils", {
+    // * contracts/social/libraries/LibContractTreasurer.sol:TreasurerUtils
+    const TreasurerUtilsFactory = await ethers.getContractFactory("TreasurerUtils", {
       libraries: {
         BlockTime: BlockTime.address
       },
     });
-    const TreasureyUtils = await TreasureyUtilsFactory.deploy();
+    const TreasurerUtils = await TreasurerUtilsFactory.deploy();
   
   
   // * contracts/social/libraries/LibContractTreasurer.sol:ERC20Transactions
   const ERC20TransactionsFactory = await ethers.getContractFactory("ERC20Transactions", {
     libraries: {
-      TreasureyUtils: TreasureyUtils.address,
+      TreasurerUtils: TreasurerUtils.address,
       StateControlUint: StateControlUint.address,
       StateControlAddress: StateControlAddress.address,
     },
@@ -113,6 +121,8 @@ const deploy = async () => {
       LibContractUpdate,
       LibContractNotary,
       LibContractScheduler,
+      LibContractCollector,
+      TreasurerUtils,
       ERC20Transactions,
       ERC721Transactions
   ]

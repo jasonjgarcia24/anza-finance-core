@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "hardhat/console.sol";
 
 import {
     LibContractGlobals as Globals,
@@ -208,7 +209,7 @@ library ERC20Transactions {
         );
 
         // Update loan contract
-        uint256 _balance = _properties.balance.get() + TreasureyUtils.calculateInterest_(
+        uint256 _balance = _properties.balance.get() + TreasurerUtils.calculateInterest_(
             _properties.balance.get(),
             _properties.fixedInterestRate.get(),
             _properties.duration.get(),
@@ -257,7 +258,7 @@ library ERC20Transactions {
     }
 }
 
-library TreasureyUtils {
+library TreasurerUtils {
     using SafeMath for uint256;
 
     function calculateInterest_(
@@ -280,13 +281,24 @@ library TreasureyUtils {
         return _interest;
     }
 
-    function isMatured_(
+    function updateBalance_(
         uint256 _balance,
         uint256 _fixedInterestRate,
         uint256 _duration,
         uint256 _stopBlockstamp
-    ) public view returns (bool) {
-
+    ) public view returns (uint256) {
+        return _balance + calculateInterest_(
+            _balance, _fixedInterestRate, _duration, _stopBlockstamp
+        );
     }
 
+
+    function isDefaulted_(
+        uint256 _balance,
+        uint256 _stopBlockstamp,
+        States.LoanState _state
+    ) public view returns (bool) {
+        if (_balance == 0 || _state == States.LoanState.PAID) { return false; }
+        return (block.number >= _stopBlockstamp);
+    }
 }

@@ -4,6 +4,8 @@ pragma solidity ^0.8.9;
 import { LibContractGlobals as Globals } from "./LibContractMaster.sol";
 import { StateControlUint } from "../../utils/StateControl.sol";
 
+import "hardhat/console.sol";
+
 library LibContractScheduler {
     using StateControlUint for StateControlUint.Property;
 

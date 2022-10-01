@@ -16,6 +16,7 @@ import {
 import { LibContractNotary as Notary } from "./libraries/LibContractNotary.sol";
 import { LibContractScheduler as Scheduler } from "./libraries/LibContractScheduler.sol";
 import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./libraries/LibContractTreasurer.sol";
+import { LibContractCollector as Collector } from "./libraries/LibContractCollections.sol";
 
 import "../utils/StateControl.sol";
 import "../utils/BlockTime.sol";
@@ -142,7 +143,9 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     }
 
     function makePayment() external payable onlyRole(Globals._BORROWER_ROLE_) {
-            ERC20Tx.depositPayment_(loanParticipants, loanProperties, loanGlobals, accountBalance);
+        ERC20Tx.depositPayment_(
+            loanParticipants, loanProperties, loanGlobals, accountBalance
+        );
     }
 
     /**
@@ -208,7 +211,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     }
 
     function initDefault() external onlyRole(Globals._TREASURER_ROLE_) {
-        loanGlobals.state = States.LoanState.DEFAULT;
+        Collector.defaultContract_(loanParticipants, loanGlobals);
     }
 
     function __sign() private {

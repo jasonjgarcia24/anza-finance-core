@@ -15,6 +15,7 @@
     "test-0-0-99": "npx hardhat test test/testLoanProposal.js --network localhost --grep \"0-0-99\"",
     "test-0-1": "npx hardhat test --network localhost --grep \"0-1-\"",
     "test-0-1-00": "npx hardhat test test/testLoanActive.js --network localhost --grep \"0-1-00\"",
+    "test-0-2-00": "npx hardhat test test/testLoanActive.js --network localhost --grep \"0-2-00\"",
     "test-0-1-99": "npx hardhat test test/testLoanActive.js --network localhost --grep \"0-1-99\""
   },
   "devDependencies": {

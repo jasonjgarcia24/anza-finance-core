@@ -61,11 +61,17 @@ describe("0 :: LoanContract initialization tests", function () {
       LibContractUpdate,
       LibContractNotary,
       LibContractScheduler,
+      LibContractCollector,
+      TreasurerUtils,
       ERC20Transactions,
       ERC721Transactions
      ] = await deploy();
 
-    const loanTreasureyFactory = await ethers.getContractFactory("LoanTreasurey");
+    const loanTreasureyFactory = await ethers.getContractFactory("LoanTreasurey", {
+      libraries: {
+        TreasurerUtils: TreasurerUtils.address
+      }
+    });
     loanTreasurey = await loanTreasureyFactory.deploy();
 
     const Factory = await ethers.getContractFactory("LoanContractFactory");
@@ -81,6 +87,7 @@ describe("0 :: LoanContract initialization tests", function () {
         LibContractUpdate: LibContractUpdate.address,
         LibContractNotary: LibContractNotary.address,
         LibContractScheduler: LibContractScheduler.address,
+        LibContractCollector: LibContractCollector.address,
         ERC20Transactions: ERC20Transactions.address,
         ERC721Transactions: ERC721Transactions.address
       },
@@ -108,16 +115,76 @@ describe("0 :: LoanContract initialization tests", function () {
 
   it("0-1-99 :: PASS", async function () {});
 
-  it("0-1-00 :: Verify loan maturity", async function () {
+  it("0-1-00 :: Verify loan default", async function () {
+    await assert.eventually.isTrue(
+      loanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
+      "The borrower is not set with PARTICIPANT_ROLE role."
+    );
+    await assert.eventually.isTrue(
+      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
+      "The borrower is not set with COLLATERAL_OWNER_ROLE role."
+    );
+    await assert.eventually.isFalse(
+      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, loanContract.address),
+      "The loan contract is set with COLLATERAL_OWNER_ROLE role."
+    );
+
     // Sign lender and activate loan
-    let _tx = await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    await loanContract.connect(lender).setLender({ value: loanPrincipal });
 
     // Advance block number
-    // console.log(await provider.getBlockNumber())
-    // await advanceBlock(loanDuration);
-    // console.log(await provider.getBlockNumber())
+    await advanceBlock(loanDuration);
 
-    await loanTreasurey.checkMaturity(loanContract.address);
+    // Assess maturity
+    let _tx = await loanTreasurey.assessMaturity(loanContract.address);
+    expect((await loanContract.loanGlobals())['state']).to.equal(LOANSTATE.DEFAULT, "The new loan state should be DEFAULT.");
+
+    let [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract);
+    expect(_prevLoanState).to.be.within(LOANSTATE.FUNDED, LOANSTATE.ACTIVE_OPEN, "The previous loan state should be within FUNDED and ACTIVE_OPEN.");
+    expect(_newLoanState).to.equal(LOANSTATE.DEFAULT, "The new loan state should be DEFAULT.");
+
+    await assert.eventually.isFalse(
+      loanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
+      "The borrower is set with PARTICIPANT_ROLE role."
+    );
+    await assert.eventually.isFalse(
+      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
+      "The borrower is set with COLLATERAL_OWNER_ROLE role."
+    );
+    await assert.eventually.isTrue(
+      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, loanContract.address),
+      "The loan contract is not set with COLLATERAL_OWNER_ROLE role."
+    );
+  });
+
+  it("0-2-00 :: Verify loan not default when paid", async function () {
+    // Sign lender and activate loan
+    await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    await loanContract.makePayment({ value: loanPrincipal });
+
+    // Advance block number
+    await advanceBlock(loanDuration);
+
+    // Assess maturity
+    let _tx = await loanTreasurey.assessMaturity(loanContract.address);
+    expect((await loanContract.loanGlobals())['state']).to.equal(LOANSTATE.PAID, "The loan state should be PAID.");
+    
+    await expect(
+      listenerLoanStateChanged(_tx, loanContract)
+    ).to.be.rejectedWith(/Cannot read properties of undefined/);
+
+    await assert.eventually.isTrue(
+      loanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
+      "The borrower is not set with PARTICIPANT_ROLE role."
+    );
+    await assert.eventually.isTrue(
+      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
+      "The borrower is not set with COLLATERAL_OWNER_ROLE role."
+    );
+    await assert.eventually.isFalse(
+      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, loanContract.address),
+      "The loan contract is set with COLLATERAL_OWNER_ROLE role."
+    );
   });
 });
 

@@ -8,6 +8,7 @@ import {
     LibContractGlobals as Globals,
     LibContractStates as States
 } from "./libraries/LibContractMaster.sol";
+import { TreasurerUtils as Utils } from "./libraries/LibContractTreasurer.sol";
 
 import "./interfaces/ILoanContract.sol";
 import "./LoanContract.sol";
@@ -18,30 +19,28 @@ import {
 
 
 contract LoanTreasurey is Ownable {
-    LoanContract internal loanContract;
+    ILoanContract internal loanContract;
 
-    constructor() {
-        // console.logAddress(owner());
-    }
+    function assessMaturity(address _loanContractAddress) external {
+        loanContract = ILoanContract(_loanContractAddress);
 
-    function checkMaturity(address _loanContractAddress) external {
-        loanContract = LoanContract(_loanContractAddress);
-
-        (,,States.LoanState _state) = loanContract.loanGlobals();
-        console.log(uint256(_state));
-        require(_state > States.LoanState.FUNDED, "Loan contract must be active.");
+        (,,States.LoanState _originalState) = loanContract.loanGlobals();
+        require(_originalState > States.LoanState.FUNDED, "Loan contract must be active.");
         
-        (,,,,,,scUint.Property memory _balance,) = loanContract.loanProperties();
+        (
+            ,,,,,,
+            scUint.Property memory _balance,
+            scUint.Property memory _stopBlockstamp
+        ) = loanContract.loanProperties();
+
+        bool _isDefaulted = Utils.isDefaulted_(
+            _balance._value, _stopBlockstamp._value, _originalState
+        );
         
-        if (_balance._value != 0) {
-            __setDefault(_loanContractAddress);
+        if (_isDefaulted) {
+            loanContract.initDefault();
+            (,,States.LoanState _newState) = loanContract.loanGlobals();
+            emit States.LoanStateChanged(_originalState, _newState);
         }
-
-        (,,States.LoanState _newState) = loanContract.loanGlobals();
-        console.log(uint256(_newState));
-    }
-
-    function __setDefault(address _loanContract) private {
-        ILoanContract(_loanContract).initDefault();
     }
 }

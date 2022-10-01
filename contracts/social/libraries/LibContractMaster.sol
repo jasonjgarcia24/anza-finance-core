@@ -94,29 +94,14 @@ library LibContractInit {
         _participants.tokenId = _tokenId;
 
         _property.lender.init(address(0), LibContractStates.LoanState.FUNDED);
-        _property.principal.init(
-            _principal,
-            LibContractStates.LoanState.FUNDED
-        );
-        _property.fixedInterestRate.init(
-            _fixedInterestRate,
-            LibContractStates.LoanState.FUNDED
-        );
-        _property.duration.init(
-            _duration.daysToBlocks(),
-            LibContractStates.LoanState.FUNDED
-        );
-        _property.borrowerSigned.init(
-            false,
-            LibContractStates.LoanState.FUNDED
-        );
+        _property.principal.init(_principal, LibContractStates.LoanState.FUNDED);
+        _property.fixedInterestRate.init(_fixedInterestRate, LibContractStates.LoanState.FUNDED);
+        _property.duration.init(_duration.daysToBlocks(), LibContractStates.LoanState.FUNDED);
+        _property.borrowerSigned.init(false, LibContractStates.LoanState.FUNDED);
         _property.lenderSigned.init(false, LibContractStates.LoanState.FUNDED);
 
         _property.balance.init(0, LibContractStates.LoanState.PAID);
-        _property.stopBlockstamp.init(
-            type(uint256).max,
-            LibContractStates.LoanState.FUNDED
-        );
+        _property.stopBlockstamp.init(type(uint256).max, LibContractStates.LoanState.FUNDED);
 
         // Set state variables
         IAccessControl ac = IAccessControl(address(this));
@@ -126,26 +111,11 @@ library LibContractInit {
 
         // Set roles
         ac.grantRole(LibContractGlobals._ARBITER_ROLE_, address(this));
-        ac.grantRole(
-            LibContractGlobals._BORROWER_ROLE_,
-            _participants.borrower
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_OWNER_ROLE_,
-            _globals.factory
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_OWNER_ROLE_,
-            _participants.borrower
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_,
-            _globals.factory
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_,
-            _participants.borrower
-        );
+        ac.grantRole(LibContractGlobals._BORROWER_ROLE_, _participants.borrower);
+        ac.grantRole(LibContractGlobals._COLLATERAL_OWNER_ROLE_, _globals.factory);
+        ac.grantRole(LibContractGlobals._COLLATERAL_OWNER_ROLE_, _participants.borrower);
+        ac.grantRole(LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_,_globals.factory);
+        ac.grantRole(LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_, _participants.borrower);
     }
 }
 

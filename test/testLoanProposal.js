@@ -59,11 +59,17 @@ describe("0 :: LoanContract initialization tests", function () {
       LibContractUpdate,
       LibContractNotary,
       LibContractScheduler,
+      LibContractCollector,
+      TreasurerUtils,
       ERC20Transactions,
       ERC721Transactions
      ] = await deploy();
 
-    const loanTreasureyFactory = await ethers.getContractFactory("LoanTreasurey");
+    const loanTreasureyFactory = await ethers.getContractFactory("LoanTreasurey", {
+      libraries: {
+        TreasurerUtils: TreasurerUtils.address
+      }
+    });
     loanTreasurey = await loanTreasureyFactory.connect(owner).deploy();
 
     const Factory = await ethers.getContractFactory("LoanContractFactory");
@@ -79,6 +85,7 @@ describe("0 :: LoanContract initialization tests", function () {
         LibContractUpdate: LibContractUpdate.address,
         LibContractNotary: LibContractNotary.address,
         LibContractScheduler: LibContractScheduler.address,
+        LibContractCollector: LibContractCollector.address,
         ERC20Transactions: ERC20Transactions.address,
         ERC721Transactions: ERC721Transactions.address
       },
