@@ -3,6 +3,7 @@
     "impersonate": "npx hardhat run --network localhost test/impersonate.js",
     "reset": "npx hardhat run --network localhost test/resetFork.js",
     "test": "npx hardhat test --network localhost",
+    "deploy": "npx hardhat run scripts/run.js --network localhost",
     "test-loanProposal": "npx hardhat test test/testLoanProposal.js --network localhost",
     "test-0": "npx hardhat test --network localhost --grep \"0-[0-9]{1}-\"",
     "test-0-0": "npx hardhat test --network localhost --grep \"0-0-\"",
@@ -32,6 +33,7 @@
     "@openzeppelin/contracts": "^4.7.3",
     "@optionality.io/clone-factory": "^0.2.1",
     "dotenv": "^16.0.2",
-    "ethers": "^5.7.1"
+    "ethers": "^5.7.1",
+    "ipfs-core": "^0.16.1"
   }
 }

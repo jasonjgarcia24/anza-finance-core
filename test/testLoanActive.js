@@ -3,25 +3,27 @@ const chai = require('chai');
 chai.use(require('chai-as-promised'));
 
 const { ethers, network } = require("hardhat");
-const {
-  TRANSFERIBLES, ROLES, LOANSTATE,
-  loanPrincipal, loanFixedInterestRate, loanDuration
-} = require("../config");
+const { TRANSFERIBLES, ROLES, LOANSTATE, DEFAULT_TEST_VALUES } = require("../config");
+
 const { reset } = require("./resetFork");
 const { impersonate } = require("./impersonate");
 const { deploy } = require("../scripts/deploy");
-const { listenerLoanActivated } = require("../utils/listenersLoanContract");
-const { listenerLoanContractCreated } = require("../utils/listenersLoanContractFactory");
-const { listenerTermsChanged } = require("../utils/listenersAContractManager");
-const { listenerLoanStateChanged } = require("../utils/listenersAContractGlobals");
-const { listenerDeposited, listenerWithdrawn } = require("../utils/listenersAContractTreasurer");
+const { listenerLoanActivated } = require("../anza/src/events/utils/listenersLoanContract");
+const { listenerLoanContractCreated } = require("../anza/src/events/utils/listenersLoanContractFactory");
+const { listenerTermsChanged } = require("../anza/src/events/utils/listenersAContractManager");
+const { listenerLoanStateChanged } = require("../anza/src/events/utils/listenersAContractGlobals");
+const { listenerDeposited, listenerWithdrawn } = require("../anza/src/events/utils/listenersAContractTreasurer");
 
 let provider;
 
 let BlockTime;
-let loanContractFactory, loanContract, loanTreasurey, loanCollection;
+let LoanContractFactory, LoanContract, LoanTreasurey, LoanCollection;
 let owner, borrower, lender, lenderAlt, treasurer;
 let tokenContract, tokenId;
+
+const loanPrincipal = DEFAULT_TEST_VALUES.PRINCIPAL;
+const loanFixedInterestRate = DEFAULT_TEST_VALUES.FIXED_INTEREST_RATE;
+const loanDuration = DEFAULT_TEST_VALUES.DURATION;
 
 describe("0-1 :: LoanContract initialization tests", function () {
   /* NFT and LoanProposal setup */
@@ -40,99 +42,114 @@ describe("0-1 :: LoanContract initialization tests", function () {
 
     // Create LoanProposal for NFT
     ({
-      loanContractFactory,
-      loanContract,
-      loanTreasurey,
+      LoanContractFactory,
+      LoanContract,
+      LoanTreasurey,
+      LoanCollection,
       BlockTime
-    } = await deploy(tokenContract, tokenId));   
-  });
+    } = await deploy(tokenContract));
+
+    let _tx = await LoanContractFactory.connect(borrower).createLoanContract(
+      LoanContract.address,
+      LoanTreasurey.address,
+      LoanCollection.address,
+      tokenContract.address,
+      tokenId,
+      loanPrincipal,
+      loanFixedInterestRate,
+      loanDuration
+    );
+    let [clone, ...__] = await listenerLoanContractCreated(_tx, LoanContractFactory);
+  
+    // Connect LoanContract
+    LoanContract = await ethers.getContractAt("LoanContract", clone, borrower);  });
 
   it("0-1-99 :: PASS", async function () {});
 
   it("0-1-00 :: Verify loan default", async function () {
     await assert.eventually.isTrue(
-      loanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
+      LoanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
       "The borrower is not set with PARTICIPANT_ROLE role."
     );
     await assert.eventually.isTrue(
-      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
+      LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
       "The borrower is not set with COLLATERAL_OWNER_ROLE role."
     );
     await assert.eventually.isFalse(
-      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, loanContract.address),
+      LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, LoanContract.address),
       "The loan contract is set with COLLATERAL_OWNER_ROLE role."
     );
 
     // Sign lender and activate loan
-    await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    await LoanContract.connect(lender).setLender({ value: loanPrincipal });
 
     // Advance block number
     await advanceBlock(loanDuration);
 
     // Assess maturity
-    let _tx = await loanTreasurey.connect(treasurer).assessMaturity(loanContract.address);
-    let _state = (await loanContract.loanGlobals())['state'];
+    let _tx = await LoanTreasurey.connect(treasurer).assessMaturity(LoanContract.address);
+    let _state = (await LoanContract.loanGlobals())['state'];
     expect(_state).to.equal(LOANSTATE.DEFAULT, "The new loan state should be DEFAULT.");
 
-    // let [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, loanContract);
+    // let [_prevLoanState, _newLoanState] = await listenerLoanStateChanged(_tx, LoanContract);
     // expect(_prevLoanState).to.be.within(LOANSTATE.FUNDED, LOANSTATE.ACTIVE_OPEN, "The previous loan state should be within FUNDED and ACTIVE_OPEN.");
     // expect(_newLoanState).to.equal(LOANSTATE.DEFAULT, "The new loan state should be DEFAULT.");
 
     // await assert.eventually.isFalse(
-    //   loanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
+    //   LoanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
     //   "The borrower is set with PARTICIPANT_ROLE role."
     // );
     // await assert.eventually.isFalse(
-    //   loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
+    //   LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
     //   "The borrower is set with COLLATERAL_OWNER_ROLE role."
     // );
     // await assert.eventually.isTrue(
-    //   loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, loanContract.address),
+    //   LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, LoanContract.address),
     //   "The loan contract is not set with COLLATERAL_OWNER_ROLE role."
     // );
   });
 
   it("0-1-01 :: Verify loan not default when paid", async function () {
     // Sign lender and activate loan
-    await loanContract.connect(lender).setLender({ value: loanPrincipal });
-    await loanContract.connect(borrower).makePayment({ value: loanPrincipal });
+    await LoanContract.connect(lender).setLender({ value: loanPrincipal });
+    await LoanContract.connect(borrower).makePayment({ value: loanPrincipal });
 
     // Advance block number
     await advanceBlock(loanDuration);
 
     // Assess maturity
-    let _tx = await loanTreasurey.connect(treasurer).assessMaturity(loanContract.address);
-    let _state = (await loanContract.loanGlobals())['state'];
+    let _tx = await LoanTreasurey.connect(treasurer).assessMaturity(LoanContract.address);
+    let _state = (await LoanContract.loanGlobals())['state'];
     expect(_state).to.equal(LOANSTATE.PAID, "The loan state should be PAID.");
     
     await expect(
-      listenerLoanStateChanged(_tx, loanContract)
+      listenerLoanStateChanged(_tx, LoanContract)
     ).to.be.rejectedWith(/Cannot read properties of undefined/);
 
     await assert.eventually.isTrue(
-      loanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
+      LoanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
       "The borrower is not set with PARTICIPANT_ROLE role."
     );
     await assert.eventually.isTrue(
-      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
+      LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
       "The borrower is not set with COLLATERAL_OWNER_ROLE role."
     );
     await assert.eventually.isFalse(
-      loanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, loanContract.address),
+      LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, LoanContract.address),
       "The loan contract is set with COLLATERAL_OWNER_ROLE role."
     );
   });
 
   it("0-1-02 :: Verify loan balance accrual rate", async function () {
-    await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    await LoanContract.connect(lender).setLender({ value: loanPrincipal });
 
     // Advance block number
     let _advanceDuration = 10;
     await advanceBlock(_advanceDuration);
 
     // Allow update loan balance
-    await loanTreasurey.connect(treasurer).updateBalance(loanContract.address);
-    let _updatedBalance = (await loanContract.loanProperties())['balance']['_value'];
+    await LoanTreasurey.connect(treasurer).updateBalance(LoanContract.address);
+    let _updatedBalance = (await LoanContract.loanProperties())['balance']['_value'];
     expect(_updatedBalance).to.equal(
       getExpectedBalance(_advanceDuration),
       `The expected balance should be ${getExpectedBalance()}.`
@@ -140,16 +157,16 @@ describe("0-1 :: LoanContract initialization tests", function () {
   });
 
   it("0-1-03 :: Verify loan balance update disallowed", async function () {
-    await loanContract.connect(lender).setLender({ value: loanPrincipal });
+    await LoanContract.connect(lender).setLender({ value: loanPrincipal });
 
     // Disallow update loan balance by non treasurer
     await expect(
-      loanTreasurey.connect(lender).updateBalance(loanContract.address)
+      LoanTreasurey.connect(lender).updateBalance(LoanContract.address)
     ).to.be.rejectedWith(/Ownable: caller is not the owner/);
 
     // Pay off loan
-    await loanContract.connect(borrower).makePayment({ value: loanPrincipal });
-    let _loanBalance = (await loanContract.loanProperties())['balance']['_value']
+    await LoanContract.connect(borrower).makePayment({ value: loanPrincipal });
+    let _loanBalance = (await LoanContract.loanProperties())['balance']['_value']
     expect(_loanBalance).to.equal(0, "The loan balance should be 0.");
 
     // Advance block number
@@ -158,7 +175,7 @@ describe("0-1 :: LoanContract initialization tests", function () {
 
     // Disallow update loan balance by non treasurer
     await expect(
-      loanTreasurey.connect(treasurer).updateBalance(loanContract.address)
+      LoanTreasurey.connect(treasurer).updateBalance(LoanContract.address)
     ).to.be.rejectedWith(/Loan state must between FUNDED and PAID exclusively./);
   });
 });

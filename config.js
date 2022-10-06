@@ -1,5 +1,5 @@
 const { ethers } = require("ethers");
-const erc721 = require("./artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json").abi;
+const erc721 = require("./anza/src/artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json").abi;
 
 module.exports = {
     BLOCK_NUMBER: 15563000,
@@ -50,7 +50,14 @@ module.exports = {
         AWARDED: 12,
         CLOSED: 13
     },
-    loanPrincipal: ethers.utils.parseEther('0.0001'),
-    loanFixedInterestRate: 10,
-    loanDuration: 360
+    DEFAULT_TEST_VALUES: {
+        PRINCIPAL: ethers.utils.parseEther('0.0001').toNumber(),
+        FIXED_INTEREST_RATE: 10,
+        DURATION: 360
+    },
+    CHAINID_TO_NETWORK: {
+        31337: 'LocalHost',
+        1: 'ETH Mainnet',
+        5: 'Goerli'
+    }
 }

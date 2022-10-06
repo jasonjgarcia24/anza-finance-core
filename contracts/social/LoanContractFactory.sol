@@ -27,9 +27,11 @@ contract LoanContractFactory {
     mapping(address => mapping(uint256 => LoanStruct)) private loanMap;
 
     address immutable public loanTreasurer;
+    address immutable public loanCollector;
 
-    constructor (address _loanTreasurer) {
+    constructor (address _loanTreasurer, address _loanCollector) {
         loanTreasurer = _loanTreasurer;
+        loanCollector = _loanCollector;
     }
 
     function createLoanContract(
@@ -64,7 +66,7 @@ contract LoanContractFactory {
             _duration
         );
 
-        // // Transfer collateral to LoanContract
+        // Transfer collateral to LoanContract
         IERC721(_tokenContract).approve(_clone, _tokenId);
         ILoanContract(payable(_clone)).depositCollateral();
 

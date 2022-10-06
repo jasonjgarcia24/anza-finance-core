@@ -4,6 +4,9 @@ const { BLOCK_NUMBER } = require("./config");
 
 module.exports = {
   solidity: "0.8.17",
+  paths: {
+    artifacts: `./anza/src/artifacts`,
+  },
   defaultNetwork: 'hardhat',
   chainId: 31337,
   networks: {
