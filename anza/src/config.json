@@ -942,40 +942,125 @@
   "ERC721Transactions": "0xd753c12650c280383Ce873Cc3a898F6f53973d16",
   "DEMO_TOKENS": {
     "0x70997970c51812dc3a010c7d01b50e0d17dc79c8": {
-      "tokens": {
-        "address": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
-        "tokenId": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9,
-          10,
-          11,
-          12,
-          13,
-          14,
-          15,
-          16,
-          17,
-          18,
-          19,
-          20,
-          21,
-          22,
-          23,
-          24,
-          25,
-          26,
-          27,
-          28,
-          29,
-          30
-        ]
+      "0": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 1
+      },
+      "1": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 2
+      },
+      "2": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 3
+      },
+      "3": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 4
+      },
+      "4": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 5
+      },
+      "5": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 6
+      },
+      "6": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 7
+      },
+      "7": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 8
+      },
+      "8": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 9
+      },
+      "9": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 10
+      },
+      "10": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 11
+      },
+      "11": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 12
+      },
+      "12": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 13
+      },
+      "13": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 14
+      },
+      "14": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 15
+      },
+      "15": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 16
+      },
+      "16": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 17
+      },
+      "17": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 18
+      },
+      "18": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 19
+      },
+      "19": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 20
+      },
+      "20": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 21
+      },
+      "21": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 22
+      },
+      "22": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 23
+      },
+      "23": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 24
+      },
+      "24": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 25
+      },
+      "25": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 26
+      },
+      "26": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 27
+      },
+      "27": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 28
+      },
+      "28": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 29
+      },
+      "29": {
+        "tokenContractAddress": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59",
+        "tokenId": 30
       }
     }
   }

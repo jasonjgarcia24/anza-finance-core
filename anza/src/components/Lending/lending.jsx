@@ -8,7 +8,7 @@ import { listenerLoanContractCreated } from '../../utils/events/listenersLoanCon
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
 import { getNetworkName } from '../../utils/networkUtils';
-import { insertContracts } from '../../db/insert_contracts';
+import { updateTokensLeveraged } from '../../db/dbUpdateTokensLeveraged';
 import config from '../../config.json';
 
 import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json';
@@ -119,7 +119,6 @@ export default function BorrowingPage() {
         await tx.wait();
 
         const [clone, tokenContractAddress, tokenId] = await listenerLoanContractCreated(tx, LoanContractFactory);
-        await insertContracts(currentAccount, tokenContractAddress, tokenId.toNumber(), clone);
 
         console.log(` --- account: ${currentAccount}`)
         axios.get(

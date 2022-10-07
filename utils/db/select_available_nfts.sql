@@ -1,0 +1,1 @@
+SELECT * FROM `nft`.`available` LIMIT 1000;

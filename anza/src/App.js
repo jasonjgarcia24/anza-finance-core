@@ -8,7 +8,6 @@ const App = () => {
       <nav>
         <Link className='link' to="/borrowing">Borrowing</Link> | {" "}
         <Link className='link' to="/lending">Lending</Link>
-        <Link className='link' to="/createpost">Create Post</Link>
       </nav>
       <Outlet />
     </div>

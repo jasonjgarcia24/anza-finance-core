@@ -9,19 +9,18 @@ const demoMint = async () => {
     const DemoToken = await DemoToken_Factory.deploy();
     let tx, ownerAddress, tokenContractAddress, tokenId;
     let tokens = { DEMO_TOKENS: {} };
-    tokens.DEMO_TOKENS[String(borrower.address.toLowerCase())] = {
-        tokens: {
-            address: DemoToken.address,
-            tokenId: []
-        }
-    };
+    tokens.DEMO_TOKENS[String(borrower.address.toLowerCase())] = {};
 
     for (let i = 0; i < 30; i++) {
         tx = await DemoToken.mint(borrower.address);
         await tx.wait();
 
         [ownerAddress, tokenContractAddress, tokenId] = await listenerMint(tx, DemoToken);
-        tokens.DEMO_TOKENS[ownerAddress.toLowerCase()].tokens.tokenId.push(tokenId.toNumber());
+
+        tokens.DEMO_TOKENS[String(borrower.address.toLowerCase())][i] = {
+            tokenContractAddress: DemoToken.address,
+            tokenId: tokenId.toNumber()
+        };
     }
     return tokens;
 }
