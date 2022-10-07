@@ -5,14 +5,64 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "hardhat/console.sol";
 
 import {
     LibContractGlobals as Globals,
     LibContractStates as States
 } from "./LibContractMaster.sol";
-import { StateControlUint, StateControlAddress } from "../../utils/StateControl.sol";
+import { TreasurerUtils as Utils } from "./LibContractTreasurer.sol";
+import {
+    StateControlUint as scUint,
+    StateControlAddress as scAddress
+} from "../../utils/StateControl.sol";
 
+import "../interfaces/ILoanContract.sol";
 import "../../utils/BlockTime.sol";
+
+library LibLoanTreasurey {
+    using scUint for scUint.Property;
+
+    function assessMaturity_(address _loanContractAddress) public {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+
+        (,,States.LoanState _originalState) = _loanContract.loanGlobals();
+        require(_originalState > States.LoanState.FUNDED, "Loan contract must be active.");
+        
+        (
+            ,,,,,,
+            scUint.Property memory _balance,
+            scUint.Property memory _stopBlockstamp
+        ) = _loanContract.loanProperties();
+
+        bool _isDefaulted = Utils.isDefaulted_(
+            _balance._value, _stopBlockstamp._value, _originalState
+        );
+        
+        if (_isDefaulted) {
+            _loanContract.initDefault();
+            (,,States.LoanState _newState) = _loanContract.loanGlobals();
+            emit States.LoanStateChanged(_originalState, _newState);
+        }
+    }
+
+    function updateBalance_(
+        Globals.Property storage _properties,
+        Globals.Global storage _globals
+    ) public {
+       console.logUint(_properties.balance.get());
+        _properties.balance.set(
+            _properties.balance.get() + TreasurerUtils.calculateInterest_(
+                _properties.balance.get(),
+                _properties.fixedInterestRate.get(),
+                _properties.duration.get(),
+                _properties.stopBlockstamp.get()
+            ),
+        _globals.state
+       );
+       console.logUint(_properties.balance.get());
+    }
+}
 
 library ERC721Transactions {
     /**
@@ -106,10 +156,9 @@ library ERC721Transactions {
 }
 
 library ERC20Transactions {
-    using StateControlUint for StateControlUint.Property;
-    using StateControlAddress for StateControlAddress.Property;
+    using scUint for scUint.Property;
+    using scAddress for scAddress.Property;
     using Address for address payable;
-    using SafeMath for uint256;
 
     /**
      * @dev Emitted when loan contract funding is deposited.
@@ -204,12 +253,17 @@ library ERC20Transactions {
         mapping(address => uint256) storage _accountBalance
     ) public {
         require(
-            _globals.state > States.LoanState.FUNDED,
-            "The loan state must greater than LoanState.FUNDED."
+            _globals.state > States.LoanState.FUNDED && _globals.state < States.LoanState.PAID,
+            "The loan state must between LoanState.FUNDED and LoanState.PAID."
         );
 
         // Update loan contract
-        uint256 _balance = _properties.balance.get() + __calculateInterest(_properties);
+        uint256 _balance = _properties.balance.get() + TreasurerUtils.calculateInterest_(
+            _properties.balance.get(),
+            _properties.fixedInterestRate.get(),
+            _properties.duration.get(),
+            _properties.stopBlockstamp.get()
+        );
 
         if (_balance >= msg.value) {
             _properties.balance.set(_balance - msg.value, _globals.state);
@@ -251,19 +305,37 @@ library ERC20Transactions {
 
         emit Withdrawn(_payee, _payment);
     }
+}
 
-    function __calculateInterest(Globals.Property storage _properties) private view returns (uint256) {
-        // Reference_Block: block.number + _properties.duration.get()
-        // Blocks_Active: Reference_Block - _properties.stopBlockstamp.get()
+library TreasurerUtils {
+    using SafeMath for uint256;
+
+    function calculateInterest_(
+        uint256 _balance,
+        uint256 _fixedInterestRate,
+        uint256 _duration,
+        uint256 _stopBlockstamp
+    ) public view returns (uint256) {
+        // Reference_Block: block.number + _duration
+        // Blocks_Active: Reference_Block - _stopBlockstamp
         uint256 _daysActive = BlockTime.blocksToDays(
-            (
-                block.number + _properties.duration.get()
-            ) - _properties.stopBlockstamp.get()
+            (block.number + _duration) - _stopBlockstamp
         );
-        uint256 _interest = _properties.balance.get().mul(
-            _properties.fixedInterestRate.get()
+
+        uint256 _interest = _balance.mul(
+            _fixedInterestRate
         ).div(100).mul(_daysActive).div(365);
+        console.logUint(_interest);
 
         return _interest;
+    }
+
+    function isDefaulted_(
+        uint256 _balance,
+        uint256 _stopBlockstamp,
+        States.LoanState _state
+    ) public view returns (bool) {
+        if (_balance == 0 || _state == States.LoanState.PAID) { return false; }
+        return (block.number >= _stopBlockstamp);
     }
 }

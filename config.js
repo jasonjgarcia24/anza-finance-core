@@ -1,5 +1,5 @@
 const { ethers } = require("ethers");
-const erc721 = require("./artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json").abi;
+const erc721 = require("./anza/src/artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json").abi;
 
 module.exports = {
     BLOCK_NUMBER: 15563000,
@@ -8,21 +8,21 @@ module.exports = {
             ownerAddress: "0xf1BCf736a46D41f8a9d210777B3d75090860a665",
             nft: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
             tokenId: 7445,
-            recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             abi: erc721
         },
         {
             ownerAddress: "0x17331428346E388f32013e6bEc0Aba29303857FD",
             nft: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
             tokenId: 2129,
-            recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             abi: erc721
         },
         {
             ownerAddress: "0xC4B0D0A7717905d342926958453e0654806850bB",
             nft: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
             tokenId: 8695,
-            recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             abi: erc721
         }
     ],
@@ -49,5 +49,15 @@ module.exports = {
         AUCTION: 11,
         AWARDED: 12,
         CLOSED: 13
+    },
+    DEFAULT_TEST_VALUES: {
+        PRINCIPAL: ethers.utils.parseEther('0.0001').toNumber(),
+        FIXED_INTEREST_RATE: 10,
+        DURATION: 360
+    },
+    CHAINID_TO_NETWORK: {
+        31337: 'LocalHost',
+        1: 'ETH Mainnet',
+        5: 'Goerli'
     }
 }

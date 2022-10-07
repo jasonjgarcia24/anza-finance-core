@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
+
 import "../interfaces/ILoanContract.sol";
 import "../../utils/StateControl.sol";
 import "../../utils/BlockTime.sol";
@@ -13,6 +14,7 @@ library LibContractGlobals {
     bytes32 internal constant _ARBITER_ROLE_ = "ARBITER";
     bytes32 internal constant _BORROWER_ROLE_ = "BORROWER";
     bytes32 internal constant _LENDER_ROLE_ = "LENDER";
+    bytes32 internal constant _COLLECTOR_ROLE_ = "COLLECTOR";
     bytes32 internal constant _PARTICIPANT_ROLE_ = "PARTICIPANT";
     bytes32 internal constant _COLLATERAL_CUSTODIAN_ROLE_ = "COLLATERAL_CUSTODIAN";
     bytes32 internal constant _COLLATERAL_OWNER_ROLE_ = "COLLATERAL_OWNER";
@@ -63,6 +65,7 @@ library LibContractStates {
         ACTIVE_OPEN,
         PAID,
         DEFAULT,
+        COLLECTION,
         AUCTION,
         AWARDED,
         CLOSED
@@ -94,29 +97,14 @@ library LibContractInit {
         _participants.tokenId = _tokenId;
 
         _property.lender.init(address(0), LibContractStates.LoanState.FUNDED);
-        _property.principal.init(
-            _principal,
-            LibContractStates.LoanState.FUNDED
-        );
-        _property.fixedInterestRate.init(
-            _fixedInterestRate,
-            LibContractStates.LoanState.FUNDED
-        );
-        _property.duration.init(
-            _duration.daysToBlocks(),
-            LibContractStates.LoanState.FUNDED
-        );
-        _property.borrowerSigned.init(
-            false,
-            LibContractStates.LoanState.FUNDED
-        );
+        _property.principal.init(_principal, LibContractStates.LoanState.FUNDED);
+        _property.fixedInterestRate.init(_fixedInterestRate, LibContractStates.LoanState.FUNDED);
+        _property.duration.init(_duration.daysToBlocks(), LibContractStates.LoanState.FUNDED);
+        _property.borrowerSigned.init(false, LibContractStates.LoanState.FUNDED);
         _property.lenderSigned.init(false, LibContractStates.LoanState.FUNDED);
 
         _property.balance.init(0, LibContractStates.LoanState.PAID);
-        _property.stopBlockstamp.init(
-            type(uint256).max,
-            LibContractStates.LoanState.FUNDED
-        );
+        _property.stopBlockstamp.init(type(uint256).max, LibContractStates.LoanState.FUNDED);
 
         // Set state variables
         IAccessControl ac = IAccessControl(address(this));
@@ -126,26 +114,11 @@ library LibContractInit {
 
         // Set roles
         ac.grantRole(LibContractGlobals._ARBITER_ROLE_, address(this));
-        ac.grantRole(
-            LibContractGlobals._BORROWER_ROLE_,
-            _participants.borrower
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_OWNER_ROLE_,
-            _globals.factory
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_OWNER_ROLE_,
-            _participants.borrower
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_,
-            _globals.factory
-        );
-        ac.grantRole(
-            LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_,
-            _participants.borrower
-        );
+        ac.grantRole(LibContractGlobals._BORROWER_ROLE_, _participants.borrower);
+        ac.grantRole(LibContractGlobals._COLLATERAL_OWNER_ROLE_, _globals.factory);
+        ac.grantRole(LibContractGlobals._COLLATERAL_OWNER_ROLE_, _participants.borrower);
+        ac.grantRole(LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_,_globals.factory);
+        ac.grantRole(LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_, _participants.borrower);
     }
 }
 
@@ -163,7 +136,7 @@ library LibContractUpdate {
         uint256[] newValues
     );
 
-    function _updateTerms(
+    function updateTerms_(
         LibContractGlobals.Property storage _property,
         LibContractGlobals.Global storage _globals,
         string[] memory _params,
@@ -201,6 +174,13 @@ library LibContractUpdate {
         }
 
         emit TermsChanged(_params, _prevValues, _newValues);
+    }
+
+    function checkActiveState_(LibContractGlobals.Global storage _globals) public view {
+        require(
+            _globals.state > LibContractStates.LoanState.FUNDED && _globals.state < LibContractStates.LoanState.PAID,
+            "Loan state must between FUNDED and PAID exclusively."
+        );
     }
 }
 

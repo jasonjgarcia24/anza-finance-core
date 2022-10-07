@@ -10,15 +10,22 @@ import {
     LibContractGlobals as Globals,
     LibContractStates as States,
     LibContractInit as Init,
-     LibContractUpdate as Update,
+    LibContractUpdate as Update,
     LibContractActivate as Activate
 } from "./libraries/LibContractMaster.sol";
 import { LibContractNotary as Notary } from "./libraries/LibContractNotary.sol";
 import { LibContractScheduler as Scheduler } from "./libraries/LibContractScheduler.sol";
-import { ERC721Transactions as ERC721Tx, ERC20Transactions as ERC20Tx } from "./libraries/LibContractTreasurer.sol";
+import {
+    LibLoanTreasurey as Treasurey,
+    ERC721Transactions as ERC721Tx,
+    ERC20Transactions as ERC20Tx,
+    TreasurerUtils
+} from "./libraries/LibContractTreasurer.sol";
+import { LibContractCollector as Collector } from "./libraries/LibContractCollections.sol";
 
 import "../utils/StateControl.sol";
 import "../utils/BlockTime.sol";
+import "hardhat/console.sol";
 
 contract LoanContract is AccessControl, Initializable, Ownable {
     using StateControlUint for StateControlUint.Property;
@@ -70,6 +77,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
 
     function initialize(
         address _loanTreasurer,
+        address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,
@@ -85,6 +93,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         _setRoleAdmin(Globals._ARBITER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._BORROWER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._LENDER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._COLLECTOR_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._PARTICIPANT_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_CUSTODIAN_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_OWNER_ROLE_, Globals._ADMIN_ROLE_);
@@ -117,7 +126,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
             Notary._unsignLender(loanProperties, loanGlobals);
         }
 
-        Update._updateTerms(loanProperties, loanGlobals, _params, _newValues);
+        Update.updateTerms_(loanProperties, loanGlobals, _params, _newValues);
     }
 
     function depositCollateral() external payable onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
@@ -141,7 +150,9 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     }
 
     function makePayment() external payable onlyRole(Globals._BORROWER_ROLE_) {
-            ERC20Tx.depositPayment_(loanParticipants, loanProperties, loanGlobals, accountBalance);
+        ERC20Tx.depositPayment_(
+            loanParticipants, loanProperties, loanGlobals, accountBalance
+        );
     }
 
     /**
@@ -189,6 +200,11 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         }
     }
 
+    function updateBalance() external onlyRole(Globals._TREASURER_ROLE_) {
+        Update.checkActiveState_(loanGlobals);
+        Treasurey.updateBalance_(loanProperties, loanGlobals);
+    }
+
     /**
      * @dev Revoke collateralized token and revoke LoanContract approval. This
      * effectively renders the LoanContract closed.
@@ -204,6 +220,10 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         // Clear loan contract approval
         IERC721(loanParticipants.tokenContract).approve(address(0), loanParticipants.tokenId);
         loanGlobals.state = States.LoanState.CLOSED;
+    }
+
+    function initDefault() external onlyRole(Globals._TREASURER_ROLE_) {
+        Collector.defaultContract_(loanParticipants, loanGlobals);
     }
 
     function __sign() private {

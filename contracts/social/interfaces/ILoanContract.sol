@@ -4,10 +4,56 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
+import "../libraries/LibContractMaster.sol";
+import "../../utils/StateControl.sol";
+
 interface ILoanContract {
+
+    /**
+     * @dev Participant state variables as defined in LibContractMaster.sol.
+     *
+     * Requirements: NONE
+     *
+     */
+    function loanParticipants() external view returns (
+        address treasurey,
+        address borrower,
+        address tokenContract,
+        uint256 tokenId
+    );
+
+    /**
+     * @dev Property state variables as defined in LibContractMaster.sol.
+     *
+     * Requirements: NONE
+     *
+     */
+    function loanProperties() external view returns (
+        StateControlAddress.Property memory lender,
+        StateControlUint.Property memory principal,
+        StateControlUint.Property memory fixedInterestRate,
+        StateControlUint.Property memory duration,
+        StateControlBool.Property memory borrowerSigned,
+        StateControlBool.Property memory lenderSigned,
+        StateControlUint.Property memory balance,
+        StateControlUint.Property memory stopBlockstamp
+    );
+
+    /**
+     * @dev Global state variables as defined in LibContractMaster.sol.
+     *
+     * Requirements: NONE
+     *
+     */
+    function loanGlobals() external view returns (
+        address factory,
+        uint256 priority,
+        LibContractStates.LoanState states
+    );
 
     function initialize(
         address _loanTreasurer,
+        address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _priority,
@@ -53,6 +99,16 @@ interface ILoanContract {
     function sign() external;
 
     /**
+     * @dev Update loan contract balance
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _TREASURER_ROLE_.
+     *
+     */
+    function updateBalance() external;
+
+    /**
      * @dev Revoke collateralized token and revoke LoanContract approval. This
      * effectively renders the LoanContract closed.
      *
@@ -62,6 +118,16 @@ interface ILoanContract {
      *
      */
     function close() external;
+
+    /**
+     * @dev Transition the loan state to default.
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _TREASURER_ROLE_.
+     *
+     */
+    function initDefault() external;
 
     function __sign() external;
 }
