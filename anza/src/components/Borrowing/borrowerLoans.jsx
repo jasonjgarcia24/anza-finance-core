@@ -10,10 +10,6 @@ import { listenerLoanContractCreated } from '../../utils/events/listenersLoanCon
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
 import { getNetworkName } from '../../utils/networkUtils';
-import {
-    checkIfWalletIsConnected as checkConnection,
-    connectWallet
-} from '../../utils/window/ethereumConnect';
 
 import { 
     clientCreateTokensPortfolio as createTokensPortfolio
@@ -104,8 +100,24 @@ export default function BorrowingPage() {
         /**
          * Connect ethereum wallet callback
          */
-        const account = await connectWallet();
-        setCurrentAccount(account);
+        try {
+            const { ethereum } = window;
+
+            if (!!ethereum) {
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts'});
+                setCurrentAccount(accounts[0]);
+
+                ethereum.on('accountsChanged', async (_) => {
+                    await checkIfWalletIsConnected();
+                });
+                return;
+            }
+
+            alert('Get MetaMask => https://metamask.io/');
+            return;
+        } catch (err) {
+            console.error(err);
+        }
     }
 
     const callback__CreateLoanContract = async () => {
@@ -175,12 +187,32 @@ export default function BorrowingPage() {
         /**
          * Connect wallet state change function.
          */
-        const { account, chainId } = await checkConnection();
+
+        // Get wallet's ethereum object
+        const { ethereum } = window;
+
+        if (!ethereum) {
+            console.log('Make sure you have MetaMask!');
+            return;
+        } else {
+            console.log('Wallet connected :)');
+        }
+
+        // Get network
+        let chainId = await ethereum.request({ method: 'eth_chainId' });
+        chainId = parseInt(chainId, 16).toString();
+
+        // Get account, if one is authorized
+        const accounts = await ethereum.request({ method: 'eth_accounts' });
+        let account = accounts.length !== 0 ? accounts[0] : null;
+
+        // Update state variables
+        chainId = !!chainId ? chainId : null;
+        account = !!account ? account : null;
         setCurrentChainId (chainId);
         setCurrentAccount(account);
 
         // set wallet event listeners
-        const { ethereum } = window;
         ethereum.on('accountsChanged', () => window.location.reload());
         ethereum.on('chainChanged', () => window.location.reload());
 

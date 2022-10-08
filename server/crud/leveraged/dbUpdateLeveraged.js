@@ -1,48 +1,19 @@
 let query;
 
 const dbUpdateLeveraged = (app, db) => {
-    app.post('/api/insert/leveraged', (req, res) => {
+    app.post('/api/update/leveraged/lender', (req, res) => {
         const primaryKey = req.body.primaryKey;
-        const ownerAddress = req.body.ownerAddress;
-        const borrowerAddress = req.body.borrowerAddress;
-        const tokenContractAddress = req.body.tokenContractAddress;
-        const tokenId = req.body.tokenId;
         const lenderAddress = req.body.lenderAddress;
-        const principal = req.body.principal;
-        const fixedInterestRate = req.body.fixedInterestRate;
-        const duration = req.body.duration;
-        const borrowerSigned = req.body.borrowerSigned;
         const lenderSigned = req.body.lenderSigned;
+        console.log(primaryKey)
 
-        query = `INSERT INTO nft.leveraged(
-            primaryKey,
-            ownerAddress,
-            borrowerAddress,
-            tokenContractAddress,
-            tokenId,
-            lenderAddress,
-            principal,
-            fixedInterestRate,
-            duration,
-            borrowerSigned,
-            lenderSigned
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+        query = `UPDATE nft.leveraged
+            SET lenderAddress=?, lenderSigned=?
+            WHERE primaryKey=?;`
 
         db.query(
             query,
-            [
-                primaryKey,
-                ownerAddress, 
-                borrowerAddress, 
-                tokenContractAddress, 
-                tokenId, 
-                lenderAddress, 
-                principal, 
-                fixedInterestRate, 
-                duration, 
-                borrowerSigned, 
-                lenderSigned
-            ],
+            [lenderAddress, lenderSigned, primaryKey],
             (err, _) => { console.log(err); }
         );
     });

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import config from '../config.json';
 
-export const updateTokensLeveraged = (
+export const createTokensLeveraged = (
     primaryKey,
     ownerAddress,
     borrowerAddress,

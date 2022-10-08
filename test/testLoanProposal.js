@@ -7,11 +7,11 @@ const { TRANSFERIBLES, ROLES, LOANSTATE, DEFAULT_TEST_VALUES } = require("../con
 const { reset } = require("./resetFork");
 const { impersonate } = require("./impersonate");
 const { deploy } = require("../scripts/deploy");
-const { listenerLoanActivated } = require("../anza/src/events/utils/listenersLoanContract");
-const { listenerLoanContractCreated } = require("../anza/src/events/utils/listenersLoanContractFactory");
-const { listenerTermsChanged } = require("../anza/src/events/utils/listenersAContractManager");
-const { listenerLoanStateChanged } = require("../anza/src/events/utils/listenersAContractGlobals");
-const { listenerDeposited, listenerWithdrawn } = require("../anza/src/events/utils/listenersAContractTreasurer");
+const { listenerLoanActivated } = require("../anza/src/utils/events/listenersLoanContract");
+const { listenerLoanContractCreated } = require("../anza/src/utils/events/listenersLoanContractFactory");
+const { listenerTermsChanged } = require("../anza/src/utils/events/listenersAContractManager");
+const { listenerLoanStateChanged } = require("../anza/src/utils/events/listenersAContractGlobals");
+const { listenerDeposited, listenerWithdrawn } = require("../anza/src/utils/events/listenersAContractTreasurer");
 
 let BlockTime;
 let LoanContractFactory, LoanContract, LoanTreasurey;

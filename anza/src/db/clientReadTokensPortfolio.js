@@ -1,7 +1,7 @@
 import axios from 'axios';
 import config from '../config.json';
 
-export const readNonLeveragedTokensPortfolio = async (ownerAddress) => {  
+export const clientReadNonLeveragedTokensPortfolio = async (ownerAddress) => {  
     const domain = `http://${config.DATABASE.HOST}:${config.SERVER.PORT}`;
     const endpoints = `/api/select/portfolio/${ownerAddress}/N`;
 
@@ -10,9 +10,11 @@ export const readNonLeveragedTokensPortfolio = async (ownerAddress) => {
     return data;
 };
 
-export const readLeveragedTokensPortfolio = async (ownerAddress) => {  
+export const clientReadLeveragedTokensPortfolio = async (ownerAddress) => {  
     const domain = `http://${config.DATABASE.HOST}:${config.SERVER.PORT}`;
     const endpoints = `/api/select/portfolio/${ownerAddress}/Y`;
+
+    console.log(`${domain}${endpoints}`)
 
     const { data } = await axios.get(`${domain}${endpoints}`);
 

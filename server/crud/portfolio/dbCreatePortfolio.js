@@ -16,7 +16,7 @@ const dbCreatePortfolio = (app, db) => {
         query = query.replace(/(^,)|(,$)/g, "") + ';';
 
         db.query(query, portfolioVals, (err, _) => {
-            if (err.code === 'ER_DUP_ENTRY') {
+            if (!!err && err.code === 'ER_DUP_ENTRY') {
                 console.log('Duplicate entries ignored.')
             }
         });
