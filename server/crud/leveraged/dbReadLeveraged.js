@@ -36,14 +36,15 @@ const dbReadLeveraged = (app, db) => {
     });
     
     // All - Lender - Unsigned
-    app.get('/api/select/leveraged/all/lender/unsigned/:lenderAddress', (req, res) => {
+    app.get('/api/select/leveraged/all/lender/unsigned/:lenderAddress/:borrowerAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;
-        console.log(lenderAddress)
+        const borrowerAddress = req.params.borrowerAddress;
     
         query = `SELECT 
             *
             FROM nft.leveraged 
             WHERE lenderAddress='${lenderAddress}' 
+            AND borrowerAddress!='${borrowerAddress}'
             AND (borrowerSigned='N' OR lenderSigned='N');`;
 
         db.query(
@@ -55,7 +56,6 @@ const dbReadLeveraged = (app, db) => {
     // All - Lender - Signed
     app.get('/api/select/leveraged/all/lender/signed/:lenderAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;
-        console.log(lenderAddress)
     
         query = `SELECT 
             *
@@ -72,7 +72,6 @@ const dbReadLeveraged = (app, db) => {
     // All - Lender
     app.get('/api/select/leveraged/all/:lenderAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;
-        console.log(lenderAddress)
     
         query = `SELECT 
             *

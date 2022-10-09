@@ -54,7 +54,7 @@ export default function LendingPage() {
     }, [currentToken]);
 
     useEffect(() => {
-        if (!!newContract) newContractCreatedSequence();
+        if (!!newContract) newContractSponsoredSequence();
     }, [newContract])
 
     /* ---------------------------------------  *
@@ -89,17 +89,19 @@ export default function LendingPage() {
         // console.log(`Token change seq: ${currentToken.address}-${currentToken.id}`);
     }
 
-    const newContractCreatedSequence = async () => {
+    const newContractSponsoredSequence = async () => {
         console.log('new contract created!');
         console.log(newContract);
 
         await updatePortfolioLeveragedStatus(newContract, 'Y');
 
         // Render table of potential NFTs
-        const [availableNftsTable, _] = await renderNftTable(currentAccount);
-        setCurrentLeveragedNftsTable(availableNftsTable);
-        console.log('currentLeveragedNftsTable')
-        console.log(availableNftsTable === currentLeveragedNftsTable)
+        const [leveragedNftsTable, _] = await renderNftTable(currentAccount);
+        setCurrentLeveragedNftsTable(leveragedNftsTable);
+        console.log('currentLeveragedNftsTable');
+        console.log(leveragedNftsTable === currentLeveragedNftsTable);
+
+        window.location.reload();
 
         setNewContract('');
     }
@@ -151,7 +153,7 @@ export default function LendingPage() {
         console.log(primaryKey)
         updateLeveragedLenderSigned(primaryKey, currentAccount, 'Y');
 
-        // setNewContract(primaryKey);
+        setNewContract(primaryKey);
     }
 
     const callback__SetContractParams = async ({ target }) => {
@@ -240,9 +242,10 @@ export default function LendingPage() {
                             defaultChecked={i==='0'}
                             onClick={callback__SetContractParams}
                         /></td>
-                        <td key={`address-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-address-${i}`}>{tokens[i].tokenContractAddress}</td>
+                        <td key={`borrower-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-borrower-${i}`}>{getSubAddress(tokens[i].borrowerAddress)}</td>
+                        <td key={`address-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-address-${i}`}>{getSubAddress(tokens[i].tokenContractAddress)}</td>
                         <td key={`tokenId-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}  id={`id-tokenId-${i}`}>{tokens[i].tokenId}</td>
-                        <td key={`loanContract-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-loanContract-${i}`}>{tokens[i].ownerAddress}</td>
+                        <td key={`loanContract-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-loanContract-${i}`}>{getSubAddress(tokens[i].ownerAddress)}</td>
                         <td key={`principal-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-principal-${i}`}>{`${ethers.utils.formatEther(tokens[i].principal)} ETH`}</td>
                         <td key={`fixedInterestRate-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-fixedInterestRate-${i}`}>{tokens[i].fixedInterestRate}</td>
                         <td key={`duration-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-duration-${i}`}>{tokens[i].duration}</td>
@@ -256,6 +259,7 @@ export default function LendingPage() {
                 <table className='table-lending-nfts'>
                     <thead><tr>
                         <th></th>
+                        <th><label>Borrower</label></th>
                         <th><label>Token Contract</label></th>
                         <th><label>Token ID</label></th>
                         <th><label>Loan Contract</label></th>

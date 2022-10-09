@@ -22,7 +22,8 @@ import {
     clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus
  } from '../../db/clientUpdateTokensPortfolio';
 
-import { clientReadNonLeveragedTokensPortfolio as readNonLeveragedTokensPortfolio } from '../../db/clientReadTokensPortfolio';
+// import { clientReadNonLeveragedTokensPortfolio as readNonLeveragedTokensPortfolio } from '../../db/clientReadTokensPortfolio';
+import { clientReadBorrowerNotSignedJoin as readBorrowerNotSignedJoin } from '../../db/clientReadJoin';
 import { createTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
 
 import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json';
@@ -78,8 +79,11 @@ export default function BorrowingPage() {
     }
 
     const tokenSelectionChangeSequence = async () => {
-        // Update current selection
-        // console.log(`Token change seq: ${currentToken.address}-${currentToken.id}`);
+        // Update terms enable/disable
+        const terms = document.getElementsByName(`terms-${currentAccount}`);
+        [...terms].forEach((term) => { 
+            term.disabled = `terms-${currentToken.address}-${currentToken.id}` != term.id;
+        });
     }
 
     const newContractCreatedSequence = async () => {
@@ -91,8 +95,10 @@ export default function BorrowingPage() {
         // Render table of potential NFTs
         const [availableNftsTable, _] = await renderNftTable(currentAccount);
         setCurrentAvailableNftsTable(availableNftsTable);
-        console.log('currentAvailableNftsTable')
-        console.log(availableNftsTable === currentAvailableNftsTable)
+        console.log('currentAvailableNftsTable');
+        console.log(availableNftsTable === currentAvailableNftsTable);
+
+        window.location.reload();
 
         setNewContract('');
     }
@@ -125,6 +131,11 @@ export default function BorrowingPage() {
         const tokenContract = new ethers.Contract(currentToken.address, abi_ERC721.abi, signer);
         await tokenContract.setApprovalForAll(LoanContractFactory.address, true);
 
+        // Get selected token terms
+        const principal = document.getElementsByClassName(`principal-${currentToken.address}-${currentToken.id}`)[0].value;
+        const fixedInterestRate = document.getElementsByClassName(`fixedInterestRate-${currentToken.address}-${currentToken.id}`)[0].value;
+        const duration = document.getElementsByClassName(`duration-${currentToken.address}-${currentToken.id}`)[0].value;
+
         // Create new LoanContract via LoanContractFactory
         let tx = await LoanContractFactory.connect(signer).createLoanContract(
             config.LoanContract,
@@ -132,9 +143,9 @@ export default function BorrowingPage() {
             config.LoanCollection,
             currentToken.address,
             ethers.BigNumber.from(currentToken.id),
-            ethers.BigNumber.from(config.DEFAULT_TEST_VALUES.PRINCIPAL),
-            ethers.BigNumber.from(config.DEFAULT_TEST_VALUES.FIXED_INTEREST_RATE),
-            ethers.BigNumber.from(config.DEFAULT_TEST_VALUES.DURATION)
+            ethers.utils.parseEther(principal),
+            fixedInterestRate,
+            duration
         );
         await tx.wait();
 
@@ -148,9 +159,9 @@ export default function BorrowingPage() {
             tokenContractAddress, 
             tokenId.toString(), 
             ethers.constants.AddressZero,
-            config.DEFAULT_TEST_VALUES.PRINCIPAL,
-            config.DEFAULT_TEST_VALUES.FIXED_INTEREST_RATE,
-            config.DEFAULT_TEST_VALUES.DURATION,
+            ethers.utils.parseEther(principal).toString(),
+            fixedInterestRate,
+            duration,
             'Y', 
             'N'
         );
@@ -193,37 +204,27 @@ export default function BorrowingPage() {
     const updateNftPortfolio = async (account=currentAccount) => {
         if (!account) { return; }
 
-        console.log(`http://${config.DATABASE.HOST}:${config.SERVER.PORT}/api/select/leveraged/${account}`)
-
-        // Get tokens leveraged
-        const domain = `http://${config.DATABASE.HOST}:${config.SERVER.PORT}`;
-        let endpoints = `/api/select/leveraged/all/${account}`;
-        const tokensLeveraged = [];
-
-        (await axios.get(`${domain}${endpoints}`)
-            .then((response) => { return response.data; })
-        ).map((obj) => {
-                tokensLeveraged.push(obj.primaryKey);
-        });
-
-        endpoints = `/api/select/portfolio/${account}`;
-        const portfolioVals = [];
-
         // Get tokens owned
         const tokensOwned = config.DEMO_TOKENS[account];
+        if (!tokensOwned) {
+            console.log("No tokens owned.");
+            return;
+        }
+
+        // Format tokens owned for database update
+        const portfolioVals = [];
         Object.keys(tokensOwned).map((i) => {
             let primaryKey = `${tokensOwned[i].tokenContractAddress}_${tokensOwned[i].tokenId.toString()}`;
-            let leveragedStatus = !tokensLeveraged.includes(primaryKey) ? 'N' : 'Y';
 
             portfolioVals.push([
                 primaryKey,
                 account,
                 tokensOwned[i].tokenContractAddress,
                 tokensOwned[i].tokenId.toString(),
-                leveragedStatus
             ]);
         });
 
+        // Update portfolio database
         await createTokensPortfolio(portfolioVals);
     }
 
@@ -233,28 +234,53 @@ export default function BorrowingPage() {
     const renderNftTable = async (account) => {
         if (!account) { return [null, { address: null, id: null}]; }
 
-        // const tokens = config.DEMO_TOKENS[account.toLowerCase()];
-        const tokens = await readNonLeveragedTokensPortfolio(account);
+        // Get non leveraged tokens
+        const tokens = await readBorrowerNotSignedJoin(account);
         if (!tokens.length) { return [null, { address: null, id: null}]; }
 
-        console.log('tokens');
-        console.log(tokens);
+        // Create token elements
         const tokenElements = [];
-        
         tokenElements.push(
             Object.keys(tokens).map((i) => {
                 return (
                     <tr key={`tr-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}>
-                        <td key={`td-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-radio-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}><input
-                            type="radio"
+                        <td key={`td-radio-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-radio-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}><input
+                            type='radio'
                             key={`radio-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
-                            name={`${tokens[i].tokenContractAddress}`}
+                            name={`radio-${tokens[i].ownerAddress}`}
                             value={`${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
                             defaultChecked={i==='0'}
                             onClick={callback__SetContractParams}
                         /></td>
-                        <td key={`address-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-address-${i}`}>{tokens[i].tokenContractAddress}</td>
+                        <td key={`address-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-address-${i}`}>{getSubAddress(tokens[i].tokenContractAddress)}</td>
                         <td key={`tokenId-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}  id={`id-tokenId-${i}`}>{tokens[i].tokenId}</td>
+                        <td key={`td-principal-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-text-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}><input
+                            type='text'
+                            key={`text-principal-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            id={`terms-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            name={`terms-${tokens[i].ownerAddress}`}
+                            className={`principal-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            defaultValue={ethers.utils.formatEther(config.DEFAULT_TEST_VALUES.PRINCIPAL)}
+                            disabled={i!=='0'}
+                        /></td>
+                        <td key={`td-fixedInterestRate-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-text-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}><input
+                            type='text'
+                            key={`text-fixedInterestRate-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            id={`terms-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            name={`terms-${tokens[i].ownerAddress}`}
+                            className={`fixedInterestRate-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            defaultValue={config.DEFAULT_TEST_VALUES.FIXED_INTEREST_RATE}
+                            disabled={i!=='0'}
+                        /></td>
+                        <td key={`td-duration-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-text-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}><input
+                            type='text'
+                            key={`text-duration-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            id={`terms-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            name={`terms-${tokens[i].ownerAddress}`}
+                            className={`duration-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                            defaultValue={config.DEFAULT_TEST_VALUES.DURATION}
+                            disabled={i!=='0'}
+                        /></td>
                     </tr>
                 )
             })
@@ -267,6 +293,9 @@ export default function BorrowingPage() {
                         <th></th>
                         <th><label>Contract</label></th>
                         <th><label>Token ID</label></th>
+                        <th><label>Principal (ETH)</label></th>
+                        <th><label>APR</label></th>
+                        <th><label>Duration (days)</label></th>
                     </tr></thead>
                     <tbody>
                         {tokenElements}
@@ -274,8 +303,6 @@ export default function BorrowingPage() {
                 </table>
             </form>
         );
-
-        console.log('updating currentAvaialbleNftsTable')
 
         return [availableNftsTable, { address: tokens[0].tokenContractAddress, id: tokens[0].tokenId }];
     }
@@ -295,7 +322,7 @@ export default function BorrowingPage() {
             <div className='container container-table container-table-available-nfts'>
                 <h2>Available Collateral</h2>
                 <div className='buttongroup buttongroup-body'>
-                    <div className='button button-body' onClick={callback__CreateLoanContract}>Submit Loan</div>
+                    <div className='button button-body' onClick={callback__CreateLoanContract}>Request Loan</div>
                 </div>
                 {currentAvailableNftsTable}
             </div>

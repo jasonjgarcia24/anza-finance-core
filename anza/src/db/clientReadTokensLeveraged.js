@@ -2,9 +2,9 @@ import axios from 'axios';
 import { ethers } from 'ethers';
 import config from '../config.json';
 
-export const clientReadNonSponsoredTokensLeveraged = async () => {  
+export const clientReadNonSponsoredTokensLeveraged = async (accountAddress) => {  
     const domain = `http://${config.DATABASE.HOST}:${config.SERVER.PORT}`;
-    const endpoints = `/api/select/leveraged/all/lender/unsigned/${ethers.constants.AddressZero}`;
+    const endpoints = `/api/select/leveraged/all/lender/unsigned/${ethers.constants.AddressZero}/${accountAddress}`;
 
     const { data } = await axios.get(`${domain}${endpoints}`);
 

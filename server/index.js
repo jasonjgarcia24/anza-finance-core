@@ -12,6 +12,7 @@ const { dbUpdatePortfolio: updatePortfolio } = require('./crud/portfolio/dbUpdat
 const { dbCreateLeveraged: createLeveraged } = require('./crud/leveraged/dbCreateLeveraged');
 const { dbReadLeveraged: readLeveraged } = require('./crud/leveraged/dbReadLeveraged');
 const { dbUpdateLeveraged: updateLeveraged } = require('./crud/leveraged/dbUpdateLeveraged');
+const { dbReadJoin: readJoin } = require('./crud/join/dbReadJoin');
 
 const db = mysql.createPool({
     host: config.DATABASE.HOST,
@@ -33,6 +34,9 @@ updateLeveraged(app, db);
 createPortfolio(app, db);
 readPortfolio(app, db);
 updatePortfolio(app, db);
+
+// both RUD
+readJoin(app, db);
 
 app.listen(config.SERVER.PORT, () => {
     console.log(`Running on port ${config.SERVER.PORT}`);

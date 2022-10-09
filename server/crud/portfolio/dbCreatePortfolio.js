@@ -8,12 +8,17 @@ const dbCreatePortfolio = (app, db) => {
             primaryKey,
             ownerAddress, 
             tokenContractAddress, 
-            tokenId,
-            leveraged
+            tokenId
         ) VALUES`;
 
+        queryUpdate = ` ON DUPLICATE KEY UPDATE
+            primaryKey=VALUES(primaryKey),
+            ownerAddress=VALUES(ownerAddress),
+            tokenContractAddress=VALUES(tokenContractAddress),
+            tokenId=VALUES(tokenId)`;
+
         portfolioVals.forEach((_) => { query += '(?),'; });
-        query = query.replace(/(^,)|(,$)/g, "") + ';';
+        query = query.replace(/(^,)|(,$)/g, "") + `${queryUpdate};`;
 
         db.query(query, portfolioVals, (err, _) => {
             if (!!err && err.code === 'ER_DUP_ENTRY') {

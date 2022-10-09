@@ -142,9 +142,11 @@ export default function BorrowingPage() {
             Object.keys(loanContracts).map((i) => {
                 return (
                     <tr key={`tr-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`}>
-                        <td key={`address-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-address-${i}`}>{loanContracts[i].tokenContractAddress}</td>
+                        <td key={`borrower-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-borrower-${i}`}>{getSubAddress(loanContracts[i].borrowerAddress)}</td>
+                        <td key={`lender-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-lender-${i}`}>{getSubAddress(loanContracts[i].lenderAddress)}</td>
+                        <td key={`address-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-address-${i}`}>{getSubAddress(loanContracts[i].tokenContractAddress)}</td>
                         <td key={`tokenId-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`}  id={`id-tokenId-${i}`}>{loanContracts[i].tokenId}</td>
-                        <td key={`loanContract-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-loanContract-${i}`}>{loanContracts[i].ownerAddress}</td>
+                        <td key={`loanContract-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-loanContract-${i}`}>{getSubAddress(loanContracts[i].ownerAddress)}</td>
                         <td key={`principal-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-principal-${i}`}>{`${ethers.utils.formatEther(loanContracts[i].principal)} ETH`}</td>
                         <td key={`fixedInterestRate-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-fixedInterestRate-${i}`}>{loanContracts[i].fixedInterestRate}</td>
                         <td key={`duration-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-duration-${i}`}>{loanContracts[i].duration}</td>
@@ -157,6 +159,8 @@ export default function BorrowingPage() {
             <form className='form-table form-table-lending-nfts' name='form-table-lending-nfts'>
                 <table className='table-lending-nfts'>
                     <thead><tr>
+                        <th><label>Borrower</label></th>
+                        <th><label>Lender</label></th>
                         <th><label>Token Contract</label></th>
                         <th><label>Token ID</label></th>
                         <th><label>Loan Contract</label></th>
