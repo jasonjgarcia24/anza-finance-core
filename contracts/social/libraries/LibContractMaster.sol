@@ -39,7 +39,7 @@ library LibContractGlobals {
 
     struct Global {
         address factory;
-        uint256 priority;
+        uint256 debtId;
         LibContractStates.LoanState state;
     }
 }
@@ -85,7 +85,7 @@ library LibContractInit {
         address _treasurey,
         address _tokenContract,
         uint256 _tokenId,
-        uint256 _priority,
+        uint256 _debtId,
         uint256 _principal,
         uint256 _fixedInterestRate,
         uint256 _duration
@@ -109,7 +109,7 @@ library LibContractInit {
         // Set state variables
         IAccessControl ac = IAccessControl(address(this));
         _globals.factory = msg.sender;
-        _globals.priority = _priority;
+        _globals.debtId = _debtId;
         _globals.state = LibContractStates.LoanState.NONLEVERAGED;
 
         // Set roles

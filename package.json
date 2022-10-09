@@ -4,11 +4,11 @@
     "reset": "npx hardhat run --network localhost test/resetFork.js",
     "test": "npx hardhat test --network localhost",
     "deploy": "npx hardhat run scripts/run.js --network localhost",
+    "hh-test-0-0-00": "npx hardhat test --grep \"0-0-00\"",
+    "hh-test-0-0": "npx hardhat test --grep \"0-0-\"",
     "test-loanProposal": "npx hardhat test test/testLoanProposal.js --network localhost",
     "test-0": "npx hardhat test --network localhost --grep \"0-[0-9]{1}-\"",
     "test-0-0": "npx hardhat test --network localhost --grep \"0-0-\"",
-    "hh-test-0-0-00": "npx hardhat test --grep \"0-0-00\"",
-    "hh-test-0-0": "npx hardhat test --grep \"0-0-\"",
     "test-0-0-00": "npx hardhat test --network localhost --grep \"0-0-00\"",
     "test-0-0-01": "npx hardhat test --network localhost --grep \"0-0-01\"",
     "test-0-0-02": "npx hardhat test --network localhost --grep \"0-0-02\"",
@@ -25,7 +25,10 @@
     "test-0-1-99": "npx hardhat test --network localhost --grep \"0-1-99\"",
     "test-0-2": "npx hardhat test --network localhost --grep \"0-2-\"",
     "test-0-2-00": "npx hardhat test --network localhost --grep \"0-2-00\"",
-    "test-0-2-99": "npx hardhat test --network localhost --grep \"0-2-99\""
+    "test-0-2-99": "npx hardhat test --network localhost --grep \"0-2-99\"",
+    "test-0-3": "npx hardhat test --network localhost --grep \"0-3-\"",
+    "test-0-3-00": "npx hardhat test --network localhost --grep \"0-3-00\"",
+    "test-0-3-99": "npx hardhat test --network localhost --grep \"0-3-99\""
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",

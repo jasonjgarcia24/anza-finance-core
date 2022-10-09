@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "./interfaces/IAnzaDebtToken.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
@@ -21,9 +22,21 @@ import {
 
 
 contract LoanTreasurey is Ownable {
+    address private debtTokenAddress;
 
-    constructor(address _owner) {
+    constructor(address _owner, address _debtTokenAddress) {
         transferOwnership(_owner);
+        debtTokenAddress = _debtTokenAddress;
+    }
+
+    function issueDebtToken(address _loanContractAddress, string memory _debtURI) external onlyOwner() {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        IAnzaDebtToken _anzaDebtToken = IAnzaDebtToken(debtTokenAddress);
+        
+        (scAddress.Property memory _lender, scUint.Property memory _principal,,,,,,) = _loanContract.loanProperties();
+        (, uint256 _debtId,) = _loanContract.loanGlobals();
+
+        _anzaDebtToken.mintDebt(_lender._value, _debtId, _principal._value, _debtURI);
     }
 
     function updateBalance(address _loanContractAddress) external onlyOwner() {

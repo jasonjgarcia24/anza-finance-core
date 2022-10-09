@@ -47,7 +47,7 @@ interface ILoanContract {
      */
     function loanGlobals() external view returns (
         address factory,
-        uint256 priority,
+        uint256 debtId,
         LibContractStates.LoanState states
     );
 
@@ -56,7 +56,7 @@ interface ILoanContract {
         address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
-        uint256 _priority,
+        uint256 _debtId,
         uint256 _principal,
         uint256 _fixedInterestRate,
         uint256 _duration

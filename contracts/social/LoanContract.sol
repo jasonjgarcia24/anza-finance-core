@@ -80,7 +80,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
-        uint256 _priority,
+        uint256 _debtId,
         uint256 _principal,
         uint256 _fixedInterestRate,
         uint256 _duration
@@ -108,7 +108,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
             _loanTreasurer,
             _tokenContract,
             _tokenId,
-            _priority,
+            _debtId,
             _principal,
             _fixedInterestRate,
             _duration
