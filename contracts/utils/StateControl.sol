@@ -14,7 +14,7 @@ library StateControlUint {
         // This variable should never be directly accessed by users of the library: interactions must be restricted to
         // the library's function.
         uint256 _value; // default: 0
-        uint256 _lock; // default: false
+        uint256 _lock; // default: 0 (uint for gas saving)
         States.LoanState _stateThreshold; // default: 0
     }
 
@@ -27,6 +27,13 @@ library StateControlUint {
         StateControlUtils.checkState(_property, _state);
     }
 
+    /**
+     * @dev Function that initializes the state controlled variable.
+     * 
+     * Requirements:
+     * - The property lock must be unset (equal to 0).
+     *
+     */
     function init(
         Property storage _property,
         uint256 _value,
@@ -41,12 +48,27 @@ library StateControlUint {
         }
     }
 
+    /**
+     * @dev Function that gets the state controlled variable's `_value`.
+     * 
+     * Requirements:
+     * - The property lock must be set (equal to 1).
+     *
+     */
     function get(Property storage _property) public view returns (uint256) {
         require(_property._lock == 1, "State controller not initialized.");
 
         return _property._value;
     }
 
+    /**
+     * @dev Function that sets the state controlled variable's `_value`.
+     * 
+     * Requirements:
+     * - The `_state` must be no greater than the property statethreshold {StateControlUtils.checkState}.
+     * - The property lock must be set (equal to 1).
+     *
+     */
     function set(
         Property storage _property,
         uint256 _value,
@@ -85,6 +107,13 @@ library StateControlAddress {
         StateControlUtils.checkState(_property, _state);
     }
 
+    /**
+     * @dev Function that initializes the state controlled variable.
+     * 
+     * Requirements:
+     * - The property lock must be unset (equal to 0).
+     *
+     */
     function init(
         Property storage _property,
         address _value,
@@ -99,12 +128,27 @@ library StateControlAddress {
         }
     }
 
+    /**
+     * @dev Function that gets the state controlled variable's `_value`.
+     * 
+     * Requirements:
+     * - The property lock must be set (equal to 1).
+     *
+     */
     function get(Property storage _property) public view returns (address) {
         require(_property._lock == 1, "State controller not initialized.");
 
         return _property._value;
     }
 
+    /**
+     * @dev Function that sets the state controlled variable's `_value`.
+     * 
+     * Requirements:
+     * - The `_state` must be no greater than the property statethreshold {StateControlUtils.checkState}.
+     * - The property lock must be set (equal to 1).
+     *
+     */
     function set(
         Property storage _property,
         address _value,
@@ -143,6 +187,14 @@ library StateControlBool {
         StateControlUtils.checkState(_property, _state);
     }
 
+
+    /**
+     * @dev Function that initializes the state controlled variable.
+     * 
+     * Requirements:
+     * - The property lock must be unset (equal to 0).
+     *
+     */
     function init(
         Property storage _property,
         bool _value,
@@ -157,12 +209,27 @@ library StateControlBool {
         }
     }
 
+    /**
+     * @dev Function that gets the state controlled variable's `_value`.
+     * 
+     * Requirements:
+     * - The property lock must be set (equal to 1).
+     *
+     */
     function get(Property storage _property) public view returns (bool) {
         require(_property._lock == 1, "State controller not initialized.");
 
         return _property._value;
     }
 
+    /**
+     * @dev Function that sets the state controlled variable's `_value`.
+     * 
+     * Requirements:
+     * - The `_state` must be no greater than the property statethreshold {StateControlUtils.checkState}.
+     * - The property lock must be set (equal to 1).
+     *
+     */
     function set(
         Property storage _property,
         bool _value,
