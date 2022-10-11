@@ -25,9 +25,9 @@ const loanPrincipal = DEFAULT_TEST_VALUES.PRINCIPAL;
 const loanFixedInterestRate = DEFAULT_TEST_VALUES.FIXED_INTEREST_RATE;
 const loanDuration = DEFAULT_TEST_VALUES.DURATION;
 
-describe("0-1 :: LoanContract initialization tests", function () {
+describe("0-1 :: LoanContract initialization tests", async function () {
   /* NFT and LoanProposal setup */
-  beforeEach(async () => {
+  beforeEach(async function () {
     // MAINNET fork setup
     await reset();
     await impersonate();
@@ -51,8 +51,6 @@ describe("0-1 :: LoanContract initialization tests", function () {
 
     let _tx = await LoanContractFactory.connect(borrower).createLoanContract(
       LoanContract.address,
-      LoanTreasurey.address,
-      LoanCollection.address,
       tokenContract.address,
       tokenId,
       loanPrincipal,
@@ -61,12 +59,64 @@ describe("0-1 :: LoanContract initialization tests", function () {
     );
     let [clone, ...__] = await listenerLoanContractCreated(_tx, LoanContractFactory);
   
-    // Connect LoanContract
-    LoanContract = await ethers.getContractAt("LoanContract", clone, borrower);  });
+    // Activate LoanContract
+    LoanContract = await ethers.getContractAt("LoanContract", clone, borrower);
+    _tx = await LoanContract.connect(lender).setLender({ value: loanPrincipal });
+    await _tx.wait();
+  })
 
   it("0-1-99 :: PASS", async function () {});
 
-  it("0-1-00 :: Verify loan default", async function () {
+  it("0-1-00 :: Verify LoanContract initializer", async function () {
+    specify("Verify roles", async function () {
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._ADMIN_ROLE_, LoanContract.address),
+        "The loan contract is not set with ADMIN role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._TREASURER_ROLE_, LoanTreasurey.address),
+        "The loan contract is not set with TREASURER role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._COLLECTOR_ROLE_, LoanCollection.address),
+        "The loan contract is not set with COLLECTOR role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._ARBITER_ROLE_, LoanContract.address),
+        "The loan contract is not set with ARBITER role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._BORROWER_ROLE_, borrower.address),
+        "The borrower is not set with BORROWER role."
+      );
+      await assert.eventually.isFalse(
+        LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, LoanContract.address),
+        "The loan contract is set with COLLATERAL_OWNER role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._COLLATERAL_CUSTODIAN_ROLE_, LoanContract.address),
+        "The loan contract is set with COLLATERAL_CUSTODIAN role."
+      );
+      await assert.eventually.isFalse(
+        LoanContract.hasRole(ROLES._COLLATERAL_CUSTODIAN_ROLE_, borrower.address),
+        "The borrower is set with COLLATERAL_CUSTODIAN role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
+        "The borrower is not set with PARTICIPANT role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._COLLATERAL_OWNER_ROLE_, borrower.address),
+        "The borrower is not set with COLLATERAL_OWNER role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._COLLATERAL_CUSTODIAN_ROLE_, LoanContract.address),
+        "The loan contract is not set with COLLATERAL_CUSTODIAN role."
+      );
+    });
+  })
+
+  it("0-1-01 :: Verify LoanContract default", async function () {
     await assert.eventually.isTrue(
       LoanContract.hasRole(ROLES._PARTICIPANT_ROLE_, borrower.address),
       "The borrower is not set with PARTICIPANT_ROLE role."
@@ -109,7 +159,7 @@ describe("0-1 :: LoanContract initialization tests", function () {
     // );
   });
 
-  it("0-1-01 :: Verify loan not default when paid", async function () {
+  it("0-1-02 :: Verify loan not default when paid", async function () {
     // Sign lender and activate loan
     await LoanContract.connect(lender).setLender({ value: loanPrincipal });
     await LoanContract.connect(borrower).makePayment({ value: loanPrincipal });
@@ -140,7 +190,7 @@ describe("0-1 :: LoanContract initialization tests", function () {
     );
   });
 
-  it("0-1-02 :: Verify loan balance accrual rate", async function () {
+  it("0-1-03 :: Verify loan balance accrual rate", async function () {
     await LoanContract.connect(lender).setLender({ value: loanPrincipal });
 
     // Advance block number
@@ -156,7 +206,7 @@ describe("0-1 :: LoanContract initialization tests", function () {
     );
   });
 
-  it("0-1-03 :: Verify loan balance update disallowed", async function () {
+  it("0-1-04 :: Verify loan balance update disallowed", async function () {
     await LoanContract.connect(lender).setLender({ value: loanPrincipal });
 
     // Disallow update loan balance by non treasurer

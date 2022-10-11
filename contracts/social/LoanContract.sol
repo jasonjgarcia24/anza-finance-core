@@ -29,7 +29,7 @@ import "../utils/StateControl.sol";
 import "../utils/BlockTime.sol";
 import "hardhat/console.sol";
 
-contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
+contract LoanContract is AccessControl, Initializable, Ownable {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
     using StateControlBool for StateControlBool.Property;
@@ -56,30 +56,6 @@ contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
         uint256 indexed debtTokenId,
         address tokenContractAddress
     );
-
-    /**
-     * @dev Emitted when loan contract term(s) are updated.
-     */
-    event TermsChanged(
-        string[] params,
-        uint256[] prevValues,
-        uint256[] newValues
-    );
-
-    /**
-     * @dev Emitted when a loan contract state is changed.
-     */
-    event LoanStateChanged(States.LoanState indexed prevState, States.LoanState indexed newState);
-
-    /**
-     * @dev Emitted when loan contract funding is deposited.
-     */
-    event Deposited(address indexed payee, uint256 weiAmount);
-
-    /**
-     * @dev Emitted when loan contract funding is withdrawn.
-     */
-    event Withdrawn(address indexed payee, uint256 weiAmount);
 
     Globals.Participants public loanParticipants;
     Globals.Property public loanProperties;
@@ -114,8 +90,8 @@ contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
         _setRoleAdmin(Globals._BORROWER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._LENDER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._PARTICIPANT_ROLE_, Globals._ADMIN_ROLE_);
-        _setRoleAdmin(Globals._COLLATERAL_CUSTODIAN_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_OWNER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._COLLATERAL_APPROVER_ROLE_, Globals._ADMIN_ROLE_);
 
         _setupRole(Globals._TREASURER_ROLE_, _loanTreasurer);
         _setupRole(Globals._COLLECTOR_ROLE_, _loanCollector);
@@ -149,7 +125,7 @@ contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
         Update.updateTerms_(loanProperties, loanGlobals, _params, _newValues);
     }
 
-    function depositCollateral() external payable onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
+    function depositCollateral() external payable onlyRole(Globals._COLLATERAL_APPROVER_ROLE_) {
         ERC721Tx.depositCollateral_(loanParticipants, loanGlobals);
     }
 
@@ -192,7 +168,7 @@ contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
      * @dev Withdraw collateral token.
      *
      */
-    function withdrawNft() external onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
+    function withdrawNft() external onlyRole(Globals._COLLATERAL_APPROVER_ROLE_) {
         Notary.unsignBorrower_(loanProperties, loanGlobals);
         ERC721Tx.revokeCollateral_(loanParticipants, loanGlobals);
     }
@@ -249,10 +225,10 @@ contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
      *
      * Requirements:
      *
-     * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
+     * - The caller must have been granted the _COLLATERAL_APPROVER_ROLE_.
      *
      */
-    function close() external onlyRole(Globals._COLLATERAL_OWNER_ROLE_) {
+    function close() external onlyRole(Globals._COLLATERAL_APPROVER_ROLE_) {
         ERC721Tx.revokeCollateral_(loanParticipants, loanGlobals);
         
         // Clear loan contract approval

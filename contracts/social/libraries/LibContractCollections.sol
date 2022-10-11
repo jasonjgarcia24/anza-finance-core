@@ -18,12 +18,9 @@ library LibContractCollector {
 
         IAccessControl ac = IAccessControl(address(this));
         ac.revokeRole(Globals._PARTICIPANT_ROLE_, _participants.borrower);
-        ac.revokeRole(Globals._COLLATERAL_OWNER_ROLE_, _participants.borrower);
-
-        ac.grantRole(Globals._COLLATERAL_OWNER_ROLE_, address(this));
+        ac.revokeRole(Globals._COLLATERAL_APPROVER_ROLE_, _participants.borrower);
 
         _globals.state = States.LoanState.DEFAULT;
         emit States.LoanStateChanged(_prevState, _globals.state);
     }
-
 }

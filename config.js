@@ -31,8 +31,8 @@ module.exports = {
         _BORROWER_ROLE_: ethers.utils.formatBytes32String("BORROWER"),
         _LENDER_ROLE_: ethers.utils.formatBytes32String("LENDER"),
         _PARTICIPANT_ROLE_: ethers.utils.formatBytes32String("PARTICIPANT"),
-        _COLLATERAL_CUSTODIAN_ROLE_: ethers.utils.formatBytes32String("COLLATERAL_CUSTODIAN"),
         _COLLATERAL_OWNER_ROLE_: ethers.utils.formatBytes32String("COLLATERAL_OWNER"),
+        _COLLATERAL_APPROVER_ROLE_: ethers.utils.formatBytes32String("COLLATERAL_APPROVER")
     },
     LOANSTATE: {
         UNDEFINED: 0,

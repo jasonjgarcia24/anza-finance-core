@@ -90,6 +90,18 @@ describe("0-0 :: LoanContract initialization tests", function () {
 
     specify("Verify roles", async function () {
       await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._ADMIN_ROLE_, LoanContract.address),
+        "The loan contract is not set with ADMIN role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._TREASURER_ROLE_, LoanTreasurey.address),
+        "The loan contract is not set with TREASURER role."
+      );
+      await assert.eventually.isTrue(
+        LoanContract.hasRole(ROLES._COLLECTOR_ROLE_, LoanCollection.address),
+        "The loan contract is not set with COLLECTOR role."
+      );
+      await assert.eventually.isTrue(
         LoanContract.hasRole(ROLES._ARBITER_ROLE_, LoanContract.address),
         "The loan contract is not set with ARBITER role."
       );

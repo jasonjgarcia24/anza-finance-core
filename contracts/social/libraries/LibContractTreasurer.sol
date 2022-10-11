@@ -106,11 +106,10 @@ library ERC721Transactions {
 
         // Update loan contract
         IAccessControl ac = IAccessControl(address(this));
-        ac.revokeRole(Globals._COLLATERAL_OWNER_ROLE_, _globals.factory);
-        ac.revokeRole(Globals._COLLATERAL_CUSTODIAN_ROLE_, _globals.factory);
-        ac.revokeRole(Globals._COLLATERAL_CUSTODIAN_ROLE_, _participants.borrower);
+        ac.revokeRole(Globals._COLLATERAL_APPROVER_ROLE_, _globals.factory);
 
-        ac.grantRole(Globals._COLLATERAL_CUSTODIAN_ROLE_, address(this));
+        ac.grantRole(Globals._COLLATERAL_OWNER_ROLE_, address(this));
+        ac.grantRole(Globals._COLLATERAL_APPROVER_ROLE_, address(this));
 
         _globals.state = _globals.state > States.LoanState.UNSPONSORED
             ? _globals.state
@@ -124,7 +123,7 @@ library ERC721Transactions {
      *
      * Requirements:
      *
-     * - The caller must have been granted the `_COLLATERAL_OWNER_ROLE_` (handled in the
+     * - The caller must have been granted the `_COLLATERAL_APPROVER_ROLE_` (handled in the
      *   calling function).
      * - The loan contract must be retainable.
      *
@@ -144,10 +143,9 @@ library ERC721Transactions {
         // Update loan contract
         IAccessControl ac = IAccessControl(address(this));
         ac.revokeRole(Globals._COLLATERAL_OWNER_ROLE_, address(this));
-        ac.revokeRole(Globals._COLLATERAL_CUSTODIAN_ROLE_, address(this));
+        ac.revokeRole(Globals._COLLATERAL_APPROVER_ROLE_, address(this));
 
         ac.grantRole(Globals._COLLATERAL_OWNER_ROLE_, _participants.borrower);
-        ac.grantRole(Globals._COLLATERAL_CUSTODIAN_ROLE_, _participants.borrower);
 
         _globals.state = States.LoanState.NONLEVERAGED;
 

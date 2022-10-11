@@ -10,6 +10,26 @@ import "../../utils/StateControl.sol";
 interface ILoanContract {
 
     /**
+     * @dev Emitted when loan contract term(s) are updated.
+     */
+    event TermsChanged(string[] params, uint256[] prevValues, uint256[] newValues);
+
+    /**
+     * @dev Emitted when a loan contract state is changed.
+     */
+    event LoanStateChanged(States.LoanState indexed prevState, States.LoanState indexed newState);
+
+    /**
+     * @dev Emitted when loan contract funding is deposited.
+     */
+    event Deposited(address indexed payee, uint256 weiAmount);
+
+    /**
+     * @dev Emitted when loan contract funding is withdrawn.
+     */
+    event Withdrawn(address indexed payee, uint256 weiAmount);
+
+    /**
      * @dev Participant state variables as defined in LibContractMaster.sol.
      *
      * Requirements: NONE
@@ -133,7 +153,7 @@ interface ILoanContract {
      *
      * Requirements:
      *
-     * - The caller must have been granted the _COLLATERAL_OWNER_ROLE_.
+     * - The caller must have been granted the _COLLATERAL_APPROVER_ROLE_.
      *
      */
     function close() external;

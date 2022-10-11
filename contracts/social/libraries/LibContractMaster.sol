@@ -16,8 +16,8 @@ library LibContractGlobals {
     bytes32 internal constant _BORROWER_ROLE_ = "BORROWER";
     bytes32 internal constant _LENDER_ROLE_ = "LENDER";
     bytes32 internal constant _PARTICIPANT_ROLE_ = "PARTICIPANT";
-    bytes32 internal constant _COLLATERAL_CUSTODIAN_ROLE_ = "COLLATERAL_CUSTODIAN";
     bytes32 internal constant _COLLATERAL_OWNER_ROLE_ = "COLLATERAL_OWNER";
+    bytes32 internal constant _COLLATERAL_APPROVER_ROLE_ = "COLLATERAL_APPROVER";
 
     struct Participants {
         address treasurey;
@@ -115,10 +115,9 @@ library LibContractInit {
         // Set roles
         ac.grantRole(LibContractGlobals._ARBITER_ROLE_, address(this));
         ac.grantRole(LibContractGlobals._BORROWER_ROLE_, _participants.borrower);
-        ac.grantRole(LibContractGlobals._COLLATERAL_OWNER_ROLE_, _globals.factory);
         ac.grantRole(LibContractGlobals._COLLATERAL_OWNER_ROLE_, _participants.borrower);
-        ac.grantRole(LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_,_globals.factory);
-        ac.grantRole(LibContractGlobals._COLLATERAL_CUSTODIAN_ROLE_, _participants.borrower);
+        ac.grantRole(LibContractGlobals._COLLATERAL_APPROVER_ROLE_, _globals.factory);
+        ac.grantRole(LibContractGlobals._COLLATERAL_APPROVER_ROLE_, _participants.borrower);
     }
 }
 
