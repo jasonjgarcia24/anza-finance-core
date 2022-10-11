@@ -9,7 +9,7 @@ const { impersonate } = require("./impersonate");
 const { deploy } = require("../scripts/deploy");
 const { listenerLoanContractCreated } = require('../anza/src/utils/events/listenersLoanContractFactory');
 const { listenerAnzaDebtToken } = require("../anza/src/utils/events/listenersAnzaDebtToken");
-const { generateERC1155Metadata } = require("../utils/ipfs/erc1155MetadataGenerator");
+const { generateERC1155Metadata } = require("../anza/src/utils/ipfs/erc1155MetadataGenerator")
 
 let provider;
 

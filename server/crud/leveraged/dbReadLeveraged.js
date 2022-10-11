@@ -35,6 +35,55 @@ const dbReadLeveraged = (app, db) => {
         );
     });
     
+    // All - Borrower - Unsigned
+    app.get('/api/select/leveraged/all/borrower/unsigned/:lenderAddress/:borrowerAddress', (req, res) => {
+        const lenderAddress = req.params.lenderAddress;
+        const borrowerAddress = req.params.borrowerAddress;
+    
+        query = `SELECT 
+            *
+            FROM nft.leveraged 
+            WHERE lenderAddress='${lenderAddress}' 
+            AND borrowerAddress!='${borrowerAddress}'
+            AND (borrowerSigned='N' OR lenderSigned='N');`;
+
+        db.query(
+            query,
+            (_, result) => { res.send(result); }
+        );
+    });
+    
+    // All - Borrower - Signed
+    app.get('/api/select/leveraged/all/borrower/signed/:borrowerAddress', (req, res) => {
+        const borrowerAddress = req.params.borrowerAddress;
+    
+        query = `SELECT 
+            *
+            FROM nft.leveraged 
+            WHERE borrowerAddress='${borrowerAddress}' 
+            AND (borrowerSigned='Y' AND lenderSigned='Y');`;
+
+        db.query(
+            query,
+            (_, result) => { res.send(result); }
+        );
+    });
+    
+    // All - Borrower
+    app.get('/api/select/leveraged/all/:borrowerAddress', (req, res) => {
+        const borrowerAddress = req.params.borrowerAddress;
+    
+        query = `SELECT 
+            *
+            FROM nft.leveraged 
+            WHERE borrowerAddress='${borrowerAddress}';`;
+
+        db.query(
+            query,
+            (_, result) => { res.send(result); }
+        );
+    });
+    
     // All - Lender - Unsigned
     app.get('/api/select/leveraged/all/lender/unsigned/:lenderAddress/:borrowerAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;

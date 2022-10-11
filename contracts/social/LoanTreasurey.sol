@@ -37,12 +37,12 @@ contract LoanTreasurey is Ownable, ILoanTreasurey, ERC165 {
         return interfaceId == type(ILoanTreasurey).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function setDebtTokenAddress(address _debtTokenAddress) external onlyOwner() {
-        debtTokenAddress = _debtTokenAddress;
-    }
-
     function getDebtTokenAddress() external view returns (address) {
         return debtTokenAddress;
+    }
+
+    function setDebtTokenAddress(address _debtTokenAddress) external onlyOwner() {
+        debtTokenAddress = _debtTokenAddress;
     }
     
     function issueDebtToken(string memory _debtURI) external {
@@ -55,6 +55,15 @@ contract LoanTreasurey is Ownable, ILoanTreasurey, ERC165 {
         (, uint256 _debtId,) = _loanContract.loanGlobals();
 
         _anzaDebtToken.mintDebt(_msgSender(), _debtId, _principal._value, _debtURI);
+    }
+
+    function getBalance(address _loanContractAddress)
+        external
+        view
+        returns (uint256)
+    {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        return _loanContract.getBalance();
     }
 
     function updateBalance(address _loanContractAddress) external onlyOwner() {

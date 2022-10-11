@@ -109,15 +109,16 @@ contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
         _setupRole(Globals._ADMIN_ROLE_, address(this));
         _setRoleAdmin(Globals._ADMIN_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._TREASURER_ROLE_, Globals._ADMIN_ROLE_);
+        _setRoleAdmin(Globals._COLLECTOR_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._ARBITER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._BORROWER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._LENDER_ROLE_, Globals._ADMIN_ROLE_);
-        _setRoleAdmin(Globals._COLLECTOR_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._PARTICIPANT_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_CUSTODIAN_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_OWNER_ROLE_, Globals._ADMIN_ROLE_);
 
         _setupRole(Globals._TREASURER_ROLE_, _loanTreasurer);
+        _setupRole(Globals._COLLECTOR_ROLE_, _loanCollector);
 
         // Initialize state controlled variables
         Init.initializeContract_(
@@ -231,6 +232,10 @@ contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
             loanGlobals.debtId,
             loanParticipants.tokenContract
         );
+    }
+
+    function getBalance() external view returns (uint256) {
+        return Treasurey.getBalance_(loanProperties, loanGlobals);
     }
 
     function updateBalance() external onlyRole(Globals._TREASURER_ROLE_) {

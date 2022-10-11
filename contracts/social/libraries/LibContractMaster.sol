@@ -11,10 +11,10 @@ import "../../utils/BlockTime.sol";
 library LibContractGlobals {
     bytes32 internal constant _ADMIN_ROLE_ = "ADMIN";
     bytes32 internal constant _TREASURER_ROLE_ = "TREASURER";
+    bytes32 internal constant _COLLECTOR_ROLE_ = "COLLECTOR";
     bytes32 internal constant _ARBITER_ROLE_ = "ARBITER";
     bytes32 internal constant _BORROWER_ROLE_ = "BORROWER";
     bytes32 internal constant _LENDER_ROLE_ = "LENDER";
-    bytes32 internal constant _COLLECTOR_ROLE_ = "COLLECTOR";
     bytes32 internal constant _PARTICIPANT_ROLE_ = "PARTICIPANT";
     bytes32 internal constant _COLLATERAL_CUSTODIAN_ROLE_ = "COLLATERAL_CUSTODIAN";
     bytes32 internal constant _COLLATERAL_OWNER_ROLE_ = "COLLATERAL_OWNER";

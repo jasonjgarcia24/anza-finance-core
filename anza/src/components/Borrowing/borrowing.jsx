@@ -1,21 +1,17 @@
 import '../../static/css/BorrowingPage.css';
 import '../../static/css/NftTable.css';
 import React, { useEffect, useState } from 'react';
-import { getProperty } from 'dot-prop';
 import { ethers } from 'ethers';
-import axios from 'axios';
 import config from '../../config.json';
 
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 import { checkIfWalletIsConnected as checkConnection, connectWallet } from '../../utils/window/ethereumConnect';
-import { generateERC1155Metadata } from '../../utils/ipfs/erc1155MetadataGenerator';
-import { postMetadataIPFS } from '../../utils/ipfs/postMetadataIPFS';
 
 import { listenerLoanContractCreated } from '../../utils/events/listenersLoanContractFactory';
-import { listenerDebtTokenIssued } from '../../utils/events/listenersLoanContract';
-import { listenerURI } from '../../utils/events/listenersAnzaDebtToken';
+import { setAnzaDebtTokenMetadata, postAnzaDebtTokenIPFS } from '../../utils/adt/adtIPFS';
+import { mintAnzaDebtToken } from '../../utils/adt/adtContract';
 
 import { clientCreateTokensPortfolio as createTokensPortfolio } from '../../db/clientCreateTokensPortfolio';
 import { clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus } from '../../db/clientUpdateTokensPortfolio';
@@ -25,14 +21,9 @@ import { createTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
 import { createTokensDebt } from '../../db/clientCreateTokensDebt';
 
 import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json'
-import abi_ERC721Metadata from '../../artifacts/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol/IERC721Metadata.json';
 import abi_LoanContractFactory from '../../artifacts/contracts/social/LoanContractFactory.sol/LoanContractFactory.json';
-import abi_LoanContract from '../../artifacts/contracts/social/LoanContract.sol/LoanContract.json';
-import abi_AnzaDebtToken from '../../artifacts/contracts/social/interfaces/IAnzaDebtToken.sol/IAnzaDebtToken.json';
 
 export default function BorrowingPage() {
-    let ipfs = null
-
     const [isPageLoad, setIsPageLoad] = useState(true);
     const [newContract, setNewContract] = useState('');
     const [currentAccount, setCurrentAccount] = useState(null);
@@ -90,15 +81,12 @@ export default function BorrowingPage() {
 
     const newContractCreatedSequence = async () => {
         console.log('new contract created!');
-        console.log(newContract);
 
         await updatePortfolioLeveragedStatus(newContract, 'Y');
 
         // Render table of potential NFTs
         const [availableNftsTable, _] = await renderNftTable(currentAccount);
         setCurrentAvailableNftsTable(availableNftsTable);
-        console.log('currentAvailableNftsTable');
-        console.log(availableNftsTable === currentAvailableNftsTable);
 
         window.location.reload();
 
@@ -117,19 +105,17 @@ export default function BorrowingPage() {
     }
 
     const callback__CreateLoanContract = async () => {
-        // Get signer
         const { ethereum } = window;
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner(currentAccount);
 
-        // Get contract
+        // Set LoanContractFactory to operator
         let LoanContractFactory = new ethers.Contract(
             config.LoanContractFactory,
             abi_LoanContractFactory.abi,
             signer
         );
 
-        // Set LoanContractFactory to operator
         const tokenContract = new ethers.Contract(
             currentToken.address,
             abi_ERC721.abi,
@@ -142,9 +128,11 @@ export default function BorrowingPage() {
         const principal = document.getElementsByClassName(`principal-${currentToken.address}-${currentToken.id}`)[0].value;
         const fixedInterestRate = document.getElementsByClassName(`fixedInterestRate-${currentToken.address}-${currentToken.id}`)[0].value;
         const duration = document.getElementsByClassName(`duration-${currentToken.address}-${currentToken.id}`)[0].value;
+        const adtSelectElement = document.getElementsByClassName(`adt-${currentToken.address}-${currentToken.id}`)[0];
+        const adtSelect = adtSelectElement.options[adtSelectElement.options.selectedIndex].text === 'Y';
         
         // Set IPFS debt metadata object for AnzaDebtToken
-        const debtObj = await setAnzaDebtTokenMetadata(provider, LoanContractFactory);
+        const debtObj = await setAnzaDebtTokenMetadata(currentAccount);
 
         // Create new LoanContract
         tx = await LoanContractFactory.createLoanContract(
@@ -158,26 +146,6 @@ export default function BorrowingPage() {
         await tx.wait();
 
         const [cloneAddress, tokenContractAddress, tokenId] = await listenerLoanContractCreated(tx, LoanContractFactory);
-      
-        // Set IPFS LoanContract metadata object for AnzaDebtToken
-        const loanContractObj = {
-            loanContractAddress: cloneAddress,
-            borrowerAddress: currentAccount,
-            collateralTokenAddress: currentToken.address,
-            collateralTokenId: currentToken.id,
-            lenderAddress: ethers.constants.AddressZero,
-            principal: principal,
-            fixedInterestRate: fixedInterestRate,
-            duration: duration
-        }
-
-        // Post AnzaDebtToken to IPFS
-        let debtTokenAddress, debtTokenId, debtTokenURI;
-        debtTokenURI = await postAnzaDebtTokenIPFS(debtObj, loanContractObj);
-
-        // Mint AnzaDebtToken with IPFS URI
-        [debtTokenAddress, debtTokenId, debtTokenURI] = await mintAnzaDebtToken(provider, signer, debtTokenURI);
-        console.log(debtTokenURI);
 
         // Update databases
         const primaryKey = `${tokenContractAddress}_${tokenId.toString()}`;
@@ -196,13 +164,35 @@ export default function BorrowingPage() {
             'N'
         );
 
-        createTokensDebt(
-            primaryKey,
-            debtTokenURI,
-            debtTokenAddress,
-            debtTokenId,
-            principal
-        );
+        if (adtSelect) {
+            // Set IPFS LoanContract metadata object for AnzaDebtToken
+            const loanContractObj = {
+                loanContractAddress: cloneAddress,
+                borrowerAddress: currentAccount,
+                collateralTokenAddress: currentToken.address,
+                collateralTokenId: currentToken.id,
+                lenderAddress: ethers.constants.AddressZero,
+                principal: principal,
+                fixedInterestRate: fixedInterestRate,
+                duration: duration
+            }
+
+            // Post AnzaDebtToken to IPFS
+            let debtTokenAddress, debtTokenId, debtTokenURI;
+            debtTokenURI = await postAnzaDebtTokenIPFS(debtObj, loanContractObj);
+
+            // Mint AnzaDebtToken with IPFS URI
+            [debtTokenAddress, debtTokenId, debtTokenURI] = await mintAnzaDebtToken(currentAccount, cloneAddress, debtTokenURI);
+            console.log(debtTokenURI);
+
+            createTokensDebt(
+                primaryKey,
+                debtTokenURI,
+                debtTokenAddress,
+                debtTokenId,
+                principal
+            );
+        }
 
         setNewContract(primaryKey);
     }
@@ -237,7 +227,7 @@ export default function BorrowingPage() {
     }
 
     /* ---------------------------------------  *
-     *       DATABASE FUNCTIONS        *
+     *       DATABASE MODIFIER FUNCTIONS        *
      * ---------------------------------------  */
     const updateNftPortfolio = async (account=currentAccount) => {
         if (!account) { return; }
@@ -264,56 +254,6 @@ export default function BorrowingPage() {
 
         // Update portfolio database
         await createTokensPortfolio(portfolioVals);
-    }
-
-    const setAnzaDebtTokenMetadata = async (provider, LoanContractFactory) => {
-        const AnzaDebtToken = new ethers.Contract(
-            config.AnzaDebtToken,
-            abi_AnzaDebtToken.abi,
-            provider
-        );
-
-        const anzaDebtTokenName = await AnzaDebtToken.name();
-        const anzaDebtTokenSymbol = await AnzaDebtToken.symbol();
-        const debtId = await LoanContractFactory.getNextDebtId();
-
-        const debtObj = {
-            name: anzaDebtTokenName,
-            symbol: anzaDebtTokenSymbol,
-            debtId: debtId.toString(),
-            description: 'Anza finance debt token',
-            imageLocation: ''
-        };    
-
-        return debtObj;
-    }
-
-    const postAnzaDebtTokenIPFS = async (debtObj, loanContractObj) => {
-        const debtTokenMetadata = await generateERC1155Metadata(debtObj, loanContractObj);        
-        const cid = await postMetadataIPFS(debtTokenMetadata);
-
-        return cid;
-    }
-
-    const mintAnzaDebtToken = async (provider, signer, debtTokenURI) => {
-        const AnzaDebtToken = new ethers.Contract(
-            config.AnzaDebtToken,
-            abi_AnzaDebtToken.abi,
-            provider
-        );
-
-        const LoanContract = new ethers.Contract(
-            cloneAddress,
-            abi_LoanContract.abi,
-            signer
-        );
-        tx = await LoanContract.issueDebtToken(debtTokenURI);
-        await tx.wait();
-
-        let [, debtTokenAddress, debtTokenId,] = await listenerDebtTokenIssued(tx, LoanContract);
-        [debtTokenURI,] = await listenerURI(tx, AnzaDebtToken);
-        
-        return [debtTokenAddress, debtTokenId.toString(), debtTokenURI];
     }
 
     /* ---------------------------------------  *
@@ -369,6 +309,17 @@ export default function BorrowingPage() {
                             defaultValue={config.DEFAULT_TEST_VALUES.DURATION}
                             disabled={i!=='0'}
                         /></td>
+                        <td key={`td-adt-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-text-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}>
+                            <select
+                                key={`text-adt-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                                id={`terms-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                                name={`terms-${tokens[i].ownerAddress}`}
+                                className={`adt-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
+                                disabled={i!=='0'}
+                            >
+                                <option>Y</option><option>N</option>
+                            </select>
+                        </td>
                     </tr>
                 )
             })

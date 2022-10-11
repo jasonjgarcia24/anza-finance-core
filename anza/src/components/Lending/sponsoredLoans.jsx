@@ -8,15 +8,16 @@ import config from '../../config.json';
 import { listenerLoanContractCreated } from '../../utils/events/listenersLoanContractFactory';
 
 import { setPageTitle } from '../../utils/titleUtils';
-import { getSubAddress } from '../../utils/addressUtils';
+import { getSubAddress, getLinkedSubAddress } from '../../utils/addressUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 
 import { 
-    clientReadSignedTokensLeveraged as readSignedTokensLeveraged
+    clientReadLenderSignedTokensLeveraged as readLenderSignedTokensLeveraged
 } from '../../db/clientReadTokensLeveraged';
 
 import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json';
 import abi_LoanContractFactory from '../../artifacts/contracts/social/LoanContractFactory.sol/LoanContractFactory.json';
+import abi_LoanContract from '../../artifacts/contracts/social/interfaces/ILoanContract.sol/ILoanContract.json';
 
 export default function BorrowingPage() {
     const [isPageLoad, setIsPageLoad] = useState(true);
@@ -48,7 +49,7 @@ export default function BorrowingPage() {
         console.log(`Network: ${chainId}`);
 
         // Render table of sponsored loans
-        const [leveragedNftsTable, token] = await renderNftTable(account);
+        const [leveragedNftsTable, token] = await renderNftTable(account, chainId);
         setCurrentToken({ address: token.address, id: token.id });
         setCurrentLeveragedNftsTable(leveragedNftsTable);
 
@@ -129,30 +130,44 @@ export default function BorrowingPage() {
     /* ---------------------------------------  *
      *           FRONTEND RENDERING             *
      * ---------------------------------------  */
-    const renderNftTable = async (account) => {
+    const renderNftTable = async (account, chainId) => {
         if (!account) { return [null, { address: null, id: null}]; }
 
         // const tokens = config.DEMO_TOKENS[account.toLowerCase()];
-        const loanContracts = await readSignedTokensLeveraged(account);
-        if (!loanContracts.length) { return; }// [null, { address: null, id: null}]; }
+        const loanContracts = await readLenderSignedTokensLeveraged(account);
+        if (!loanContracts.length) { return; }
 
+        const { ethereum } = window;
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner(account);    
         const loanElements = [];
         
         loanElements.push(
-            Object.keys(loanContracts).map((i) => {
-                return (
-                    <tr key={`tr-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`}>
-                        <td key={`borrower-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-borrower-${i}`}>{getSubAddress(loanContracts[i].borrowerAddress)}</td>
-                        <td key={`lender-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-lender-${i}`}>{getSubAddress(loanContracts[i].lenderAddress)}</td>
-                        <td key={`address-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-address-${i}`}>{getSubAddress(loanContracts[i].tokenContractAddress)}</td>
-                        <td key={`tokenId-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`}  id={`id-tokenId-${i}`}>{loanContracts[i].tokenId}</td>
-                        <td key={`loanContract-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-loanContract-${i}`}>{getSubAddress(loanContracts[i].ownerAddress)}</td>
-                        <td key={`principal-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-principal-${i}`}>{`${ethers.utils.formatEther(loanContracts[i].principal)} ETH`}</td>
-                        <td key={`fixedInterestRate-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-fixedInterestRate-${i}`}>{loanContracts[i].fixedInterestRate}</td>
-                        <td key={`duration-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-duration-${i}`}>{loanContracts[i].duration}</td>
-                    </tr>
-                )
-            })
+            await Promise.all(
+                Object.keys(loanContracts).map(async (i) => {
+                    const LoanContract = new ethers.Contract(
+                        loanContracts[i].ownerAddress,
+                        abi_LoanContract.abi,
+                        signer
+                    );
+
+                    const loanContractBalance = await LoanContract.getBalance();
+
+                    return (
+                        <tr key={`tr-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`}>
+                            <td key={`borrower-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-borrower-${i}`}>{getLinkedSubAddress(loanContracts[i].borrowerAddress, chainId)}</td>
+                            <td key={`lender-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-lender-${i}`}>{getLinkedSubAddress(loanContracts[i].lenderAddress, chainId)}</td>
+                            <td key={`balance-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-balance-${i}`}>{`${ethers.utils.formatEther(loanContractBalance)} ETH`}</td>
+                            <td key={`address-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-address-${i}`}>{getLinkedSubAddress(loanContracts[i].tokenContractAddress, chainId)}</td>
+                            <td key={`tokenId-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`}  id={`id-tokenId-${i}`}>{loanContracts[i].tokenId}</td>
+                            <td key={`loanContract-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-loanContract-${i}`}>{getLinkedSubAddress(loanContracts[i].ownerAddress, chainId)}</td>
+                            <td key={`principal-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-principal-${i}`}>{`${ethers.utils.formatEther(loanContracts[i].principal)} ETH`}</td>
+                            <td key={`fixedInterestRate-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-fixedInterestRate-${i}`}>{loanContracts[i].fixedInterestRate}</td>
+                            <td key={`duration-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-duration-${i}`}>{loanContracts[i].duration}</td>
+                        </tr>
+                    );
+                })
+            )
         );
         
         const leveragedNftsTable = (    
@@ -161,6 +176,7 @@ export default function BorrowingPage() {
                     <thead><tr>
                         <th><label>Borrower</label></th>
                         <th><label>Lender</label></th>
+                        <th><label>Balance</label></th>
                         <th><label>Token Contract</label></th>
                         <th><label>Token ID</label></th>
                         <th><label>Loan Contract</label></th>

@@ -8,6 +8,8 @@ interface ILoanTreasurey {
 
     function issueDebtToken(string memory _debtURI) external;
 
+    function getBalance(address _loanContractAddress) external view returns (uint256);
+
     function updateBalance(address _loanContractAddress) external;
 
     function assessMaturity(address _loanContractAddress) external;

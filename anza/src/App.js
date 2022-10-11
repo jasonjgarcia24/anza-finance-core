@@ -9,7 +9,8 @@ const App = () => {
         <Link className='link' to="/borrowing">Borrowing</Link> | {" "}
         <Link className='link' to="/lending">Lending</Link> | {" "}
         <Link className='link' to="/borrowerloans">Loans</Link> | {" "}
-        <Link className='link' to="/sponsoredLoans">Sponsors</Link>
+        <Link className='link' to="/sponsoredLoans">Sponsored</Link> | {" "}
+        <Link className='link' to="/refinanceLoans">Refinance</Link>
       </nav>
       <Outlet />
     </div>

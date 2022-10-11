@@ -14,7 +14,8 @@ import {
 import { TreasurerUtils as Utils } from "./LibContractTreasurer.sol";
 import {
     StateControlUint as scUint,
-    StateControlAddress as scAddress
+    StateControlAddress as scAddress,
+    StateControlUtils as scUtils
 } from "../../utils/StateControl.sol";
 
 import "../interfaces/ILoanContract.sol";
@@ -46,21 +47,34 @@ library LibLoanTreasurey {
         }
     }
 
-    function updateBalance_(
+    function getBalance_(
         Globals.Property storage _properties,
         Globals.Global storage _globals
-    ) public {
-       console.logUint(_properties.balance.get());
-        _properties.balance.set(
-            _properties.balance.get() + TreasurerUtils.calculateInterest_(
+    )
+        public
+        view
+        returns (uint256) 
+    {
+        bool _isActive = scUtils.isActive_(_globals.state, _properties.balance.getThreshold());
+
+        return  _isActive
+            ? _properties.balance.get() + TreasurerUtils.calculateInterest_(
                 _properties.balance.get(),
                 _properties.fixedInterestRate.get(),
                 _properties.duration.get(),
                 _properties.stopBlockstamp.get()
-            ),
-        _globals.state
-       );
-       console.logUint(_properties.balance.get());
+            )
+            : _properties.balance.get();
+    }
+
+    function updateBalance_(
+        Globals.Property storage _properties,
+        Globals.Global storage _globals
+    ) public {
+        _properties.balance.set(
+            getBalance_(_properties, _globals),
+            _globals.state
+        );
     }
 }
 

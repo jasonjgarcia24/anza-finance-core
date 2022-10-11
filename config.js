@@ -56,9 +56,9 @@ module.exports = {
         DURATION: 360
     },
     CHAINID_TO_NETWORK: {
-        31337: 'LocalHost',
-        1: 'ETH Mainnet',
-        5: 'Goerli'
+        '31337': 'LocalHost',
+        '1': 'ETH Mainnet',
+        '5': 'Goerli'
     },
     IPFS: {
         Addresses: {
@@ -76,5 +76,10 @@ module.exports = {
             API_PORT: "5001",
             GATEWAY_PORT: "8080"
         }
+    },
+    ETHERSCAN: {
+        '31337': "https://etherscan.io/",
+        '1': "https://etherscan.io/",
+        '5': "https://goerli.etherscan.io/"
     }
 }

@@ -62,6 +62,20 @@ library StateControlUint {
     }
 
     /**
+     * @dev Function that gets the state controlled variable's `_stateThreshold`.
+     * 
+     * Requirements:
+     * - The property lock must be set (equal to 1).
+     *
+     */
+    function getThreshold(Property storage _property) public view returns (States.LoanState) {
+        require(_property._lock == 1, "State controller not initialized.");
+
+        return _property._stateThreshold;
+    }
+
+
+    /**
      * @dev Function that sets the state controlled variable's `_value`.
      * 
      * Requirements:
@@ -139,6 +153,19 @@ library StateControlAddress {
         require(_property._lock == 1, "State controller not initialized.");
 
         return _property._value;
+    }
+
+    /**
+     * @dev Function that gets the state controlled variable's `_stateThreshold`.
+     * 
+     * Requirements:
+     * - The property lock must be set (equal to 1).
+     *
+     */
+    function getThreshold(Property storage _property) public view returns (States.LoanState) {
+        require(_property._lock == 1, "State controller not initialized.");
+
+        return _property._stateThreshold;
     }
 
     /**
@@ -223,6 +250,19 @@ library StateControlBool {
     }
 
     /**
+     * @dev Function that gets the state controlled variable's `_stateThreshold`.
+     * 
+     * Requirements:
+     * - The property lock must be set (equal to 1).
+     *
+     */
+    function getThreshold(Property storage _property) public view returns (States.LoanState) {
+        require(_property._lock == 1, "State controller not initialized.");
+
+        return _property._stateThreshold;
+    }
+
+    /**
      * @dev Function that sets the state controlled variable's `_value`.
      * 
      * Requirements:
@@ -260,7 +300,7 @@ library StateControlUtils {
         States.LoanState _state
     ) public view {
         require(
-            isActive(_state, _property._stateThreshold),
+            isActive_(_state, _property._stateThreshold),
             "Access to change value is denied."
         );
     }
@@ -275,7 +315,7 @@ library StateControlUtils {
         States.LoanState _state
     ) public view {
         require(
-            isActive(_state, _property._stateThreshold),
+            isActive_(_state, _property._stateThreshold),
             "Access to change value is denied."
         );
     }
@@ -290,7 +330,7 @@ library StateControlUtils {
         States.LoanState _state
     ) public view {
         require(
-            isActive(_state, _property._stateThreshold),
+            isActive_(_state, _property._stateThreshold),
             "Access to change value is denied."
         );
     }
@@ -299,7 +339,7 @@ library StateControlUtils {
      * @dev Return if the state threshold of`_property` is beyond `_state`.
      *
      */
-    function isActive(States.LoanState _state, States.LoanState _stateThreshold)
+    function isActive_(States.LoanState _state, States.LoanState _stateThreshold)
         public
         pure
         returns (bool)

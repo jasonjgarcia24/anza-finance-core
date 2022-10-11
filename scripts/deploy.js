@@ -100,7 +100,8 @@ const deploy = async (tokenContract, addressOnly=false) => {
   const LibLoanTreasurey_Factory = await ethers.getContractFactory("LibLoanTreasurey", {
     libraries: {
       TreasurerUtils: TreasurerUtils.address,
-      StateControlUint: StateControlUint.address
+      StateControlUint: StateControlUint.address,
+      StateControlUtils: StateControlUtils.address
     },
   });
   const LibLoanTreasurey = await LibLoanTreasurey_Factory.deploy();

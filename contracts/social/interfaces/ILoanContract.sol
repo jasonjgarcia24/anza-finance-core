@@ -110,6 +110,15 @@ interface ILoanContract {
 
     /**
      * @dev Update loan contract balance
+     * @return The loan contract balance, including interest
+     *
+     * Requirements: None
+     *
+     */
+    function getBalance() external view returns (uint256);
+
+    /**
+     * @dev Update loan contract balance
      *
      * Requirements:
      *

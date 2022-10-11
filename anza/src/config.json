@@ -932,6 +932,11 @@
       "GATEWAY_PORT": "8080"
     }
   },
+  "ETHERSCAN": {
+    "1": "https://etherscan.io/",
+    "5": "https://goerli.etherscan.io/",
+    "31337": "https://etherscan.io/"
+  },
   "DATABASE": {
     "HOST": "localhost",
     "USER": "primary"

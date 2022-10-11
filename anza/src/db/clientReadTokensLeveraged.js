@@ -20,7 +20,25 @@ export const clientReadNonSponsoredTokensLeveragedContract = async (tokenContrac
     return data[0];
 };
 
-export const clientReadSignedTokensLeveraged = async (lenderAddress) => {  
+export const clientReadBorrowerSignedTokensLeveraged = async (borrowerAddress) => {  
+    const domain = `http://${config.DATABASE.HOST}:${config.SERVER.PORT}`;
+    const endpoints = `/api/select/leveraged/all/borrower/signed/${borrowerAddress}`;
+
+    const { data } = await axios.get(`${domain}${endpoints}`);
+
+    return data;
+};
+
+export const clientReadLenderSignedTokensLeveraged = async (lenderAddress) => {  
+    const domain = `http://${config.DATABASE.HOST}:${config.SERVER.PORT}`;
+    const endpoints = `/api/select/leveraged/all/lender/signed/${lenderAddress}`;
+
+    const { data } = await axios.get(`${domain}${endpoints}`);
+
+    return data;
+};
+
+export const clientReadActiveTokensLeveraged = async (lenderAddress) => {  
     const domain = `http://${config.DATABASE.HOST}:${config.SERVER.PORT}`;
     const endpoints = `/api/select/leveraged/all/lender/signed/${lenderAddress}`;
 

@@ -67,12 +67,10 @@ library LibContractNotary {
             _properties.borrowerSigned.get() == true,
             "The borrower must currently be signed off."
         );
-        States.LoanState _prevState = _globals.state;
-
         // Update loan contract
         _properties.borrowerSigned.set(false, _globals.state);
 
-        emit States.LoanStateChanged(_prevState, _globals.state);
+        // No state change required
     }
 
     /**
