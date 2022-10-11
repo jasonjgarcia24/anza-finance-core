@@ -23,3 +23,11 @@ CREATE TABLE IF NOT EXISTS nft.leveraged(
     UNIQUE (primaryKey),
     CHECK ((borrowerSigned='Y' OR borrowerSigned='N') AND (lenderSigned='Y' OR lenderSigned='N'))
 );
+
+CREATE TABLE IF NOT EXISTS nft.debt(
+    primaryKey VARCHAR(121) UNIQUE NOT NULL,
+    cid VARCHAR(53) NOT NULL,
+    debtTokenContractAddress VARCHAR(42) NOT NULL,
+    debtTokenId VARCHAR(78) NOT NULL,
+    quantity VARCHAR(78) NOT NULL
+)

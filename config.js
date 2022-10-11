@@ -59,5 +59,22 @@ module.exports = {
         31337: 'LocalHost',
         1: 'ETH Mainnet',
         5: 'Goerli'
+    },
+    IPFS: {
+        Addresses: {
+            Swarm: [
+                "/ip4/0.0.0.0/tcp/4001",
+                "/ip6/::/tcp/4001",
+                "/ip4/0.0.0.0/udp/4001/quic",
+                "/ip6/::/udp/4001/quic"
+            ],
+            Announce: [],
+            AppendAnnounce: [],
+            NoAnnounce: [],
+            API: "/ip4/127.0.0.1/tcp/5001",
+            Gateway: "/ip4/127.0.0.1/tcp/8080",
+            API_PORT: "5001",
+            GATEWAY_PORT: "8080"
+        }
     }
 }

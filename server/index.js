@@ -3,6 +3,7 @@ const config = require('./config');
 const cors = require('cors');
 const mysql = require('mysql');
 const express = require('express');
+// const fileUpload = require('express-fileupload');
 const bodyParser = require('body-parser');
 const app = express();
 
@@ -13,6 +14,7 @@ const { dbCreateLeveraged: createLeveraged } = require('./crud/leveraged/dbCreat
 const { dbReadLeveraged: readLeveraged } = require('./crud/leveraged/dbReadLeveraged');
 const { dbUpdateLeveraged: updateLeveraged } = require('./crud/leveraged/dbUpdateLeveraged');
 const { dbReadJoin: readJoin } = require('./crud/join/dbReadJoin');
+const { dbCreateDebt: createDebt } = require('./crud/debt/dbCreateDebt');
 
 const db = mysql.createPool({
     host: config.DATABASE.HOST,
@@ -35,7 +37,10 @@ createPortfolio(app, db);
 readPortfolio(app, db);
 updatePortfolio(app, db);
 
-// both RUD
+// nft.debt CRUD
+createDebt(app, db);
+
+// nft.leveraged and nft.portfolio RUD
 readJoin(app, db);
 
 app.listen(config.SERVER.PORT, () => {

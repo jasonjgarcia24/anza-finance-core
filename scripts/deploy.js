@@ -120,19 +120,11 @@ const deploy = async (tokenContract, addressOnly=false) => {
   const ERC721Transactions_Factory = await ethers.getContractFactory("ERC721Transactions");
   const ERC721Transactions = await ERC721Transactions_Factory.deploy();
 
-  // * contracts/social/AnzaDebtToken.sol:AnzaDebtToken
-  [owner,,,, treasurer, ..._] = await ethers.getSigners();
-  const AnzaDebtToken_Factory = await ethers.getContractFactory("AnzaDebtToken");
-  const AnzaDebtToken = await AnzaDebtToken_Factory.deploy(
-    "ipfs://",
-    owner.address,
-    treasurer.address
-  );
-  await AnzaDebtToken.deployed();
-
   /**
-   * LoanContractFactory, LoanContract, LoanTreasurey, LoanCollection
+   * LoanContractFactory, LoanContract, LoanTreasurey, LoanCollection, AnzaDebtToken
    */
+   [owner,,,, treasurer, ..._] = await ethers.getSigners();
+
   const LoanCollection_Factory = await ethers.getContractFactory("LoanCollection");
   const LoanCollection = await LoanCollection_Factory.deploy(treasurer.address);
 
@@ -141,11 +133,20 @@ const deploy = async (tokenContract, addressOnly=false) => {
       LibLoanTreasurey: LibLoanTreasurey.address,
     }
   });
-  const LoanTreasurey = await LoanTreasurey_Factory.deploy(treasurer.address, AnzaDebtToken.address);
+  const LoanTreasurey = await LoanTreasurey_Factory.deploy(treasurer.address);
+
+  const AnzaDebtToken_Factory = await ethers.getContractFactory("AnzaDebtToken");
+  const AnzaDebtToken = await AnzaDebtToken_Factory.deploy(
+    "ipfs://",
+    owner.address,
+    LoanTreasurey.address
+  );
+  await AnzaDebtToken.deployed();
+  await LoanTreasurey.connect(treasurer).setDebtTokenAddress(AnzaDebtToken.address);
 
   const LoanContractFactory_Factory = await ethers.getContractFactory("LoanContractFactory");
   const LoanContractFactory = await LoanContractFactory_Factory.deploy(LoanTreasurey.address, LoanCollection.address);
-
+  
   const LoanContract_Factory = await ethers.getContractFactory("LoanContract", {
     libraries: {
       StateControlUint: StateControlUint.address,

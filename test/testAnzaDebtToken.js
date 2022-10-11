@@ -8,7 +8,8 @@ const { reset } = require("./resetFork");
 const { impersonate } = require("./impersonate");
 const { deploy } = require("../scripts/deploy");
 const { listenerLoanContractCreated } = require('../anza/src/utils/events/listenersLoanContractFactory');
-const { listenerAnzaDebtToken } = require("../utils/listenersAnzaDebtToken");
+const { listenerAnzaDebtToken } = require("../anza/src/utils/events/listenersAnzaDebtToken");
+const { generateERC1155Metadata } = require("../utils/ipfs/erc1155MetadataGenerator");
 
 let provider;
 
@@ -68,17 +69,38 @@ describe("0-3 :: AnzaDebtToken initialization tests", function () {
     // Mint AnzaDebtTokens
     tx = await AnzaDebtToken.connect(treasurer).mintDebt(
       lender.address,
+      clone,
       debtId,
       amountDebtTokens,
       tokenURI
     );
 
     let [_operator, _from, _to, _id, _value] = await listenerAnzaDebtToken(tx, AnzaDebtToken);
-    console.log(_operator);
-    console.log(_from);
-    console.log(_to);
-    console.log(_id);
-    console.log(_value);
+
+    let debtName = await AnzaDebtToken.name();
+    let debtSymbol = await AnzaDebtToken.symbol();
+
+    let debtObj = {
+      name: debtName,
+      symbol: debtSymbol,
+      tokenId: debtId,
+      description: 'Anza finance debt token',
+      imageLocation: ''
+    };
+
+    let loanContractObj = {
+      loanContractAddress: clone,
+      borrowerAddress: borrower.address,
+      collateralTokenAddress: tokenContract.address,
+      collateralTokenId: tokenId,
+      lenderAddress: lender.address,
+      principal: loanPrincipal,
+      fixedInterestRate: loanFixedInterestRate,
+      duration: loanDuration
+    }
+
+    let debtTokenURI = await generateERC1155Metadata(debtObj, loanContractObj)
+    console.log(debtTokenURI)
   });
 
   it("0-3-99 :: PASS", async function () {});

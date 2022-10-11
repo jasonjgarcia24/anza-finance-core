@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "./interfaces/ILoanContract.sol";
+import "./interfaces/ILoanTreasurey.sol";
 
 import {
     LibContractGlobals as Globals,
@@ -27,7 +29,7 @@ import "../utils/StateControl.sol";
 import "../utils/BlockTime.sol";
 import "hardhat/console.sol";
 
-contract LoanContract is AccessControl, Initializable, Ownable {
+contract LoanContract is AccessControl, Initializable, Ownable, ILoanContract {
     using StateControlUint for StateControlUint.Property;
     using StateControlAddress for StateControlAddress.Property;
     using StateControlBool for StateControlBool.Property;
@@ -46,13 +48,23 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     );
 
     /**
+     * @dev Emitted when deb token(s) are distributed.
+     */
+    event DebtTokenIssued(
+        address indexed loanContract,
+        address indexed debtTokenAddress,
+        uint256 indexed debtTokenId,
+        address tokenContractAddress
+    );
+
+    /**
      * @dev Emitted when loan contract term(s) are updated.
      */
     event TermsChanged(
         string[] params,
         uint256[] prevValues,
         uint256[] newValues
-    );  
+    );
 
     /**
      * @dev Emitted when a loan contract state is changed.
@@ -74,6 +86,13 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     Globals.Global public loanGlobals;
 
     mapping(address => uint256) internal accountBalance;
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(ILoanContract).interfaceId || super.supportsInterface(interfaceId);
+    }
 
     function initialize(
         address _loanTreasurer,
@@ -114,7 +133,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
             _duration
         );
 
-        // // Sign off borrower
+        // Sign off borrower
         __sign();
     }
 
@@ -148,7 +167,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
             }
         }
     }
-
+    
     function makePayment() external payable onlyRole(Globals._BORROWER_ROLE_) {
         ERC20Tx.depositPayment_(
             loanParticipants, loanProperties, loanGlobals, accountBalance
@@ -198,6 +217,20 @@ contract LoanContract is AccessControl, Initializable, Ownable {
                 __activate();
             }
         }
+    }
+
+    function issueDebtToken(string memory _debtURI) external onlyRole(Globals._PARTICIPANT_ROLE_) {
+        ILoanTreasurey _loanTreasurey = ILoanTreasurey(loanParticipants.treasurey);
+        address _debtTokenAddress = _loanTreasurey.getDebtTokenAddress();
+
+        _loanTreasurey.issueDebtToken(_debtURI);
+        
+        emit DebtTokenIssued(
+            address(this),
+            _debtTokenAddress,
+            loanGlobals.debtId,
+            loanParticipants.tokenContract
+        );
     }
 
     function updateBalance() external onlyRole(Globals._TREASURER_ROLE_) {
@@ -265,4 +298,27 @@ contract LoanContract is AccessControl, Initializable, Ownable {
                 keccak256("onERC721Received(address,address,uint256,bytes)")
             );
     }
+
+    /**
+     * @dev Whenever an {IERC1155} `tokenId` token is transferred to this contract via {IERC1155-safeTransferFrom}
+     * by `operator` from `from`, this function is called.
+     *
+     * It must return its Solidity selector to confirm the token transfer.
+     * If any other value is returned or the interface is not implemented by the recipient, the transfer will be reverted.
+     *
+     */
+    function onERC1155Received(
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return 
+            bytes4(
+                keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")
+            );
+    }
+
+    fallback() external {}
 }

@@ -8,7 +8,7 @@ import config from '../../config.json';
 import { listenerDeposited } from '../../utils/events/listenersAContractTreasurer';
 
 import { setPageTitle } from '../../utils/titleUtils';
-import { getSubAddress } from '../../utils/addressUtils';
+import { getSubAddress, getSubCid } from '../../utils/addressUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 import {
     checkIfWalletIsConnected as checkConnection,
@@ -25,9 +25,12 @@ import {
     clientUpdateLeveragedLenderSigned as updateLeveragedLenderSigned
  } from '../../db/clientUpdateTokensLeveraged';
  import {
-    clientReadNonSponsoredTokensLeveraged as readNonSponsoredTokensLeveraged,
     clientReadNonSponsoredTokensLeveragedContract as readNonSponsoredTokensLeveragedContract
  } from '../../db/clientReadTokensLeveraged';
+
+ import {
+    clientReadNonSponsoredTokensJoin as readNonSponsoredTokensJoin
+ } from '../../db/clientReadJoin';
 
 import { clientReadLeveragedTokensPortfolio as readLeveragedTokensPortfolio } from '../../db/clientReadTokensPortfolio';
 import { updateTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
@@ -223,7 +226,7 @@ export default function LendingPage() {
         if (!account) { return [null, { address: null, id: null}]; }
 
         // const tokens = config.DEMO_TOKENS[account.toLowerCase()];
-        const tokens = await readNonSponsoredTokensLeveraged(account);
+        const tokens = await readNonSponsoredTokensJoin(account);
         if (!tokens.length) { return [null, { address: null, id: null}]; }
 
         console.log('tokens');
@@ -249,6 +252,10 @@ export default function LendingPage() {
                         <td key={`principal-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-principal-${i}`}>{`${ethers.utils.formatEther(tokens[i].principal)} ETH`}</td>
                         <td key={`fixedInterestRate-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-fixedInterestRate-${i}`}>{tokens[i].fixedInterestRate}</td>
                         <td key={`duration-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-duration-${i}`}>{tokens[i].duration}</td>
+                        <td key={`debtCid-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtCid-${i}`}><a href={tokens[i].cid} target="_blank">{getSubCid(tokens[i].cid)}</a></td>
+                        <td key={`debtContract-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtContract-${i}`}>{getSubAddress(tokens[i].debtTokenContractAddress)}</td>
+                        <td key={`debtTokenId-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtTokenId-${i}`}>{tokens[i].debtTokenId}</td>
+                        <td key={`debtQuantity-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtQuantity-${i}`}>{tokens[i].quantity} ADT</td>
                     </tr>
                 )
             })
@@ -266,6 +273,10 @@ export default function LendingPage() {
                         <th><label>Principal</label></th>
                         <th><label>Interest Rate</label></th>
                         <th><label>Duration</label></th>
+                        <th><label>Debt Ref</label></th>
+                        <th><label>Debt Contract</label></th>
+                        <th><label>Debt Token ID</label></th>
+                        <th><label>Debt Quantity</label></th>
                     </tr></thead>
                     <tbody>
                         {tokenElements}

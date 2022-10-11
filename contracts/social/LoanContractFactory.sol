@@ -19,13 +19,7 @@ contract LoanContractFactory {
         uint256 indexed tokenId
     );
 
-    struct LoanStruct {
-        Counters.Counter loanId;
-        address[] clones;
-    }
-
-    mapping(address => mapping(uint256 => LoanStruct)) private loanMap;
-
+    Counters.Counter loanId;
     address immutable public loanTreasurer;
     address immutable public loanCollector;
 
@@ -36,8 +30,6 @@ contract LoanContractFactory {
 
     function createLoanContract(
         address _loanContract,
-        address _loanTreasurer,
-        address _loanCollector,
         address _tokenContract,
         uint256 _tokenId,
         uint256 _principal,
@@ -51,16 +43,14 @@ contract LoanContractFactory {
 
         // Create new loan contract
         address _clone = Clones.clone(_loanContract);
-
-        loanMap[_tokenContract][_tokenId].loanId.increment();
-        loanMap[_tokenContract][_tokenId].clones.push(_clone);
+        console.log("creating new loan contract...");
 
         ILoanContract(payable(_clone)).initialize(
-            _loanTreasurer,
-            _loanCollector,
+            loanTreasurer,
+            loanCollector,
             _tokenContract,
             _tokenId,
-            __getCurrentPriority(_tokenContract, _tokenId),
+            loanId.current(),
             _principal,
             _fixedInterestRate,
             _duration
@@ -69,15 +59,14 @@ contract LoanContractFactory {
         // Transfer collateral to LoanContract
         IERC721(_tokenContract).approve(_clone, _tokenId);
         ILoanContract(payable(_clone)).depositCollateral();
+        loanId.increment();
 
         emit LoanContractCreated(_clone, _tokenContract, _tokenId);
     }
 
-    function __getCurrentPriority(address _tokenContract, uint256 _tokenId)
-        private
-        view
-        returns (uint256)
-    {
-        return loanMap[_tokenContract][_tokenId].loanId.current() - 1;
+    function getNextDebtId() external view returns (uint256) {
+        return loanId.current();
     }
+
+    fallback() external {}
 }

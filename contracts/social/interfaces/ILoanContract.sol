@@ -62,7 +62,7 @@ interface ILoanContract {
         uint256 _duration
     ) external;
 
-    function setLender() external;
+    function setLender() external payable;
 
     /**
      * @dev Transfers owners of the collateral to the loan contract.
@@ -74,7 +74,7 @@ interface ILoanContract {
      *
      * Emits {LoanStateChanged} event.
      */
-    function depositCollateral() external;
+    function depositCollateral() external payable;
 
     /**
      * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
@@ -97,6 +97,16 @@ interface ILoanContract {
     function withdrawSponsorship() external;
 
     function sign() external;
+
+    /**
+     * @dev Issue debt token(s) to LoanContract. 
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _PARTICIPANT_ROLE_.
+     *
+     */
+    function issueDebtToken(string memory _debtURI) external;
 
     /**
      * @dev Update loan contract balance
@@ -128,6 +138,4 @@ interface ILoanContract {
      *
      */
     function initDefault() external;
-
-    function __sign() external;
 }

@@ -1,35 +1,38 @@
 import '../../static/css/BorrowingPage.css';
 import '../../static/css/NftTable.css';
 import React, { useEffect, useState } from 'react';
+import { getProperty } from 'dot-prop';
 import { ethers } from 'ethers';
 import axios from 'axios';
 import config from '../../config.json';
 
-import { listenerLoanContractCreated } from '../../utils/events/listenersLoanContractFactory';
-
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
 import { getNetworkName } from '../../utils/networkUtils';
-import {
-    checkIfWalletIsConnected as checkConnection,
-    connectWallet
-} from '../../utils/window/ethereumConnect';
+import { checkIfWalletIsConnected as checkConnection, connectWallet } from '../../utils/window/ethereumConnect';
+import { generateERC1155Metadata } from '../../utils/ipfs/erc1155MetadataGenerator';
+import { postMetadataIPFS } from '../../utils/ipfs/postMetadataIPFS';
 
-import { 
-    clientCreateTokensPortfolio as createTokensPortfolio
- } from '../../db/clientCreateTokensPortfolio';
- import {
-    clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus
- } from '../../db/clientUpdateTokensPortfolio';
+import { listenerLoanContractCreated } from '../../utils/events/listenersLoanContractFactory';
+import { listenerDebtTokenIssued } from '../../utils/events/listenersLoanContract';
+import { listenerURI } from '../../utils/events/listenersAnzaDebtToken';
 
-// import { clientReadNonLeveragedTokensPortfolio as readNonLeveragedTokensPortfolio } from '../../db/clientReadTokensPortfolio';
+import { clientCreateTokensPortfolio as createTokensPortfolio } from '../../db/clientCreateTokensPortfolio';
+import { clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus } from '../../db/clientUpdateTokensPortfolio';
 import { clientReadBorrowerNotSignedJoin as readBorrowerNotSignedJoin } from '../../db/clientReadJoin';
-import { createTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
 
-import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json';
+import { createTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
+import { createTokensDebt } from '../../db/clientCreateTokensDebt';
+
+import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.json'
+import abi_ERC721Metadata from '../../artifacts/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol/IERC721Metadata.json';
 import abi_LoanContractFactory from '../../artifacts/contracts/social/LoanContractFactory.sol/LoanContractFactory.json';
+import abi_LoanContract from '../../artifacts/contracts/social/LoanContract.sol/LoanContract.json';
+import abi_AnzaDebtToken from '../../artifacts/contracts/social/interfaces/IAnzaDebtToken.sol/IAnzaDebtToken.json';
 
 export default function BorrowingPage() {
+    let ipfs = null
+
     const [isPageLoad, setIsPageLoad] = useState(true);
     const [newContract, setNewContract] = useState('');
     const [currentAccount, setCurrentAccount] = useState(null);
@@ -40,7 +43,6 @@ export default function BorrowingPage() {
     useEffect(() => {
         console.log('Page loading...');
         if (!!isPageLoad) pageLoadSequence();
-        // eslint-disable-next-line
     }, []);
 
     useEffect(() => {
@@ -50,7 +52,7 @@ export default function BorrowingPage() {
     useEffect(() => {
         if (!!newContract) newContractCreatedSequence();
     }, [newContract])
-
+    
     /* ---------------------------------------  *
      *       EVENT SEQUENCE FUNCTIONS           *
      * ---------------------------------------  */
@@ -121,26 +123,49 @@ export default function BorrowingPage() {
         const signer = provider.getSigner(currentAccount);
 
         // Get contract
+        console.log(config.LoanContractFactory);
         let LoanContractFactory = new ethers.Contract(
             config.LoanContractFactory,
             abi_LoanContractFactory.abi,
-            provider
+            signer
         );
 
         // Set LoanContractFactory to operator
-        const tokenContract = new ethers.Contract(currentToken.address, abi_ERC721.abi, signer);
-        await tokenContract.setApprovalForAll(LoanContractFactory.address, true);
+        const tokenContract = new ethers.Contract(
+            currentToken.address,
+            abi_ERC721.abi,
+            signer
+        );
+        let tx = await tokenContract.setApprovalForAll(LoanContractFactory.address, true);
+        await tx.wait();
 
         // Get selected token terms
         const principal = document.getElementsByClassName(`principal-${currentToken.address}-${currentToken.id}`)[0].value;
         const fixedInterestRate = document.getElementsByClassName(`fixedInterestRate-${currentToken.address}-${currentToken.id}`)[0].value;
         const duration = document.getElementsByClassName(`duration-${currentToken.address}-${currentToken.id}`)[0].value;
 
+        // Set IPFS debt metadata object for AnzaDebtToken
+        const AnzaDebtToken = new ethers.Contract(
+            config.AnzaDebtToken,
+            abi_AnzaDebtToken.abi,
+            provider
+        );
+
+        const anzaDebtTokenName = await AnzaDebtToken.name();
+        const anzaDebtTokenSymbol = await AnzaDebtToken.symbol();
+        const debtId = await LoanContractFactory.getNextDebtId();
+
+        const debtObj = {
+            name: anzaDebtTokenName,
+            symbol: anzaDebtTokenSymbol,
+            debtId: debtId.toString(),
+            description: 'Anza finance debt token',
+            imageLocation: ''
+        };
+
         // Create new LoanContract via LoanContractFactory
-        let tx = await LoanContractFactory.connect(signer).createLoanContract(
+        tx = await LoanContractFactory.createLoanContract(
             config.LoanContract,
-            config.LoanTreasurey,
-            config.LoanCollection,
             currentToken.address,
             ethers.BigNumber.from(currentToken.id),
             ethers.utils.parseEther(principal),
@@ -149,12 +174,44 @@ export default function BorrowingPage() {
         );
         await tx.wait();
 
-        const [clone, tokenContractAddress, tokenId] = await listenerLoanContractCreated(tx, LoanContractFactory);
+        const [cloneAddress, tokenContractAddress, tokenId] = await listenerLoanContractCreated(tx, LoanContractFactory);
+      
+        // Set IPFS LoanContract metadata object for AnzaDebtToken
+        const loanContractObj = {
+            loanContractAddress: cloneAddress,
+            borrowerAddress: currentAccount,
+            collateralTokenAddress: currentToken.address,
+            collateralTokenId: currentToken.id,
+            lenderAddress: ethers.constants.AddressZero,
+            principal: principal,
+            fixedInterestRate: fixedInterestRate,
+            duration: duration
+        }
+
+        // Post IPFS metadata for AnzaDebtToken
+        const debtTokenMetadata = await generateERC1155Metadata(debtObj, loanContractObj);        
+        const cid = await postMetadataIPFS(debtTokenMetadata);
+        let debtTokenURI = cid;
+
+        // Mint AnzaDebtToken with IPFS URI
+        const LoanContract = new ethers.Contract(
+            cloneAddress,
+            abi_LoanContract.abi,
+            signer
+        );
+        tx = await LoanContract.issueDebtToken(debtTokenURI);
+        await tx.wait();
+
+        let [, debtTokenAddress, debtTokenId,] = await listenerDebtTokenIssued(tx, LoanContract);
+        [debtTokenURI,] = await listenerURI(tx, AnzaDebtToken);
+        console.log(debtTokenURI);
+
+        // Update databases
         const primaryKey = `${tokenContractAddress}_${tokenId.toString()}`;
 
         createTokensLeveraged(
             primaryKey,
-            clone, 
+            cloneAddress, 
             currentAccount, 
             tokenContractAddress, 
             tokenId.toString(), 
@@ -164,6 +221,14 @@ export default function BorrowingPage() {
             duration,
             'Y', 
             'N'
+        );
+
+        createTokensDebt(
+            primaryKey,
+            debtTokenURI,
+            debtTokenAddress,
+            debtTokenId.toString(),
+            principal
         );
 
         setNewContract(primaryKey);

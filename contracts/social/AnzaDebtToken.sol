@@ -4,14 +4,17 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155URIStorage.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "./interfaces/IAnzaDebtToken.sol";
 import { LibContractGlobals as Globals } from "./libraries/LibContractMaster.sol";
 
 contract AnzaDebtToken is ERC1155URIStorage, AccessControl, Pausable {
 
-    constructor(string memory _baseURI, address _owner, address _treasurer) ERC1155(_baseURI) {
-        _setupRole(Globals._ADMIN_ROLE_, _owner);
+    constructor(string memory _baseURI, address _admin, address _treasurer) ERC1155(_baseURI) {
+        _setBaseURI(_baseURI);
+
+        _setupRole(Globals._ADMIN_ROLE_, _admin);
         _setRoleAdmin(Globals._TREASURER_ROLE_, Globals._ADMIN_ROLE_);
 
         _setupRole(Globals._TREASURER_ROLE_, _treasurer);
@@ -97,4 +100,5 @@ contract AnzaDebtToken is ERC1155URIStorage, AccessControl, Pausable {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
         require(!paused(), "ERC1155Pausable: token transfer while paused");
-    }}
+    }
+}
