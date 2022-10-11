@@ -123,7 +123,6 @@ export default function BorrowingPage() {
         const signer = provider.getSigner(currentAccount);
 
         // Get contract
-        console.log(config.LoanContractFactory);
         let LoanContractFactory = new ethers.Contract(
             config.LoanContractFactory,
             abi_LoanContractFactory.abi,
@@ -143,27 +142,11 @@ export default function BorrowingPage() {
         const principal = document.getElementsByClassName(`principal-${currentToken.address}-${currentToken.id}`)[0].value;
         const fixedInterestRate = document.getElementsByClassName(`fixedInterestRate-${currentToken.address}-${currentToken.id}`)[0].value;
         const duration = document.getElementsByClassName(`duration-${currentToken.address}-${currentToken.id}`)[0].value;
-
+        
         // Set IPFS debt metadata object for AnzaDebtToken
-        const AnzaDebtToken = new ethers.Contract(
-            config.AnzaDebtToken,
-            abi_AnzaDebtToken.abi,
-            provider
-        );
+        const debtObj = await setAnzaDebtTokenMetadata(provider, LoanContractFactory);
 
-        const anzaDebtTokenName = await AnzaDebtToken.name();
-        const anzaDebtTokenSymbol = await AnzaDebtToken.symbol();
-        const debtId = await LoanContractFactory.getNextDebtId();
-
-        const debtObj = {
-            name: anzaDebtTokenName,
-            symbol: anzaDebtTokenSymbol,
-            debtId: debtId.toString(),
-            description: 'Anza finance debt token',
-            imageLocation: ''
-        };
-
-        // Create new LoanContract via LoanContractFactory
+        // Create new LoanContract
         tx = await LoanContractFactory.createLoanContract(
             config.LoanContract,
             currentToken.address,
@@ -188,22 +171,12 @@ export default function BorrowingPage() {
             duration: duration
         }
 
-        // Post IPFS metadata for AnzaDebtToken
-        const debtTokenMetadata = await generateERC1155Metadata(debtObj, loanContractObj);        
-        const cid = await postMetadataIPFS(debtTokenMetadata);
-        let debtTokenURI = cid;
+        // Post AnzaDebtToken to IPFS
+        let debtTokenAddress, debtTokenId, debtTokenURI;
+        debtTokenURI = await postAnzaDebtTokenIPFS(debtObj, loanContractObj);
 
         // Mint AnzaDebtToken with IPFS URI
-        const LoanContract = new ethers.Contract(
-            cloneAddress,
-            abi_LoanContract.abi,
-            signer
-        );
-        tx = await LoanContract.issueDebtToken(debtTokenURI);
-        await tx.wait();
-
-        let [, debtTokenAddress, debtTokenId,] = await listenerDebtTokenIssued(tx, LoanContract);
-        [debtTokenURI,] = await listenerURI(tx, AnzaDebtToken);
+        [debtTokenAddress, debtTokenId, debtTokenURI] = await mintAnzaDebtToken(provider, signer, debtTokenURI);
         console.log(debtTokenURI);
 
         // Update databases
@@ -227,7 +200,7 @@ export default function BorrowingPage() {
             primaryKey,
             debtTokenURI,
             debtTokenAddress,
-            debtTokenId.toString(),
+            debtTokenId,
             principal
         );
 
@@ -264,7 +237,7 @@ export default function BorrowingPage() {
     }
 
     /* ---------------------------------------  *
-     *       DATABASE MODIFIER FUNCTIONS        *
+     *       DATABASE FUNCTIONS        *
      * ---------------------------------------  */
     const updateNftPortfolio = async (account=currentAccount) => {
         if (!account) { return; }
@@ -291,6 +264,56 @@ export default function BorrowingPage() {
 
         // Update portfolio database
         await createTokensPortfolio(portfolioVals);
+    }
+
+    const setAnzaDebtTokenMetadata = async (provider, LoanContractFactory) => {
+        const AnzaDebtToken = new ethers.Contract(
+            config.AnzaDebtToken,
+            abi_AnzaDebtToken.abi,
+            provider
+        );
+
+        const anzaDebtTokenName = await AnzaDebtToken.name();
+        const anzaDebtTokenSymbol = await AnzaDebtToken.symbol();
+        const debtId = await LoanContractFactory.getNextDebtId();
+
+        const debtObj = {
+            name: anzaDebtTokenName,
+            symbol: anzaDebtTokenSymbol,
+            debtId: debtId.toString(),
+            description: 'Anza finance debt token',
+            imageLocation: ''
+        };    
+
+        return debtObj;
+    }
+
+    const postAnzaDebtTokenIPFS = async (debtObj, loanContractObj) => {
+        const debtTokenMetadata = await generateERC1155Metadata(debtObj, loanContractObj);        
+        const cid = await postMetadataIPFS(debtTokenMetadata);
+
+        return cid;
+    }
+
+    const mintAnzaDebtToken = async (provider, signer, debtTokenURI) => {
+        const AnzaDebtToken = new ethers.Contract(
+            config.AnzaDebtToken,
+            abi_AnzaDebtToken.abi,
+            provider
+        );
+
+        const LoanContract = new ethers.Contract(
+            cloneAddress,
+            abi_LoanContract.abi,
+            signer
+        );
+        tx = await LoanContract.issueDebtToken(debtTokenURI);
+        await tx.wait();
+
+        let [, debtTokenAddress, debtTokenId,] = await listenerDebtTokenIssued(tx, LoanContract);
+        [debtTokenURI,] = await listenerURI(tx, AnzaDebtToken);
+        
+        return [debtTokenAddress, debtTokenId.toString(), debtTokenURI];
     }
 
     /* ---------------------------------------  *
