@@ -36,28 +36,6 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     using StateControlBool for StateControlBool.Property;
     using BlockTime for uint256;
 
-    /**
-     * @dev Emitted when loan contract term(s) are updated.
-     */
-    event LoanActivated(
-        address indexed loanContract,
-        address indexed borrower,
-        address indexed lender,
-        address tokenContract,
-        uint256 tokenId,
-        uint256 state
-    );
-
-    /**
-     * @dev Emitted when deb token(s) are distributed.
-     */
-    event DebtTokenIssued(
-        address indexed loanContract,
-        address indexed debtTokenAddress,
-        uint256 indexed debtTokenId,
-        address tokenContractAddress
-    );
-
     Globals.Participants public loanParticipants;
     Globals.Property public loanProperties;
     Globals.Global public loanGlobals;
@@ -138,7 +116,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         } else {
             Notary.signLender_(loanProperties, loanGlobals, accountBalance);
             _setupRole(Globals._LENDER_ROLE_, loanProperties.lender.get());
-            ERC20Tx.depositFunding_(loanProperties, loanGlobals, accountBalance);
+            ERC20Tx.depositFunding_(loanProperties, loanParticipants, loanGlobals, accountBalance);
 
             if (loanProperties.borrowerSigned.get()) {
                 __activate();
@@ -154,16 +132,15 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     }
 
     /**
-     * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
-     * recipient.
-     *
+     * @dev See {LibContractTreasurer:ERC20Transactions-withdrawFunds_}
+     * 
+     * Requirements:
+     * 
+     * - Only the borrower is allowed to directly withdraw funds.
      */
-    function withdrawFunds() external {
-        if (loanGlobals.state <= States.LoanState.FUNDED) {
-            _checkRole(Globals._LENDER_ROLE_);
-        }
-
-        ERC20Tx.withdrawFunds_(payable(_msgSender()), accountBalance);
+    function withdrawFunds(address _payee) external onlyRole(Globals._TREASURER_ROLE_) {
+        require(_msgSender() != _payee, "Caller cannot be withdrawer.");
+        ERC20Tx.withdrawFunds_(payable(_payee), accountBalance);
     }
 
     /**
@@ -198,30 +175,14 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         }
     }
 
-    function issueDebtToken(string memory _debtURI) external onlyRole(Globals._PARTICIPANT_ROLE_) {
-        ILoanTreasurey _loanTreasurey = ILoanTreasurey(loanParticipants.treasurey);
-        address _debtTokenAddress = _loanTreasurey.getDebtTokenAddress();
-
-        _loanTreasurey.issueDebtToken(_debtURI);
-        
-        emit DebtTokenIssued(
-            address(this),
-            _debtTokenAddress,
-            loanGlobals.debtId,
-            loanParticipants.tokenContract
-        );
-    }
-
     function getBalance() external view returns (uint256) {
-        return Treasurey.getBalance_(loanProperties, loanGlobals);
+        return msg.sender == loanParticipants.treasurey
+            ? Treasurey.getBalance_(loanProperties, loanGlobals)
+            : accountBalance[msg.sender];
     }
 
     function updateBalance() external onlyRole(Globals._TREASURER_ROLE_) {
         __updateBalance();
-    }
-
-    function __updateBalance() private {
-        Treasurey.updateBalance_(loanProperties, loanGlobals);
     }
 
     /**
@@ -231,9 +192,8 @@ contract LoanContract is AccessControl, Initializable, Ownable {
      * Requirements:
      *
      * - The caller must have been granted the _COLLATERAL_APPROVER_ROLE_.
-     *
      */
-    function close() external onlyRole(Globals._COLLATERAL_APPROVER_ROLE_) {
+    function close() external onlyRole(Globals._ADMIN_ROLE_) {
         ERC721Tx.revokeCollateral_(loanParticipants, loanGlobals);
         
         // Clear loan contract approval
@@ -241,28 +201,35 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         loanGlobals.state = States.LoanState.CLOSED;
     }
 
+    /**
+     * @dev See {LibContractCollections:LibContractCollector-defaultContract_}
+     * 
+     * Requirements:
+     * 
+     * - Only the treasurer can call this function.
+     */
     function initDefault() external onlyRole(Globals._TREASURER_ROLE_) {
         Collector.defaultContract_(loanParticipants, loanGlobals);
     }
 
+    /**
+     * @dev See {LibContractNotary:LibContractNotary-signBorrower_}.
+     */
     function __sign() private {
         Notary.signBorrower_(loanParticipants, loanProperties, loanGlobals);
     }
 
+    /**
+     * @dev See {LibContractMaster:LibContractActivate-activateLoan_s}
+     */
     function __activate() private {
-        loanProperties.stopBlockstamp.onlyState(loanGlobals.state);
-
-        Scheduler.initSchedule_(loanProperties, loanGlobals);
-        Activate.activateLoan_(loanParticipants, loanProperties, loanGlobals, accountBalance);
-
-        emit LoanActivated(
-            address(this),
-            loanParticipants.borrower,
-            loanProperties.lender.get(),
-            loanParticipants.tokenContract,
-            loanParticipants.tokenId,
-            uint256(loanGlobals.state)
+        Activate.activateLoan_(
+            loanParticipants, loanProperties, loanGlobals, accountBalance
         );
+    }
+
+    function __updateBalance() private {
+        Treasurey.updateBalance_(loanProperties, loanGlobals);
     }
     
     /**
@@ -271,7 +238,6 @@ contract LoanContract is AccessControl, Initializable, Ownable {
      *
      * It must return its Solidity selector to confirm the token transfer.
      * If any other value is returned or the interface is not implemented by the recipient, the transfer will be reverted.
-     *
      */
     function onERC721Received(
         address,
@@ -291,7 +257,6 @@ contract LoanContract is AccessControl, Initializable, Ownable {
      *
      * It must return its Solidity selector to confirm the token transfer.
      * If any other value is returned or the interface is not implemented by the recipient, the transfer will be reverted.
-     *
      */
     function onERC1155Received(
         address,

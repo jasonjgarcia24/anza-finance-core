@@ -5,6 +5,7 @@ import "./interfaces/IAnzaDebtToken.sol";
 import "./interfaces/ILoanTreasurey.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "hardhat/console.sol";
 
 import {
@@ -27,6 +28,16 @@ import {
 contract LoanTreasurey is Ownable, ILoanTreasurey, ERC165 {
     address private debtTokenAddress;
 
+    /**
+     * @dev Emitted when deb token(s) are distributed.
+     */
+    event DebtTokenIssued(
+        address indexed loanContract,
+        address indexed debtTokenAddress,
+        uint256 indexed debtTokenId,
+        address tokenContractAddress
+    );
+
     constructor(address _owner) {
         transferOwnership(_owner);
     }
@@ -44,6 +55,10 @@ contract LoanTreasurey is Ownable, ILoanTreasurey, ERC165 {
         );
 
         require(_success, "Payment failed.");
+    }
+
+    function withdrawFunds(address _loanContractAddress) external {
+        ILoanContract(_loanContractAddress).withdrawFunds(_msgSender());
     }
 
     function getBalance(address _loanContractAddress)
@@ -76,23 +91,59 @@ contract LoanTreasurey is Ownable, ILoanTreasurey, ERC165 {
         }
     }
 
-    function getDebtTokenAddress() external view returns (address) {
-        return debtTokenAddress;
-    }
-
+    /**
+     * @dev Set the AnzaDebtToken address.
+     * 
+     * Requirements:
+     * 
+     * - Only the treasurer can call this function.
+     */
     function setDebtTokenAddress(address _debtTokenAddress) external onlyOwner() {
         debtTokenAddress = _debtTokenAddress;
     }
     
-    function issueDebtToken(string memory _debtURI) external {
+    function issueDebtToken(address _loanContractAddress, string memory _debtURI) external {
         require(debtTokenAddress != address(0), "Debt token not set");
+        States.checkActiveState_(_loanContractAddress);
+        _checkRole(Globals._PARTICIPANT_ROLE_, _loanContractAddress);
 
-        ILoanContract _loanContract = ILoanContract(_msgSender());
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
         IAnzaDebtToken _anzaDebtToken = IAnzaDebtToken(debtTokenAddress);
         
-        (, scUint.Property memory _principal,,,,,,) = _loanContract.loanProperties();
+        (,,,,,,scUint.Property memory _balance,) = _loanContract.loanProperties();
         (, uint256 _debtId,) = _loanContract.loanGlobals();
 
-        _anzaDebtToken.mintDebt(_msgSender(), _debtId, _principal._value, _debtURI);
+        _anzaDebtToken.mintDebt(_loanContractAddress, _debtId, _balance._value, _debtURI);
+
+        emit DebtTokenIssued(
+            address(this),
+            debtTokenAddress,
+            _debtId,
+            _loanContractAddress
+        );
     }
+
+    /**
+     * @dev Revert with a standard message if `msg.sender` is missing `role`.
+     *
+     * The format of the revert reason is given by the following regular expression:
+     *
+     *  /^AccessControl: account (0x[0-9a-f]{40}) is missing role (0x[0-9a-f]{64})$/
+     */
+    function _checkRole(bytes32 role, address _loanContractAddress) internal view {
+        if (!ILoanContract(_loanContractAddress).hasRole(role, msg.sender)) {
+            revert(
+                string(
+                    abi.encodePacked(
+                        "AccessControl: account ",
+                        Strings.toHexString(uint160(msg.sender), 20),
+                        " is missing role ",
+                        Strings.toHexString(uint256(role), 32)
+                    )
+                )
+            );
+        }
+    }
+
+    fallback() external {}
 }

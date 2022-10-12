@@ -6,11 +6,16 @@ interface ILoanTreasurey {
 
     function makePayment(address _loanContract) external payable;
 
-    function getDebtTokenAddress() external returns (address);
-
-    function issueDebtToken(string memory _debtURI) external;
-
     function getBalance(address _loanContractAddress) external view returns (uint256);
 
     function assessMaturity(address _loanContractAddress) external;
+
+    /**
+     * @dev Issue debt token(s) to LoanContract. 
+     *
+     * Requirements:
+     *
+     * - The caller must have been granted the _PARTICIPANT_ROLE_.
+     */
+    function issueDebtToken(address _loanContractAddresss, string memory _debtURI) external;
 }

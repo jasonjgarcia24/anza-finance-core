@@ -29,6 +29,19 @@ interface ILoanContract is IAccessControl {
     event Withdrawn(address indexed payee, uint256 weiAmount);
 
     /**
+     * @dev Emitted when loan contract term(s) are updated.
+     */
+    event LoanActivated(
+        address indexed loanContract,
+        address indexed borrower,
+        address indexed lender,
+        address tokenContract,
+        uint256 tokenId,
+        uint256 state
+    );
+
+
+    /**
      * @dev Participant state variables as defined in LibContractMaster.sol.
      *
      * Requirements: NONE
@@ -100,7 +113,7 @@ interface ILoanContract is IAccessControl {
      * recipient.
      *
      */
-    function withdrawFunds() external;
+    function withdrawFunds(address _payee) external;
 
     /**
      * @dev Withdraw collateral token.
@@ -116,16 +129,6 @@ interface ILoanContract is IAccessControl {
     function withdrawSponsorship() external;
 
     function sign() external;
-
-    /**
-     * @dev Issue debt token(s) to LoanContract. 
-     *
-     * Requirements:
-     *
-     * - The caller must have been granted the _PARTICIPANT_ROLE_.
-     *
-     */
-    function issueDebtToken(string memory _debtURI) external;
 
     /**
      * @dev Update loan contract balance

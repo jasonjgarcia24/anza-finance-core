@@ -10,6 +10,15 @@ import {
 } from "./LibContractMaster.sol";
 
 library LibContractCollector {
+    /**
+     * @dev Transition the LoanContract to `LoanState.DEFAULT`. This function's call
+     * should originate only from the treasurer when the LoanContract has reached 
+     * maturity and has not been paid in full.
+     * 
+     * Requirements: None
+     * 
+     * Emits {LoanStateChanged} event.
+     */
     function defaultContract_(
         Globals.Participants storage _participants,
         Globals.Global storage _globals

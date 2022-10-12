@@ -7,6 +7,7 @@ const { TRANSFERIBLES, ROLES, LOANSTATE, DEFAULT_TEST_VALUES } = require("../con
 const { reset } = require("./resetFork");
 const { impersonate } = require("./impersonate");
 const { deploy } = require("../scripts/deploy");
+const { mintAnzaDebtToken } = require('../utils/adt/adtContract');
 const { listenerLoanActivated } = require("../anza/src/utils/events/listenersLoanContract");
 const { listenerLoanContractCreated } = require("../anza/src/utils/events/listenersLoanContractFactory");
 const { listenerTermsChanged } = require("../anza/src/utils/events/listenersAContractManager");
@@ -14,10 +15,11 @@ const { listenerLoanStateChanged } = require("../anza/src/utils/events/listeners
 const { listenerDeposited, listenerWithdrawn } = require("../anza/src/utils/events/listenersAContractTreasurer");
 
 let BlockTime;
-let LoanContractFactory, LoanContract, LoanTreasurey;
+let LoanContractFactory, LoanContract, AnzaDebtToken, LoanTreasurey;
 let ILoanContract;
 let owner, borrower, lender, lenderAlt, treasurer;
-let tokenContract, tokenId;
+let tokenContract, tokenId, debtId, tokenURI;
+let debtTokenAddress, debtTokenId, debtTokenURI;
 
 const loanPrincipal = DEFAULT_TEST_VALUES.PRINCIPAL;
 const loanFixedInterestRate = DEFAULT_TEST_VALUES.FIXED_INTEREST_RATE;
@@ -42,6 +44,7 @@ describe("0-0 :: LoanContract initialization tests", function () {
     ({
       LoanContractFactory,
       LoanContract,
+      AnzaDebtToken,
       LoanTreasurey,
       LoanCollection,
       BlockTime
@@ -396,7 +399,7 @@ describe("0-0 :: LoanContract initialization tests", function () {
     // Activation on borrower signoff
     await tokenContract.approve(LoanContract.address, tokenId);
     let _tx = await LoanContract.sign();
-    let [_loanContractAddress, _borrowerAddress, _lenderAddress, _tokenContractAddress, _tokenId, _loanState] = await listenerLoanActivated(_tx, LoanContract);
+    let [_loanContractAddress, _borrowerAddress, _lenderAddress, _tokenContractAddress, _tokenId, _loanState] = await listenerLoanActivated(_tx, ILoanContract);
     expect(_loanContractAddress).to.equal(LoanContract.address, "The loan contract address is not expected.");
     expect(_borrowerAddress).to.equal(borrower.address, "The borrower address is not expected.");
     expect(_lenderAddress).to.equal(lender.address, "The lender address is not expected.");
@@ -408,7 +411,7 @@ describe("0-0 :: LoanContract initialization tests", function () {
   it("0-0-07 :: Verify LoanContract activation on lender sign", async function () {
     // Activation on lender signoff
     let _tx = await LoanContract.connect(lender).setLender({ value: loanPrincipal });
-    let [_loanContractAddress, _borrowerAddress, _lenderAddress, _tokenContractAddress, _tokenId, _loanState] = await listenerLoanActivated(_tx, LoanContract);
+    let [_loanContractAddress, _borrowerAddress, _lenderAddress, _tokenContractAddress, _tokenId, _loanState] = await listenerLoanActivated(_tx, ILoanContract);
     expect(_loanContractAddress).to.equal(LoanContract.address, "The loan contract address is not expected.");
     expect(_borrowerAddress).to.equal(borrower.address, "The borrower address is not expected.");
     expect(_lenderAddress).to.equal(lender.address, "The lender address is not expected.");
@@ -417,6 +420,26 @@ describe("0-0 :: LoanContract initialization tests", function () {
     expect(_loanState).to.equal(LOANSTATE.ACTIVE_OPEN, "The loan state is not expected.");
   });
 
-  it("0-0-08 :: Need to test withdrawFunds()", async function () {});
+  it("0-0-08 :: Verify AnzaDebtToken denied issuance on inactive LoanContract", async function () {
+    // Attempt issuance
+    [, debtId,] = await LoanContract.loanGlobals();
+    debtTokenURI = 'Qmadfa454jjlhhbhv76lgjjbjvnvasfeijwefoasfjjfadjf';
+
+    await expect(
+      mintAnzaDebtToken(
+        borrower.address, LoanTreasurey.address, LoanContract.address, debtTokenURI
+      )
+    ).to.be.rejectedWith(/Loan state must between FUNDED and PAID exclusively./);
+    
+    // [debtTokenAddress, debtTokenId, debtTokenURI] = await mintAnzaDebtToken(
+    //   borrower.address, LoanTreasurey.address, LoanContract.address, debtTokenURI
+    // );
+
+    // _balance = await AnzaDebtToken.balanceOf(LoanContract.address, debtTokenId);
+    // _uri = await AnzaDebtToken.uri(debtTokenId);
+
+    // console.log(_balance.toNumber())
+  });
+  
   it("0-0-09 :: Need to test close()", async function () {});
 });

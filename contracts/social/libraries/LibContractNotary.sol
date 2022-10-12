@@ -14,14 +14,14 @@ library LibContractNotary {
     using StateControlBool for StateControlBool.Property;
 
     /**
-     * @dev The borrower signs the loan contract and transfers the collateral token.
+     * @dev Sign off the borrower on the LoanContract.
      *
      * Requirements:
      *
      * - The borrower must not be signed off.
-     * - The loan state must be les than `LoanState.NONLEVERAGED`.
+     * - The LoanContract state must be no greater than `LoanState.FUNDED`.
      *
-     * Emits {LoanStateChanged} events.
+     * Emits {LoanStateChanged} event.
      */
     function signBorrower_(
         Globals.Participants storage _participants,
@@ -55,9 +55,7 @@ library LibContractNotary {
      *
      * - The borrower must be signed off.
      * - The loan state must be greater than `LoanState.NONLEVERAGED`.
-     * - The loan state must be less than `LoanState.FUNDED`.
-     *
-     * Emits {LoanStateChanged} events.
+     * - The loan state must be no greater than `LoanState.FUNDED`.
      */
     function unsignBorrower_(
         Globals.Property storage _properties,
@@ -69,8 +67,6 @@ library LibContractNotary {
         );
         // Update loan contract
         _properties.borrowerSigned.set(false, _globals.state);
-
-        // No state change required
     }
 
     /**

@@ -204,6 +204,7 @@ library ERC20Transactions {
      */
     function depositFunding_(
         Globals.Property storage _properties,
+        Globals.Participants storage _participants,
         Globals.Global storage _globals,
         mapping(address => uint256) storage _accountBalance
     ) public {
@@ -218,6 +219,8 @@ library ERC20Transactions {
         States.LoanState _prevState = _globals.state;
 
         _accountBalance[_properties.lender.get()] += msg.value;
+        _accountBalance[_participants.treasurey] += msg.value;
+        
         require(
             _accountBalance[_properties.lender.get()] >= _properties.principal.get(),
             "The caller's account balance is insufficient."
@@ -225,7 +228,6 @@ library ERC20Transactions {
 
         // Update loan contract
         _globals.state = States.LoanState.FUNDED;
-        _accountBalance[_properties.lender.get()] += _properties.principal.get();
 
         emit States.LoanStateChanged(_prevState, _globals.state);
         emit Deposited(msg.sender, msg.value);
@@ -304,8 +306,10 @@ library ERC20Transactions {
     }
 
     /**
-     * @dev Withdraws funds from loan.
+     * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
+     * recipient.
      * @param _payee The address whose funds will be withdrawn and transferred to.
+     * @param _accountBalance The mapping storing the amount available to the payee.
      * 
      * Requirements: NONE
      * 
@@ -314,7 +318,9 @@ library ERC20Transactions {
     function withdrawFunds_(
         address payable _payee,
         mapping(address => uint256) storage _accountBalance
-    ) public {     
+    ) public {
+        require(_accountBalance[_payee] != 0, "Insufficient funds.");
+
         uint256 _payment = _accountBalance[_payee];
         _accountBalance[_payee] = 0;
 
@@ -342,7 +348,6 @@ library TreasurerUtils {
         uint256 _interest = _balance.mul(
             _fixedInterestRate
         ).div(100).mul(_daysActive).div(365);
-        console.logUint(_interest);
 
         return _interest;
     }

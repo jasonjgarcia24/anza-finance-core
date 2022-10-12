@@ -32,12 +32,21 @@ const deploy = async (tokenContract, addressOnly=false) => {
   // * contracts/utils/BlockTime.sol:BlockTime
   const BlockTime_Factory = await ethers.getContractFactory("BlockTime");
   const BlockTime = await BlockTime_Factory.deploy();
+    
+  // * contracts/social/libraries/LibContractScheduler.sol:LibContractScheduler
+  const LibContractScheduler_Factory = await ethers.getContractFactory("LibContractScheduler", {
+    libraries: {
+      StateControlUint: StateControlUint.address,
+    },
+  });
+  const LibContractScheduler = await LibContractScheduler_Factory.deploy();
 
   // * contracts/social/libraries/LibContractMaster.sol:LibContractActivate
   const LibContractActivate_Factory = await ethers.getContractFactory("LibContractActivate", {
     libraries: {
       StateControlUint: StateControlUint.address,
       StateControlAddress: StateControlAddress.address,
+      LibContractScheduler: LibContractScheduler.address
     },
   });
   const LibContractActivate = await LibContractActivate_Factory.deploy();
@@ -52,6 +61,10 @@ const deploy = async (tokenContract, addressOnly=false) => {
     },
   });
   const LibContractInit = await LibContractInit_Factory.deploy();
+
+  // * contracts/social/libraries/LibContractMaster.sol:LibContractStates
+  const LibContractStates_Factory = await ethers.getContractFactory("LibContractStates");
+  const LibContractStates = await LibContractStates_Factory.deploy();
 
   // * contracts/social/libraries/LibContractMaster.sol:LibContractAssess
   const LibContractAssess_Factory = await ethers.getContractFactory("LibContractAssess");
@@ -75,14 +88,6 @@ const deploy = async (tokenContract, addressOnly=false) => {
     },
   });
   const LibContractNotary = await LibContractNotary_Factory.deploy();
-    
-  // * contracts/social/libraries/LibContractScheduler.sol:LibContractScheduler
-  const LibContractScheduler_Factory = await ethers.getContractFactory("LibContractScheduler", {
-    libraries: {
-      StateControlUint: StateControlUint.address,
-    },
-  });
-  const LibContractScheduler = await LibContractScheduler_Factory.deploy();
     
   // * contracts/social/libraries/LibContractCollections.sol:LibContractCollector
   const LibContractCollector_Factory = await ethers.getContractFactory("LibContractCollector");
@@ -132,6 +137,7 @@ const deploy = async (tokenContract, addressOnly=false) => {
 
   const LoanTreasurey_Factory = await ethers.getContractFactory("LoanTreasurey", {
     libraries: {
+      LibContractStates: LibContractStates.address,
       LibLoanTreasurey: LibLoanTreasurey.address,
     }
   });
@@ -151,14 +157,12 @@ const deploy = async (tokenContract, addressOnly=false) => {
   
   const LoanContract_Factory = await ethers.getContractFactory("LoanContract", {
     libraries: {
-      StateControlUint: StateControlUint.address,
       StateControlAddress: StateControlAddress.address,
       StateControlBool: StateControlBool.address,
       LibContractActivate: LibContractActivate.address,
       LibContractInit: LibContractInit.address,
       LibContractUpdate: LibContractUpdate.address,
       LibContractNotary: LibContractNotary.address,
-      LibContractScheduler: LibContractScheduler.address,
       LibContractCollector: LibContractCollector.address,
       ERC20Transactions: ERC20Transactions.address,
       ERC721Transactions: ERC721Transactions.address,

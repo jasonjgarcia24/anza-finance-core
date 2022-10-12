@@ -4,9 +4,12 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
 
+import { LibContractScheduler as Scheduler } from "./LibContractScheduler.sol";
+
 import "../interfaces/ILoanContract.sol";
 import "../../utils/StateControl.sol";
 import "../../utils/BlockTime.sol";
+import "hardhat/console.sol";
 
 library LibContractGlobals {
     bytes32 internal constant _ADMIN_ROLE_ = "ADMIN";
@@ -217,14 +220,31 @@ library LibContractActivate {
     using StateControlAddress for StateControlAddress.Property;
 
     /**
-     * @dev The loan contract becomes active and the funds are withdrawable.
+     * @dev Emitted when loan contract term(s) are updated.
+     */
+    event LoanActivated(
+        address indexed loanContract,
+        address indexed borrower,
+        address indexed lender,
+        address tokenContract,
+        uint256 tokenId,
+        uint256 state
+    );
+
+    /**
+     * @dev Activate issued loan with parties signed off. The loan contract becomes 
+     * active and the funds are withdrawable.
      *
      * Requirements:
      *
-     * - LoanState must be FUNDED (check with caller function).
-     * - Lender and borrower must be signed off.
-     *
-     * Emits {LoanStateChanged} events.
+     * - All LoanContract terms must be specified.
+     * - The LoanContract must own the collateralized token (NFT).
+     * - The LoanContract must own the sponsored funds.
+     * - The borrower must be signed off.
+     * - The lender must be signed off.
+     * - The LoanContract state must be no greater than FUNDED.
+     * 
+     * Emits {LoanStateChanged} and {LoanActivated} events.
      */
     function activateLoan_(
         LibContractGlobals.Participants storage _participants,
@@ -232,16 +252,26 @@ library LibContractActivate {
         LibContractGlobals.Global storage _globals,
         mapping(address => uint256) storage _accountBalance
     ) public {
+        _properties.stopBlockstamp.onlyState(_globals.state);
+
+        Scheduler.initSchedule_(_properties, _globals);
         LibContractStates.LoanState _prevState = _globals.state;
 
         // Update loan contract and activate loan
         _globals.state = LibContractStates.LoanState.ACTIVE_OPEN;
         _properties.balance.set(_properties.principal.get(), _globals.state);
-        _accountBalance[_properties.lender.get()] -= _properties
-            .principal
-            .get();
+        _accountBalance[_properties.lender.get()] -= _properties.principal.get();
         _accountBalance[_participants.borrower] += _properties.principal.get();
 
         emit LibContractStates.LoanStateChanged(_prevState, _globals.state);
+
+        emit LoanActivated(
+            address(this),
+            _participants.borrower,
+            _properties.lender.get(),
+            _participants.tokenContract,
+            _participants.tokenId,
+            uint256(_globals.state)
+        );
     }
 }

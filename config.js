@@ -54,7 +54,7 @@ module.exports = {
         CLOSED: 13
     },
     DEFAULT_TEST_VALUES: {
-        PRINCIPAL: ethers.utils.parseEther('0.0001').toNumber(),
+        PRINCIPAL: ethers.utils.parseEther('0.0008').toNumber(),
         FIXED_INTEREST_RATE: 10,
         DURATION: 360
     },

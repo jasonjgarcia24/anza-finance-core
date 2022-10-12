@@ -24,7 +24,7 @@ const loanPrincipal = DEFAULT_TEST_VALUES.PRINCIPAL;
 const loanFixedInterestRate = DEFAULT_TEST_VALUES.FIXED_INTEREST_RATE;
 const loanDuration = DEFAULT_TEST_VALUES.DURATION;
 
-describe("0-2 :: LoanContract initialization tests", function () {
+describe("0-3 :: LoanContract initialization tests", function () {
   /* NFT and LoanProposal setup */
   beforeEach(async () => {
     // MAINNET fork setup
@@ -64,9 +64,9 @@ describe("0-2 :: LoanContract initialization tests", function () {
     LoanContract = await ethers.getContractAt("LoanContract", clone, borrower);
   });
 
-  it("0-2-99 :: PASS", async function () {});
+  it("0-3-99 :: PASS", async function () {});
 
-  it("x-2-00 :: Verify loan not default when paid", async function () {
+  it("x-3-00 :: Verify loan not default when paid", async function () {
     // // Sign lender and activate loan
     // await LoanContract.connect(lender).setLender({ value: loanPrincipal });
     // await LoanContract.connect(borrower).makePayment({ value: loanPrincipal });
