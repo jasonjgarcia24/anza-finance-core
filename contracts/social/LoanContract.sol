@@ -12,6 +12,7 @@ import {
     LibContractGlobals as Globals,
     LibContractStates as States,
     LibContractInit as Init,
+    LibContractAssess as Assess,
     LibContractUpdate as Update,
     LibContractActivate as Activate
 } from "./libraries/LibContractMaster.sol";
@@ -82,7 +83,6 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     ) external initializer() {  
         _transferOwnership(_msgSender());
 
-        _setupRole(Globals._ADMIN_ROLE_, address(this));
         _setRoleAdmin(Globals._ADMIN_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._TREASURER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLECTOR_ROLE_, Globals._ADMIN_ROLE_);
@@ -93,6 +93,7 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         _setRoleAdmin(Globals._COLLATERAL_OWNER_ROLE_, Globals._ADMIN_ROLE_);
         _setRoleAdmin(Globals._COLLATERAL_APPROVER_ROLE_, Globals._ADMIN_ROLE_);
 
+        _setupRole(Globals._ADMIN_ROLE_, address(this));
         _setupRole(Globals._TREASURER_ROLE_, _loanTreasurer);
         _setupRole(Globals._COLLECTOR_ROLE_, _loanCollector);
 
@@ -145,7 +146,8 @@ contract LoanContract is AccessControl, Initializable, Ownable {
         }
     }
     
-    function makePayment() external payable onlyRole(Globals._BORROWER_ROLE_) {
+    function makePayment() external payable onlyRole(Globals._TREASURER_ROLE_) {
+        __updateBalance();
         ERC20Tx.depositPayment_(
             loanParticipants, loanProperties, loanGlobals, accountBalance
         );
@@ -215,7 +217,10 @@ contract LoanContract is AccessControl, Initializable, Ownable {
     }
 
     function updateBalance() external onlyRole(Globals._TREASURER_ROLE_) {
-        Update.checkActiveState_(loanGlobals);
+        __updateBalance();
+    }
+
+    function __updateBalance() private {
         Treasurey.updateBalance_(loanProperties, loanGlobals);
     }
 

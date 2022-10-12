@@ -27,6 +27,9 @@ module.exports = {
         }
     ],
     ROLES: {
+        _ADMIN_ROLE_: ethers.utils.formatBytes32String("ADMIN"),
+        _TREASURER_ROLE_: ethers.utils.formatBytes32String("TREASURER"),
+        _COLLECTOR_ROLE_: ethers.utils.formatBytes32String("COLLECTOR"),
         _ARBITER_ROLE_: ethers.utils.formatBytes32String("ARBITER"),
         _BORROWER_ROLE_: ethers.utils.formatBytes32String("BORROWER"),
         _LENDER_ROLE_: ethers.utils.formatBytes32String("LENDER"),

@@ -9,7 +9,8 @@ import "hardhat/console.sol";
 
 import {
     LibContractGlobals as Globals,
-    LibContractStates as States
+    LibContractStates as States,
+    LibContractAssess as Assess
 } from "./libraries/LibContractMaster.sol";
 import { 
     LibLoanTreasurey as Treasurey,
@@ -37,6 +38,44 @@ contract LoanTreasurey is Ownable, ILoanTreasurey, ERC165 {
         return interfaceId == type(ILoanTreasurey).interfaceId || super.supportsInterface(interfaceId);
     }
 
+    function makePayment(address _loanContractAddress) external payable {
+        (bool _success, ) = _loanContractAddress.call{ value: msg.value }(
+            abi.encodeWithSignature("makePayment()")
+        );
+
+        require(_success, "Payment failed.");
+    }
+
+    function getBalance(address _loanContractAddress)
+        external
+        view
+        returns (uint256)
+    {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        return _loanContract.getBalance();
+    }
+
+    function updateBalance(address _loanContractAddress) external onlyOwner() {
+        ILoanContract(_loanContractAddress).updateBalance();
+    }
+
+    /**
+     * @dev Assess loan maturity. If loan is defaulted, this function will initiate the
+     * LoanContract default function.
+     * 
+     * Requirements:
+     * 
+     * - The loan must be in an active state as defined in 
+     * {LibContractMaster.LibContractAssess.checkActiveState_()}
+     */
+    function assessMaturity(address _loanContractAddress) external onlyOwner() {
+        States.LoanState _assessedState = Treasurey.assessMaturity_(_loanContractAddress);
+
+        if (_assessedState == States.LoanState.DEFAULT) {
+            Treasurey.initDefault_(_loanContractAddress);
+        }
+    }
+
     function getDebtTokenAddress() external view returns (address) {
         return debtTokenAddress;
     }
@@ -55,35 +94,5 @@ contract LoanTreasurey is Ownable, ILoanTreasurey, ERC165 {
         (, uint256 _debtId,) = _loanContract.loanGlobals();
 
         _anzaDebtToken.mintDebt(_msgSender(), _debtId, _principal._value, _debtURI);
-    }
-
-    function getBalance(address _loanContractAddress)
-        external
-        view
-        returns (uint256)
-    {
-        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        return _loanContract.getBalance();
-    }
-
-    function updateBalance(address _loanContractAddress) external onlyOwner() {
-        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        _loanContract.updateBalance();
-
-        Treasurey.assessMaturity_(_loanContractAddress);
-    }
-
-    function assessMaturity(address _loanContractAddress) external onlyOwner() {
-        Treasurey.assessMaturity_(_loanContractAddress);
-
-        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        (,,States.LoanState _state) = _loanContract.loanGlobals();
-
-        if (_state >= States.LoanState.PAID) { return; }
-        _loanContract.updateBalance();
-
-        if (_state == States.LoanState.DEFAULT) {
-            
-        }
     }
 }

@@ -52,6 +52,10 @@ const deploy = async (tokenContract, addressOnly=false) => {
     },
   });
   const LibContractInit = await LibContractInit_Factory.deploy();
+
+  // * contracts/social/libraries/LibContractMaster.sol:LibContractAssess
+  const LibContractAssess_Factory = await ethers.getContractFactory("LibContractAssess");
+  const LibContractAssess = await LibContractAssess_Factory.deploy();
   
   // * contracts/social/libraries/LibContractMaster.sol:LibContractUpdate
   const LibContractUpdate_Factory = await ethers.getContractFactory("LibContractUpdate", {
@@ -81,11 +85,7 @@ const deploy = async (tokenContract, addressOnly=false) => {
   const LibContractScheduler = await LibContractScheduler_Factory.deploy();
     
   // * contracts/social/libraries/LibContractCollections.sol:LibContractCollector
-  const LibContractCollector_Factory = await ethers.getContractFactory("LibContractCollector", {
-    libraries: {
-      // StateControlUint: StateControlUint.address,
-    },
-  });
+  const LibContractCollector_Factory = await ethers.getContractFactory("LibContractCollector");
   const LibContractCollector = await LibContractCollector_Factory.deploy();
 
   // * contracts/social/libraries/LibContractTreasurer.sol:TreasurerUtils
@@ -99,6 +99,7 @@ const deploy = async (tokenContract, addressOnly=false) => {
   // * contracts/social/libraries/LibContractTreasurer.sol:LibLoanTreasurey
   const LibLoanTreasurey_Factory = await ethers.getContractFactory("LibLoanTreasurey", {
     libraries: {
+      LibContractAssess: LibContractAssess.address,
       TreasurerUtils: TreasurerUtils.address,
       StateControlUint: StateControlUint.address,
       StateControlUtils: StateControlUtils.address

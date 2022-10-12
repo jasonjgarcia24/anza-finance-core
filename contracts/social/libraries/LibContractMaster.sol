@@ -70,6 +70,23 @@ library LibContractStates {
         AWARDED,
         CLOSED
     }
+
+    function checkActiveState_(address _loanContractAddress) public view {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        (,,States.LoanState _state) = _loanContract.loanGlobals();
+
+        require(
+            _state > LibContractStates.LoanState.FUNDED && _state < LibContractStates.LoanState.PAID,
+            "Loan state must between FUNDED and PAID exclusively."
+        );
+    }
+
+    function checkActiveState_(LibContractGlobals.Global storage _globals) public view {
+        require(
+            _globals.state > LibContractStates.LoanState.FUNDED && _globals.state < LibContractStates.LoanState.PAID,
+            "Loan state must between FUNDED and PAID exclusively."
+        );
+    }
 }
 
 library LibContractInit {
@@ -103,7 +120,7 @@ library LibContractInit {
         _property.borrowerSigned.init(false, LibContractStates.LoanState.FUNDED);
         _property.lenderSigned.init(false, LibContractStates.LoanState.FUNDED);
 
-        _property.balance.init(0, LibContractStates.LoanState.PAID);
+        _property.balance.init(0, LibContractStates.LoanState.ACTIVE_OPEN);
         _property.stopBlockstamp.init(type(uint256).max, LibContractStates.LoanState.FUNDED);
 
         // Set state variables
@@ -118,6 +135,25 @@ library LibContractInit {
         ac.grantRole(LibContractGlobals._COLLATERAL_OWNER_ROLE_, _participants.borrower);
         ac.grantRole(LibContractGlobals._COLLATERAL_APPROVER_ROLE_, _globals.factory);
         ac.grantRole(LibContractGlobals._COLLATERAL_APPROVER_ROLE_, _participants.borrower);
+    }
+}
+
+library LibContractAssess {
+    function checkActiveState_(address _loanContractAddress) public view {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        (,,States.LoanState _state) = _loanContract.loanGlobals();
+
+        require(
+            _state > LibContractStates.LoanState.FUNDED && _state < LibContractStates.LoanState.PAID,
+            "Loan state must between FUNDED and PAID exclusively."
+        );
+    }
+
+    function checkActiveState_(LibContractGlobals.Global storage _globals) public view {
+        require(
+            _globals.state > LibContractStates.LoanState.FUNDED && _globals.state < LibContractStates.LoanState.PAID,
+            "Loan state must between FUNDED and PAID exclusively."
+        );
     }
 }
 
@@ -173,13 +209,6 @@ library LibContractUpdate {
         }
 
         emit TermsChanged(_params, _prevValues, _newValues);
-    }
-
-    function checkActiveState_(LibContractGlobals.Global storage _globals) public view {
-        require(
-            _globals.state > LibContractStates.LoanState.FUNDED && _globals.state < LibContractStates.LoanState.PAID,
-            "Loan state must between FUNDED and PAID exclusively."
-        );
     }
 }
 

@@ -43,7 +43,6 @@ contract LoanContractFactory {
 
         // Create new loan contract
         address _clone = Clones.clone(_loanContract);
-        console.log("creating new loan contract...");
 
         ILoanContract(payable(_clone)).initialize(
             loanTreasurer,

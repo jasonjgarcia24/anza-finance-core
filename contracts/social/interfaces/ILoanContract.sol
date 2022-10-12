@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 import "../libraries/LibContractMaster.sol";
 import "../../utils/StateControl.sol";
 
-interface ILoanContract {
+interface ILoanContract is IAccessControl {
 
     /**
      * @dev Emitted when loan contract term(s) are updated.

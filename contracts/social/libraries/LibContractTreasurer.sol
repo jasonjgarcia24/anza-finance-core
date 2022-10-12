@@ -9,7 +9,8 @@ import "hardhat/console.sol";
 
 import {
     LibContractGlobals as Globals,
-    LibContractStates as States
+    LibContractStates as States,
+    LibContractAssess as Assess
 } from "./LibContractMaster.sol";
 import { TreasurerUtils as Utils } from "./LibContractTreasurer.sol";
 import {
@@ -24,27 +25,24 @@ import "../../utils/BlockTime.sol";
 library LibLoanTreasurey {
     using scUint for scUint.Property;
 
-    function assessMaturity_(address _loanContractAddress) public {
-        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+    function assessMaturity_(address _loanContractAddress)
+        public
+        view
+        returns (States.LoanState)
+    {
+        Assess.checkActiveState_(_loanContractAddress);
 
-        (,,States.LoanState _originalState) = _loanContract.loanGlobals();
-        require(_originalState > States.LoanState.FUNDED, "Loan contract must be active.");
-        
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        (,,States.LoanState _state) = _loanContract.loanGlobals();
         (
             ,,,,,,
             scUint.Property memory _balance,
             scUint.Property memory _stopBlockstamp
         ) = _loanContract.loanProperties();
 
-        bool _isDefaulted = Utils.isDefaulted_(
-            _balance._value, _stopBlockstamp._value, _originalState
-        );
-        
-        if (_isDefaulted) {
-            _loanContract.initDefault();
-            (,,States.LoanState _newState) = _loanContract.loanGlobals();
-            emit States.LoanStateChanged(_originalState, _newState);
-        }
+        bool _isDefaulted = Utils.isDefaulted_(_balance._value, _stopBlockstamp._value, _state);
+
+        return _isDefaulted ? States.LoanState.DEFAULT : _state;
     }
 
     function getBalance_(
@@ -76,6 +74,16 @@ library LibLoanTreasurey {
             _globals.state
         );
     }
+
+    function initDefault_(address _loanContractAddress) public {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        (,,States.LoanState _prevState) = _loanContract.loanGlobals();
+
+        _loanContract.initDefault();
+        (,,States.LoanState _newState) = _loanContract.loanGlobals();
+
+        emit States.LoanStateChanged(_prevState, _newState);
+    }
 }
 
 library ERC721Transactions {
@@ -106,10 +114,12 @@ library ERC721Transactions {
 
         // Update loan contract
         IAccessControl ac = IAccessControl(address(this));
+        ac.revokeRole(Globals._COLLATERAL_OWNER_ROLE_, _participants.borrower);
         ac.revokeRole(Globals._COLLATERAL_APPROVER_ROLE_, _globals.factory);
 
         ac.grantRole(Globals._COLLATERAL_OWNER_ROLE_, address(this));
         ac.grantRole(Globals._COLLATERAL_APPROVER_ROLE_, address(this));
+        ac.grantRole(Globals._COLLATERAL_APPROVER_ROLE_, _participants.borrower);
 
         _globals.state = _globals.state > States.LoanState.UNSPONSORED
             ? _globals.state
@@ -264,11 +274,6 @@ library ERC20Transactions {
         Globals.Global storage _globals,
         mapping(address => uint256) storage _accountBalance
     ) public {
-        require(
-            _globals.state > States.LoanState.FUNDED && _globals.state < States.LoanState.PAID,
-            "The loan state must between LoanState.FUNDED and LoanState.PAID."
-        );
-
         // Update loan contract
         uint256 _balance = _properties.balance.get() + TreasurerUtils.calculateInterest_(
             _properties.balance.get(),
@@ -295,7 +300,7 @@ library ERC20Transactions {
             emit States.LoanStateChanged(_prevState, _globals.state);
         }
 
-        emit Deposited(msg.sender, msg.value);
+        emit Deposited(tx.origin, msg.value);
     }
 
     /**
