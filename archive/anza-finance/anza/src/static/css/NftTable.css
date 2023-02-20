@@ -1,0 +1,8 @@
+a {
+    text-decoration: none;
+}
+
+.table-available-nfts,
+.table-lending-nfts {
+    margin: 0 auto;
+}

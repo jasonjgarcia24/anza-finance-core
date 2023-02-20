@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.7;
 
-import { LibContractStates as States } from "../social/libraries/LibContractMaster.sol";
+import {LibLoanContractStates as States} from "../utils/LibLoanContractStates.sol";
+
+error InitializationLocked();
+error ControllerNotInitialized();
+error ValueChangeDenied();
 
 /**
- * @title StateControlUint
+ * @title StateControlUint256
  * @dev Provides state controlled uint256 variables.
  *
- * Include with `using StateControl for StateControlUint.Property;`
+ * Include with `using StateControl for StateControlUint256.Property;`
  */
-library StateControlUint {
+library StateControlUint256 {
     struct Property {
-        // This variable should never be directly accessed by users of the library: interactions must be restricted to
-        // the library's function.
+        // These variables should never be directly accessed by users of the library:
+        // interactions must be restricted to the library's function.
         uint256 _value; // default: 0
-        uint256 _lock; // default: 0 (uint for gas saving)
+        uint256 _lock; // default: 0
         States.LoanState _stateThreshold; // default: 0
     }
 
@@ -23,13 +27,16 @@ library StateControlUint {
      * state threshold. Reverts with a message described in {checkState}.
      *
      */
-    function onlyState(Property storage _property, States.LoanState _state) public view {
+    function onlyActiveState(
+        Property storage _property,
+        States.LoanState _state
+    ) public view {
         StateControlUtils.checkState(_property, _state);
     }
 
     /**
      * @dev Function that initializes the state controlled variable.
-     * 
+     *
      * Requirements:
      * - The property lock must be unset (equal to 0).
      *
@@ -39,7 +46,7 @@ library StateControlUint {
         uint256 _value,
         States.LoanState _stateThreshold
     ) public {
-        require(_property._lock == 0, "Initialization is locked.");
+        if (_property._lock == 1) revert InitializationLocked();
         _property._lock++;
 
         unchecked {
@@ -50,34 +57,37 @@ library StateControlUint {
 
     /**
      * @dev Function that gets the state controlled variable's `_value`.
-     * 
+     *
      * Requirements:
      * - The property lock must be set (equal to 1).
      *
      */
     function get(Property storage _property) public view returns (uint256) {
-        require(_property._lock == 1, "State controller not initialized.");
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._value;
     }
 
     /**
      * @dev Function that gets the state controlled variable's `_stateThreshold`.
-     * 
+     *
      * Requirements:
      * - The property lock must be set (equal to 1).
      *
      */
-    function getThreshold(Property storage _property) public view returns (States.LoanState) {
-        require(_property._lock == 1, "State controller not initialized.");
+    function getThreshold(Property storage _property)
+        public
+        view
+        returns (States.LoanState)
+    {
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._stateThreshold;
     }
 
-
     /**
      * @dev Function that sets the state controlled variable's `_value`.
-     * 
+     *
      * Requirements:
      * - The `_state` must be no greater than the property statethreshold {StateControlUtils.checkState}.
      * - The property lock must be set (equal to 1).
@@ -88,8 +98,8 @@ library StateControlUint {
         uint256 _value,
         States.LoanState _state
     ) public {
-        onlyState(_property, _state);
-        require(_property._lock == 1, "State controller not initialized.");
+        onlyActiveState(_property, _state);
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         unchecked {
             _property._value = _value;
@@ -105,10 +115,10 @@ library StateControlUint {
  */
 library StateControlAddress {
     struct Property {
-        // This variable should never be directly accessed by users of the library: interactions must be restricted to
-        // the library's function.
+        // These variables should never be directly accessed by users of the library:
+        // interactions must be restricted to the library's function.
         address _value; // default: address(0)
-        uint256 _lock; // default: 0 (uint for gas saving)
+        uint256 _lock; // default: 0
         States.LoanState _stateThreshold; // default: 0
     }
 
@@ -117,13 +127,16 @@ library StateControlAddress {
      * state threshold. Reverts with a message described in {checkState}.
      *
      */
-    function onlyState(Property storage _property, States.LoanState _state) public view {
+    function onlyActiveState(
+        Property storage _property,
+        States.LoanState _state
+    ) public view {
         StateControlUtils.checkState(_property, _state);
     }
 
     /**
      * @dev Function that initializes the state controlled variable.
-     * 
+     *
      * Requirements:
      * - The property lock must be unset (equal to 0).
      *
@@ -133,7 +146,7 @@ library StateControlAddress {
         address _value,
         States.LoanState _stateThreshold
     ) public {
-        require(_property._lock == 0, "Initialization is locked.");
+        if (_property._lock == 1) revert InitializationLocked();
         _property._lock++;
 
         unchecked {
@@ -144,33 +157,37 @@ library StateControlAddress {
 
     /**
      * @dev Function that gets the state controlled variable's `_value`.
-     * 
+     *
      * Requirements:
      * - The property lock must be set (equal to 1).
      *
      */
     function get(Property storage _property) public view returns (address) {
-        require(_property._lock == 1, "State controller not initialized.");
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._value;
     }
 
     /**
      * @dev Function that gets the state controlled variable's `_stateThreshold`.
-     * 
+     *
      * Requirements:
      * - The property lock must be set (equal to 1).
      *
      */
-    function getThreshold(Property storage _property) public view returns (States.LoanState) {
-        require(_property._lock == 1, "State controller not initialized.");
+    function getThreshold(Property storage _property)
+        public
+        view
+        returns (States.LoanState)
+    {
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._stateThreshold;
     }
 
     /**
      * @dev Function that sets the state controlled variable's `_value`.
-     * 
+     *
      * Requirements:
      * - The `_state` must be no greater than the property statethreshold {StateControlUtils.checkState}.
      * - The property lock must be set (equal to 1).
@@ -181,8 +198,8 @@ library StateControlAddress {
         address _value,
         States.LoanState _state
     ) public {
-        onlyState(_property, _state);
-        require(_property._lock == 1, "State controller not initialized.");
+        onlyActiveState(_property, _state);
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         unchecked {
             _property._value = _value;
@@ -198,10 +215,10 @@ library StateControlAddress {
  */
 library StateControlBool {
     struct Property {
-        // This variable should never be directly accessed by users of the library: interactions must be restricted to
-        // the library's function.
+        // These variables should never be directly accessed by users of the library:
+        // interactions must be restricted to the library's function.
         bool _value; // default: false
-        uint256 _lock; // default: 0 (uint for gas saving)
+        uint256 _lock; // default: 0
         States.LoanState _stateThreshold; // default: 0
     }
 
@@ -210,14 +227,16 @@ library StateControlBool {
      * state threshold. Reverts with a message described in {checkState}.
      *
      */
-    function onlyState(Property storage _property, States.LoanState _state) public view {
+    function onlyActiveState(
+        Property storage _property,
+        States.LoanState _state
+    ) public view {
         StateControlUtils.checkState(_property, _state);
     }
 
-
     /**
      * @dev Function that initializes the state controlled variable.
-     * 
+     *
      * Requirements:
      * - The property lock must be unset (equal to 0).
      *
@@ -227,7 +246,7 @@ library StateControlBool {
         bool _value,
         States.LoanState _stateThreshold
     ) public {
-        require(_property._lock == 0, "Init locked.");
+        if (_property._lock == 1) revert InitializationLocked();
         _property._lock++;
 
         unchecked {
@@ -238,33 +257,37 @@ library StateControlBool {
 
     /**
      * @dev Function that gets the state controlled variable's `_value`.
-     * 
+     *
      * Requirements:
      * - The property lock must be set (equal to 1).
      *
      */
     function get(Property storage _property) public view returns (bool) {
-        require(_property._lock == 1, "State controller not initialized.");
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._value;
     }
 
     /**
      * @dev Function that gets the state controlled variable's `_stateThreshold`.
-     * 
+     *
      * Requirements:
      * - The property lock must be set (equal to 1).
      *
      */
-    function getThreshold(Property storage _property) public view returns (States.LoanState) {
-        require(_property._lock == 1, "State controller not initialized.");
+    function getThreshold(Property storage _property)
+        public
+        view
+        returns (States.LoanState)
+    {
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._stateThreshold;
     }
 
     /**
      * @dev Function that sets the state controlled variable's `_value`.
-     * 
+     *
      * Requirements:
      * - The `_state` must be no greater than the property statethreshold {StateControlUtils.checkState}.
      * - The property lock must be set (equal to 1).
@@ -275,8 +298,8 @@ library StateControlBool {
         bool _value,
         States.LoanState _state
     ) public {
-        onlyState(_property, _state);
-        require(_property._lock == 1, "State controller not initialized.");
+        onlyActiveState(_property, _state);
+        if (_property._lock == 0) revert ControllerNotInitialized();
 
         unchecked {
             _property._value = _value;
@@ -293,53 +316,43 @@ library StateControlUtils {
     /**
      * @dev Revert with a revert message if the state threshold of`_property` is
      * beyond `_state`.
-     *
      */
     function checkState(
-        StateControlUint.Property storage _property,
+        StateControlUint256.Property storage _property,
         States.LoanState _state
     ) public view {
-        require(
-            isActive_(_state, _property._stateThreshold),
-            "Access to change value is denied."
-        );
+        if (!isActive(_state, _property._stateThreshold))
+            revert ValueChangeDenied();
     }
 
     /**
      * @dev Revert with a revert message if the state threshold of`_property` is
      * beyond `_state`.
-     *
      */
     function checkState(
         StateControlAddress.Property storage _property,
         States.LoanState _state
     ) public view {
-        require(
-            isActive_(_state, _property._stateThreshold),
-            "Access to change value is denied."
-        );
+        if (!isActive(_state, _property._stateThreshold))
+            revert ValueChangeDenied();
     }
 
     /**
      * @dev Revert with a revert message if the state threshold of`_property` is
      * beyond `_state`.
-     *
      */
     function checkState(
         StateControlBool.Property storage _property,
         States.LoanState _state
     ) public view {
-        require(
-            isActive_(_state, _property._stateThreshold),
-            "Access to change value is denied."
-        );
+        if (!isActive(_state, _property._stateThreshold))
+            revert ValueChangeDenied();
     }
 
     /**
      * @dev Return if the state threshold of`_property` is beyond `_state`.
-     *
      */
-    function isActive_(States.LoanState _state, States.LoanState _stateThreshold)
+    function isActive(States.LoanState _state, States.LoanState _stateThreshold)
         public
         pure
         returns (bool)
