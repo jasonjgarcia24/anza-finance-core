@@ -2,12 +2,12 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 import "hardhat/console.sol";
 
-contract LoanArbiter is AccessControl, IERC721Receiver {
+contract LoanArbiter is AccessControl, ERC721Holder {
     struct Collateral {
         bytes collateralAddress;
         uint256 collateralId;
@@ -70,8 +70,8 @@ contract LoanArbiter is AccessControl, IERC721Receiver {
         address,
         address,
         uint256 _collateralId,
-        bytes calldata _collateralAddress
-    ) external returns (bytes4) {
+        bytes memory _collateralAddress
+    ) public override returns (bytes4) {
         _totalCollateral += 1;
 
         _collaterals.push(

@@ -34,12 +34,12 @@ library LibLoanTreasurey {
             ,
             ,
             scUint.Property memory _balance,
-            scUint.Property memory _stopBlockstamp
+            scUint.Property memory _expiry
         ) = _loanContract.loanProperties();
 
         bool _isDefaulted = Utils.isDefaulted_(
             _balance._value,
-            _stopBlockstamp._value,
+            _expiry._value,
             _state
         );
 
@@ -355,12 +355,12 @@ library TreasurerUtils {
         uint256 _balance,
         uint256 _fixedInterestRate,
         uint256 _duration,
-        uint256 _stopBlockstamp
+        uint256 _expiry
     ) public view returns (uint256) {
         // Reference_Block: block.number + _duration
-        // Blocks_Active: Reference_Block - _stopBlockstamp
+        // Blocks_Active: Reference_Block - _expiry
         uint256 _daysActive = BlockTime.blocksToDays(
-            (block.number + _duration) - _stopBlockstamp
+            (block.number + _duration) - _expiry
         );
 
         uint256 _interest = _balance
@@ -374,12 +374,12 @@ library TreasurerUtils {
 
     function isDefaulted_(
         uint256 _balance,
-        uint256 _stopBlockstamp,
+        uint256 _expiry,
         States.LoanState _state
     ) public view returns (bool) {
         if (_balance == 0 || _state == States.LoanState.PAID) {
             return false;
         }
-        return (block.number >= _stopBlockstamp);
+        return (block.number >= _expiry);
     }
 }

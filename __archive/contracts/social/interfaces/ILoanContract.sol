@@ -77,7 +77,6 @@ interface ILoanContract is IAccessControl {
             StateControlBool.Property memory borrowerSigned,
             StateControlBool.Property memory lenderSigned,
             StateControlUint256.Property memory balance,
-            StateControlUint256.Property memory stopBlockstamp
         );
 
     /**
