@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import {LibOfficerRoles as Roles, LibLoanContractMetadata as Metadata, LibLoanContractInit as Init, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
 import {Test, LoanContractDeployer} from "./LoanContract.t.sol";
 
-contract LoanContractDeployment is LoanContractDeployer {
+contract LoanContractTestDeployment is LoanContractDeployer {
     function testStateVars() public {
         assertEq(loanContract.arbiter(), address(loanArbiter));
     }
 }
 
-contract LoanContractAccessControl is LoanContractDeployer {
+contract LoanContractTestAccessControl is LoanContractDeployer {
     function testHasRole() public {
         assertTrue(loanContract.hasRole(Roles._ADMIN_, admin));
         assertTrue(loanContract.hasRole(Roles._TREASURER_, treasurer));
@@ -105,7 +105,7 @@ contract LoanContractAccessControl is LoanContractDeployer {
     }
 }
 
-contract LoanContractERC1155URIStorage is LoanContractDeployer {
+contract LoanContractTestERC1155URIStorage is LoanContractDeployer {
     function testStateVars() public {
         // URI for token ID 0 is not set yet and should therefore
         // default to the baseURI

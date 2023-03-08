@@ -3,6 +3,7 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 import "../interfaces/ILoanContract.sol";
 import {LibLoanContractStates as States} from "../utils/LibLoanContractStates.sol";
 import "../utils/StateControl.sol";
@@ -102,15 +103,9 @@ library LibLoanContractSigning {
             );
     }
 
-    function splitSignature(bytes memory _signature)
-        public
-        pure
-        returns (
-            uint8 v,
-            bytes32 r,
-            bytes32 s
-        )
-    {
+    function splitSignature(
+        bytes memory _signature
+    ) public pure returns (uint8 v, bytes32 r, bytes32 s) {
         assembly {
             r := mload(add(_signature, 32))
             s := mload(add(_signature, 64))
@@ -119,82 +114,76 @@ library LibLoanContractSigning {
     }
 }
 
-library LibLoanContractIndexer {
-    // // TODO: Test
-    // function borrower(uint256 _debtId) public view returns (address) {
-    //     address _borrower = IERC1155(address(this)).balanceOf(
-    //         borrowerToken(_debtId)
-    //     );
-    //     if (_borrower == address(this)) {
-    //         return address(0);
+library LibLoanContractIndexer {}
+
+library LibLoanContractMath {
+    function pow(int128 x, uint n) public pure returns (int128 r) {
+        r = ABDKMath64x64.fromUInt(1);
+        while (n > 0) {
+            if (n % 2 == 1) {
+                r = ABDKMath64x64.mul(r, x);
+                n -= 1;
+            } else {
+                x = ABDKMath64x64.mul(x, x);
+                n /= 2;
+            }
+        }
+    }
+
+    function compound(
+        uint principal,
+        uint ratio,
+        uint n
+    ) public pure returns (uint) {
+        return
+            ABDKMath64x64.mulu(
+                pow(
+                    ABDKMath64x64.add(
+                        ABDKMath64x64.fromUInt(1),
+                        ABDKMath64x64.divu(ratio, 100)
+                    ),
+                    n
+                ),
+                principal
+            );
+    }
+
+    // function compound(
+    //     uint256 _principal,
+    //     uint256 _ratio,
+    //     uint256 _n
+    // ) public pure returns (uint256) {
+    //     while (_n > 0) {
+    //         if (_n % 2 == 1) {
+    //             _principal = SafeMath.add(
+    //                 _principal,
+    //                 Math.mulDiv(_principal, _ratio, 100)
+    //             );
+    //             _n -= 1;
+    //         } else {
+    //             _ratio =
+    //                 SafeMath.mul(_ratio, _n) +
+    //                 Math.mulDiv(1, pow(_ratio, _n), 100);
+    //             _n /= 2;
+    //         }
     //     }
-    //     return _borrower;
+
+    //     return _principal;
     // }
-    // // TODO: Test
-    // function borrower(address _alcTokenAddress, uint256 _debtId)
-    //     public
-    //     view
-    //     returns (address)
-    // {
-    //     address _borrower = IERC1155(_alcTokenAddress).ownerOf(
-    //         borrowerToken(_alcTokenAddress, _debtId)
-    //     );
-    //     if (_borrower == _alcTokenAddress) {
-    //         return address(0);
+
+    // function pow(uint256 _x, uint256 _n) public pure returns (uint256) {
+    //     uint256 _r = 1;
+
+    //     while (_n > 0) {
+    //         if (_n % 2 == 1) {
+    //             _r = SafeMath.mul(_x, _r);
+    //             _n -= 1;
+    //         } else {
+    //             _x = SafeMath.mul(_x, _x);
+    //             _n /= 2;
+    //         }
     //     }
-    //     return _borrower;
-    // }
-    // // TODO: Test
-    // function lender(uint256 _debtId) public view returns (address) {
-    //     address _lender = IERC1155(address(this)).ownerOf(lenderToken(_debtId));
-    //     if (_lender == address(this)) {
-    //         return address(0);
-    //     }
-    //     return _lender;
-    // }
-    // // TODO: Test
-    // function lender(address _alcTokenAddress, uint256 _debtId)
-    //     public
-    //     view
-    //     returns (address)
-    // {
-    //     address _lender = IERC1155(_alcTokenAddress).ownerOf(
-    //         lenderToken(_alcTokenAddress, _debtId)
-    //     );
-    //     if (_lender == _alcTokenAddress) {
-    //         return address(0);
-    //     }
-    //     return _lender;
-    // }
-    // // TODO: Test
-    // function borrowerToken(uint256 _debtId) public view returns (uint256) {
-    //     return IERC1155(address(this)).tokenByIndex(_debtId * 2);
-    // }
-    // function borrowerToken(address _alcTokenAddress, uint256 _debtId)
-    //     public
-    //     view
-    //     returns (uint256)
-    // {
-    //     return IERC1155(_alcTokenAddress).tokenByIndex(_debtId * 2);
-    // }
-    // // TODO: Test
-    // function lenderToken(uint256 _debtId) public view returns (uint256) {
-    //     return IERC1155(address(this)).tokenByIndex((_debtId * 2) + 1);
-    // }
-    // // TODO: Test
-    // function lenderToken(address _alcTokenAddress, uint256 _debtId)
-    //     public
-    //     view
-    //     returns (uint256)
-    // {
-    //     return IERC1155(_alcTokenAddress).tokenByIndex((_debtId * 2) + 1);
-    // }
-    // // TODO: Test
-    // function currentDebtId(address _alcTokenAddress)
-    //     public
-    //     view
-    //     returns (uint256)
-    // {
-    //     return ILoanContract(_alcTokenAddress).totalDebtSupply();
+
+    //     return _r;
     // }
 }

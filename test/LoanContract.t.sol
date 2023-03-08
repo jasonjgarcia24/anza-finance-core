@@ -56,12 +56,31 @@ abstract contract LoanContractDeployer is
 }
 
 abstract contract LoanSigned is LoanContractDeployer {
-    uint64 public termsExpiry = 1209600; // 2 weeks (seconds)
-    uint64 public principal = 32; // ETH
-    uint64 public duration = 7257600; // 12 weeks (seconds)
-    uint32 public gracePeriod = 604800; // 1 week (seconds)
-    uint8 public fixedInterestRate = 5; // 0.05
+    /* ------------------------------------------------ *
+     *                  Loan States                     *
+     * ------------------------------------------------ */
+    uint8 public constant _UNDEFINED_STATE_ = 0;
+    uint8 public constant _NONLEVERAGED_STATE_ = 1;
+    uint8 public constant _UNSPONSORED_STATE_ = 2;
+    uint8 public constant _SPONSORED_STATE_ = 3;
+    uint8 public constant _FUNDED_STATE_ = 4;
+    uint8 public constant _ACTIVE_GRACE_COMMITTED_STATE_ = 5;
+    uint8 public constant _ACTIVE_GRACE_OPEN_STATE_ = 6;
+    uint8 public constant _ACTIVE_COMMITTED_STATE_ = 7;
+    uint8 public constant _ACTIVE_OPEN_STATE_ = 8;
+    uint8 public constant _PAID_STATE_ = 9;
+    uint8 public constant _DEFAULT_STATE_ = 10;
+    uint8 public constant _COLLECTION_STATE_ = 11;
+    uint8 public constant _AUCTION_STATE_ = 12;
+    uint8 public constant _AWARDED_STATE_ = 13;
+    uint8 public constant _CLOSE_STATE_ = 14;
+
     uint8 public loanState = 2; // Unsponsored
+    uint8 public fixedInterestRate = 50; // 0.05
+    uint128 public principal = 32; // ETH
+    uint32 public gracePeriod = 604800; // 1 week (seconds)
+    uint32 public duration = 7257600; // 12 weeks (seconds)
+    uint32 public termsExpiry = 1209600; // 2 weeks (seconds)
 
     uint256 collateralNonce = 12345;
     bytes32 contractTerms;
@@ -71,22 +90,23 @@ abstract contract LoanSigned is LoanContractDeployer {
     function setUp() public virtual override {
         super.setUp();
 
-        uint64 _termsExpiry = termsExpiry;
-        uint64 _principal = principal;
-        uint64 _duration = duration;
-        uint32 _gracePeriod = gracePeriod;
-        uint8 _fixedInterestRate = fixedInterestRate;
         uint8 _loanState = loanState;
+        uint8 _fixedInterestRate = fixedInterestRate;
+        uint128 _principal = principal;
+        uint32 _gracePeriod = gracePeriod;
+        uint32 _duration = duration;
+        uint32 _termsExpiry = termsExpiry;
 
         bytes32 _contractTerms;
 
         assembly {
-            mstore(0x20, _termsExpiry)
-            mstore(0x18, _principal)
-            mstore(0x10, _duration)
-            mstore(0x08, _gracePeriod)
-            mstore(0x04, _fixedInterestRate)
-            mstore(0x03, _loanState)
+            mstore(0x20, _loanState)
+            mstore(0x1e, _fixedInterestRate)
+            mstore(0x1c, _principal)
+            mstore(0x0c, _gracePeriod)
+            mstore(0x08, _duration)
+            mstore(0x04, _termsExpiry)
+
             _contractTerms := mload(0x20)
         }
 

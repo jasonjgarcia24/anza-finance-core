@@ -56,7 +56,7 @@ contract LoanTreasureyPool is Ownable, ReentrancyGuard {
 
         __deposit(_lender, _payment);
 
-        ILoanContract(__loanContract).recordPayment(_debtId, _payment);
+        // ILoanContract(__loanContract).recordPayment(_debtId);
     }
 
     /**

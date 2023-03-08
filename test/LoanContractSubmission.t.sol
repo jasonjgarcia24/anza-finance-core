@@ -2,11 +2,11 @@
 pragma solidity ^0.8.7;
 
 import "forge-std/Test.sol";
-import {IERC721Events} from "./interfaces/IERC721Events.t.sol";
+import {IAnzaERC721Events} from "./interfaces/IAnzaERC721Events.t.sol";
 import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import {LoanContractDeployer, LoanSigned, LoanContractMinter} from "./LoanContract.t.sol";
-import {LoanContractERC1155URIStorage} from "./LoanContractDeployment.t.sol";
+import {LoanContractTestERC1155URIStorage} from "./LoanContractDeployment.t.sol";
 import {DemoToken} from "../contracts/DemoToken.sol";
 import {LibLoanContractStates as States} from "../contracts/utils/LibLoanContractStates.sol";
 import {LibLoanContractMetadata as Metadata} from "../contracts/libraries/LibLoanContract.sol";
@@ -14,7 +14,7 @@ import {LibLoanContractMetadata as Metadata} from "../contracts/libraries/LibLoa
 contract LoanContractTestSubmit is
     LoanSigned,
     ILoanContractEvents,
-    IERC721Events
+    IAnzaERC721Events
 {
     uint256 thing = 0x10;
 
@@ -23,28 +23,22 @@ contract LoanContractTestSubmit is
     }
 
     function testLenderSubmitProposal() public {
-        console.log("!!!!!!!!!!!!!!!!!");
+        uint256 debtId = loanContract.totalDebts();
+        assertEq(debtId, 0);
 
-        // uint256 debtId = loanContract.totalDebts();
-        // assertEq(debtId, 0);
+        // Anza batch NFT minting
+        vm.expectEmit(true, true, true, true);
+        emit TransferAnzaBatch(
+            lender,
+            address(0),
+            [lender, borrower],
+            [(debtId * 2), (debtId * 2) + 1],
+            [uint256(principal), uint256(principal)]
+        );
 
-        // // Lender ALC debt tokens minting
-        // vm.expectEmit(true, true, true, true);
-        // emit TransferSingle(lender, address(0), lender, debtId, principal);
-
-        // // Borrower NFT minting
-        // vm.expectEmit(true, true, true, true);
-        // emit TransferSingle(
-        //     lender,
-        //     address(0),
-        //     borrower,
-        //     debtId + 1,
-        //     principal
-        // );
-
-        // // Loan proposal submitted
-        // vm.expectEmit(true, true, true, true);
-        // emit LoanContractInitialized(address(demoToken), collateralId, debtId);
+        // Loan proposal submitted
+        vm.expectEmit(true, true, true, true);
+        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, 100 ether);
@@ -65,10 +59,10 @@ contract LoanContractTestSubmit is
 
         // // Verify loanState for this debt ID
         // assertTrue(
-        //     loanContract.loanStates(debtId) == States.LoanState.ACTIVE_COMMITTED
+        //     loanContract.loanState(debtId) == _ACTIVE_GRACE_COMMITTED_STATE_
         // );
 
-        // // Verify tokenData for this debt ID
+        // Verify tokenData for this debt ID
         // (
         //     address actualCollateralAddress,
         //     uint256 actualCollateralId,
@@ -142,11 +136,9 @@ contract LoanContractSubmit is LoanContractMinter {
         // assertEq(loanContract.balanceOf(borrower, 1));
     }
 
-    function _getTokenURI(uint256 _tokenId)
-        internal
-        view
-        returns (string memory)
-    {
+    function _getTokenURI(
+        uint256 _tokenId
+    ) internal view returns (string memory) {
         return string(abi.encodePacked(nftsURI, Strings.toString(_tokenId)));
     }
 }

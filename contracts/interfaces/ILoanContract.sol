@@ -37,5 +37,5 @@ interface ILoanContract {
 
     function borrowerOf(uint256 _debtId) external view returns (address);
 
-    function recordPayment(uint256 _debtId, uint256 _payment) external;
+    function depositPayment(uint256 _debtId) external payable;
 }
