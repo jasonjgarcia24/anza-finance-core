@@ -11,6 +11,35 @@ import {DemoToken} from "../contracts/DemoToken.sol";
 import {LibLoanContractStates as States} from "../contracts/utils/LibLoanContractStates.sol";
 import {LibLoanContractMetadata as Metadata, LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
 
+abstract contract LoanContractGlobalConstants {
+    /* ------------------------------------------------ *
+     *                  Loan States                     *
+     * ------------------------------------------------ */
+    uint8 public constant _UNDEFINED_STATE_ = 0;
+    uint8 public constant _NONLEVERAGED_STATE_ = 1;
+    uint8 public constant _UNSPONSORED_STATE_ = 2;
+    uint8 public constant _SPONSORED_STATE_ = 3;
+    uint8 public constant _FUNDED_STATE_ = 4;
+    uint8 public constant _ACTIVE_GRACE_STATE_ = 5;
+    uint8 public constant _ACTIVE_STATE_ = 6;
+    uint8 public constant _PAID_STATE_ = 7;
+    uint8 public constant _DEFAULT_STATE_ = 8;
+    uint8 public constant _COLLECTION_STATE_ = 9;
+    uint8 public constant _AUCTION_STATE_ = 10;
+    uint8 public constant _AWARDED_STATE_ = 11;
+    uint8 public constant _CLOSE_STATE_ = 12;
+
+    /* ------------------------------------------------ *
+     *                  Loan Terms                      *
+     * ------------------------------------------------ */
+    uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
+    uint8 public constant _FIXED_INTEREST_RATE_ = 50; // 0.05
+    uint128 public constant _PRINCIPAL_ = 32; // ETH
+    uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
+    uint32 public constant _DURATION_ = 7257600; // 12 weeks (seconds)
+    uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
+}
+
 abstract contract LoanContractDeployer is
     Test,
     IERC1155Events,
@@ -55,34 +84,35 @@ abstract contract LoanContractDeployer is
     }
 }
 
-abstract contract LoanSigned is LoanContractDeployer {
-    /* ------------------------------------------------ *
-     *                  Loan States                     *
-     * ------------------------------------------------ */
-    uint8 public constant _UNDEFINED_STATE_ = 0;
-    uint8 public constant _NONLEVERAGED_STATE_ = 1;
-    uint8 public constant _UNSPONSORED_STATE_ = 2;
-    uint8 public constant _SPONSORED_STATE_ = 3;
-    uint8 public constant _FUNDED_STATE_ = 4;
-    uint8 public constant _ACTIVE_GRACE_COMMITTED_STATE_ = 5;
-    uint8 public constant _ACTIVE_GRACE_OPEN_STATE_ = 6;
-    uint8 public constant _ACTIVE_COMMITTED_STATE_ = 7;
-    uint8 public constant _ACTIVE_OPEN_STATE_ = 8;
-    uint8 public constant _PAID_STATE_ = 9;
-    uint8 public constant _DEFAULT_STATE_ = 10;
-    uint8 public constant _COLLECTION_STATE_ = 11;
-    uint8 public constant _AUCTION_STATE_ = 12;
-    uint8 public constant _AWARDED_STATE_ = 13;
-    uint8 public constant _CLOSE_STATE_ = 14;
+abstract contract LoanSigned is
+    LoanContractGlobalConstants,
+    LoanContractDeployer
+{
+    // /* ------------------------------------------------ *
+    //  *                  Loan States                     *
+    //  * ------------------------------------------------ */
+    // uint8 public constant _UNDEFINED_STATE_ = 0;
+    // uint8 public constant _NONLEVERAGED_STATE_ = 1;
+    // uint8 public constant _UNSPONSORED_STATE_ = 2;
+    // uint8 public constant _SPONSORED_STATE_ = 3;
+    // uint8 public constant _FUNDED_STATE_ = 4;
+    // uint8 public constant _ACTIVE_GRACE_STATE_ = 5;
+    // uint8 public constant _ACTIVE_STATE_ = 6;
+    // uint8 public constant _PAID_STATE_ = 7;
+    // uint8 public constant _DEFAULT_STATE_ = 8;
+    // uint8 public constant _COLLECTION_STATE_ = 9;
+    // uint8 public constant _AUCTION_STATE_ = 10;
+    // uint8 public constant _AWARDED_STATE_ = 11;
+    // uint8 public constant _CLOSE_STATE_ = 12;
 
-    uint8 public loanState = 2; // Unsponsored
-    uint8 public fixedInterestRate = 50; // 0.05
-    uint128 public principal = 32; // ETH
-    uint32 public gracePeriod = 604800; // 1 week (seconds)
-    uint32 public duration = 7257600; // 12 weeks (seconds)
-    uint32 public termsExpiry = 1209600; // 2 weeks (seconds)
+    // uint8 public _LOAN_STATE_ = 2; // Unsponsored
+    // uint8 public _FIXED_INTEREST_RATE_ = 50; // 0.05
+    // uint128 public _PRINCIPAL_ = 32; // ETH
+    // uint32 public _GRACE_PERIOD_ = 604800; // 1 week (seconds)
+    // uint32 public _DURATION_ = 7257600; // 12 weeks (seconds)
+    // uint32 public _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
 
-    uint256 collateralNonce = 12345;
+    uint256 collateralNonce = 0;
     bytes32 contractTerms;
 
     bytes public signature;
@@ -90,22 +120,15 @@ abstract contract LoanSigned is LoanContractDeployer {
     function setUp() public virtual override {
         super.setUp();
 
-        uint8 _loanState = loanState;
-        uint8 _fixedInterestRate = fixedInterestRate;
-        uint128 _principal = principal;
-        uint32 _gracePeriod = gracePeriod;
-        uint32 _duration = duration;
-        uint32 _termsExpiry = termsExpiry;
-
         bytes32 _contractTerms;
 
         assembly {
-            mstore(0x20, _loanState)
-            mstore(0x1e, _fixedInterestRate)
-            mstore(0x1c, _principal)
-            mstore(0x0c, _gracePeriod)
-            mstore(0x08, _duration)
-            mstore(0x04, _termsExpiry)
+            mstore(0x20, _LOAN_STATE_)
+            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1c, _PRINCIPAL_)
+            mstore(0x0c, _GRACE_PERIOD_)
+            mstore(0x08, _DURATION_)
+            mstore(0x04, _TERMS_EXPIRY_)
 
             _contractTerms := mload(0x20)
         }
@@ -136,13 +159,12 @@ abstract contract LoanContractMinter is LoanSigned {
 
         // Create loan contract
         vm.startPrank(lender);
-        (bool success, ) = address(loanContract).call{value: principal}(
+        (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,uint256,bytes)",
+                "initLoanContract(bytes32,address,uint256,bytes)",
                 contractTerms,
                 address(demoToken),
                 collateralId,
-                collateralNonce,
                 signature
             )
         );

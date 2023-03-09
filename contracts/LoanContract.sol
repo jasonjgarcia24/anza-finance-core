@@ -6,7 +6,7 @@ import "./token/AnzaERC1155URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./abdk-libraries-solidity/ABDKMath64x64.sol";
-import {LibLoanContractMath as Math, LibOfficerRoles as Roles, LibLoanContractMetadata as Metadata, LibLoanContractInit as Init, LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
+import {LibOfficerRoles as Roles, LibLoanContractMetadata as Metadata, LibLoanContractInit as Init, LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "./utils/LibLoanContractStates.sol";
 import "./interfaces/ILoanContract.sol";
 import "hardhat/console.sol";
@@ -55,17 +55,24 @@ contract LoanContract is
     /* ------------------------------------------------ *
      *                    Databases                     *
      * ------------------------------------------------ */
+    // Mapping from collateral to debt ID
     mapping(address => mapping(uint256 => uint256[])) public debtIds;
 
-    // - [0..63] `termsExpiry`
-    // - [64..127] `principal`
-    // - [128..191] `duration`
-    // - [192..223] `gracePeriod`
-    // - [224..225] `loanState`
-    // - [226..256] `aux`
+    //  > 008 - [0..7]     `loanState`
+    //  > 008 - [8..15]    `fixedInterestRate`
+    //  > 128 - [16..143]  `principal`
+    //  > 032 - [144..175] `loanStart`
+    //  > 032 - [176..207] `loanClose`
+    //  > 016 - [208..255] unused space
     mapping(uint256 => bytes32) private __packedDebtTerms;
+
+    // Mapping from token ID to owner address
     mapping(uint256 => address) private __owners;
+
+    // Mapping from participant to withdrawable balance
     mapping(address => uint256) private __withdrawableBalance;
+
+    // Count of total inactive/active debts
     uint256 public totalDebts;
 
     constructor(
@@ -115,13 +122,14 @@ contract LoanContract is
      * This should report back only the total debt tokens, not the ALC NFTs.
      * TODO: Test
      */
-    function totalDebtSupply(
-        address _participant,
+    function debtBalanceOf(
+        address _borrower,
         uint256 _debtId
     ) public view returns (uint256) {
-        uint256 _lendererTokenId = (2 * _debtId);
+        if (_borrower != borrowerOf(_debtId))
+            revert InvalidParticipant({account: _borrower});
 
-        return balanceOf(_participant, _lendererTokenId);
+        return balanceOf(lenderOf(_debtId), (_debtId * 2));
     }
 
     function getCollateralNonce(
@@ -131,19 +139,30 @@ contract LoanContract is
         return debtIds[_collateralAddress][_collateralId].length;
     }
 
-    // TODO: Test
-    // 008 - [0..7]     `loanState`
-    // 008 - [8..15]    `fixedInterestRate`
-    // 128 - [16..143]  `principal`
-    // 032 - [144..175] `gracePeriod`
-    // 032 - [176..207] `duration`
-    // 032 - [208..239] `termsExpiry`
-    // 016 - [240..255] extra space
+    /*
+     * TODO: Test
+     *
+     * Input _contractTerms:
+     *  > 008 - [0..7]     `loanState`
+     *  > 008 - [8..15]    `fixedInterestRate`
+     *  > 128 - [16..143]  `principal`
+     *  > 032 - [144..175] `gracePeriod`
+     *  > 032 - [176..207] `duration`
+     *  > 032 - [208..239] `termsExpiry`
+     *  > 016 - [240..255] unused space
+     *
+     * Saved _contractAgreement:
+     *  > 008 - [0..7]     `loanState`
+     *  > 008 - [8..15]    `fixedInterestRate`
+     *  > 128 - [16..143]  `principal`
+     *  > 032 - [144..175] `loanStart`
+     *  > 032 - [176..207] `loanClose`
+     *  > 016 - [208..255] unused space
+     */
     function initLoanContract(
         bytes32 _contractTerms,
         address _collateralAddress,
         uint256 _collateralId,
-        uint256 _collateralNonce,
         bytes calldata _borrowerSignature
     ) external payable {
         // Validate borrower participation
@@ -156,24 +175,16 @@ contract LoanContract is
                 _contractTerms,
                 _collateralAddress,
                 _collateralId,
-                _collateralNonce,
+                getCollateralNonce(_collateralAddress, _collateralId),
                 _borrowerSignature
             )
         ) revert InvalidParticipant({account: _borrower});
 
         // Add debt ID to collateral mapping
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
-        __packedDebtTerms[totalDebts] = _setActiveLoanTerms(_contractTerms);
+        _setLoanAgreement(_contractTerms);
 
-        // Update current debt's loan state
-        _setLoanState(totalDebts, _ACTIVE_GRACE_STATE_);
-
-        console.log(loanState(totalDebts));
-        console.log(fixedInterestRate(totalDebts));
-        console.log(principal(totalDebts));
-        console.log(loanStart(totalDebts));
-        console.log(loanClose(totalDebts));
-
+        // Validate lender funding
         uint256 _principal = principal(totalDebts);
         if (msg.value != _principal) _revert(InsufficientFunds.selector);
 
@@ -187,13 +198,13 @@ contract LoanContract is
 
         // Transfer funds to borrower
         (bool _success, ) = _borrower.call{value: _principal}("");
-        require(_success);
+        if (!_success) revert FailedFundsTransfer();
 
         // Mint debt ALC debt tokens for borrower and lender
         _mintAnzaBatch(
             [msg.sender, _borrower],
             [totalDebts * 2, (totalDebts * 2) + 1],
-            [_principal, _principal],
+            [_principal, 1],
             ""
         );
 
@@ -255,22 +266,6 @@ contract LoanContract is
         }
     }
 
-    function gracePeriod(
-        uint256 _debtId
-    ) public view returns (uint256 _gracePeriod) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint32 __gracePeriod;
-
-        assembly {
-            mstore(0x14, _contractTerms)
-            __gracePeriod := mload(0)
-        }
-
-        unchecked {
-            _gracePeriod = __gracePeriod;
-        }
-    }
-
     function loanStart(
         uint256 _debtId
     ) public view returns (uint256 _loanStart) {
@@ -307,12 +302,12 @@ contract LoanContract is
         return __owners[_tokenId];
     }
 
-    function borrowerOf(uint256 _debtId) external view returns (address) {
-        return __owners[(2 * _debtId) + 1];
+    function borrowerOf(uint256 _debtId) public view returns (address) {
+        return __owners[(_debtId * 2) + 1];
     }
 
     function lenderOf(uint256 _debtId) public view returns (address) {
-        return __owners[2 * _debtId];
+        return __owners[_debtId * 2];
     }
 
     function depositPayment(uint256 _debtId) external payable {
@@ -358,25 +353,62 @@ contract LoanContract is
         return super.isApprovedForAll(_account, _operator);
     }
 
-    function _setActiveLoanTerms(
-        bytes32 _contractTerms
-    ) internal view returns (bytes32 _contractAgreement) {
+    function _setLoanAgreement(bytes32 _contractTerms) internal {
+        _checkDuration(_contractTerms);
+
+        bytes32 _loanAgreement;
+        uint32 _duration;
+        uint32 _loanStart = _toUint32(block.timestamp);
+
+        _contractTerms >>= 16;
+
+        assembly {
+            mstore(0x16, _contractTerms)
+            _duration := mload(0)
+
+            switch _duration
+            case 0 {
+                mstore(0x20, _ACTIVE_STATE_)
+            }
+            default {
+                mstore(0x20, _ACTIVE_GRACE_STATE_)
+            }
+
+            mstore(0x1e, _contractTerms)
+            mstore(0x08, _loanStart)
+            mstore(0x04, add(_loanStart, _duration))
+
+            _loanAgreement := mload(0x20)
+        }
+
+        __packedDebtTerms[totalDebts] = _loanAgreement;
+    }
+
+    function _checkDuration(bytes32 _contractTerms) internal {
         uint32 _duration;
         uint32 _loanStart = _toUint32(block.timestamp);
 
         assembly {
-            mstore(0x1c, _contractTerms)
+            mstore(0x18, _contractTerms)
             _duration := mload(0)
-
-            mstore(0x20, _contractTerms)
-            _contractTerms := mload(0x20)
-
-            mstore(0x20, _contractTerms)
-            mstore(0x08, _loanStart)
-            mstore(0x04, add(_loanStart, _duration))
-
-            _contractAgreement := mload(0x20)
         }
+
+        unchecked {
+            if (uint256(_duration) + uint256(_loanStart) > type(uint32).max)
+                revert OverflowLoanTerm();
+        }
+    }
+
+    function _setLoanState(uint256 _debtId, uint8 _loanState) internal {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId] >> 16;
+
+        assembly {
+            mstore(0x20, _loanState)
+            mstore(0x1e, _contractTerms)
+            _contractTerms := mload(0x20)
+        }
+
+        __packedDebtTerms[_debtId] = _contractTerms;
     }
 
     /**
@@ -399,24 +431,12 @@ contract LoanContract is
         return uint32(value);
     }
 
-    function _setLoanState(uint256 _debtId, uint8 _loanState) internal {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId] >> 16;
-
-        assembly {
-            mstore(0x20, _loanState)
-            mstore(0x1e, _contractTerms)
-            _contractTerms := mload(0x20)
-        }
-
-        __packedDebtTerms[_debtId] = _contractTerms;
-    }
-
     function _setBalanceWithInterest(
         address _participant,
         uint256 _debtId
     ) internal view {
         uint256 _fixedInterestRate = fixedInterestRate(_debtId);
-        uint256 _oldBalance = totalDebtSupply(_participant, _debtId);
+        uint256 _oldBalance = debtBalanceOf(_participant, _debtId);
 
         uint256 _newBalance = _compound(
             _oldBalance,
@@ -464,7 +484,7 @@ contract LoanContract is
     function _afterAnzaTokenTransfer(
         address,
         address from,
-        address[2] memory,
+        address[2] memory to,
         uint256[2] memory ids,
         uint256[2] memory,
         bytes memory
@@ -472,6 +492,10 @@ contract LoanContract is
         if (from != address(0)) {
             return;
         }
+
+        // Set token owners
+        __owners[ids[0]] = to[0];
+        __owners[ids[1]] = to[1];
 
         // Set token URI
         _setURI(ids[0], Strings.toString(ids[0]));

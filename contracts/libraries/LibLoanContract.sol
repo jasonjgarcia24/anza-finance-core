@@ -114,76 +114,12 @@ library LibLoanContractSigning {
     }
 }
 
-library LibLoanContractIndexer {}
-
-library LibLoanContractMath {
-    function pow(int128 x, uint n) public pure returns (int128 r) {
-        r = ABDKMath64x64.fromUInt(1);
-        while (n > 0) {
-            if (n % 2 == 1) {
-                r = ABDKMath64x64.mul(r, x);
-                n -= 1;
-            } else {
-                x = ABDKMath64x64.mul(x, x);
-                n /= 2;
-            }
-        }
+library LibLoanContractIndexer {
+    function getBorrowerTokenId(uint256 _debtId) public pure returns (uint256) {
+        return (2 * _debtId) + 1;
     }
 
-    function compound(
-        uint principal,
-        uint ratio,
-        uint n
-    ) public pure returns (uint) {
-        return
-            ABDKMath64x64.mulu(
-                pow(
-                    ABDKMath64x64.add(
-                        ABDKMath64x64.fromUInt(1),
-                        ABDKMath64x64.divu(ratio, 100)
-                    ),
-                    n
-                ),
-                principal
-            );
+    function getLenderTokenId(uint256 _debtId) public pure returns (uint256) {
+        return (2 * _debtId);
     }
-
-    // function compound(
-    //     uint256 _principal,
-    //     uint256 _ratio,
-    //     uint256 _n
-    // ) public pure returns (uint256) {
-    //     while (_n > 0) {
-    //         if (_n % 2 == 1) {
-    //             _principal = SafeMath.add(
-    //                 _principal,
-    //                 Math.mulDiv(_principal, _ratio, 100)
-    //             );
-    //             _n -= 1;
-    //         } else {
-    //             _ratio =
-    //                 SafeMath.mul(_ratio, _n) +
-    //                 Math.mulDiv(1, pow(_ratio, _n), 100);
-    //             _n /= 2;
-    //         }
-    //     }
-
-    //     return _principal;
-    // }
-
-    // function pow(uint256 _x, uint256 _n) public pure returns (uint256) {
-    //     uint256 _r = 1;
-
-    //     while (_n > 0) {
-    //         if (_n % 2 == 1) {
-    //             _r = SafeMath.mul(_x, _r);
-    //             _n -= 1;
-    //         } else {
-    //             _x = SafeMath.mul(_x, _x);
-    //             _n /= 2;
-    //         }
-    //     }
-
-    //     return _r;
-    // }
 }

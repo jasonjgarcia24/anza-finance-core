@@ -12,7 +12,9 @@ interface ILoanContract {
     error InvalidParticipant(address account);
     error InvalidFundsTransfer(uint256 amount);
     error InsufficientFunds();
+    error OverflowLoanTerm();
     error InactiveLoanState(uint256 debtId);
+    error FailedFundsTransfer();
 
     event LoanContractInitialized(
         address indexed collateralAddress,
