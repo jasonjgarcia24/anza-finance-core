@@ -109,6 +109,15 @@ contract LoanContractTestERC1155URIStorage is LoanContractSubmitted {
     function testUriStateVars() public {
         // URI for collateralized token should be the collateralized
         // token's URI.
-        assertEq(anzaToken.uri(0), demoToken.tokenURI(collateralId));
+        uint256 _debtId = loanContract.totalDebts() - 1;
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+
+        assertEq(
+            anzaToken.uri(_borrowerTokenId),
+            demoToken.tokenURI(collateralId)
+        );
+
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
     }
 }

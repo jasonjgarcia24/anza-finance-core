@@ -165,6 +165,9 @@ abstract contract LoanContractSubmitted is LoanSigned {
     function setUp() public virtual override {
         super.setUp();
 
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
+
         // Create loan contract
         vm.startPrank(lender);
         (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
@@ -177,6 +180,12 @@ abstract contract LoanContractSubmitted is LoanSigned {
             )
         );
         require(success);
+        vm.stopPrank();
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
         vm.stopPrank();
     }
 }
