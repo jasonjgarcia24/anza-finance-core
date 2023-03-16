@@ -34,10 +34,7 @@ interface ILoanContract {
         uint256 _debtIdx
     ) external returns (uint256);
 
-    function debtBalanceOf(
-        address _borrower,
-        uint256 _debtId
-    ) external view returns (uint256);
+    function debtBalanceOf(uint256 _debtId) external view returns (uint256);
 
     function getCollateralNonce(
         address _collateralAddress,
@@ -55,11 +52,11 @@ interface ILoanContract {
 
     function fixedInterestRate(uint256 _debtId) external view returns (uint256);
 
-    function principal(uint256 _debtId) external view returns (uint256);
-
     function loanStart(uint256 _debtId) external view returns (uint256);
 
     function loanClose(uint256 _debtId) external view returns (uint256);
+
+    function borrower(uint256 _debtId) external view returns (address);
 
     function depositPayment(uint256 _debtId) external payable;
 

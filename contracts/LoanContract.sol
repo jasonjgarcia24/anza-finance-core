@@ -56,13 +56,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     // Mapping from collateral to debt ID
     mapping(address => mapping(uint256 => uint256[])) public debtIds;
 
-    //  > 008 - [0..7]     `loanState`
-    //  > 008 - [8..15]    `fixedInterestRate`
-    //  > 128 - [16..143]  `principal`
-    //  > 032 - [144..175] `loanStart`
-    //  > 032 - [176..207] `loanClose`
-    //  > 016 - [208..255] unused space
-
     //  > 008 - [0..7]    `loanState`
     //  > 008 - [8..15]   `fixedInterestRate`
     //  > 032 - [16..47]  `loanStart`
@@ -112,15 +105,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      * This should report back only the total debt tokens, not the ALC NFTs.
      * TODO: Test
      */
-    function debtBalanceOf(
-        address _borrower,
-        uint256 _debtId
-    ) public view returns (uint256) {
-        if (_borrower != anzaToken.borrowerOf(_debtId)) {
-            revert InvalidParticipant({account: _borrower});
-        }
-
-        return anzaToken.balanceOf(anzaToken.lenderOf(_debtId), (_debtId * 2));
+    function debtBalanceOf(uint256 _debtId) public view returns (uint256) {
+        return anzaToken.totalSupply(_debtId * 2);
     }
 
     function getCollateralNonce(
@@ -175,11 +161,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
         // Add debt ID to collateral mapping
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
-        _setLoanAgreement(_borrower, _contractTerms);
-
-        // Validate lender funding
-        uint256 _principal = principal(totalDebts);
-        if (msg.value != _principal) revert InsufficientFunds();
+        uint256 _principal = msg.value;
+        _setLoanAgreement(_borrower, _contractTerms, _principal);
 
         // Transfer collateral to arbiter
         _collateralToken.safeTransferFrom(
@@ -195,9 +178,9 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
         // Mint debt ALC debt tokens for borrower and lender
         anzaToken.mint(
-            [msg.sender, _borrower],
-            [totalDebts * 2, (totalDebts * 2) + 1],
-            [_principal, 1],
+            msg.sender,
+            totalDebts * 2,
+            _principal,
             _collateralToken.tokenURI(_collateralId),
             ""
         );
@@ -211,6 +194,15 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
         // Setup for next debt ID
         totalDebts += 1;
+    }
+
+    function mintReplica(uint256 _debtId) external {
+        address _borrower = msg.sender;
+
+        if (_borrower != borrower(_debtId))
+            revert InvalidParticipant(_borrower);
+
+        anzaToken.mint(_borrower, (_debtId * 2) + 1, 1, "", "");
     }
 
     function loanState(
@@ -244,22 +236,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
-    function principal(
-        uint256 _debtId
-    ) public view returns (uint256 _principal) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint128 __principal;
-
-        assembly {
-            mstore(0x04, _contractTerms)
-            __principal := mload(0)
-        }
-
-        unchecked {
-            _principal = __principal;
-        }
-    }
-
     function loanStart(
         uint256 _debtId
     ) public view returns (uint256 _loanStart) {
@@ -267,7 +243,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 __loanStart;
 
         assembly {
-            mstore(0x18, _contractTerms)
+            mstore(0x04, _contractTerms)
             __loanStart := mload(0)
         }
 
@@ -283,12 +259,26 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 __loanClose;
 
         assembly {
-            mstore(0x1c, _contractTerms)
+            mstore(0x08, _contractTerms)
             __loanClose := mload(0)
         }
 
         unchecked {
             _loanClose = __loanClose;
+        }
+    }
+
+    function borrower(uint256 _debtId) public view returns (address _borrower) {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        address __borrower;
+
+        assembly {
+            mstore(0x0c, _contractTerms)
+            __borrower := mload(0)
+        }
+
+        unchecked {
+            _borrower = __borrower;
         }
     }
 
@@ -334,7 +324,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
     function _setLoanAgreement(
         address _borrower,
-        bytes32 _contractTerms
+        bytes32 _contractTerms,
+        uint256 _amount
     ) internal {
         _checkDuration(_contractTerms);
 
@@ -360,14 +351,16 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             mstore(0x1e, _contractTerms)
             _principal := mload(0x1c)
 
-            // mstore(0x08, _loanStart)
-            // mstore(0x04, add(_loanStart, _duration))
+            mstore(0x1c, _loanStart)
+            mstore(0x18, add(_loanStart, _duration))
+            mstore(0x14, _borrower)
 
             _loanAgreement := mload(0x20)
         }
 
         if (_duration == 0) revert InvalidLoanParameter(_DURATION_ERROR_ID_);
-        if (_principal == 0) revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+        if (_principal == 0 || _principal != _amount)
+            revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
 
         __packedDebtTerms[totalDebts] = _loanAgreement;
     }
@@ -444,7 +437,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _debtId
     ) internal view {
         uint256 _fixedInterestRate = fixedInterestRate(_debtId);
-        uint256 _oldBalance = debtBalanceOf(_participant, _debtId);
+        uint256 _oldBalance = debtBalanceOf(_debtId);
 
         uint256 _newBalance = _compound(
             _oldBalance,

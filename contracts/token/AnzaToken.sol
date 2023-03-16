@@ -20,6 +20,7 @@ contract AnzaToken is AnzaERC1155URIStorage {
      * ------------------------------------------------ */
     // Mapping from token ID to owner address
     mapping(uint256 => address) private __owners;
+    mapping(uint256 => uint256) private _totalSupply;
 
     constructor(address _debtFactory) AnzaERC1155("") {
         __debtFactory = _debtFactory;
@@ -53,6 +54,39 @@ contract AnzaToken is AnzaERC1155URIStorage {
         return (_debtId * 2) + 1;
     }
 
+    /**
+     * @dev Total amount of tokens in with a given id.
+     */
+    function totalSupply(uint256 id) public view virtual returns (uint256) {
+        return _totalSupply[id];
+    }
+
+    /**
+     * @dev Indicates whether any token exist with a given id, or not.
+     */
+    function exists(uint256 id) public view virtual returns (bool) {
+        return AnzaToken.totalSupply(id) > 0;
+    }
+
+    function mint(
+        address _to,
+        uint256 _id,
+        uint256 _amount,
+        string calldata _collateralURI,
+        bytes memory _data
+    ) external {
+        require(msg.sender == __debtFactory, "Invalid minter");
+
+        // Mint debt ALC debt tokens
+        _mint(_to, _id, _amount, _data);
+
+        // Preset borrower token's URI if minting the lender's
+        // token.
+        if (_id % 2 == 0) {
+            _setURI(_id + 1, _collateralURI);
+        }
+    }
+
     function mint(
         address[2] memory _to,
         uint256[2] memory _ids,
@@ -60,6 +94,8 @@ contract AnzaToken is AnzaERC1155URIStorage {
         string calldata _collateralURI,
         bytes memory _data
     ) external {
+        require(msg.sender == __debtFactory, "Invalid minter");
+
         // Mint debt ALC debt tokens for borrower and lender
         _mintAnzaBatch(_to, _ids, _amounts, _data);
 
@@ -98,6 +134,59 @@ contract AnzaToken is AnzaERC1155URIStorage {
         }
 
         return super.isApprovedForAll(_account, _operator);
+    }
+
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal virtual override {
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+
+        if (from == address(0)) {
+            require(ids.length == 1, "Invalid Anza mint");
+
+            for (uint256 i = 0; i < ids.length; ++i) {
+                _totalSupply[ids[i]] += amounts[i];
+            }
+        }
+
+        if (to == address(0)) {
+            for (uint256 i = 0; i < ids.length; ++i) {
+                uint256 id = ids[i];
+                uint256 amount = amounts[i];
+                uint256 supply = _totalSupply[id];
+                require(
+                    supply >= amount,
+                    "ERC1155: burn amount exceeds totalSupply"
+                );
+                unchecked {
+                    _totalSupply[id] = supply - amount;
+                }
+            }
+        }
+    }
+
+    /**
+     * @dev See {ERC1155-_beforeTokenTransfer}.
+     */
+    function _afterTokenTransfer(
+        address,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory,
+        bytes memory
+    ) internal override {
+        if (from != address(0)) {
+            return;
+        }
+
+        // Set token owners
+        __owners[ids[0]] = to;
     }
 
     /**

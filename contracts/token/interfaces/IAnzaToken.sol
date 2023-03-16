@@ -30,6 +30,21 @@ interface IAnzaToken is IAnzaERC1155 {
     /// @return The lender of the debt.
     function lenderOf(uint256 _debtId) external view returns (address);
 
+    /// @dev Total amount of tokens in with a given id.
+    function totalSupply(uint256 id) external view returns (uint256);
+
+    /// @param _to argument MUST be the address of the recipient whose balance is increased.
+    /// @param _id argument MUST be the token ID being transferred.
+    /// @param _value argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
+    /// @param _data Additional data with no specified format, MUST be sent unaltered in call to the `ERC1155TokenReceiver` hook(s) on `_to`
+    function mint(
+        address _to,
+        uint256 _id,
+        uint256 _value,
+        string calldata _collateralURI,
+        bytes memory _data
+    ) external;
+
     /// @param _to argument MUST be the list of addresses of the recipient whose balance is increased.
     /// @param _ids argument MUST be the list of tokens being transferred.
     /// @param _values argument MUST be the list of number of tokens (matching the list and order of tokens specified in _ids) the holder balance is decreased by and match what the recipient balance is increased by.
