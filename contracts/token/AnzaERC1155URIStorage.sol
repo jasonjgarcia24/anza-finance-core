@@ -16,7 +16,7 @@ abstract contract AnzaERC1155URIStorage is AnzaERC1155 {
     using Strings for uint256;
 
     // Optional base URI
-    string private _baseURI = "";
+    string private constant _baseURI = "https://www.a_base_uri.com/";
 
     // Optional mapping for token URIs
     mapping(uint256 => string) private _tokenURIs;
@@ -40,15 +40,20 @@ abstract contract AnzaERC1155URIStorage is AnzaERC1155 {
      *   uri value set, then the result is empty.
      */
     function uri(
-        uint256 tokenId
+        uint256 _tokenId
     ) public view virtual override returns (string memory) {
-        string memory tokenURI = _tokenURIs[tokenId];
-
-        // If token URI is set, concatenate base URI and tokenURI (via abi.encodePacked).
+        // If token ID is a borrower token, return mirrored collateral URI.
+        // If token ID is a lender token, concatenate base URI and tokenURI (via abi.encodePacked).
         return
-            bytes(tokenURI).length > 0
-                ? string(abi.encodePacked(_baseURI, tokenURI))
-                : super.uri(tokenId);
+            _tokenId % 2 == 0
+                ? _tokenURIs[_tokenId]
+                : string(
+                    abi.encodePacked(
+                        _baseURI,
+                        "debt-token/",
+                        Strings.toString(_tokenId)
+                    )
+                );
     }
 
     /**
@@ -57,12 +62,5 @@ abstract contract AnzaERC1155URIStorage is AnzaERC1155 {
     function _setURI(uint256 tokenId, string memory tokenURI) internal virtual {
         _tokenURIs[tokenId] = tokenURI;
         emit URI(uri(tokenId), tokenId);
-    }
-
-    /**
-     * @dev Sets `baseURI` as the `_baseURI` for all tokens
-     */
-    function _setBaseURI(string memory baseURI) internal virtual {
-        _baseURI = baseURI;
     }
 }

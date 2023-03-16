@@ -4,11 +4,12 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import {LibOfficerRoles as Roles, LibLoanContractMetadata as Metadata, LibLoanContractInit as Init, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
-import {Test, LoanContractDeployer} from "./LoanContract.t.sol";
+import {Test, LoanContractDeployer, LoanContractSubmitted} from "./LoanContract.t.sol";
 
 contract LoanContractTestDeployment is LoanContractDeployer {
-    function testStateVars() public {
+    function testDeploymentStateVars() public {
         assertEq(loanContract.arbiter(), address(loanArbiter));
+        assertEq(loanContract.totalDebts(), 0);
     }
 }
 
@@ -86,11 +87,10 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
         vm.stopPrank();
     }
 
-    function __getCheckRoleFailMsg(bytes32 _role, address _account)
-        private
-        pure
-        returns (bytes memory)
-    {
+    function __getCheckRoleFailMsg(
+        bytes32 _role,
+        address _account
+    ) private pure returns (bytes memory) {
         return
             bytes(
                 string(
@@ -105,10 +105,10 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
     }
 }
 
-contract LoanContractTestERC1155URIStorage is LoanContractDeployer {
-    function testStateVars() public {
-        // URI for token ID 0 is not set yet and should therefore
-        // default to the baseURI
-        assertEq(loanContract.uri(0), baseURI);
+contract LoanContractTestERC1155URIStorage is LoanContractSubmitted {
+    function testUriStateVars() public {
+        // URI for collateralized token should be the collateralized
+        // token's URI.
+        assertEq(anzaToken.uri(0), demoToken.tokenURI(collateralId));
     }
 }

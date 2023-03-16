@@ -1,28 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./token/AnzaERC1155URIStorage.sol";
+import "hardhat/console.sol";
+import "./token/interfaces/IAnzaToken.sol";
+import "./interfaces/ILoanContract.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./abdk-libraries-solidity/ABDKMath64x64.sol";
-import {LibOfficerRoles as Roles, LibLoanContractMetadata as Metadata, LibLoanContractInit as Init, LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
+import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "./utils/LibLoanContractStates.sol";
-import "./interfaces/ILoanContract.sol";
-import "hardhat/console.sol";
 
-contract LoanContract is
-    ILoanContract,
-    AccessControl,
-    AnzaERC1155URIStorage,
-    ERC1155Holder
-{
+contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
-    string private constant _TOKEN_NAME_ = "Anza Loan Contract";
-    string private constant _TOKEN_SYMBOL_ = "ALC";
     uint256 private constant _SECONDS_PER_YEAR_RATIO_SCALED_ = 3155695200;
+    uint256 private constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
 
     /* ------------------------------------------------ *
      *                  Loan States                     *
@@ -42,15 +36,19 @@ contract LoanContract is
     uint8 private constant _CLOSE_STATE_ = 12;
 
     /* ------------------------------------------------ *
-     *                  Access Roles                    *
+     *           Loan Term Standard Errors              *
      * ------------------------------------------------ */
-    bytes32 public constant _BORROWER_TOKEN_ = keccak256("BORROWER_TOKEN");
-    bytes32 public constant _LENDER_TOKEN_ = keccak256("LENDER_TOKEN");
+    bytes4 private constant _DURATION_ERROR_ID_ = 0x64757261;
+    bytes4 private constant _PRINCIPAL_ERROR_ID_ = 0x7072696e;
+    bytes4 private constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x66697865;
+    bytes4 private constant _GRACE_PERIOD_ERROR_ID_ = 0x67726163;
+    bytes4 private constant _TIME_EXPIRY_ERROR_ID_ = 0x74696d65;
 
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     address public immutable arbiter;
+    IAnzaToken public anzaToken;
 
     /* ------------------------------------------------ *
      *                    Databases                     *
@@ -64,13 +62,16 @@ contract LoanContract is
     //  > 032 - [144..175] `loanStart`
     //  > 032 - [176..207] `loanClose`
     //  > 016 - [208..255] unused space
+
+    //  > 008 - [0..7]    `loanState`
+    //  > 008 - [8..15]   `fixedInterestRate`
+    //  > 032 - [16..47]  `loanStart`
+    //  > 032 - [48..79]  `loanClose`
+    //  > 160 - [80..239] `borrower`
     mapping(uint256 => bytes32) private __packedDebtTerms;
 
-    // Mapping from token ID to owner address
-    mapping(uint256 => address) private __owners;
-
     // Mapping from participant to withdrawable balance
-    mapping(address => uint256) private __withdrawableBalance;
+    mapping(address => uint256) public withdrawableBalance;
 
     // Count of total inactive/active debts
     uint256 public totalDebts;
@@ -79,10 +80,8 @@ contract LoanContract is
         address _admin,
         address _arbiter,
         address _treasurer,
-        address _collector,
-        string memory _nftsURI,
-        string memory _baseURI
-    ) AnzaERC1155(_baseURI) {
+        address _collector
+    ) {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
         _setRoleAdmin(Roles._COLLECTOR_, Roles._ADMIN_);
@@ -92,28 +91,19 @@ contract LoanContract is
         _grantRole(Roles._COLLECTOR_, _collector);
 
         arbiter = _arbiter;
-        _setBaseURI(_nftsURI);
     }
 
-    function name() public pure returns (string memory) {
-        return _TOKEN_NAME_;
-    }
-
-    function symbol() public pure returns (string memory) {
-        return _TOKEN_SYMBOL_;
+    function setAnzaToken(
+        address _anzaTokenAddress
+    ) external onlyRole(Roles._ADMIN_) {
+        anzaToken = IAnzaToken(_anzaTokenAddress);
     }
 
     function supportsInterface(
         bytes4 _interfaceId
-    )
-        public
-        view
-        override(AccessControl, ERC1155Receiver, AnzaERC1155)
-        returns (bool)
-    {
+    ) public view override(AccessControl, ERC1155Receiver) returns (bool) {
         return
             _interfaceId == type(ILoanContract).interfaceId ||
-            AnzaERC1155.supportsInterface(_interfaceId) ||
             ERC1155Receiver.supportsInterface(_interfaceId) ||
             AccessControl.supportsInterface(_interfaceId);
     }
@@ -126,10 +116,11 @@ contract LoanContract is
         address _borrower,
         uint256 _debtId
     ) public view returns (uint256) {
-        if (_borrower != borrowerOf(_debtId))
+        if (_borrower != anzaToken.borrowerOf(_debtId)) {
             revert InvalidParticipant({account: _borrower});
+        }
 
-        return balanceOf(lenderOf(_debtId), (_debtId * 2));
+        return anzaToken.balanceOf(anzaToken.lenderOf(_debtId), (_debtId * 2));
     }
 
     function getCollateralNonce(
@@ -165,8 +156,10 @@ contract LoanContract is
         uint256 _collateralId,
         bytes calldata _borrowerSignature
     ) external payable {
+        _checkTermsExpiry(_contractTerms);
+
         // Validate borrower participation
-        IERC721 _collateralToken = IERC721(_collateralAddress);
+        IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
 
         if (
@@ -182,11 +175,11 @@ contract LoanContract is
 
         // Add debt ID to collateral mapping
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
-        _setLoanAgreement(_contractTerms);
+        _setLoanAgreement(_borrower, _contractTerms);
 
         // Validate lender funding
         uint256 _principal = principal(totalDebts);
-        if (msg.value != _principal) _revert(InsufficientFunds.selector);
+        if (msg.value != _principal) revert InsufficientFunds();
 
         // Transfer collateral to arbiter
         _collateralToken.safeTransferFrom(
@@ -201,10 +194,11 @@ contract LoanContract is
         if (!_success) revert FailedFundsTransfer();
 
         // Mint debt ALC debt tokens for borrower and lender
-        _mintAnzaBatch(
+        anzaToken.mint(
             [msg.sender, _borrower],
             [totalDebts * 2, (totalDebts * 2) + 1],
             [_principal, 1],
+            _collateralToken.tokenURI(_collateralId),
             ""
         );
 
@@ -298,65 +292,54 @@ contract LoanContract is
         }
     }
 
-    function ownerOf(uint256 _tokenId) external view returns (address) {
-        return __owners[_tokenId];
-    }
-
-    function borrowerOf(uint256 _debtId) public view returns (address) {
-        return __owners[(_debtId * 2) + 1];
-    }
-
-    function lenderOf(uint256 _debtId) public view returns (address) {
-        return __owners[_debtId * 2];
-    }
-
     function depositPayment(uint256 _debtId) external payable {
+        address _lender = anzaToken.lenderOf(_debtId);
         uint256 _payment = msg.value;
 
         // Update lender's withdrawable balance
-        __withdrawableBalance[lenderOf(_debtId)] += _payment;
+        withdrawableBalance[_lender] += _payment;
 
         // Burn ALC debt token
-        _burn(msg.sender, (_debtId * 2) + 1, _payment);
+        anzaToken.burn(_lender, _debtId * 2, _payment);
+
+        // Conditionally update debt
+        validateLoanState(_lender, _debtId);
     }
 
-    function withdrawPayment(
-        uint256 _debtId,
-        uint256 _amount
-    ) external returns (bool) {
-        address _lender = msg.sender;
+    function withdrawPayment(uint256 _amount) external returns (bool) {
+        address _payee = msg.sender;
 
-        if (__withdrawableBalance[_lender] < _amount)
+        if (withdrawableBalance[_payee] < _amount) {
             revert InvalidFundsTransfer({amount: _amount});
+        }
 
         // Update lender's withdrawable balance
-        __withdrawableBalance[_lender] -= _amount;
-
-        // Burn ALC lender token
-        _burn(_lender, _debtId * 2, _amount);
+        withdrawableBalance[_payee] -= _amount;
 
         // Transfer payment funds to lender
-        (bool _success, ) = _lender.call{value: _amount}("");
+        (bool _success, ) = _payee.call{value: _amount}("");
         require(_success);
 
         return _success;
     }
 
-    function isApprovedForAll(
-        address _account,
-        address _operator
-    ) public view override returns (bool) {
-        if (_operator == address(this)) {
-            return true;
+    function validateLoanState(address _lender, uint256 _debtId) public {
+        if (anzaToken.balanceOf(_lender, _debtId) > 0) {
+            if (_checkLoanActive(_debtId)) {}
+        } else {
+            // Paid off
+            _setLoanState(_debtId, _PAID_STATE_);
         }
-
-        return super.isApprovedForAll(_account, _operator);
     }
 
-    function _setLoanAgreement(bytes32 _contractTerms) internal {
+    function _setLoanAgreement(
+        address _borrower,
+        bytes32 _contractTerms
+    ) internal {
         _checkDuration(_contractTerms);
 
         bytes32 _loanAgreement;
+        uint128 _principal;
         uint32 _duration;
         uint32 _loanStart = _toUint32(block.timestamp);
 
@@ -375,16 +358,25 @@ contract LoanContract is
             }
 
             mstore(0x1e, _contractTerms)
-            mstore(0x08, _loanStart)
-            mstore(0x04, add(_loanStart, _duration))
+            _principal := mload(0x1c)
+
+            // mstore(0x08, _loanStart)
+            // mstore(0x04, add(_loanStart, _duration))
 
             _loanAgreement := mload(0x20)
         }
 
+        if (_duration == 0) revert InvalidLoanParameter(_DURATION_ERROR_ID_);
+        if (_principal == 0) revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+
         __packedDebtTerms[totalDebts] = _loanAgreement;
     }
 
-    function _checkDuration(bytes32 _contractTerms) internal {
+    function _checkLoanActive(uint256 _debtId) internal view returns (bool) {
+        return loanClose(_debtId) >= block.timestamp;
+    }
+
+    function _checkDuration(bytes32 _contractTerms) internal view {
         uint32 _duration;
         uint32 _loanStart = _toUint32(block.timestamp);
 
@@ -394,8 +386,24 @@ contract LoanContract is
         }
 
         unchecked {
-            if (uint256(_duration) + uint256(_loanStart) > type(uint32).max)
-                revert OverflowLoanTerm();
+            if (uint256(_duration) + uint256(_loanStart) > type(uint32).max) {
+                revert InvalidLoanParameter(_DURATION_ERROR_ID_);
+            }
+        }
+    }
+
+    function _checkTermsExpiry(bytes32 _contractTerms) public pure {
+        uint32 _termsExpiry;
+
+        assembly {
+            mstore(0x1c, _contractTerms)
+            _termsExpiry := mload(0)
+        }
+
+        unchecked {
+            if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
+                revert InvalidLoanParameter(_TIME_EXPIRY_ERROR_ID_);
+            }
         }
     }
 
@@ -446,16 +454,19 @@ contract LoanContract is
     }
 
     function _compound(
-        uint _principal,
-        uint _ratio,
-        uint _n
-    ) internal pure returns (uint) {
+        uint256 _principal,
+        uint256 _ratio,
+        uint256 _n
+    ) internal pure returns (uint256) {
         return
             ABDKMath64x64.mulu(
                 _pow(
                     ABDKMath64x64.add(
                         ABDKMath64x64.fromUInt(1),
-                        ABDKMath64x64.divu(_ratio, 3155695200)
+                        ABDKMath64x64.divu(
+                            _ratio,
+                            _SECONDS_PER_YEAR_RATIO_SCALED_
+                        )
                     ),
                     _n
                 ),
@@ -463,7 +474,7 @@ contract LoanContract is
             );
     }
 
-    function _pow(int128 _x, uint _n) internal pure returns (int128) {
+    function _pow(int128 _x, uint256 _n) internal pure returns (int128) {
         int128 _r = ABDKMath64x64.fromUInt(1);
         while (_n > 0) {
             if (_n % 2 == 1) {
@@ -476,40 +487,6 @@ contract LoanContract is
         }
 
         return _r;
-    }
-
-    /**
-     * @dev See {ERC1155-_beforeTokenTransfer}.
-     */
-    function _afterAnzaTokenTransfer(
-        address,
-        address from,
-        address[2] memory to,
-        uint256[2] memory ids,
-        uint256[2] memory,
-        bytes memory
-    ) internal override {
-        if (from != address(0)) {
-            return;
-        }
-
-        // Set token owners
-        __owners[ids[0]] = to[0];
-        __owners[ids[1]] = to[1];
-
-        // Set token URI
-        _setURI(ids[0], Strings.toString(ids[0]));
-        _setURI(ids[1], Strings.toString(ids[1]));
-    }
-
-    /**
-     * @dev For more efficient reverts.
-     */
-    function _revert(bytes4 errorSelector) internal pure {
-        assembly {
-            mstore(0x00, errorSelector)
-            revert(0x00, 0x04)
-        }
     }
 
     function __recoverSigner(

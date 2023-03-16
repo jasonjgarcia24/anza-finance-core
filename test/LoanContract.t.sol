@@ -2,12 +2,15 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 import {LoanArbiter} from "../contracts/LoanArbiter.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
 import {LoanTreasureyPool} from "../contracts/LoanTreasureyPool.sol";
 import {DemoToken} from "../contracts/DemoToken.sol";
+import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {LibLoanContractStates as States} from "../contracts/utils/LibLoanContractStates.sol";
 import {LibLoanContractMetadata as Metadata, LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
 
@@ -38,12 +41,41 @@ abstract contract LoanContractGlobalConstants {
     uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
     uint32 public constant _DURATION_ = 7257600; // 12 weeks (seconds)
     uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
+    uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
+
+    /* ------------------------------------------------ *
+     *           Loan Term Standard Errors              *
+     * ------------------------------------------------ */
+    bytes4 public constant _DURATION_ERROR_ID_ = 0x64757261;
+    bytes4 public constant _PRINCIPAL_ERROR_ID_ = 0x7072696e;
+    bytes4 public constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x66697865;
+    bytes4 public constant _GRACE_PERIOD_ERROR_ID_ = 0x67726163;
+    bytes4 public constant _TIME_EXPIRY_ERROR_ID_ = 0x74696d65;
+
+    /* ------------------------------------------------ *
+     *                    CONSTANTS                     *
+     * ------------------------------------------------ */
+    string public constant _BASE_URI_ = "https://www.a_base_uri.com/";
+    string public baseURI = "https://www.demo_token_metadata_uri.com/";
+    uint256 public constant collateralId = 0;
+
+    function getTokenURI(uint256 _tokenId) public pure returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    _BASE_URI_,
+                    "debt-token/",
+                    Strings.toString(_tokenId)
+                )
+            );
+    }
 }
 
 abstract contract LoanContractDeployer is
     Test,
     IERC1155Events,
-    IAccessControlEvents
+    IAccessControlEvents,
+    LoanContractGlobalConstants
 {
     address public admin = vm.envAddress("DEAD_ACCOUNT_KEY_1");
     address public treasurer = vm.envAddress("DEAD_ACCOUNT_KEY_2");
@@ -51,16 +83,14 @@ abstract contract LoanContractDeployer is
     address public borrower = vm.envAddress("DEAD_ACCOUNT_KEY_4");
     address public lender = vm.envAddress("DEAD_ACCOUNT_KEY_5");
     address public alt_account = vm.envAddress("DEAD_ACCOUNT_KEY_9");
-    string public nftsURI = "https://www.a_base_uri.com/nfts/";
-    string public baseURI = "https://www.a_base_uri.com/";
 
     uint256 public borrowerPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_4");
     uint256 public lenderPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_5");
-    uint256 public collateralId = 0;
 
     LoanArbiter public loanArbiter;
     LoanContract public loanContract;
     LoanTreasureyPool public loanTreasurer;
+    AnzaToken public anzaToken;
     DemoToken public demoToken;
 
     function setUp() public virtual {
@@ -70,12 +100,17 @@ abstract contract LoanContractDeployer is
             admin,
             address(loanArbiter),
             treasurer,
-            collector,
-            nftsURI,
-            baseURI
+            collector
         );
 
-        loanTreasurer = new LoanTreasureyPool(address(loanContract));
+        anzaToken = new AnzaToken(address(loanContract));
+
+        vm.deal(admin, 1 ether);
+        vm.startPrank(admin);
+        loanContract.setAnzaToken(address(anzaToken));
+        vm.stopPrank();
+
+        // loanTreasurer = new LoanTreasureyPool(address(loanContract));
 
         vm.startPrank(borrower);
         demoToken = new DemoToken();
@@ -84,34 +119,7 @@ abstract contract LoanContractDeployer is
     }
 }
 
-abstract contract LoanSigned is
-    LoanContractGlobalConstants,
-    LoanContractDeployer
-{
-    // /* ------------------------------------------------ *
-    //  *                  Loan States                     *
-    //  * ------------------------------------------------ */
-    // uint8 public constant _UNDEFINED_STATE_ = 0;
-    // uint8 public constant _NONLEVERAGED_STATE_ = 1;
-    // uint8 public constant _UNSPONSORED_STATE_ = 2;
-    // uint8 public constant _SPONSORED_STATE_ = 3;
-    // uint8 public constant _FUNDED_STATE_ = 4;
-    // uint8 public constant _ACTIVE_GRACE_STATE_ = 5;
-    // uint8 public constant _ACTIVE_STATE_ = 6;
-    // uint8 public constant _PAID_STATE_ = 7;
-    // uint8 public constant _DEFAULT_STATE_ = 8;
-    // uint8 public constant _COLLECTION_STATE_ = 9;
-    // uint8 public constant _AUCTION_STATE_ = 10;
-    // uint8 public constant _AWARDED_STATE_ = 11;
-    // uint8 public constant _CLOSE_STATE_ = 12;
-
-    // uint8 public _LOAN_STATE_ = 2; // Unsponsored
-    // uint8 public _FIXED_INTEREST_RATE_ = 50; // 0.05
-    // uint128 public _PRINCIPAL_ = 32; // ETH
-    // uint32 public _GRACE_PERIOD_ = 604800; // 1 week (seconds)
-    // uint32 public _DURATION_ = 7257600; // 12 weeks (seconds)
-    // uint32 public _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
-
+abstract contract LoanSigned is LoanContractDeployer {
     uint256 collateralNonce = 0;
     bytes32 contractTerms;
 
@@ -153,7 +161,7 @@ abstract contract LoanSigned is
     }
 }
 
-abstract contract LoanContractMinter is LoanSigned {
+abstract contract LoanContractSubmitted is LoanSigned {
     function setUp() public virtual override {
         super.setUp();
 

@@ -1,12 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.2;
 
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+/// @title ERC-721 Non-Fungible Token Standard
+/// @dev See https://eips.ethereum.org/EIPS/eip-721
+/// Note: the ERC-165 identifier for this interface is 0x80ac58cd.
+interface IAnzaEvents {
+    /// @dev This emits when ownership of any NFT changes by any mechanism.
+    /// This event emits when NFTs are created (`from` == 0) and destroyed
+    /// (`to` == 0). Exception: during contract creation, any number of NFTs
+    /// may be created and assigned without emitting Transfer. At the time of
+    /// any transfer, the approved address for that NFT (if any) is reset to none.
+    event Transfer(
+        address indexed _from,
+        address indexed _to,
+        uint256 indexed _tokenId
+    );
 
-/// @title ERC-1155 Multi Token Standard
-/// @dev See https://eips.ethereum.org/EIPS/eip-1155
-/// Note: The ERC-165 identifier for this interface is 0xd9b67a26.
-interface IAnzaERC1155 is IERC1155 {
+    /// @dev This emits when the approved address for an NFT is changed or
+    /// reaffirmed. The zero address indicates there is no approved address.
+    /// When a Transfer event emits, this also indicates that the approved
+    /// address for that NFT (if any) is reset to none.
+    event Approval(
+        address indexed _owner,
+        address indexed _approved,
+        uint256 indexed _tokenId
+    );
+
     /// @dev
     /// - Either `TransferSingle` or `TransferBatch` MUST emit when tokens are transferred, including zero value transfers as well as minting or burning (see "Safe Transfer Rules" section of the standard).
     /// - The `_operator` argument MUST be the address of an account/contract that is approved to make the transfer (SHOULD be msg.sender).

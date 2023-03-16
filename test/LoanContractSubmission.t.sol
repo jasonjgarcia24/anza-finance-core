@@ -1,22 +1,195 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "forge-std/Test.sol";
-import {IAnzaERC721Events} from "./interfaces/IAnzaERC721Events.t.sol";
-import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import {LoanContractGlobalConstants, LoanContractDeployer, LoanSigned, LoanContractMinter} from "./LoanContract.t.sol";
-import {LoanContractTestERC1155URIStorage} from "./LoanContractDeployment.t.sol";
 import {DemoToken} from "../contracts/DemoToken.sol";
-import {LibLoanContractStates as States} from "../contracts/utils/LibLoanContractStates.sol";
-import {LibLoanContractMetadata as Metadata, LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
+import {IAnzaToken} from "../contracts/token/interfaces/IAnzaToken.sol";
+import {IAnzaEvents} from "./interfaces/IAnzaEvents.t.sol";
+import {ILoanContract} from "../contracts/interfaces/ILoanContract.sol";
+import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
+import {Test, console, LoanContractGlobalConstants, LoanContractDeployer, LoanSigned} from "./LoanContract.t.sol";
+import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
 
-contract LoanContractTestSubmit is
-    LoanContractGlobalConstants,
-    LoanSigned,
+abstract contract LoanContractSubmitFunctions is
+    Test,
+    IAnzaEvents,
     ILoanContractEvents,
-    IAnzaERC721Events
+    LoanContractGlobalConstants
 {
+    function initLoanContractExpectations(
+        address _loanContractAddress,
+        address _borrower,
+        address _lender,
+        address _collateralAddress,
+        uint256 _debtId,
+        uint128 _principal,
+        uint32 _duration,
+        uint32 _termsExpiry
+    ) public {
+        if (
+            _principal != 0 &&
+            _duration != 0 &&
+            _termsExpiry >= _SECONDS_PER_24_MINUTES_RATIO_SCALED_
+        ) {
+            vm.expectEmit(true, true, true, true);
+            emit TransferAnzaBatch(
+                _loanContractAddress,
+                address(0),
+                [_lender, _borrower],
+                [(_debtId * 2), (_debtId * 2) + 1],
+                [uint256(_principal), uint256(1)]
+            );
+
+            // Loan proposal submitted
+            vm.expectEmit(true, true, true, true);
+            emit LoanContractInitialized(
+                _collateralAddress,
+                collateralId,
+                _debtId
+            );
+        }
+
+        if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    InvalidLoanParameter.selector,
+                    _TIME_EXPIRY_ERROR_ID_
+                )
+            );
+        } else if (_duration == 0) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    InvalidLoanParameter.selector,
+                    _DURATION_ERROR_ID_
+                )
+            );
+        } else if (_principal == 0) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    InvalidLoanParameter.selector,
+                    _PRINCIPAL_ERROR_ID_
+                )
+            );
+        }
+    }
+
+    function verifyLatestDebtId(
+        address _loanContractAddress,
+        address _collateralAddress,
+        uint256 _debtId
+    ) public {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+
+        // Verify debt ID for collateral
+        uint256 numDebtIds = _loanContract.getCollateralNonce(
+            _collateralAddress,
+            collateralId
+        );
+
+        assertEq(
+            _loanContract.debtIds(
+                _collateralAddress,
+                collateralId,
+                numDebtIds - 1
+            ),
+            _debtId
+        );
+
+        // Verify no additional debtIds set for this collateral
+        vm.expectRevert(bytes(""));
+        _loanContract.debtIds(_collateralAddress, collateralId, numDebtIds);
+    }
+
+    function verifyLoanAgreementTerms(
+        address _loanContractAddress,
+        uint256 _debtId,
+        uint8 _loanState,
+        uint8 _fixedInterestRate,
+        uint128 _principal,
+        uint32 _duration
+    ) public {
+        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+
+        // Verify loan agreement terms for this debt ID
+        assertEq(
+            _loanContract.loanState(_debtId),
+            _loanState,
+            "Invalid loan state"
+        );
+        assertEq(
+            _loanContract.fixedInterestRate(_debtId),
+            _fixedInterestRate,
+            "Invalid fixed interest rate"
+        );
+        assertEq(
+            _loanContract.principal(_debtId),
+            _principal,
+            "Invalid principal"
+        );
+        assertEq(
+            _loanContract.loanClose(_debtId) - _loanContract.loanStart(_debtId),
+            _duration,
+            "Invalid duration"
+        );
+    }
+
+    function verifyLoanParticipants(
+        address _anzaTokenAddress,
+        address _borrower,
+        address _lender,
+        uint256 _debtId
+    ) public {
+        IAnzaToken _anzaToken = IAnzaToken(_anzaTokenAddress);
+
+        // Verify loan participants
+        assertEq(_anzaToken.borrowerOf(_debtId), _borrower, "Invalid borrower");
+        assertEq(_anzaToken.lenderOf(_debtId), _lender, "Invalid lender");
+
+        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        uint256 lenderTokenId = Indexer.getLenderTokenId(_debtId);
+
+        assertEq(
+            _anzaToken.ownerOf(borrowerTokenId),
+            _borrower,
+            "Invalid borrower token ID"
+        );
+        assertEq(
+            _anzaToken.ownerOf(lenderTokenId),
+            _lender,
+            "Invalid lender token ID"
+        );
+    }
+
+    function verifyTokenBalances(
+        address _borrower,
+        address _lender,
+        address _anzaTokenAddress,
+        uint256 _debtId,
+        uint128 _principal
+    ) public {
+        // Verify token balances
+        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        uint256 lenderTokenId = Indexer.getLenderTokenId(_debtId);
+
+        address[] memory accounts = new address[](2);
+        accounts[0] = _lender;
+        accounts[1] = _borrower;
+
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = lenderTokenId;
+        ids[1] = borrowerTokenId;
+
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = uint256(_principal);
+        balances[1] = 1;
+
+        assertEq(
+            IAnzaToken(_anzaTokenAddress).balanceOfBatch(accounts, ids),
+            balances
+        );
+    }
+}
+
+contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
     uint256 thing = 0x10;
 
     function setUp() public virtual override {
@@ -24,22 +197,19 @@ contract LoanContractTestSubmit is
     }
 
     function testBasicLenderSubmitProposal() public {
-        uint256 debtId = loanContract.totalDebts();
-        assertEq(debtId, 0);
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
 
-        // Anza batch NFT minting
-        vm.expectEmit(true, true, true, true);
-        emit TransferAnzaBatch(
+        initLoanContractExpectations(
+            address(loanContract),
+            borrower,
             lender,
-            address(0),
-            [lender, borrower],
-            [(debtId * 2), (debtId * 2) + 1],
-            [uint256(_PRINCIPAL_), uint256(1)]
+            address(demoToken),
+            _debtId,
+            _PRINCIPAL_,
+            _DURATION_,
+            _TERMS_EXPIRY_
         );
-
-        // Loan proposal submitted
-        vm.expectEmit(true, true, true, true);
-        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, 100 ether);
@@ -57,108 +227,53 @@ contract LoanContractTestSubmit is
         require(success);
         vm.stopPrank();
 
+        if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
+            return;
+        }
+
         // Verify debt ID for collateral
-        uint256 numDebtIds = loanContract.getCollateralNonce(
-            address(demoToken),
-            collateralId
-        );
-
-        assertEq(
-            loanContract.debtIds(
-                address(demoToken),
-                collateralId,
-                numDebtIds - 1
-            ),
-            debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        loanContract.debtIds(address(demoToken), collateralId, numDebtIds);
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        assertEq(
-            loanContract.loanState(debtId),
+        verifyLoanAgreementTerms(
+            address(loanContract),
+            _debtId,
             _ACTIVE_GRACE_STATE_,
-            "Invalid loan state"
-        );
-        assertEq(
-            loanContract.fixedInterestRate(debtId),
             _FIXED_INTEREST_RATE_,
-            "Invalid fixed interest rate"
-        );
-        assertEq(
-            loanContract.principal(debtId),
             _PRINCIPAL_,
-            "Invalid principal"
-        );
-        assertEq(
-            loanContract.loanClose(debtId) - loanContract.loanStart(debtId),
-            _DURATION_,
-            "Invalid duration"
+            _DURATION_
         );
 
         // Verify loan participants
-        assertEq(loanContract.borrowerOf(debtId), borrower, "Invalid borrower");
-        assertEq(loanContract.lenderOf(debtId), lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(debtId);
-
-        assertEq(
-            loanContract.ownerOf(borrowerTokenId),
-            borrower,
-            "Invalid borrower token ID"
-        );
-        assertEq(
-            loanContract.ownerOf(lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
+        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(borrower, debtId), _PRINCIPAL_);
+        assertEq(loanContract.debtBalanceOf(borrower, _debtId), _PRINCIPAL_);
 
         // Verify token balances
-        address[] memory accounts = new address[](2);
-        accounts[0] = lender;
-        accounts[1] = borrower;
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = lenderTokenId;
-        ids[1] = borrowerTokenId;
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = _PRINCIPAL_;
-        balances[1] = 1;
-
-        assertEq(loanContract.balanceOfBatch(accounts, ids), balances);
-
-        // Minted borrower NFT should have nftURI
-        assertEq(loanContract.uri(debtId), _getTokenURI(debtId));
+        // Minted lender NFT should have debt token URI
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
-        debtId = loanContract.totalDebts();
-        assertEq(debtId, 1);
-    }
-
-    function _getTokenURI(
-        uint256 _tokenId
-    ) internal view returns (string memory) {
-        return string(abi.encodePacked(nftsURI, Strings.toString(_tokenId)));
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 }
 
 contract LoanContractFuzzSubmit is
-    LoanContractGlobalConstants,
     LoanContractDeployer,
-    ILoanContractEvents,
-    IAnzaERC721Events
+    LoanContractSubmitFunctions
 {
     uint256 collateralNonce = 0;
-    bytes32 contractTerms;
-
-    bytes public signature;
 
     struct TestTermsStruct {
         uint8 fixedInterestRate;
@@ -188,13 +303,11 @@ contract LoanContractFuzzSubmit is
             _contractTerms := mload(0x20)
         }
 
-        contractTerms = _contractTerms;
-
         // Create message for signing
         bytes32 message = Signing.prefixed(
             keccak256(
                 abi.encode(
-                    contractTerms,
+                    _contractTerms,
                     address(demoToken),
                     collateralId,
                     collateralNonce
@@ -204,23 +317,21 @@ contract LoanContractFuzzSubmit is
 
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        signature = abi.encodePacked(r, s, v);
+        bytes memory _signature = abi.encodePacked(r, s, v);
 
-        uint256 debtId = loanContract.totalDebts();
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
 
-        // Anza batch NFT minting
-        vm.expectEmit(true, true, true, true);
-        emit TransferAnzaBatch(
+        initLoanContractExpectations(
+            address(loanContract),
+            borrower,
             lender,
-            address(0),
-            [lender, borrower],
-            [(debtId * 2), (debtId * 2) + 1],
-            [uint256(_PRINCIPAL_), 1]
+            address(demoToken),
+            _debtId,
+            _PRINCIPAL_,
+            _DURATION_,
+            _TERMS_EXPIRY_
         );
-
-        // Loan proposal submitted
-        vm.expectEmit(true, true, true, true);
-        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
@@ -229,98 +340,54 @@ contract LoanContractFuzzSubmit is
         (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
-                contractTerms,
+                _contractTerms,
                 address(demoToken),
                 collateralId,
-                signature
+                _signature
             )
         );
         require(success);
         vm.stopPrank();
 
+        if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
+            return;
+        }
+
         // Verify debt ID for collateral
-        uint256 numDebtIds = loanContract.getCollateralNonce(
-            address(demoToken),
-            collateralId
-        );
-
-        assertEq(
-            loanContract.debtIds(
-                address(demoToken),
-                collateralId,
-                numDebtIds - 1
-            ),
-            debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        loanContract.debtIds(address(demoToken), collateralId, numDebtIds);
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        assertEq(
-            loanContract.loanState(debtId),
+        verifyLoanAgreementTerms(
+            address(loanContract),
+            _debtId,
             _ACTIVE_GRACE_STATE_,
-            "Invalid loan state"
-        );
-        assertEq(
-            loanContract.fixedInterestRate(debtId),
             _fixedInterestRate,
-            "Invalid fixed interest rate"
-        );
-        assertEq(
-            loanContract.principal(debtId),
             _PRINCIPAL_,
-            "Invalid principal"
-        );
-        assertEq(
-            loanContract.loanClose(debtId) - loanContract.loanStart(debtId),
-            _DURATION_,
-            "Invalid duration"
+            _DURATION_
         );
 
         // Verify loan participants
-        assertEq(loanContract.borrowerOf(debtId), borrower, "Invalid borrower");
-        assertEq(loanContract.lenderOf(debtId), lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(debtId);
-
-        assertEq(
-            loanContract.ownerOf(borrowerTokenId),
-            borrower,
-            "Invalid borrower token ID"
-        );
-        assertEq(
-            loanContract.ownerOf(lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
+        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(borrower, debtId), _PRINCIPAL_);
+        assertEq(loanContract.debtBalanceOf(borrower, _debtId), _PRINCIPAL_);
 
         // Verify token balances
-        address[] memory accounts = new address[](2);
-        accounts[0] = lender;
-        accounts[1] = borrower;
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = lenderTokenId;
-        ids[1] = borrowerTokenId;
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = _PRINCIPAL_;
-        balances[1] = 1;
-
-        assertEq(loanContract.balanceOfBatch(accounts, ids), balances);
-
-        // Minted borrower NFT should have nftURI
-        assertEq(loanContract.uri(debtId), _getTokenURI(debtId));
+        // Minted lender NFT should have debt token URI
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
-        debtId = loanContract.totalDebts();
-        assertEq(debtId, 1);
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 
     function testAnyPrincipalLenderSubmitProposal(uint128 _principal) public {
@@ -337,13 +404,11 @@ contract LoanContractFuzzSubmit is
             _contractTerms := mload(0x20)
         }
 
-        contractTerms = _contractTerms;
-
         // Create message for signing
         bytes32 message = Signing.prefixed(
             keccak256(
                 abi.encode(
-                    contractTerms,
+                    _contractTerms,
                     address(demoToken),
                     collateralId,
                     collateralNonce
@@ -353,23 +418,21 @@ contract LoanContractFuzzSubmit is
 
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        signature = abi.encodePacked(r, s, v);
+        bytes memory _signature = abi.encodePacked(r, s, v);
 
-        uint256 debtId = loanContract.totalDebts();
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
 
-        // Anza batch NFT minting
-        vm.expectEmit(true, true, true, true);
-        emit TransferAnzaBatch(
+        initLoanContractExpectations(
+            address(loanContract),
+            borrower,
             lender,
-            address(0),
-            [lender, borrower],
-            [(debtId * 2), (debtId * 2) + 1],
-            [uint256(_principal), 1]
+            address(demoToken),
+            _debtId,
+            _principal,
+            _DURATION_,
+            _TERMS_EXPIRY_
         );
-
-        // Loan proposal submitted
-        vm.expectEmit(true, true, true, true);
-        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, uint256(_principal) + 1 ether);
@@ -378,98 +441,54 @@ contract LoanContractFuzzSubmit is
         (bool success, ) = address(loanContract).call{value: _principal}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
-                contractTerms,
+                _contractTerms,
                 address(demoToken),
                 collateralId,
-                signature
+                _signature
             )
         );
         require(success);
         vm.stopPrank();
 
+        if (_principal == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
+            return;
+        }
+
         // Verify debt ID for collateral
-        uint256 numDebtIds = loanContract.getCollateralNonce(
-            address(demoToken),
-            collateralId
-        );
-
-        assertEq(
-            loanContract.debtIds(
-                address(demoToken),
-                collateralId,
-                numDebtIds - 1
-            ),
-            debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        loanContract.debtIds(address(demoToken), collateralId, numDebtIds);
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        assertEq(
-            loanContract.loanState(debtId),
+        verifyLoanAgreementTerms(
+            address(loanContract),
+            _debtId,
             _ACTIVE_GRACE_STATE_,
-            "Invalid loan state"
-        );
-        assertEq(
-            loanContract.fixedInterestRate(debtId),
             _FIXED_INTEREST_RATE_,
-            "Invalid fixed interest rate"
-        );
-        assertEq(
-            loanContract.principal(debtId),
             _principal,
-            "Invalid principal"
-        );
-        assertEq(
-            loanContract.loanClose(debtId) - loanContract.loanStart(debtId),
-            _DURATION_,
-            "Invalid duration"
+            _DURATION_
         );
 
         // Verify loan participants
-        assertEq(loanContract.borrowerOf(debtId), borrower, "Invalid borrower");
-        assertEq(loanContract.lenderOf(debtId), lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(debtId);
-
-        assertEq(
-            loanContract.ownerOf(borrowerTokenId),
-            borrower,
-            "Invalid borrower token ID"
-        );
-        assertEq(
-            loanContract.ownerOf(lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
+        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(borrower, debtId), _principal);
+        assertEq(loanContract.debtBalanceOf(borrower, _debtId), _principal);
 
         // Verify token balances
-        address[] memory accounts = new address[](2);
-        accounts[0] = lender;
-        accounts[1] = borrower;
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _principal
+        );
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = lenderTokenId;
-        ids[1] = borrowerTokenId;
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = _principal;
-        balances[1] = 1;
-
-        assertEq(loanContract.balanceOfBatch(accounts, ids), balances);
-
-        // Minted borrower NFT should have nftURI
-        assertEq(loanContract.uri(debtId), _getTokenURI(debtId));
+        // Minted lender NFT should have debt token URI
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
-        debtId = loanContract.totalDebts();
-        assertEq(debtId, 1);
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 
     function testAnyGracePeriodLenderSubmitProposal(
@@ -488,13 +507,11 @@ contract LoanContractFuzzSubmit is
             _contractTerms := mload(0x20)
         }
 
-        contractTerms = _contractTerms;
-
         // Create message for signing
         bytes32 message = Signing.prefixed(
             keccak256(
                 abi.encode(
-                    contractTerms,
+                    _contractTerms,
                     address(demoToken),
                     collateralId,
                     collateralNonce
@@ -504,23 +521,21 @@ contract LoanContractFuzzSubmit is
 
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        signature = abi.encodePacked(r, s, v);
+        bytes memory _signature = abi.encodePacked(r, s, v);
 
-        uint256 debtId = loanContract.totalDebts();
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
 
-        // Anza batch NFT minting
-        vm.expectEmit(true, true, true, true);
-        emit TransferAnzaBatch(
+        initLoanContractExpectations(
+            address(loanContract),
+            borrower,
             lender,
-            address(0),
-            [lender, borrower],
-            [(debtId * 2), (debtId * 2) + 1],
-            [uint256(_PRINCIPAL_), 1]
+            address(demoToken),
+            _debtId,
+            _PRINCIPAL_,
+            _DURATION_,
+            _TERMS_EXPIRY_
         );
-
-        // Loan proposal submitted
-        vm.expectEmit(true, true, true, true);
-        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
@@ -529,98 +544,54 @@ contract LoanContractFuzzSubmit is
         (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
-                contractTerms,
+                _contractTerms,
                 address(demoToken),
                 collateralId,
-                signature
+                _signature
             )
         );
         require(success);
         vm.stopPrank();
 
+        if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
+            return;
+        }
+
         // Verify debt ID for collateral
-        uint256 numDebtIds = loanContract.getCollateralNonce(
-            address(demoToken),
-            collateralId
-        );
-
-        assertEq(
-            loanContract.debtIds(
-                address(demoToken),
-                collateralId,
-                numDebtIds - 1
-            ),
-            debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        loanContract.debtIds(address(demoToken), collateralId, numDebtIds);
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        assertEq(
-            loanContract.loanState(debtId),
+        verifyLoanAgreementTerms(
+            address(loanContract),
+            _debtId,
             _ACTIVE_GRACE_STATE_,
-            "Invalid loan state"
-        );
-        assertEq(
-            loanContract.fixedInterestRate(debtId),
             _FIXED_INTEREST_RATE_,
-            "Invalid fixed interest rate"
-        );
-        assertEq(
-            loanContract.principal(debtId),
             _PRINCIPAL_,
-            "Invalid principal"
-        );
-        assertEq(
-            loanContract.loanClose(debtId) - loanContract.loanStart(debtId),
-            _DURATION_,
-            "Invalid duration"
+            _DURATION_
         );
 
         // Verify loan participants
-        assertEq(loanContract.borrowerOf(debtId), borrower, "Invalid borrower");
-        assertEq(loanContract.lenderOf(debtId), lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(debtId);
-
-        assertEq(
-            loanContract.ownerOf(borrowerTokenId),
-            borrower,
-            "Invalid borrower token ID"
-        );
-        assertEq(
-            loanContract.ownerOf(lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
+        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(borrower, debtId), _PRINCIPAL_);
+        assertEq(loanContract.debtBalanceOf(borrower, _debtId), _PRINCIPAL_);
 
         // Verify token balances
-        address[] memory accounts = new address[](2);
-        accounts[0] = lender;
-        accounts[1] = borrower;
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = lenderTokenId;
-        ids[1] = borrowerTokenId;
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = _PRINCIPAL_;
-        balances[1] = 1;
-
-        assertEq(loanContract.balanceOfBatch(accounts, ids), balances);
-
-        // Minted borrower NFT should have nftURI
-        assertEq(loanContract.uri(debtId), _getTokenURI(debtId));
+        // Minted lender NFT should have debt token URI
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
-        debtId = loanContract.totalDebts();
-        assertEq(debtId, 1);
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 
     function testAnyDurationLenderSubmitProposal(uint32 _duration) public {
@@ -639,13 +610,11 @@ contract LoanContractFuzzSubmit is
             _contractTerms := mload(0x20)
         }
 
-        contractTerms = _contractTerms;
-
         // Create message for signing
         bytes32 message = Signing.prefixed(
             keccak256(
                 abi.encode(
-                    contractTerms,
+                    _contractTerms,
                     address(demoToken),
                     collateralId,
                     collateralNonce
@@ -655,23 +624,21 @@ contract LoanContractFuzzSubmit is
 
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        signature = abi.encodePacked(r, s, v);
+        bytes memory _signature = abi.encodePacked(r, s, v);
 
-        uint256 debtId = loanContract.totalDebts();
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
 
-        // Anza batch NFT minting
-        vm.expectEmit(true, true, true, true);
-        emit TransferAnzaBatch(
+        initLoanContractExpectations(
+            address(loanContract),
+            borrower,
             lender,
-            address(0),
-            [lender, borrower],
-            [(debtId * 2), (debtId * 2) + 1],
-            [uint256(_PRINCIPAL_), 1]
+            address(demoToken),
+            _debtId,
+            _PRINCIPAL_,
+            _duration,
+            _TERMS_EXPIRY_
         );
-
-        // Loan proposal submitted
-        vm.expectEmit(true, true, true, true);
-        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
@@ -680,101 +647,54 @@ contract LoanContractFuzzSubmit is
         (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
-                contractTerms,
+                _contractTerms,
                 address(demoToken),
                 collateralId,
-                signature
+                _signature
             )
         );
         require(success);
         vm.stopPrank();
 
+        if (_PRINCIPAL_ == 0 || _duration == 0 || _TERMS_EXPIRY_ == 0) {
+            return;
+        }
+
         // Verify debt ID for collateral
-        uint256 numDebtIds = loanContract.getCollateralNonce(
-            address(demoToken),
-            collateralId
-        );
-
-        console.log(_duration);
-
-        assertEq(
-            loanContract.debtIds(
-                address(demoToken),
-                collateralId,
-                numDebtIds - 1
-            ),
-            debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        loanContract.debtIds(address(demoToken), collateralId, numDebtIds);
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        assertEq(
-            loanContract.loanState(debtId),
+        verifyLoanAgreementTerms(
+            address(loanContract),
+            _debtId,
             _ACTIVE_GRACE_STATE_,
-            "Invalid loan state"
-        );
-        assertEq(
-            loanContract.fixedInterestRate(debtId),
             _FIXED_INTEREST_RATE_,
-            "Invalid fixed interest rate"
-        );
-        assertEq(
-            loanContract.principal(debtId),
             _PRINCIPAL_,
-            "Invalid principal"
-        );
-
-        assertEq(
-            loanContract.loanClose(debtId) - loanContract.loanStart(debtId),
-            uint256(_duration),
-            "Invalid duration"
+            _duration
         );
 
         // Verify loan participants
-        assertEq(loanContract.borrowerOf(debtId), borrower, "Invalid borrower");
-        assertEq(loanContract.lenderOf(debtId), lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(debtId);
-
-        assertEq(
-            loanContract.ownerOf(borrowerTokenId),
-            borrower,
-            "Invalid borrower token ID"
-        );
-        assertEq(
-            loanContract.ownerOf(lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
+        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(borrower, debtId), _PRINCIPAL_);
+        assertEq(loanContract.debtBalanceOf(borrower, _debtId), _PRINCIPAL_);
 
         // Verify token balances
-        address[] memory accounts = new address[](2);
-        accounts[0] = lender;
-        accounts[1] = borrower;
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = lenderTokenId;
-        ids[1] = borrowerTokenId;
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = _PRINCIPAL_;
-        balances[1] = 1;
-
-        assertEq(loanContract.balanceOfBatch(accounts, ids), balances);
-
-        // Minted borrower NFT should have nftURI
-        assertEq(loanContract.uri(debtId), _getTokenURI(debtId));
+        // Minted lender NFT should have debt token URI
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
-        debtId = loanContract.totalDebts();
-        assertEq(debtId, 1);
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 
     function testAnyTermsExpiryLenderSubmitProposal(
@@ -793,13 +713,11 @@ contract LoanContractFuzzSubmit is
             _contractTerms := mload(0x20)
         }
 
-        contractTerms = _contractTerms;
-
         // Create message for signing
         bytes32 message = Signing.prefixed(
             keccak256(
                 abi.encode(
-                    contractTerms,
+                    _contractTerms,
                     address(demoToken),
                     collateralId,
                     collateralNonce
@@ -809,23 +727,21 @@ contract LoanContractFuzzSubmit is
 
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        signature = abi.encodePacked(r, s, v);
+        bytes memory _signature = abi.encodePacked(r, s, v);
 
-        uint256 debtId = loanContract.totalDebts();
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
 
-        // Anza batch NFT minting
-        vm.expectEmit(true, true, true, true);
-        emit TransferAnzaBatch(
+        initLoanContractExpectations(
+            address(loanContract),
+            borrower,
             lender,
-            address(0),
-            [lender, borrower],
-            [(debtId * 2), (debtId * 2) + 1],
-            [uint256(_PRINCIPAL_), 1]
+            address(demoToken),
+            _debtId,
+            _PRINCIPAL_,
+            _DURATION_,
+            _termsExpiry
         );
-
-        // Loan proposal submitted
-        vm.expectEmit(true, true, true, true);
-        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
@@ -834,111 +750,67 @@ contract LoanContractFuzzSubmit is
         (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
-                contractTerms,
+                _contractTerms,
                 address(demoToken),
                 collateralId,
-                signature
+                _signature
             )
         );
         require(success);
         vm.stopPrank();
 
+        if (
+            _PRINCIPAL_ == 0 ||
+            _DURATION_ == 0 ||
+            _termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_
+        ) {
+            return;
+        }
+
         // Verify debt ID for collateral
-        uint256 numDebtIds = loanContract.getCollateralNonce(
-            address(demoToken),
-            collateralId
-        );
-
-        assertEq(
-            loanContract.debtIds(
-                address(demoToken),
-                collateralId,
-                numDebtIds - 1
-            ),
-            debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        loanContract.debtIds(address(demoToken), collateralId, numDebtIds);
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        assertEq(
-            loanContract.loanState(debtId),
+        verifyLoanAgreementTerms(
+            address(loanContract),
+            _debtId,
             _ACTIVE_GRACE_STATE_,
-            "Invalid loan state"
-        );
-        assertEq(
-            loanContract.fixedInterestRate(debtId),
             _FIXED_INTEREST_RATE_,
-            "Invalid fixed interest rate"
-        );
-        assertEq(
-            loanContract.principal(debtId),
             _PRINCIPAL_,
-            "Invalid principal"
-        );
-
-        assertEq(
-            loanContract.loanClose(debtId) - loanContract.loanStart(debtId),
-            _DURATION_,
-            "Invalid duration"
+            _DURATION_
         );
 
         // Verify loan participants
-        assertEq(loanContract.borrowerOf(debtId), borrower, "Invalid borrower");
-        assertEq(loanContract.lenderOf(debtId), lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(debtId);
-
-        assertEq(
-            loanContract.ownerOf(borrowerTokenId),
-            borrower,
-            "Invalid borrower token ID"
-        );
-        assertEq(
-            loanContract.ownerOf(lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
+        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(borrower, debtId), _PRINCIPAL_);
+        assertEq(loanContract.debtBalanceOf(borrower, _debtId), _PRINCIPAL_);
 
         // Verify token balances
-        address[] memory accounts = new address[](2);
-        accounts[0] = lender;
-        accounts[1] = borrower;
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = lenderTokenId;
-        ids[1] = borrowerTokenId;
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = _PRINCIPAL_;
-        balances[1] = 1;
-
-        assertEq(loanContract.balanceOfBatch(accounts, ids), balances);
-
-        // Minted borrower NFT should have nftURI
-        assertEq(loanContract.uri(debtId), _getTokenURI(debtId));
+        // Minted lender NFT should have debt token URI
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
-        debtId = loanContract.totalDebts();
-        assertEq(debtId, 1);
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 
     function testAnyAllLenderSubmitProposal(
         TestTermsStruct memory _termsStruct
     ) public {
         vm.assume(
-            block.timestamp + uint256(_termsStruct.duration) < type(uint32).max
+            (block.timestamp + uint256(_termsStruct.duration)) <
+                type(uint32).max
         );
-        // vm.assume(_termsStruct.principal != 0);
-        // vm.assume(_termsStruct.duration != 0);
-        // vm.assume(_termsStruct.termsExpiry != 0);
-
         bytes32 _contractTerms;
 
         assembly {
@@ -966,23 +838,21 @@ contract LoanContractFuzzSubmit is
 
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory _signature = abi.encodePacked(r, s, v);
 
-        uint256 debtId = loanContract.totalDebts();
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
 
-        // Anza batch NFT minting
-        vm.expectEmit(true, true, true, true);
-        emit TransferAnzaBatch(
+        initLoanContractExpectations(
+            address(loanContract),
+            borrower,
             lender,
-            address(0),
-            [lender, borrower],
-            [(debtId * 2), (debtId * 2) + 1],
-            [uint256(_termsStruct.principal), 1]
+            address(demoToken),
+            _debtId,
+            _termsStruct.principal,
+            _termsStruct.duration,
+            _termsStruct.termsExpiry
         );
-
-        // Loan proposal submitted
-        vm.expectEmit(true, true, true, true);
-        emit LoanContractInitialized(address(demoToken), collateralId, debtId);
 
         // Submit proposal
         vm.deal(lender, uint256(_termsStruct.principal) + 1 ether);
@@ -996,103 +866,57 @@ contract LoanContractFuzzSubmit is
                 _contractTerms,
                 address(demoToken),
                 collateralId,
-                signature
+                _signature
             )
         );
         require(success);
         vm.stopPrank();
 
+        if (
+            _termsStruct.principal == 0 ||
+            _termsStruct.duration == 0 ||
+            _termsStruct.termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_
+        ) {
+            return;
+        }
+
         // Verify debt ID for collateral
-        uint256 numDebtIds = loanContract.getCollateralNonce(
-            address(demoToken),
-            collateralId
-        );
-
-        assertEq(
-            loanContract.debtIds(
-                address(demoToken),
-                collateralId,
-                numDebtIds - 1
-            ),
-            debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        loanContract.debtIds(address(demoToken), collateralId, numDebtIds);
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        assertEq(
-            loanContract.loanState(debtId),
+        verifyLoanAgreementTerms(
+            address(loanContract),
+            _debtId,
             _ACTIVE_GRACE_STATE_,
-            "Invalid loan state"
-        );
-        assertEq(
-            loanContract.fixedInterestRate(debtId),
-            uint256(_termsStruct.fixedInterestRate),
-            "Invalid fixed interest rate"
-        );
-        assertEq(
-            loanContract.principal(debtId),
-            uint256(_termsStruct.principal),
-            "Invalid principal"
-        );
-        assertEq(
-            loanContract.loanClose(debtId) - loanContract.loanStart(debtId),
-            uint256(_termsStruct.duration),
-            "Invalid duration"
+            _termsStruct.fixedInterestRate,
+            _termsStruct.principal,
+            _termsStruct.duration
         );
 
         // Verify loan participants
-        assertEq(loanContract.borrowerOf(debtId), borrower, "Invalid borrower");
-        assertEq(loanContract.lenderOf(debtId), lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(debtId);
-
-        assertEq(
-            loanContract.ownerOf(borrowerTokenId),
-            borrower,
-            "Invalid borrower token ID"
-        );
-        assertEq(
-            loanContract.ownerOf(lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
+        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
 
         // Verify total debt balance
         assertEq(
-            loanContract.debtBalanceOf(borrower, debtId),
+            loanContract.debtBalanceOf(borrower, _debtId),
             _termsStruct.principal
         );
 
         // Verify token balances
-        address[] memory accounts = new address[](2);
-        accounts[0] = lender;
-        accounts[1] = borrower;
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _termsStruct.principal
+        );
 
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = lenderTokenId;
-        ids[1] = borrowerTokenId;
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = _termsStruct.principal;
-        balances[1] = 1;
-
-        assertEq(loanContract.balanceOfBatch(accounts, ids), balances);
-
-        // Minted borrower NFT should have nftURI
-        assertEq(loanContract.uri(debtId), _getTokenURI(debtId));
+        // Minted lender NFT should have debt token URI
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
-        debtId = loanContract.totalDebts();
-        assertEq(debtId, 1);
-    }
-
-    function _getTokenURI(
-        uint256 _tokenId
-    ) internal view returns (string memory) {
-        return string(abi.encodePacked(nftsURI, Strings.toString(_tokenId)));
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 }

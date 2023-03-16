@@ -3,12 +3,13 @@
 
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "./IAnzaERC1155.sol";
+import "./interfaces/IAnzaERC1155.sol";
 
 /**
  * @dev Implementation of the basic standard multi-token.
@@ -17,7 +18,7 @@ import "./IAnzaERC1155.sol";
  *
  * _Available since v3.1._
  */
-contract AnzaERC1155 is Context, ERC165, IAnzaERC1155, IERC1155MetadataURI {
+contract AnzaERC1155 is Context, ERC165, IAnzaERC1155 {
     using Address for address;
 
     // Mapping from token ID to account balances
@@ -387,10 +388,6 @@ contract AnzaERC1155 is Context, ERC165, IAnzaERC1155, IERC1155MetadataURI {
         require(
             to[0] != address(0) && to[1] != address(0),
             "ERC1155: mint to the zero address"
-        );
-        require(
-            ids.length == 2 && amounts.length == 2,
-            "ERC1155: ids and amounts length mismatch"
         );
 
         address operator = msg.sender;
