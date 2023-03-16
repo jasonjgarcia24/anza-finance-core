@@ -217,7 +217,6 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         // Submit proposal
         vm.deal(lender, 100 ether);
         vm.startPrank(lender);
-
         (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
@@ -233,6 +232,16 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
             return;
         }
+
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
 
         // Verify debt ID for collateral
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
@@ -259,22 +268,21 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         // Verify total debt balance
         assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
 
-        // // Verify token balances
-        // verifyTokenBalances(
-        //     borrower,
-        //     lender,
-        //     address(anzaToken),
-        //     _debtId,
-        //     _PRINCIPAL_
-        // );
+        // Verify token balances
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        // // Minted lender NFT should have debt token URI
-        // uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
-        // assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
+        // Minted lender NFT should have debt token URI
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
-        // // Verify debtId is updated at end
-        // _debtId = loanContract.totalDebts();
-        // assertEq(_debtId, 1);
+        // Verify debtId is updated at end
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 }
 

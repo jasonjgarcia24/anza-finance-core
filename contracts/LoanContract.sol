@@ -270,15 +270,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
     function borrower(uint256 _debtId) public view returns (address _borrower) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        address __borrower;
 
         assembly {
             mstore(0x0c, _contractTerms)
-            __borrower := mload(0)
-        }
-
-        unchecked {
-            _borrower = __borrower;
+            _borrower := mload(0)
         }
     }
 

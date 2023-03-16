@@ -46,14 +46,14 @@ abstract contract AnzaERC1155URIStorage is AnzaERC1155 {
         // If token ID is a lender token, concatenate base URI and tokenURI (via abi.encodePacked).
         return
             _tokenId % 2 == 0
-                ? _tokenURIs[_tokenId]
-                : string(
+                ? string(
                     abi.encodePacked(
                         _baseURI,
                         "debt-token/",
                         Strings.toString(_tokenId)
                     )
-                );
+                )
+                : _tokenURIs[_tokenId];
     }
 
     /**

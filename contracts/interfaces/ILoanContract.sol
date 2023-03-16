@@ -48,6 +48,8 @@ interface ILoanContract {
         bytes calldata _borrowerSignature
     ) external payable;
 
+    function mintReplica(uint256 _debtId) external;
+
     function loanState(uint256 _debtId) external view returns (uint256);
 
     function fixedInterestRate(uint256 _debtId) external view returns (uint256);
