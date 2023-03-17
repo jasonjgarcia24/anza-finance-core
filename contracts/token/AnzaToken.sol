@@ -77,14 +77,14 @@ contract AnzaToken is AnzaERC1155URIStorage {
     ) external {
         require(msg.sender == __debtFactory, "Invalid minter");
 
-        // Mint debt ALC debt tokens
-        _mint(_to, _id, _amount, _data);
-
         // Preset borrower token's URI if minting the lender's
         // token.
-        if (_id % 2 == 0) {
+        if (_id % 2 == 0 || exists(_id)) {
             _setURI(_id + 1, _collateralURI);
         }
+
+        // Mint debt ALC debt tokens
+        _mint(_to, _id, _amount, _data);
     }
 
     function mint(
@@ -104,6 +104,8 @@ contract AnzaToken is AnzaERC1155URIStorage {
     }
 
     function burn(address account, uint256 id, uint256 value) external {
+        if (exists(id) == false) return;
+
         require(
             account == msg.sender || isApprovedForAll(account, msg.sender),
             "ERC1155: caller is not token owner nor approved"

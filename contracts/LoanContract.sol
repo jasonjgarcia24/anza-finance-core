@@ -28,12 +28,30 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     uint8 private constant _FUNDED_STATE_ = 4;
     uint8 private constant _ACTIVE_GRACE_STATE_ = 5;
     uint8 private constant _ACTIVE_STATE_ = 6;
-    uint8 private constant _PAID_STATE_ = 7;
-    uint8 private constant _DEFAULT_STATE_ = 8;
-    uint8 private constant _COLLECTION_STATE_ = 9;
-    uint8 private constant _AUCTION_STATE_ = 10;
-    uint8 private constant _AWARDED_STATE_ = 11;
-    uint8 private constant _CLOSE_STATE_ = 12;
+    uint8 private constant _DEFAULT_STATE_ = 7;
+    uint8 private constant _COLLECTION_STATE_ = 8;
+    uint8 private constant _AUCTION_STATE_ = 9;
+    uint8 private constant _AWARDED_STATE_ = 10;
+    uint8 private constant _CLOSE_STATE_ = 11;
+    uint8 private constant _PAID_STATE_ = 12;
+
+    /* ------------------------------------------------ *
+     *           Packed Debt Term Mappings              *
+     * ------------------------------------------------ */
+    uint256 private constant _LOAN_STATE_MAP_ = 15;
+    uint256 private constant _FIR_MAP_ = 4080;
+    uint256 private constant _LOAN_START_MASK_ = 4095;
+    uint256 private constant _LOAN_START_MAP_ = 17592186040320;
+    uint256 private constant _LOAN_CLOSE_MASK_ = 17592186044415;
+    uint256 private constant _LOAN_CLOSE_MAP_ = 75557863708322137374720;
+    uint256 private constant _BORROWER_MASK_ = 75557863725914323419135;
+    uint256 private constant _BORROWER_MAP_ =
+        110427941548649020598956093796432407239217743554650627018874473257369600;
+
+    // uint256 private constant _LOAN_STATE_REVEAL_ = 15;
+    // uint256 private constant _FIR_REVEAL_ = 4080;
+    // uint256 private constant _LOAN_START_REVEAL_ = 17592186040320;
+    // uint256 private constant _LOAN_CLOSE_REVEAL_ = 75557863708322137374720;
 
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
@@ -143,6 +161,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         bytes calldata _borrowerSignature
     ) external payable {
         _checkTermsExpiry(_contractTerms);
+        _checkDuration(_contractTerms);
+
+        uint256 _principal = msg.value;
+        _checkPrincipal(_contractTerms, _principal);
 
         // Validate borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
@@ -161,8 +183,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
         // Add debt ID to collateral mapping
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
-        uint256 _principal = msg.value;
-        _setLoanAgreement(_borrower, _contractTerms, _principal);
+        _setLoanAgreement(_borrower, _contractTerms);
+
+        // console.logBytes32(__packedDebtTerms[totalDebts]);
+        // console.log(loanState(totalDebts));
+        // console.log(fixedInterestRate(totalDebts));
+        // console.log(loanStart(totalDebts));
+        // console.log(loanClose(totalDebts));
+        // console.log(borrower(totalDebts));
 
         // Transfer collateral to arbiter
         _collateralToken.safeTransferFrom(
@@ -212,7 +240,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint8 __loanState;
 
         assembly {
-            __loanState := _contractTerms
+            __loanState := and(_contractTerms, _LOAN_STATE_MAP_)
         }
 
         unchecked {
@@ -227,8 +255,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint8 __fixedInterestRate;
 
         assembly {
-            mstore(0x02, _contractTerms)
-            __fixedInterestRate := mload(0)
+            __fixedInterestRate := and(_contractTerms, _FIR_MAP_)
         }
 
         unchecked {
@@ -243,8 +270,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 __loanStart;
 
         assembly {
-            mstore(0x04, _contractTerms)
-            __loanStart := mload(0)
+            __loanStart := shr(12, and(_contractTerms, _LOAN_START_MAP_))
         }
 
         unchecked {
@@ -259,8 +285,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 __loanClose;
 
         assembly {
-            mstore(0x08, _contractTerms)
-            __loanClose := mload(0)
+            __loanClose := shr(44, and(_contractTerms, _LOAN_CLOSE_MAP_))
         }
 
         unchecked {
@@ -272,8 +297,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
 
         assembly {
-            mstore(0x0c, _contractTerms)
-            _borrower := mload(0)
+            _borrower := shr(76, and(_contractTerms, _BORROWER_MAP_))
         }
     }
 
@@ -288,7 +312,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         anzaToken.burn(_lender, _debtId * 2, _payment);
 
         // Conditionally update debt
-        validateLoanState(_lender, _debtId);
+        updateLoanState(_debtId);
     }
 
     function withdrawPayment(uint256 _amount) external returns (bool) {
@@ -308,60 +332,115 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         return _success;
     }
 
-    function validateLoanState(address _lender, uint256 _debtId) public {
-        if (anzaToken.balanceOf(_lender, _debtId) > 0) {
-            if (_checkLoanActive(_debtId)) {}
-        } else {
-            // Paid off
+    function updateLoanState(uint256 _debtId) public {
+        if (_checkLoanActive(_debtId)) revert InactiveLoanState(_debtId);
+
+        // Loan defaulted
+        if (_checkLoanExpired(_debtId)) {
+            _setLoanState(_debtId, _DEFAULT_STATE_);
+        }
+        // Loan fully paid off
+        else if (anzaToken.totalSupply(_debtId * 2) <= 0) {
             _setLoanState(_debtId, _PAID_STATE_);
+
+            // Burn replica
+            anzaToken.burn(borrower(_debtId), (_debtId * 2) + 1, 1);
+        }
+        // Loan active and interest compounding
+        else if (loanState(_debtId) == _ACTIVE_STATE_) {
+            // Need to mint more debt tokens
+            uint256 _balance = anzaToken.totalSupply(_debtId * 2);
+            uint256 _n = loanClose(_debtId) - block.timestamp; // THIS ISN'T CORRECT
+            uint256 _newDebt = _balance -
+                _compound(_balance, fixedInterestRate(_debtId), _n);
+
+            anzaToken.mint(
+                anzaToken.lenderOf(_debtId),
+                totalDebts * 2,
+                _newDebt,
+                "",
+                ""
+            );
+        }
+        // Loan no longer in grace period
+        else if (_checkGracePeriod(_debtId) == false) {
+            _setLoanState(_debtId, _ACTIVE_STATE_);
         }
     }
 
     function _setLoanAgreement(
         address _borrower,
-        bytes32 _contractTerms,
-        uint256 _amount
+        bytes32 _contractTerms
     ) internal {
-        _checkDuration(_contractTerms);
-
         bytes32 _loanAgreement;
-        uint128 _principal;
         uint32 _duration;
         uint32 _loanStart = _toUint32(block.timestamp);
 
-        _contractTerms >>= 16;
+        _contractTerms >>= 4;
 
         assembly {
+            // Get packed duration
             mstore(0x16, _contractTerms)
             _duration := mload(0)
 
+            // Pack fixed interest rate and loan state (uint8 and uint4)
             switch _duration
             case 0 {
-                mstore(0x20, _ACTIVE_STATE_)
+                mstore(0x20, xor(_contractTerms, _ACTIVE_STATE_))
             }
             default {
-                mstore(0x20, _ACTIVE_GRACE_STATE_)
+                mstore(0x20, xor(_contractTerms, _ACTIVE_GRACE_STATE_))
             }
 
-            mstore(0x1e, _contractTerms)
-            _principal := mload(0x1c)
+            // Pack loan start time (uint32)
+            mstore(
+                0x20,
+                xor(
+                    and(_LOAN_START_MASK_, mload(0x20)),
+                    and(_LOAN_START_MAP_, shl(12, _loanStart))
+                )
+            )
 
-            mstore(0x1c, _loanStart)
-            mstore(0x18, add(_loanStart, _duration))
-            mstore(0x14, _borrower)
+            // Pack loan close time (uint32)
+            mstore(
+                0x20,
+                xor(
+                    and(_LOAN_CLOSE_MASK_, mload(0x20)),
+                    and(_LOAN_CLOSE_MAP_, shl(44, add(_loanStart, _duration)))
+                )
+            )
+
+            // Pack borrower (address)
+            mstore(
+                0x20,
+                xor(
+                    and(_BORROWER_MASK_, mload(0x20)),
+                    and(_BORROWER_MAP_, shl(76, _borrower))
+                )
+            )
 
             _loanAgreement := mload(0x20)
         }
 
         if (_duration == 0) revert InvalidLoanParameter(_DURATION_ERROR_ID_);
-        if (_principal == 0 || _principal != _amount)
-            revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
 
         __packedDebtTerms[totalDebts] = _loanAgreement;
     }
 
+    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
+        return loanStart(_debtId) > block.timestamp;
+    }
+
     function _checkLoanActive(uint256 _debtId) internal view returns (bool) {
-        return loanClose(_debtId) >= block.timestamp;
+        return
+            loanState(_debtId) > _ACTIVE_GRACE_STATE_ &&
+            loanState(_debtId) < _DEFAULT_STATE_;
+    }
+
+    function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
+        return
+            anzaToken.totalSupply(_debtId * 2) > 0 &&
+            loanClose(_debtId) >= block.timestamp;
     }
 
     function _checkDuration(bytes32 _contractTerms) internal view {
@@ -378,6 +457,21 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 revert InvalidLoanParameter(_DURATION_ERROR_ID_);
             }
         }
+    }
+
+    function _checkPrincipal(
+        bytes32 _contractTerms,
+        uint256 _amount
+    ) internal pure {
+        uint128 _principal;
+
+        assembly {
+            mstore(0x04, _contractTerms)
+            _principal := mload(0)
+        }
+
+        if (_principal == 0 || _principal != _amount)
+            revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
     }
 
     function _checkTermsExpiry(bytes32 _contractTerms) public pure {

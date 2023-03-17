@@ -36,10 +36,11 @@ abstract contract LoanContractGlobalConstants {
      *                  Loan Terms                      *
      * ------------------------------------------------ */
     uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
-    uint8 public constant _FIXED_INTEREST_RATE_ = 50; // 0.05
-    uint128 public constant _PRINCIPAL_ = 32; // ETH
+    uint8 public constant _FIXED_INTEREST_RATE_ = 100; // 0.05
+    uint128 public constant _PRINCIPAL_ =
+        226854911280625642308916404954512140970; // 32; // ETH
     uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
-    uint32 public constant _DURATION_ = 7257600; // 12 weeks (seconds)
+    uint32 public constant _DURATION_ = 7257600; // 12 weeks (seconds) // 1145324612
     uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
     uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
 
@@ -132,7 +133,7 @@ abstract contract LoanSigned is LoanContractDeployer {
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1f, _FIXED_INTEREST_RATE_)
             mstore(0x1c, _PRINCIPAL_)
             mstore(0x0c, _GRACE_PERIOD_)
             mstore(0x08, _DURATION_)
