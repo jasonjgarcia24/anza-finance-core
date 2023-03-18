@@ -7,6 +7,7 @@ import {IAnzaEvents} from "./interfaces/IAnzaEvents.t.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {ILoanContract} from "../contracts/interfaces/ILoanContract.sol";
 import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Test, console, LoanContractGlobalConstants, LoanContractDeployer, LoanSigned} from "./LoanContract.t.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
 
@@ -19,7 +20,6 @@ abstract contract LoanContractSubmitFunctions is
 {
     function initLoanContractExpectations(
         address _loanContractAddress,
-        address _borrower,
         address _lender,
         address _collateralAddress,
         uint256 _debtId,
@@ -136,24 +136,12 @@ abstract contract LoanContractSubmitFunctions is
 
     function verifyLoanParticipants(
         address _anzaTokenAddress,
-        address _borrower,
         address _lender,
         uint256 _debtId
     ) public {
         IAnzaToken _anzaToken = IAnzaToken(_anzaTokenAddress);
-
-        // // Verify0 loan participants
-        // assertEq(_anzaToken.borrowerOf(_debtId), _borrower, "Invalid borrower");
-        // assertEq(_anzaToken.lenderOf(_debtId), _lender, "Invalid lender");
-
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
         uint256 lenderTokenId = Indexer.getLenderTokenId(_debtId);
 
-        // assertEq(
-        //     _anzaToken.ownerOf(borrowerTokenId),
-        //     _borrower,
-        //     "Invalid borrower token ID"
-        // );
         assertEq(
             _anzaToken.ownerOf(lenderTokenId),
             _lender,
@@ -185,7 +173,7 @@ abstract contract LoanContractSubmitFunctions is
         balances[1] = 1;
 
         assertEq(
-            IAnzaToken(_anzaTokenAddress).balanceOfBatch(accounts, ids),
+            IERC1155(_anzaTokenAddress).balanceOfBatch(accounts, ids),
             balances
         );
     }
@@ -202,16 +190,15 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        // initLoanContractExpectations(
-        //     address(loanContract),
-        //     borrower,
-        //     lender,
-        //     address(demoToken),
-        //     _debtId,
-        //     _PRINCIPAL_,
-        //     _DURATION_,
-        //     _TERMS_EXPIRY_
-        // );
+        initLoanContractExpectations(
+            address(loanContract),
+            lender,
+            address(demoToken),
+            _debtId,
+            _PRINCIPAL_,
+            _DURATION_,
+            _TERMS_EXPIRY_
+        );
 
         // Submit proposal
         vm.deal(lender, _PRINCIPAL_);
@@ -228,59 +215,59 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         require(success);
         vm.stopPrank();
 
-        // if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
-        //     return;
-        // }
+        if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
+            return;
+        }
 
-        // // Verify balance of borrower token is zero
-        // uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        // assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
 
-        // // Mint replica token
-        // vm.deal(borrower, 100 ether);
-        // vm.startPrank(borrower);
-        // loanContract.mintReplica(_debtId);
-        // vm.stopPrank();
+        // Mint replica token
+        vm.deal(borrower, 1 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
 
-        // // Verify debt ID for collateral
-        // verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
+        // Verify debt ID for collateral
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
-        // // Verify loan agreement terms for this debt ID
-        // verifyLoanAgreementTerms(
-        //     borrower,
-        //     address(loanContract),
-        //     _debtId,
-        //     _ACTIVE_GRACE_STATE_,
-        //     _FIXED_INTEREST_RATE_,
-        //     _DURATION_
-        // );
+        // Verify loan agreement terms for this debt ID
+        verifyLoanAgreementTerms(
+            borrower,
+            address(loanContract),
+            _debtId,
+            _ACTIVE_GRACE_STATE_,
+            _FIXED_INTEREST_RATE_,
+            _DURATION_
+        );
 
-        // // Verify loan participants
-        // uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-        // assertEq(
-        //     anzaToken.ownerOf(_lenderTokenId),
-        //     lender,
-        //     "Invalid lender token ID"
-        // );
+        // Verify loan participants
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
-        // // Verify total debt balance
-        // assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
+        // Verify total debt balance
+        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
 
-        // // Verify token balances
-        // verifyTokenBalances(
-        //     borrower,
-        //     lender,
-        //     address(anzaToken),
-        //     _debtId,
-        //     _PRINCIPAL_
-        // );
+        // Verify token balances
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        // // Minted lender NFT should have debt token URI
-        // assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
+        // Minted lender NFT should have debt token URI
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
-        // // Verify debtId is updated at end
-        // _debtId = loanContract.totalDebts();
-        // assertEq(_debtId, 1);
+        // Verify debtId is updated at end
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 }
 
@@ -309,7 +296,7 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1e, _fixedInterestRate)
+            mstore(0x1f, _fixedInterestRate)
             mstore(0x1c, _PRINCIPAL_)
             mstore(0x0c, _GRACE_PERIOD_)
             mstore(0x08, _DURATION_)
@@ -339,7 +326,6 @@ contract LoanContractFuzzSubmit is
 
         initLoanContractExpectations(
             address(loanContract),
-            borrower,
             lender,
             address(demoToken),
             _debtId,
@@ -368,6 +354,16 @@ contract LoanContractFuzzSubmit is
             return;
         }
 
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+
         // Verify debt ID for collateral
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
@@ -382,7 +378,12 @@ contract LoanContractFuzzSubmit is
         );
 
         // Verify loan participants
-        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
         // Verify total debt balance
         assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
@@ -397,7 +398,6 @@ contract LoanContractFuzzSubmit is
         );
 
         // Minted lender NFT should have debt token URI
-        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
@@ -410,7 +410,7 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1f, _FIXED_INTEREST_RATE_)
             mstore(0x1c, _principal)
             mstore(0x0c, _GRACE_PERIOD_)
             mstore(0x08, _DURATION_)
@@ -440,7 +440,6 @@ contract LoanContractFuzzSubmit is
 
         initLoanContractExpectations(
             address(loanContract),
-            borrower,
             lender,
             address(demoToken),
             _debtId,
@@ -469,6 +468,16 @@ contract LoanContractFuzzSubmit is
             return;
         }
 
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+
         // Verify debt ID for collateral
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
@@ -483,7 +492,12 @@ contract LoanContractFuzzSubmit is
         );
 
         // Verify loan participants
-        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
         // Verify total debt balance
         assertEq(loanContract.debtBalanceOf(_debtId), _principal);
@@ -498,7 +512,6 @@ contract LoanContractFuzzSubmit is
         );
 
         // Minted lender NFT should have debt token URI
-        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
@@ -513,7 +526,7 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1f, _FIXED_INTEREST_RATE_)
             mstore(0x1c, _PRINCIPAL_)
             mstore(0x0c, _gracePeriod)
             mstore(0x08, _DURATION_)
@@ -543,7 +556,6 @@ contract LoanContractFuzzSubmit is
 
         initLoanContractExpectations(
             address(loanContract),
-            borrower,
             lender,
             address(demoToken),
             _debtId,
@@ -572,8 +584,23 @@ contract LoanContractFuzzSubmit is
             return;
         }
 
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+
         // Verify debt ID for collateral
-        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
         // Verify loan agreement terms for this debt ID
         verifyLoanAgreementTerms(
@@ -586,7 +613,7 @@ contract LoanContractFuzzSubmit is
         );
 
         // Verify loan participants
-        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
+        verifyLoanParticipants(address(anzaToken), lender, _debtId);
 
         // Verify total debt balance
         assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
@@ -601,7 +628,6 @@ contract LoanContractFuzzSubmit is
         );
 
         // Minted lender NFT should have debt token URI
-        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
@@ -616,7 +642,7 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1f, _FIXED_INTEREST_RATE_)
             mstore(0x1c, _PRINCIPAL_)
             mstore(0x0c, _GRACE_PERIOD_)
             mstore(0x08, _duration)
@@ -646,7 +672,6 @@ contract LoanContractFuzzSubmit is
 
         initLoanContractExpectations(
             address(loanContract),
-            borrower,
             lender,
             address(demoToken),
             _debtId,
@@ -675,6 +700,16 @@ contract LoanContractFuzzSubmit is
             return;
         }
 
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+
         // Verify debt ID for collateral
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
@@ -689,7 +724,12 @@ contract LoanContractFuzzSubmit is
         );
 
         // Verify loan participants
-        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
         // Verify total debt balance
         assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
@@ -704,7 +744,6 @@ contract LoanContractFuzzSubmit is
         );
 
         // Minted lender NFT should have debt token URI
-        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
@@ -719,7 +758,7 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1f, _FIXED_INTEREST_RATE_)
             mstore(0x1c, _PRINCIPAL_)
             mstore(0x0c, _GRACE_PERIOD_)
             mstore(0x08, _DURATION_)
@@ -749,7 +788,6 @@ contract LoanContractFuzzSubmit is
 
         initLoanContractExpectations(
             address(loanContract),
-            borrower,
             lender,
             address(demoToken),
             _debtId,
@@ -782,6 +820,16 @@ contract LoanContractFuzzSubmit is
             return;
         }
 
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+
         // Verify debt ID for collateral
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
@@ -796,7 +844,12 @@ contract LoanContractFuzzSubmit is
         );
 
         // Verify loan participants
-        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
         // Verify total debt balance
         assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
@@ -811,7 +864,6 @@ contract LoanContractFuzzSubmit is
         );
 
         // Minted lender NFT should have debt token URI
-        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
@@ -830,7 +882,7 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1e, mload(_termsStruct))
+            mstore(0x1f, mload(_termsStruct))
             mstore(0x1c, mload(add(_termsStruct, 0x20)))
             mstore(0x0c, mload(add(_termsStruct, 0x40)))
             mstore(0x08, mload(add(_termsStruct, 0x60)))
@@ -860,7 +912,6 @@ contract LoanContractFuzzSubmit is
 
         initLoanContractExpectations(
             address(loanContract),
-            borrower,
             lender,
             address(demoToken),
             _debtId,
@@ -895,6 +946,16 @@ contract LoanContractFuzzSubmit is
             return;
         }
 
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+
+        // Mint replica token
+        vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+
         // Verify debt ID for collateral
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
@@ -909,7 +970,12 @@ contract LoanContractFuzzSubmit is
         );
 
         // Verify loan participants
-        verifyLoanParticipants(address(anzaToken), borrower, lender, _debtId);
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
         // Verify total debt balance
         assertEq(loanContract.debtBalanceOf(_debtId), _termsStruct.principal);
@@ -924,7 +990,6 @@ contract LoanContractFuzzSubmit is
         );
 
         // Minted lender NFT should have debt token URI
-        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end

@@ -19,56 +19,99 @@ library LibOfficerRoles {
     bytes32 public constant _COLLECTOR_ = keccak256("COLLECTOR");
 }
 
-library LibLoanContractMetadata {
-    struct TokenData {
-        address collateralAddress; // [0..159] - 160
-        uint256 collateralId; // [160..223] - 64
-        uint256 principal; // [224..287] - 64
-        uint256 fixedInterestRate; // [288..295] - 8
-        uint256 duration; // [296..359] - 64
-        uint256 unpaidBalance;
-        uint256 withdrawableBalance;
+library LibLoanContractTerms {
+    /* ------------------------------------------------ *
+     *                  Loan States                     *
+     * ------------------------------------------------ */
+    uint8 private constant _UNDEFINED_STATE_ = 0;
+    uint8 private constant _NONLEVERAGED_STATE_ = 1;
+    uint8 private constant _UNSPONSORED_STATE_ = 2;
+    uint8 private constant _SPONSORED_STATE_ = 3;
+    uint8 private constant _FUNDED_STATE_ = 4;
+    uint8 private constant _ACTIVE_GRACE_STATE_ = 5;
+    uint8 private constant _ACTIVE_STATE_ = 6;
+    uint8 private constant _DEFAULT_STATE_ = 7;
+    uint8 private constant _COLLECTION_STATE_ = 8;
+    uint8 private constant _AUCTION_STATE_ = 9;
+    uint8 private constant _AWARDED_STATE_ = 10;
+    uint8 private constant _CLOSE_STATE_ = 11;
+    uint8 private constant _PAID_STATE_ = 12;
+
+    /* ------------------------------------------------ *
+     *           Packed Debt Term Mappings              *
+     * ------------------------------------------------ */
+    uint256 private constant _LOAN_STATE_MAP_ = 15;
+    uint256 private constant _FIR_MAP_ = 4080;
+    uint256 private constant _LOAN_START_MASK_ = 4095;
+    uint256 private constant _LOAN_START_MAP_ = 17592186040320;
+    uint256 private constant _LOAN_CLOSE_MASK_ = 17592186044415;
+    uint256 private constant _LOAN_CLOSE_MAP_ = 75557863708322137374720;
+    uint256 private constant _BORROWER_MASK_ = 75557863725914323419135;
+    uint256 private constant _BORROWER_MAP_ =
+        110427941548649020598956093796432407239217743554650627018874473257369600;
+
+    function loanState(
+        bytes32 _contractTerms
+    ) public pure returns (uint256 _loanState) {
+        uint8 __loanState;
+
+        assembly {
+            __loanState := and(_contractTerms, _LOAN_STATE_MAP_)
+        }
+
+        unchecked {
+            _loanState = __loanState;
+        }
     }
-}
 
-library LibLoanContractInit {
-    using StateControlUint256 for StateControlUint256.Property;
-    using StateControlAddress for StateControlAddress.Property;
-    using StateControlBool for StateControlBool.Property;
-    using BlockTime for uint256;
+    function fixedInterestRate(
+        bytes32 _contractTerms
+    ) public pure returns (uint256 _fixedInterestRate) {
+        bytes32 __fixedInterestRate;
 
-    function parseParticipants(
-        LibLoanContractMetadata.TokenData storage _token,
-        address _arbiter
-    ) public returns (address[2] memory) {
-        // IERC721 _collateralToken = IERC721(_token.collateralAddress);
-        // _collateralToken.safeTransferFrom(
-        //     _borrower,
-        //     _arbiter,
-        //     _token.collateralId,
-        //     abi.encodePacked(_token.collateralAddress)
-        // );
-        // } else {
-        //     require(
-        //         msg.value == _principal,
-        //         "msg.value must match loan principal"
-        //     );
-        // }
-        // return [
-        //     _callerIsOwner ? _owner : address(this), // borrower
-        //     !_callerIsOwner ? _caller : address(this) // lender
-        // ];
+        assembly {
+            __fixedInterestRate := and(_contractTerms, _FIR_MAP_)
+        }
+
+        unchecked {
+            _fixedInterestRate = uint256(__fixedInterestRate >> 4);
+        }
     }
 
-    function depositCollateral(
-        address _to,
-        address _collateralAddress,
-        uint256 _collateralId
-    ) public {
-        IERC721 _collateralToken = IERC721(_collateralAddress);
-        address _owner = _collateralToken.ownerOf(_collateralId);
+    function loanStart(
+        bytes32 _contractTerms
+    ) public pure returns (uint256 _loanStart) {
+        uint32 __loanStart;
 
-        _collateralToken.safeTransferFrom(_owner, _to, _collateralId, "");
+        assembly {
+            __loanStart := shr(12, and(_contractTerms, _LOAN_START_MAP_))
+        }
+
+        unchecked {
+            _loanStart = __loanStart;
+        }
+    }
+
+    function loanClose(
+        bytes32 _contractTerms
+    ) public pure returns (uint256 _loanClose) {
+        uint32 __loanClose;
+
+        assembly {
+            __loanClose := shr(44, and(_contractTerms, _LOAN_CLOSE_MAP_))
+        }
+
+        unchecked {
+            _loanClose = __loanClose;
+        }
+    }
+
+    function borrower(
+        bytes32 _contractTerms
+    ) public pure returns (address _borrower) {
+        assembly {
+            _borrower := shr(76, and(_contractTerms, _BORROWER_MAP_))
+        }
     }
 }
 

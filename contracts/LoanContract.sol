@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./abdk-libraries-solidity/ABDKMath64x64.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
-import {LibLoanContractStates as States} from "./utils/LibLoanContractStates.sol";
 
 contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
@@ -48,11 +47,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     uint256 private constant _BORROWER_MAP_ =
         110427941548649020598956093796432407239217743554650627018874473257369600;
 
-    // uint256 private constant _LOAN_STATE_REVEAL_ = 15;
-    // uint256 private constant _FIR_REVEAL_ = 4080;
-    // uint256 private constant _LOAN_START_REVEAL_ = 17592186040320;
-    // uint256 private constant _LOAN_CLOSE_REVEAL_ = 75557863708322137374720;
-
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
      * ------------------------------------------------ */
@@ -65,7 +59,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
-    address public immutable arbiter;
+    address public immutable collateralVault;
     IAnzaToken public anzaToken;
 
     /* ------------------------------------------------ *
@@ -74,11 +68,12 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     // Mapping from collateral to debt ID
     mapping(address => mapping(uint256 => uint256[])) public debtIds;
 
-    //  > 008 - [0..7]    `loanState`
-    //  > 008 - [8..15]   `fixedInterestRate`
-    //  > 032 - [16..47]  `loanStart`
-    //  > 032 - [48..79]  `loanClose`
-    //  > 160 - [80..239] `borrower`
+    //  > 004 - [0..3]     `loanState`
+    //  > 008 - [4..11]    `fixedInterestRate`
+    //  > 032 - [12..43]   `loanStart`
+    //  > 032 - [44..75]   `loanClose`
+    //  > 160 - [76..235]  `borrower`
+    //  > 020 - [236..255] extra space
     mapping(uint256 => bytes32) private __packedDebtTerms;
 
     // Mapping from participant to withdrawable balance
@@ -89,7 +84,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
     constructor(
         address _admin,
-        address _arbiter,
+        address _collateralVault,
         address _treasurer,
         address _collector
     ) {
@@ -101,7 +96,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         _grantRole(Roles._TREASURER_, _treasurer);
         _grantRole(Roles._COLLECTOR_, _collector);
 
-        arbiter = _arbiter;
+        collateralVault = _collateralVault;
     }
 
     function setAnzaToken(
@@ -160,13 +155,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _collateralId,
         bytes calldata _borrowerSignature
     ) external payable {
-        _checkTermsExpiry(_contractTerms);
-        _checkDuration(_contractTerms);
+        _verifyTermsExpiry(_contractTerms);
+        _verifyDuration(_contractTerms);
 
         uint256 _principal = msg.value;
-        _checkPrincipal(_contractTerms, _principal);
+        _verifyPrincipal(_contractTerms, _principal);
 
-        // Validate borrower participation
+        // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
 
@@ -185,32 +180,29 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
         _setLoanAgreement(_borrower, _contractTerms);
 
-        // console.logBytes32(__packedDebtTerms[totalDebts]);
-        // console.log(loanState(totalDebts));
-        // console.log(fixedInterestRate(totalDebts));
-        // console.log(loanStart(totalDebts));
-        // console.log(loanClose(totalDebts));
-        // console.log(borrower(totalDebts));
-
-        // Transfer collateral to arbiter
+        // Transfer collateral to collateral vault.
+        // The collateral ID and address will be mapped within
+        // the loan collateral vault to the debt ID.
         _collateralToken.safeTransferFrom(
             _borrower,
-            arbiter,
+            collateralVault,
             _collateralId,
-            ""
+            abi.encodePacked(_collateralAddress)
         );
 
         // Transfer funds to borrower
         (bool _success, ) = _borrower.call{value: _principal}("");
         if (!_success) revert FailedFundsTransfer();
 
-        // Mint debt ALC debt tokens for borrower and lender
+        // Mint debt ALC debt tokens for borrower and lender.
+        // This will grant the borrower recal access control
+        // of the collateral following full loan repayment.
         anzaToken.mint(
             msg.sender,
             totalDebts * 2,
             _principal,
             _collateralToken.tokenURI(_collateralId),
-            ""
+            abi.encodePacked(_borrower, totalDebts)
         );
 
         // Emit initialization event
@@ -230,7 +222,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         if (_borrower != borrower(_debtId))
             revert InvalidParticipant(_borrower);
 
-        anzaToken.mint(_borrower, (_debtId * 2) + 1, 1, "", "");
+        anzaToken.mint(
+            _borrower,
+            (_debtId * 2) + 1,
+            1,
+            "",
+            abi.encodePacked(_borrower, _debtId)
+        );
     }
 
     function loanState(
@@ -252,14 +250,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _debtId
     ) public view returns (uint256 _fixedInterestRate) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint8 __fixedInterestRate;
+        bytes32 __fixedInterestRate;
 
         assembly {
             __fixedInterestRate := and(_contractTerms, _FIR_MAP_)
         }
 
         unchecked {
-            _fixedInterestRate = __fixedInterestRate;
+            _fixedInterestRate = uint256(__fixedInterestRate >> 4);
         }
     }
 
@@ -301,38 +299,9 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
-    function depositPayment(uint256 _debtId) external payable {
-        address _lender = anzaToken.lenderOf(_debtId);
-        uint256 _payment = msg.value;
-
-        // Update lender's withdrawable balance
-        withdrawableBalance[_lender] += _payment;
-
-        // Burn ALC debt token
-        anzaToken.burn(_lender, _debtId * 2, _payment);
-
-        // Conditionally update debt
-        updateLoanState(_debtId);
-    }
-
-    function withdrawPayment(uint256 _amount) external returns (bool) {
-        address _payee = msg.sender;
-
-        if (withdrawableBalance[_payee] < _amount) {
-            revert InvalidFundsTransfer({amount: _amount});
-        }
-
-        // Update lender's withdrawable balance
-        withdrawableBalance[_payee] -= _amount;
-
-        // Transfer payment funds to lender
-        (bool _success, ) = _payee.call{value: _amount}("");
-        require(_success);
-
-        return _success;
-    }
-
-    function updateLoanState(uint256 _debtId) public {
+    function updateLoanState(
+        uint256 _debtId
+    ) external onlyRole(Roles._TREASURER_) {
         if (_checkLoanActive(_debtId)) revert InactiveLoanState(_debtId);
 
         // Loan defaulted
@@ -376,13 +345,15 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 _duration;
         uint32 _loanStart = _toUint32(block.timestamp);
 
+        assembly {
+            // Get packed duration
+            mstore(0x18, _contractTerms)
+            _duration := mload(0)
+        }
+
         _contractTerms >>= 4;
 
         assembly {
-            // Get packed duration
-            mstore(0x16, _contractTerms)
-            _duration := mload(0)
-
             // Pack fixed interest rate and loan state (uint8 and uint4)
             switch _duration
             case 0 {
@@ -427,6 +398,18 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         __packedDebtTerms[totalDebts] = _loanAgreement;
     }
 
+    function _setLoanState(uint256 _debtId, uint8 _loanState) internal {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId] >> 16;
+
+        assembly {
+            mstore(0x20, _loanState)
+            mstore(0x1e, _contractTerms)
+            _contractTerms := mload(0x20)
+        }
+
+        __packedDebtTerms[_debtId] = _contractTerms;
+    }
+
     function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
         return loanStart(_debtId) > block.timestamp;
     }
@@ -443,38 +426,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             loanClose(_debtId) >= block.timestamp;
     }
 
-    function _checkDuration(bytes32 _contractTerms) internal view {
-        uint32 _duration;
-        uint32 _loanStart = _toUint32(block.timestamp);
-
-        assembly {
-            mstore(0x18, _contractTerms)
-            _duration := mload(0)
-        }
-
-        unchecked {
-            if (uint256(_duration) + uint256(_loanStart) > type(uint32).max) {
-                revert InvalidLoanParameter(_DURATION_ERROR_ID_);
-            }
-        }
-    }
-
-    function _checkPrincipal(
-        bytes32 _contractTerms,
-        uint256 _amount
-    ) internal pure {
-        uint128 _principal;
-
-        assembly {
-            mstore(0x04, _contractTerms)
-            _principal := mload(0)
-        }
-
-        if (_principal == 0 || _principal != _amount)
-            revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
-    }
-
-    function _checkTermsExpiry(bytes32 _contractTerms) public pure {
+    function _verifyTermsExpiry(bytes32 _contractTerms) internal pure {
         uint32 _termsExpiry;
 
         assembly {
@@ -489,36 +441,39 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
-    function _setLoanState(uint256 _debtId, uint8 _loanState) internal {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId] >> 16;
+    function _verifyDuration(bytes32 _contractTerms) internal view {
+        uint32 _duration;
+        uint32 _loanStart = _toUint32(block.timestamp);
 
         assembly {
-            mstore(0x20, _loanState)
-            mstore(0x1e, _contractTerms)
-            _contractTerms := mload(0x20)
+            // Get packed duration
+            mstore(0x18, _contractTerms)
+            _duration := mload(0)
         }
 
-        __packedDebtTerms[_debtId] = _contractTerms;
+        unchecked {
+            if (
+                uint256(_duration) == 0 ||
+                uint256(_duration) + uint256(_loanStart) > type(uint32).max
+            ) {
+                revert InvalidLoanParameter(_DURATION_ERROR_ID_);
+            }
+        }
     }
 
-    /**
-     * @dev Returns the downcasted uint32 from uint256, reverting on
-     * overflow (when the input is greater than largest uint32).
-     *
-     * Counterpart to Solidity's `uint32` operator.
-     *
-     * Requirements:
-     *
-     * - input must fit into 32 bits
-     *
-     * _Available since v2.5._
-     */
-    function _toUint32(uint256 value) internal pure returns (uint32) {
-        require(
-            value <= type(uint32).max,
-            "SafeCast: value doesn't fit in 32 bits"
-        );
-        return uint32(value);
+    function _verifyPrincipal(
+        bytes32 _contractTerms,
+        uint256 _amount
+    ) internal pure {
+        uint128 _principal;
+
+        assembly {
+            mstore(0x04, _contractTerms)
+            _principal := mload(0)
+        }
+
+        if (_principal == 0 || _principal != _amount)
+            revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
     }
 
     function _setBalanceWithInterest(
@@ -569,6 +524,26 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
 
         return _r;
+    }
+
+    /**
+     * @dev Returns the downcasted uint32 from uint256, reverting on
+     * overflow (when the input is greater than largest uint32).
+     *
+     * Counterpart to Solidity's `uint32` operator.
+     *
+     * Requirements:
+     *
+     * - input must fit into 32 bits
+     *
+     * _Available since v2.5._
+     */
+    function _toUint32(uint256 value) internal pure returns (uint32) {
+        require(
+            value <= type(uint32).max,
+            "SafeCast: value doesn't fit in 32 bits"
+        );
+        return uint32(value);
     }
 
     function __recoverSigner(

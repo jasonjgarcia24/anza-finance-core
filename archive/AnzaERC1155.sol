@@ -369,58 +369,6 @@ contract AnzaERC1155 is Context, ERC165, IAnzaERC1155 {
     }
 
     /**
-     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] version of {_mint}.
-     *
-     * Emits a {TransferBatch} event.
-     *
-     * Requirements:
-     *
-     * - `ids` and `amounts` must have the same length.
-     * - If `to` refers to a smart contract, it must implement {IERC1155Receiver-onERC1155BatchReceived} and return the
-     * acceptance magic value.
-     */
-    function _mintAnzaBatch(
-        address[2] memory to,
-        uint256[2] memory ids,
-        uint256[2] memory amounts,
-        bytes memory data
-    ) internal virtual {
-        require(
-            to[0] != address(0) && to[1] != address(0),
-            "ERC1155: mint to the zero address"
-        );
-
-        address operator = msg.sender;
-
-        _beforeAnzaBatchTransfer(operator, address(0), to, ids, amounts, data);
-
-        _balances[ids[0]][to[0]] += amounts[0];
-        _balances[ids[1]][to[1]] += amounts[1];
-
-        emit TransferAnzaBatch(operator, address(0), to, ids, amounts);
-
-        _afterAnzaTokenTransfer(operator, address(0), to, ids, amounts, data);
-
-        _doSafeTransferAcceptanceCheck(
-            operator,
-            address(0),
-            to[0],
-            ids[0],
-            amounts[0],
-            data
-        );
-
-        _doSafeTransferAcceptanceCheck(
-            operator,
-            address(0),
-            to[1],
-            ids[1],
-            amounts[1],
-            data
-        );
-    }
-
-    /**
      * @dev Destroys `amount` tokens of token type `id` from `from`
      *
      * Emits a {TransferSingle} event.
@@ -538,35 +486,6 @@ contract AnzaERC1155 is Context, ERC165, IAnzaERC1155 {
     ) internal virtual {}
 
     /**
-     * @dev Hook that is called before any token transfer. This includes minting
-     * and burning, as well as batched variants.
-     *
-     * The same hook is called on both single and batched variants. For single
-     * transfers, the length of the `ids` and `amounts` arrays will be 1.
-     *
-     * Calling conditions (for each `id` and `amount` pair):
-     *
-     * - When `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * of token type `id` will be  transferred to `to`.
-     * - When `from` is zero, `amount` tokens of token type `id` will be minted
-     * for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens of token type `id`
-     * will be burned.
-     * - `from` and `to` are never both zero.
-     * - `ids` and `amounts` have the same, non-zero length.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
-    function _beforeAnzaBatchTransfer(
-        address operator,
-        address from,
-        address[2] memory to,
-        uint256[2] memory ids,
-        uint256[2] memory amounts,
-        bytes memory data
-    ) internal virtual {}
-
-    /**
      * @dev Hook that is called after any token transfer. This includes minting
      * and burning, as well as batched variants.
      *
@@ -592,35 +511,6 @@ contract AnzaERC1155 is Context, ERC165, IAnzaERC1155 {
         address to,
         uint256[] memory ids,
         uint256[] memory amounts,
-        bytes memory data
-    ) internal virtual {}
-
-    /**
-     * @dev Hook that is called after any token transfer. This includes minting
-     * and burning, as well as batched variants.
-     *
-     * The same hook is called on both single and batched variants. For single
-     * transfers, the length of the `id` and `amount` arrays will be 1.
-     *
-     * Calling conditions (for each `id` and `amount` pair):
-     *
-     * - When `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * of token type `id` will be  transferred to `to`.
-     * - When `from` is zero, `amount` tokens of token type `id` will be minted
-     * for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens of token type `id`
-     * will be burned.
-     * - `from` and `to` are never both zero.
-     * - `ids` and `amounts` have the same, non-zero length.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
-    function _afterAnzaTokenTransfer(
-        address operator,
-        address from,
-        address[2] memory to,
-        uint256[2] memory ids,
-        uint256[2] memory amounts,
         bytes memory data
     ) internal virtual {}
 

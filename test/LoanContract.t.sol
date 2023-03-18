@@ -6,13 +6,14 @@ import "forge-std/console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
-import {LoanArbiter} from "../contracts/LoanArbiter.sol";
+import {LoanCollateralVault} from "../contracts/LoanCollateralVault.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
-import {LoanTreasureyPool} from "../contracts/LoanTreasureyPool.sol";
+import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
 import {DemoToken} from "../contracts/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
+import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "../contracts/utils/LibLoanContractStates.sol";
-import {LibLoanContractMetadata as Metadata, LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
 
 abstract contract LoanContractGlobalConstants {
     /* ------------------------------------------------ *
@@ -37,8 +38,7 @@ abstract contract LoanContractGlobalConstants {
      * ------------------------------------------------ */
     uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
     uint8 public constant _FIXED_INTEREST_RATE_ = 100; // 0.05
-    uint128 public constant _PRINCIPAL_ =
-        226854911280625642308916404954512140970; // 32; // ETH
+    uint128 public constant _PRINCIPAL_ = 32; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
     uint32 public constant _DURATION_ = 7257600; // 12 weeks (seconds) // 1145324612
     uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
@@ -88,30 +88,59 @@ abstract contract LoanContractDeployer is
     uint256 public borrowerPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_4");
     uint256 public lenderPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_5");
 
-    LoanArbiter public loanArbiter;
+    LoanCollateralVault public loanCollateralVault;
     LoanContract public loanContract;
-    LoanTreasureyPool public loanTreasurer;
+    LoanTreasurey public loanTreasurer;
     AnzaToken public anzaToken;
     DemoToken public demoToken;
 
     function setUp() public virtual {
-        loanArbiter = new LoanArbiter(admin, treasurer, collector);
+        // Deploy LoanCollateralVault
+        loanCollateralVault = new LoanCollateralVault(admin);
 
+        // Deploy LoanContract
         loanContract = new LoanContract(
             admin,
-            address(loanArbiter),
+            address(loanCollateralVault),
             treasurer,
             collector
         );
 
-        anzaToken = new AnzaToken(address(loanContract));
+        // Deploy LoanTreasurey
+        loanTreasurer = new LoanTreasurey(
+            address(loanContract),
+            address(loanCollateralVault),
+            address(anzaToken)
+        );
+
+        // Deploy AnzaToken
+        anzaToken = new AnzaToken(
+            admin,
+            address(loanContract),
+            address(loanTreasurer)
+        );
 
         vm.deal(admin, 1 ether);
         vm.startPrank(admin);
-        loanContract.setAnzaToken(address(anzaToken));
-        vm.stopPrank();
 
-        // loanTreasurer = new LoanTreasureyPool(address(loanContract));
+        // Set LoanContract access control roles
+        loanContract.grantRole(Roles._TREASURER_, address(loanTreasurer));
+
+        // Set LoanCollateralVault access control roles
+        loanCollateralVault.grantRole(
+            Roles._LOAN_CONTRACT_,
+            address(loanContract)
+        );
+
+        loanCollateralVault.grantRole(
+            Roles._TREASURER_,
+            address(loanTreasurer)
+        );
+
+        // Set AnzaToken address
+        loanContract.setAnzaToken(address(anzaToken));
+
+        vm.stopPrank();
 
         vm.startPrank(borrower);
         demoToken = new DemoToken();

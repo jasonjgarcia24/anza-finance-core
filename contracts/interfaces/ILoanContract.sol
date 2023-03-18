@@ -3,8 +3,6 @@
 
 pragma solidity ^0.8.0;
 
-import {LibLoanContractMetadata as Metadata} from "../libraries/LibLoanContract.sol";
-
 interface ILoanContract {
     error InvalidTokenId(uint256 tokenId);
     error InvalidParticipant(address account);
@@ -60,7 +58,9 @@ interface ILoanContract {
 
     function borrower(uint256 _debtId) external view returns (address);
 
-    function depositPayment(uint256 _debtId) external payable;
+    // function depositPayment(uint256 _debtId) external payable;
 
-    function withdrawPayment(uint256 _amount) external returns (bool);
+    // function withdrawPayment(uint256 _amount) external returns (bool);
+
+    function updateLoanState(uint256 _debtId) external;
 }

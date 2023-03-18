@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "hardhat/console.sol";
 import "./AnzaERC1155URIStorage.sol";
+import "./interfaces/IAnzaToken.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import {LibOfficerRoles as Roles} from "../libraries/LibLoanContract.sol";
 
-contract AnzaToken is AnzaERC1155URIStorage {
+contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
     string private constant _TOKEN_NAME_ = "Anza Debt Token";
     string private constant _TOKEN_SYMBOL_ = "ADT";
-
-    /* ------------------------------------------------ *
-     *              Priviledged Accounts                *
-     * ------------------------------------------------ */
-    address private immutable __debtFactory;
 
     /* ------------------------------------------------ *
      *                    Databases                     *
@@ -22,8 +21,23 @@ contract AnzaToken is AnzaERC1155URIStorage {
     mapping(uint256 => address) private __owners;
     mapping(uint256 => uint256) private _totalSupply;
 
-    constructor(address _debtFactory) AnzaERC1155("") {
-        __debtFactory = _debtFactory;
+    constructor(address _admin, address _debtFactory, address _treasurer) {
+        _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
+        _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
+        _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
+
+        _grantRole(Roles._ADMIN_, _admin);
+        _grantRole(Roles._LOAN_CONTRACT_, _debtFactory);
+        _grantRole(Roles._TREASURER_, _treasurer);
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view override(ERC1155, AccessControl) returns (bool) {
+        return
+            _interfaceId == type(IAnzaToken).interfaceId ||
+            ERC1155.supportsInterface(_interfaceId) ||
+            AccessControl.supportsInterface(_interfaceId);
     }
 
     function name() public pure returns (string memory) {
@@ -74,33 +88,30 @@ contract AnzaToken is AnzaERC1155URIStorage {
         uint256 _amount,
         string calldata _collateralURI,
         bytes memory _data
-    ) external {
-        require(msg.sender == __debtFactory, "Invalid minter");
+    ) external onlyRole(Roles._LOAN_CONTRACT_) {
+        address _borrower = address(bytes20(_data));
+        bytes32 _tokenAdminRole = keccak256(_data);
 
-        // Preset borrower token's URI if minting the lender's
-        // token.
-        if (_id % 2 == 0 || exists(_id)) {
+        /* Lender Token */
+        if (_id % 2 == 0) {
+            _checkRole(Roles._LOAN_CONTRACT_, msg.sender);
+
+            // Only allow treasurer to grant/revoke access control.
+            // This is necessary to allow a single account to recall
+            // the collateral upon full repayment.
+            _setRoleAdmin(_tokenAdminRole, Roles._TREASURER_);
+            _grantRole(_tokenAdminRole, _borrower);
+
+            // Preset borrower token's URI
             _setURI(_id + 1, _collateralURI);
         }
+        /* Borrower Token */
+        else {
+            _checkRole(_tokenAdminRole, _borrower);
+        }
 
-        // Mint debt ALC debt tokens
+        // Mint ALC debt tokens
         _mint(_to, _id, _amount, _data);
-    }
-
-    function mint(
-        address[2] memory _to,
-        uint256[2] memory _ids,
-        uint256[2] memory _amounts,
-        string calldata _collateralURI,
-        bytes memory _data
-    ) external {
-        require(msg.sender == __debtFactory, "Invalid minter");
-
-        // Mint debt ALC debt tokens for borrower and lender
-        _mintAnzaBatch(_to, _ids, _amounts, _data);
-
-        // Set borrower token's URI
-        _setURI(_ids[0], _collateralURI);
     }
 
     function burn(address account, uint256 id, uint256 value) external {
@@ -131,11 +142,9 @@ contract AnzaToken is AnzaERC1155URIStorage {
         address _account,
         address _operator
     ) public view override returns (bool) {
-        if (_operator == __debtFactory) {
-            return true;
-        }
-
-        return super.isApprovedForAll(_account, _operator);
+        return
+            hasRole(Roles._TREASURER_, _operator) ||
+            super.isApprovedForAll(_account, _operator);
     }
 
     function _beforeTokenTransfer(
@@ -189,25 +198,5 @@ contract AnzaToken is AnzaERC1155URIStorage {
 
         // Set token owners
         __owners[ids[0]] = to;
-    }
-
-    /**
-     * @dev See {ERC1155-_beforeTokenTransfer}.
-     */
-    function _afterAnzaTokenTransfer(
-        address,
-        address from,
-        address[2] memory to,
-        uint256[2] memory ids,
-        uint256[2] memory,
-        bytes memory
-    ) internal override {
-        if (from != address(0)) {
-            return;
-        }
-
-        // Set token owners
-        __owners[ids[0]] = to[0];
-        __owners[ids[1]] = to[1];
     }
 }
