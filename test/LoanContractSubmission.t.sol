@@ -18,6 +18,16 @@ abstract contract LoanContractSubmitFunctions is
     ILoanContractEvents,
     LoanContractGlobalConstants
 {
+    struct TestTermsStruct {
+        uint8 loanState;
+        uint256 firInterval;
+        uint8 fixedInterestRate;
+        uint128 principal;
+        uint32 gracePeriod;
+        uint32 duration;
+        uint32 termsExpiry;
+    }
+
     function initLoanContractExpectations(
         address _loanContractAddress,
         address _lender,
@@ -105,26 +115,29 @@ abstract contract LoanContractSubmitFunctions is
         address _borrower,
         address _loanContractAddress,
         uint256 _debtId,
-        uint8 _loanState,
-        uint8 _fixedInterestRate,
-        uint32 _duration
+        TestTermsStruct memory _termsStruct
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
 
         // Verify loan agreement terms for this debt ID
         assertEq(
             _loanContract.loanState(_debtId),
-            _loanState,
+            _termsStruct.loanState,
             "Invalid loan state"
         );
         assertEq(
+            _loanContract.firInterval(_debtId),
+            _termsStruct.firInterval,
+            "Invalid fir interval"
+        );
+        assertEq(
             _loanContract.fixedInterestRate(_debtId),
-            _fixedInterestRate,
+            _termsStruct.fixedInterestRate,
             "Invalid fixed interest rate"
         );
         assertEq(
             _loanContract.loanClose(_debtId) - _loanContract.loanStart(_debtId),
-            _duration,
+            _termsStruct.duration,
             "Invalid duration"
         );
         assertEq(
@@ -190,15 +203,15 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        // initLoanContractExpectations(
-        //     address(loanContract),
-        //     lender,
-        //     address(demoToken),
-        //     _debtId,
-        //     _PRINCIPAL_,
-        //     _DURATION_,
-        //     _TERMS_EXPIRY_
-        // );
+        initLoanContractExpectations(
+            address(loanContract),
+            lender,
+            address(demoToken),
+            _debtId,
+            _PRINCIPAL_,
+            _DURATION_,
+            _TERMS_EXPIRY_
+        );
 
         // Submit proposal
         vm.deal(lender, _PRINCIPAL_);
@@ -215,59 +228,65 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         require(success);
         vm.stopPrank();
 
-        // if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
-        //     return;
-        // }
+        if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
+            return;
+        }
 
-        // // Verify balance of borrower token is zero
-        // uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        // assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+        // Verify balance of borrower token is zero
+        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
 
-        // // Mint replica token
-        // vm.deal(borrower, 1 ether);
-        // vm.startPrank(borrower);
-        // loanContract.mintReplica(_debtId);
-        // vm.stopPrank();
+        // Mint replica token
+        vm.deal(borrower, 1 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
 
-        // // Verify debt ID for collateral
-        // verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
+        // Verify debt ID for collateral
+        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
-        // // Verify loan agreement terms for this debt ID
-        // verifyLoanAgreementTerms(
-        //     borrower,
-        //     address(loanContract),
-        //     _debtId,
-        //     _ACTIVE_GRACE_STATE_,
-        //     _FIXED_INTEREST_RATE_,
-        //     _DURATION_
-        // );
+        // Verify loan agreement terms for this debt ID
+        verifyLoanAgreementTerms(
+            borrower,
+            address(loanContract),
+            _debtId,
+            TestTermsStruct({
+                loanState: _ACTIVE_GRACE_STATE_,
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: 0,
+                gracePeriod: 0,
+                duration: _DURATION_,
+                termsExpiry: 0
+            })
+        );
 
-        // // Verify loan participants
-        // uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-        // assertEq(
-        //     anzaToken.ownerOf(_lenderTokenId),
-        //     lender,
-        //     "Invalid lender token ID"
-        // );
+        // Verify loan participants
+        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "Invalid lender token ID"
+        );
 
-        // // Verify total debt balance
-        // assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
+        // Verify total debt balance
+        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
 
-        // // Verify token balances
-        // verifyTokenBalances(
-        //     borrower,
-        //     lender,
-        //     address(anzaToken),
-        //     _debtId,
-        //     _PRINCIPAL_
-        // );
+        // Verify token balances
+        verifyTokenBalances(
+            borrower,
+            lender,
+            address(anzaToken),
+            _debtId,
+            _PRINCIPAL_
+        );
 
-        // // Minted lender NFT should have debt token URI
-        // assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
+        // Minted lender NFT should have debt token URI
+        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
-        // // Verify debtId is updated at end
-        // _debtId = loanContract.totalDebts();
-        // assertEq(_debtId, 1);
+        // Verify debtId is updated at end
+        _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 1);
     }
 }
 
@@ -276,14 +295,6 @@ contract LoanContractFuzzSubmit is
     LoanContractSubmitFunctions
 {
     uint256 collateralNonce = 0;
-
-    struct TestTermsStruct {
-        uint8 fixedInterestRate;
-        uint128 principal;
-        uint32 gracePeriod;
-        uint32 duration;
-        uint32 termsExpiry;
-    }
 
     function setUp() public virtual override {
         super.setUp();
@@ -296,11 +307,12 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, _fixedInterestRate)
-            mstore(0x1c, _PRINCIPAL_)
-            mstore(0x0c, _GRACE_PERIOD_)
-            mstore(0x08, _DURATION_)
-            mstore(0x04, _TERMS_EXPIRY_)
+            mstore(0x1f, _FIR_INTERVAL_)
+            mstore(0x1e, _fixedInterestRate)
+            mstore(0x1b, _PRINCIPAL_)
+            mstore(0x0b, _GRACE_PERIOD_)
+            mstore(0x07, _DURATION_)
+            mstore(0x03, _TERMS_EXPIRY_)
 
             _contractTerms := mload(0x20)
         }
@@ -372,9 +384,15 @@ contract LoanContractFuzzSubmit is
             borrower,
             address(loanContract),
             _debtId,
-            _ACTIVE_GRACE_STATE_,
-            _fixedInterestRate,
-            _DURATION_
+            TestTermsStruct({
+                loanState: _ACTIVE_GRACE_STATE_,
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _fixedInterestRate,
+                principal: 0,
+                gracePeriod: 0,
+                duration: _DURATION_,
+                termsExpiry: 0
+            })
         );
 
         // Verify loan participants
@@ -410,11 +428,12 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1c, _principal)
-            mstore(0x0c, _GRACE_PERIOD_)
-            mstore(0x08, _DURATION_)
-            mstore(0x04, _TERMS_EXPIRY_)
+            mstore(0x1f, _FIR_INTERVAL_)
+            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1b, _principal)
+            mstore(0x0b, _GRACE_PERIOD_)
+            mstore(0x07, _DURATION_)
+            mstore(0x03, _TERMS_EXPIRY_)
 
             _contractTerms := mload(0x20)
         }
@@ -486,9 +505,15 @@ contract LoanContractFuzzSubmit is
             borrower,
             address(loanContract),
             _debtId,
-            _ACTIVE_GRACE_STATE_,
-            _FIXED_INTEREST_RATE_,
-            _DURATION_
+            TestTermsStruct({
+                loanState: _ACTIVE_GRACE_STATE_,
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: 0,
+                gracePeriod: 0,
+                duration: _DURATION_,
+                termsExpiry: 0
+            })
         );
 
         // Verify loan participants
@@ -526,11 +551,12 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1c, _PRINCIPAL_)
-            mstore(0x0c, _gracePeriod)
-            mstore(0x08, _DURATION_)
-            mstore(0x04, _TERMS_EXPIRY_)
+            mstore(0x1f, _FIR_INTERVAL_)
+            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1b, _PRINCIPAL_)
+            mstore(0x0b, _gracePeriod)
+            mstore(0x07, _DURATION_)
+            mstore(0x03, _TERMS_EXPIRY_)
 
             _contractTerms := mload(0x20)
         }
@@ -607,9 +633,15 @@ contract LoanContractFuzzSubmit is
             borrower,
             address(loanContract),
             _debtId,
-            _ACTIVE_GRACE_STATE_,
-            _FIXED_INTEREST_RATE_,
-            _DURATION_
+            TestTermsStruct({
+                loanState: _ACTIVE_GRACE_STATE_,
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: 0,
+                gracePeriod: 0,
+                duration: _DURATION_,
+                termsExpiry: 0
+            })
         );
 
         // Verify loan participants
@@ -642,11 +674,12 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1c, _PRINCIPAL_)
-            mstore(0x0c, _GRACE_PERIOD_)
-            mstore(0x08, _duration)
-            mstore(0x04, _TERMS_EXPIRY_)
+            mstore(0x1f, _FIR_INTERVAL_)
+            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1b, _PRINCIPAL_)
+            mstore(0x0b, _GRACE_PERIOD_)
+            mstore(0x07, _duration)
+            mstore(0x03, _TERMS_EXPIRY_)
 
             _contractTerms := mload(0x20)
         }
@@ -718,9 +751,15 @@ contract LoanContractFuzzSubmit is
             borrower,
             address(loanContract),
             _debtId,
-            _ACTIVE_GRACE_STATE_,
-            _FIXED_INTEREST_RATE_,
-            _duration
+            TestTermsStruct({
+                loanState: _ACTIVE_GRACE_STATE_,
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: 0,
+                gracePeriod: 0,
+                duration: _duration,
+                termsExpiry: 0
+            })
         );
 
         // Verify loan participants
@@ -758,11 +797,12 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1c, _PRINCIPAL_)
-            mstore(0x0c, _GRACE_PERIOD_)
-            mstore(0x08, _DURATION_)
-            mstore(0x04, _termsExpiry)
+            mstore(0x1f, _FIR_INTERVAL_)
+            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1b, _PRINCIPAL_)
+            mstore(0x0b, _GRACE_PERIOD_)
+            mstore(0x07, _DURATION_)
+            mstore(0x03, _termsExpiry)
 
             _contractTerms := mload(0x20)
         }
@@ -838,9 +878,15 @@ contract LoanContractFuzzSubmit is
             borrower,
             address(loanContract),
             _debtId,
-            _ACTIVE_GRACE_STATE_,
-            _FIXED_INTEREST_RATE_,
-            _DURATION_
+            TestTermsStruct({
+                loanState: _ACTIVE_GRACE_STATE_,
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: 0,
+                gracePeriod: 0,
+                duration: _DURATION_,
+                termsExpiry: 0
+            })
         );
 
         // Verify loan participants
@@ -874,6 +920,12 @@ contract LoanContractFuzzSubmit is
     function testAnyAllLenderSubmitProposal(
         TestTermsStruct memory _termsStruct
     ) public {
+        _termsStruct.firInterval = bound(
+            _termsStruct.firInterval,
+            0,
+            (2 ** 4) - 1
+        );
+
         vm.assume(
             (block.timestamp + uint256(_termsStruct.duration)) <
                 type(uint32).max
@@ -882,11 +934,12 @@ contract LoanContractFuzzSubmit is
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, mload(_termsStruct))
-            mstore(0x1c, mload(add(_termsStruct, 0x20)))
-            mstore(0x0c, mload(add(_termsStruct, 0x40)))
-            mstore(0x08, mload(add(_termsStruct, 0x60)))
-            mstore(0x04, mload(add(_termsStruct, 0x80)))
+            mstore(0x1f, mload(add(_termsStruct, 0x20)))
+            mstore(0x1e, mload(add(_termsStruct, 0x40)))
+            mstore(0x1b, mload(add(_termsStruct, 0x60)))
+            mstore(0x0b, mload(add(_termsStruct, 0x80)))
+            mstore(0x07, mload(add(_termsStruct, 0xa0)))
+            mstore(0x03, mload(add(_termsStruct, 0xc0)))
 
             _contractTerms := mload(0x20)
         }
@@ -923,6 +976,7 @@ contract LoanContractFuzzSubmit is
         // Submit proposal
         vm.deal(lender, uint256(_termsStruct.principal) + 1 ether);
         vm.startPrank(lender);
+        console.log(_termsStruct.duration);
 
         (bool success, ) = address(loanContract).call{
             value: _termsStruct.principal
@@ -964,9 +1018,15 @@ contract LoanContractFuzzSubmit is
             borrower,
             address(loanContract),
             _debtId,
-            _ACTIVE_GRACE_STATE_,
-            _termsStruct.fixedInterestRate,
-            _termsStruct.duration
+            TestTermsStruct({
+                loanState: _ACTIVE_GRACE_STATE_,
+                firInterval: _termsStruct.firInterval,
+                fixedInterestRate: _termsStruct.fixedInterestRate,
+                principal: 0,
+                gracePeriod: 0,
+                duration: _termsStruct.duration,
+                termsExpiry: 0
+            })
         );
 
         // Verify loan participants

@@ -10,6 +10,8 @@ contract LoanContractCompounding is LoanContractSubmitted, ILoanContractEvents {
     }
 
     function testCompoundingInterest() public {
-        
+        uint256 _debtId = loanContract.totalDebts() - 1;
+
+        console.log(loanTreasurer.getBalanceWithInterest(_debtId));
     }
 }

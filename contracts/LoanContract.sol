@@ -7,14 +7,12 @@ import "./interfaces/ILoanContract.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./abdk-libraries-solidity/ABDKMath64x64.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 
 contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
-    uint256 private constant _SECONDS_PER_YEAR_RATIO_SCALED_ = 3155695200;
     uint256 private constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
 
     /* ------------------------------------------------ *
@@ -58,42 +56,31 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
      * ------------------------------------------------ */
-    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0
     uint256 private constant _LOAN_STATE_MASK_ =
-        115792089237316195423570985008687907853269984665640564039457584007913129639920;
-    // 0x000000000000000000000000000000000000000000000000000000000000000F
-    uint256 private constant _LOAN_STATE_MAP_ = 15;
-
-    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0F
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0;
+    uint256 private constant _LOAN_STATE_MAP_ =
+        0x000000000000000000000000000000000000000000000000000000000000000F;
     uint256 private constant _FIR_INTERVAL_MASK_ =
-        115792089237316195423570985008687907853269984665640564039457584007913129639695;
-    // 0x00000000000000000000000000000000000000000000000000000000000000F0
-    uint256 private constant _FIR_INTERVAL_MAP_ = 240;
-
-    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FF
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0F;
+    uint256 private constant _FIR_INTERVAL_MAP_ =
+        0x00000000000000000000000000000000000000000000000000000000000000F0;
     uint256 private constant _FIR_MASK_ =
-        115792089237316195423570985008687907853269984665640564039457584007913129574655;
-    // 0x000000000000000000000000000000000000000000000000000000000000FF00
-    uint256 private constant _FIR_MAP_ = 65280;
-
-    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFF
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FF;
+    uint256 private constant _FIR_MAP_ =
+        0x000000000000000000000000000000000000000000000000000000000000FF00;
     uint256 private constant _LOAN_START_MASK_ =
-        115792089237316195423570985008687907853269984665640564039457583726438152994815;
-    // 0x0000000000000000000000000000000000000000000000000000FFFFFFFF0000
-    uint256 private constant _LOAN_START_MAP_ = 281474976645120;
-
-    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFF
-    uint256 private constant _LOAN_CLOSE_MASK_ =
-        115792089237316195423570985008687907853269984665640562830531764674758931644415;
-    // 0x00000000000000000000000000000000000000000000FFFFFFFF000000000000
-    uint256 private constant _LOAN_CLOSE_MAP_ = 1208925819333154197995520;
-
-    // 0xFFFF0000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFFF
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFF;
+    uint256 private constant _LOAN_START_MAP_ =
+        0x0000000000000000000000000000000000000000000000000000FFFFFFFF0000;
+    uint256 private constant _LOAN_DURATION_MASK_ =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFF;
+    uint256 private constant _LOAN_DURATION_MAP_ =
+        0x00000000000000000000000000000000000000000000FFFFFFFF000000000000;
     uint256 private constant _BORROWER_MASK_ =
-        115790322390251417039241401711187164934754157181743689629425282016341011726335;
-    // 0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000
+        0xFFFF0000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFFF;
     uint256 private constant _BORROWER_MAP_ =
-        1766847064778384329583297500742918515827483896874410032301991572117913600;
+        0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000;
+    uint256 private constant _CLEANUP_MASK_ = (1 << 240) - 1;
 
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
@@ -117,11 +104,12 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     mapping(address => mapping(uint256 => uint256[])) public debtIds;
 
     //  > 004 - [0..3]     `loanState`
-    //  > 008 - [4..11]    `fixedInterestRate`
-    //  > 032 - [12..43]   `loanStart`
-    //  > 032 - [44..75]   `loanClose`
-    //  > 160 - [76..235]  `borrower`
-    //  > 020 - [236..255] extra space
+    //  > 004 - [4..7]     `firInterval`
+    //  > 008 - [8..15]    `fixedInterestRate`
+    //  > 032 - [16..47]   `loanStart`
+    //  > 032 - [48..79]   `loanDuration`
+    //  > 160 - [80..239]  `borrower`
+    //  > 016 - [240..255] extra space
     mapping(uint256 => bytes32) private __packedDebtTerms;
 
     // Mapping from participant to withdrawable balance
@@ -196,65 +184,65 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _collateralId,
         bytes calldata _borrowerSignature
     ) external payable {
-        // _verifyTermsExpiry(_contractTerms);
-        // _verifyDuration(_contractTerms);
+        _verifyTermsExpiry(_contractTerms);
+        _verifyDuration(_contractTerms);
 
-        // uint256 _principal = msg.value;
-        // _verifyPrincipal(_contractTerms, _principal);
+        uint256 _principal = msg.value;
+        _verifyPrincipal(_contractTerms, _principal);
 
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
 
-        // if (
-        //     _borrower !=
-        //     __recoverSigner(
-        //         _contractTerms,
-        //         _collateralAddress,
-        //         _collateralId,
-        //         getCollateralNonce(_collateralAddress, _collateralId),
-        //         _borrowerSignature
-        //     )
-        // ) revert InvalidParticipant({account: _borrower});
+        if (
+            _borrower !=
+            __recoverSigner(
+                _contractTerms,
+                _collateralAddress,
+                _collateralId,
+                getCollateralNonce(_collateralAddress, _collateralId),
+                _borrowerSignature
+            )
+        ) revert InvalidParticipant({account: _borrower});
 
-        // // Add debt ID to collateral mapping
-        // debtIds[_collateralAddress][_collateralId].push(totalDebts);
+        // Add debt ID to collateral mapping
+        debtIds[_collateralAddress][_collateralId].push(totalDebts);
         _setLoanAgreement(_borrower, _contractTerms);
 
-        // // Transfer collateral to collateral vault.
-        // // The collateral ID and address will be mapped within
-        // // the loan collateral vault to the debt ID.
-        // _collateralToken.safeTransferFrom(
-        //     _borrower,
-        //     collateralVault,
-        //     _collateralId,
-        //     abi.encodePacked(_collateralAddress)
-        // );
+        // Transfer collateral to collateral vault.
+        // The collateral ID and address will be mapped within
+        // the loan collateral vault to the debt ID.
+        _collateralToken.safeTransferFrom(
+            _borrower,
+            collateralVault,
+            _collateralId,
+            abi.encodePacked(_collateralAddress)
+        );
 
-        // // Transfer funds to borrower
-        // (bool _success, ) = _borrower.call{value: _principal}("");
-        // if (!_success) revert FailedFundsTransfer();
+        // Transfer funds to borrower
+        (bool _success, ) = _borrower.call{value: _principal}("");
+        if (!_success) revert FailedFundsTransfer();
 
-        // // Mint debt ALC debt tokens for borrower and lender.
-        // // This will grant the borrower recal access control
-        // // of the collateral following full loan repayment.
-        // anzaToken.mint(
-        //     msg.sender,
-        //     totalDebts * 2,
-        //     _principal,
-        //     _collateralToken.tokenURI(_collateralId),
-        //     abi.encodePacked(_borrower, totalDebts)
-        // );
+        // Mint debt ALC debt tokens for borrower and lender.
+        // This will grant the borrower recal access control
+        // of the collateral following full loan repayment.
+        anzaToken.mint(
+            msg.sender,
+            totalDebts * 2,
+            _principal,
+            _collateralToken.tokenURI(_collateralId),
+            abi.encodePacked(_borrower, totalDebts)
+        );
 
-        // // Emit initialization event
-        // emit LoanContractInitialized(
-        //     _collateralAddress,
-        //     _collateralId,
-        //     totalDebts
-        // );
+        // Emit initialization event
+        emit LoanContractInitialized(
+            _collateralAddress,
+            _collateralId,
+            totalDebts
+        );
 
-        // // Setup for next debt ID
-        // totalDebts += 1;
+        // Setup for next debt ID
+        totalDebts += 1;
     }
 
     function mintReplica(uint256 _debtId) external {
@@ -287,6 +275,21 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
+    function firInterval(
+        uint256 _debtId
+    ) public view returns (uint256 _firInterval) {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        uint8 __firInterval;
+
+        assembly {
+            __firInterval := shr(4, and(_contractTerms, _FIR_INTERVAL_MAP_))
+        }
+
+        unchecked {
+            _firInterval = __firInterval;
+        }
+    }
+
     function fixedInterestRate(
         uint256 _debtId
     ) public view returns (uint256 _fixedInterestRate) {
@@ -294,12 +297,16 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         bytes32 __fixedInterestRate;
 
         assembly {
-            __fixedInterestRate := and(_contractTerms, _FIR_MAP_)
+            __fixedInterestRate := shr(8, and(_contractTerms, _FIR_MAP_))
         }
 
         unchecked {
-            _fixedInterestRate = uint256(__fixedInterestRate >> 4);
+            _fixedInterestRate = uint256(__fixedInterestRate);
         }
+    }
+
+    function loanLastChecked(uint256 _debtId) external view returns (uint256) {
+        return loanStart(_debtId);
     }
 
     function loanStart(
@@ -309,11 +316,26 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 __loanStart;
 
         assembly {
-            __loanStart := shr(12, and(_contractTerms, _LOAN_START_MAP_))
+            __loanStart := shr(16, and(_contractTerms, _LOAN_START_MAP_))
         }
 
         unchecked {
             _loanStart = __loanStart;
+        }
+    }
+
+    function loanDuration(
+        uint256 _debtId
+    ) public view returns (uint256 _loanDuration) {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        uint32 __loanDuration;
+
+        assembly {
+            __loanDuration := shr(48, and(_contractTerms, _LOAN_DURATION_MAP_))
+        }
+
+        unchecked {
+            _loanDuration = __loanDuration;
         }
     }
 
@@ -324,7 +346,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 __loanClose;
 
         assembly {
-            __loanClose := shr(44, and(_contractTerms, _LOAN_CLOSE_MAP_))
+            __loanClose := add(
+                shr(16, and(_contractTerms, _LOAN_START_MAP_)),
+                shr(48, and(_contractTerms, _LOAN_DURATION_MAP_))
+            )
         }
 
         unchecked {
@@ -336,13 +361,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
 
         assembly {
-            _borrower := shr(76, and(_contractTerms, _BORROWER_MAP_))
+            _borrower := shr(80, and(_contractTerms, _BORROWER_MAP_))
         }
     }
 
     /*
      * @dev Updates loan state.
-    //  */
+     */
     function updateLoanState(
         uint256 _debtId
     ) external onlyRole(Roles._TREASURER_) {
@@ -359,18 +384,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
-            // // Need to mint more debt tokens
-            // uint256 _balance = anzaToken.totalSupply(_debtId * 2);
-            // uint256 _n = loanClose(_debtId) - block.timestamp; // TODO: THIS ISN'T CORRECT
-            // uint256 _newDebt = _balance -
-            //     _compound(_balance, fixedInterestRate(_debtId), _n);
-            // anzaToken.mint(
-            //     anzaToken.lenderOf(_debtId),
-            //     totalDebts * 2,
-            //     _newDebt,
-            //     "",
-            //     ""
-            // );
+            _updateLoanTimes(_debtId);
         }
         // Loan no longer in grace period
         else if (_checkGracePeriod(_debtId) == false) {
@@ -402,16 +416,12 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             mstore(0x19, _contractTerms)
             _duration := mload(0)
         }
-        console.log(_fixedInterestRate);
-        console.log(_duration);
 
-        console.logBytes32(_contractTerms);
-
+        // Remove loan state and pack fixed interest rate (fir) interval
         _contractTerms >>= 4;
-        // console.logBytes32(_contractTerms);
 
         assembly {
-            // Pack fixed interest rate interval and loan state (uint4 and uint4)
+            // Pack loan state (uint4)
             switch _duration
             case 0 {
                 mstore(0x20, xor(_contractTerms, _ACTIVE_STATE_))
@@ -419,6 +429,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             default {
                 mstore(0x20, xor(_contractTerms, _ACTIVE_GRACE_STATE_))
             }
+
+            // Pack fir interval already performed (uint4)
 
             // Pack fixed interest rate (uint8)
             mstore(
@@ -438,12 +450,12 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 )
             )
 
-            // Pack loan close time (uint32)
+            // Pack loan duration time (uint32)
             mstore(
                 0x20,
                 xor(
-                    and(_LOAN_CLOSE_MASK_, mload(0x20)),
-                    and(_LOAN_CLOSE_MAP_, shl(48, add(_loanStart, _duration)))
+                    and(_LOAN_DURATION_MASK_, mload(0x20)),
+                    and(_LOAN_DURATION_MAP_, shl(48, _duration))
                 )
             )
 
@@ -456,10 +468,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 )
             )
 
+            // Cleanup
+            mstore(0x20, and(_CLEANUP_MASK_, mload(0x20)))
+
             _loanAgreement := mload(0x20)
         }
-
-        console.logBytes32(_loanAgreement);
 
         if (_duration == 0) revert InvalidLoanParameter(_DURATION_ERROR_ID_);
 
@@ -488,11 +501,46 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             loanClose(_debtId) <= block.timestamp;
     }
 
+    function _updateLoanTimes(uint256 _debtId) internal view {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+
+        assembly {
+            let _now := timestamp()
+            mstore(0x20, _contractTerms)
+
+            // Store loan close time
+            let _loanClose := add(
+                shr(16, and(_contractTerms, _LOAN_START_MAP_)),
+                shr(48, and(_contractTerms, _LOAN_DURATION_MAP_))
+            )
+
+            // Update loan last checked. This could be a transition from
+            // loan start to loan last checked if it is the first time this
+            // condition is executed.
+            mstore(
+                0x20,
+                xor(
+                    and(_LOAN_START_MASK_, mload(0x20)),
+                    and(_LOAN_START_MAP_, shl(16, _now))
+                )
+            )
+
+            // Update loan duration
+            mstore(
+                0x20,
+                xor(
+                    and(_LOAN_DURATION_MASK_, mload(0x20)),
+                    and(_LOAN_DURATION_MAP_, shl(48, sub(_loanClose, _now)))
+                )
+            )
+        }
+    }
+
     function _verifyTermsExpiry(bytes32 _contractTerms) internal pure {
         uint32 _termsExpiry;
 
         assembly {
-            mstore(0x1c, _contractTerms)
+            mstore(0x1d, _contractTerms)
             _termsExpiry := mload(0)
         }
 
@@ -508,8 +556,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 _loanStart = _toUint32(block.timestamp);
 
         assembly {
-            // Get packed duration
-            mstore(0x18, _contractTerms)
+            mstore(0x19, _contractTerms)
             _duration := mload(0)
         }
 
@@ -530,62 +577,12 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint128 _principal;
 
         assembly {
-            mstore(0x04, _contractTerms)
+            mstore(0x05, _contractTerms)
             _principal := mload(0)
         }
 
         if (_principal == 0 || _principal != _amount)
             revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
-    }
-
-    function _setBalanceWithInterest(
-        address _participant,
-        uint256 _debtId
-    ) internal view {
-        uint256 _fixedInterestRate = fixedInterestRate(_debtId);
-        uint256 _oldBalance = debtBalanceOf(_debtId);
-
-        uint256 _newBalance = _compound(
-            _oldBalance,
-            _fixedInterestRate,
-            15778476
-        );
-    }
-
-    function _compound(
-        uint256 _principal,
-        uint256 _ratio,
-        uint256 _n
-    ) internal pure returns (uint256) {
-        return
-            ABDKMath64x64.mulu(
-                _pow(
-                    ABDKMath64x64.add(
-                        ABDKMath64x64.fromUInt(1),
-                        ABDKMath64x64.divu(
-                            _ratio,
-                            _SECONDS_PER_YEAR_RATIO_SCALED_
-                        )
-                    ),
-                    _n
-                ),
-                _principal
-            );
-    }
-
-    function _pow(int128 _x, uint256 _n) internal pure returns (int128) {
-        int128 _r = ABDKMath64x64.fromUInt(1);
-        while (_n > 0) {
-            if (_n % 2 == 1) {
-                _r = ABDKMath64x64.mul(_r, _x);
-                _n -= 1;
-            } else {
-                _x = ABDKMath64x64.mul(_x, _x);
-                _n /= 2;
-            }
-        }
-
-        return _r;
     }
 
     /**

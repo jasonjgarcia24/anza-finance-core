@@ -57,9 +57,9 @@ abstract contract LoanContractGlobalConstants {
      *                  Loan Terms                      *
      * ------------------------------------------------ */
     uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
-    uint8 public constant _FIR_INTERVAL_ = 4; // Biweekly
-    uint8 public constant _FIXED_INTEREST_RATE_ = 100; // 0.05
-    uint128 public constant _PRINCIPAL_ = 32; // ETH // 226854911280625642308916404954512140970
+    uint8 public constant _FIR_INTERVAL_ = 14; // Biweekly
+    uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
+    uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
     uint32 public constant _DURATION_ = 7257600; // 12 weeks (seconds) // 1145324612
     uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)

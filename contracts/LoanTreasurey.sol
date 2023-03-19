@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import "./token/interfaces/IAnzaToken.sol";
+import "./abdk-libraries-solidity/ABDKMath64x64.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
 
@@ -22,6 +23,12 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
 
     event Deposited(address indexed payee, uint256 weiAmount);
     event Withdrawn(address indexed payee, uint256 weiAmount);
+
+    /* ------------------------------------------------ *
+     *                Contract Constants                *
+     * ------------------------------------------------ */
+    uint256 private constant _SECONDS_PER_YEAR_RATIO_SCALED_ =
+        (365 * 24 * 60 * 60) * 100;
 
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
@@ -106,6 +113,58 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
                 1
             );
         }
+    }
+
+    function getBalanceWithInterest(uint256 _debtId) public returns (uint256) {
+        ILoanContract _loanContract = ILoanContract(loanContract);
+
+        uint256 _prevCheck = _loanContract.loanLastChecked(_debtId);
+        _loanContract.updateLoanState(_debtId);
+        uint256 _timeDiff = _loanContract.loanLastChecked(_debtId) - _prevCheck;
+
+        if (_timeDiff > 0) {
+        uint256 _newBalance = _compound(
+            IAnzaToken(anzaToken).totalSupply(_debtId * 2),
+            ILoanContract(loanContract).fixedInterestRate(_debtId),
+            20
+        );
+
+        console.log(IAnzaToken(anzaToken).totalSupply(_debtId * 2));
+
+        return _newBalance;
+    }
+
+    function _compound(
+        uint256 _principal,
+        uint256 _ratio,
+        uint256 _n
+    ) internal pure returns (uint256) {
+        return
+            ABDKMath64x64.mulu(
+                _pow(
+                    ABDKMath64x64.add(
+                        ABDKMath64x64.fromUInt(1),
+                        ABDKMath64x64.divu(_ratio, 100)
+                    ),
+                    _n
+                ),
+                _principal
+            );
+    }
+
+    function _pow(int128 _x, uint256 _n) internal pure returns (int128) {
+        int128 _r = ABDKMath64x64.fromUInt(1);
+        while (_n > 0) {
+            if (_n % 2 == 1) {
+                _r = ABDKMath64x64.mul(_r, _x);
+                _n -= 1;
+            } else {
+                _x = ABDKMath64x64.mul(_x, _x);
+                _n /= 2;
+            }
+        }
+
+        return _r;
     }
 
     // function depositPool(address _payee) external payable {

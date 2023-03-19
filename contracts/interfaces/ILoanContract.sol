@@ -50,7 +50,11 @@ interface ILoanContract {
 
     function loanState(uint256 _debtId) external view returns (uint256);
 
+    function firInterval(uint256 _debtId) external view returns (uint256);
+
     function fixedInterestRate(uint256 _debtId) external view returns (uint256);
+
+    function loanLastChecked(uint256 _debtId) external view returns (uint256);
 
     function loanStart(uint256 _debtId) external view returns (uint256);
 
