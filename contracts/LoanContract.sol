@@ -58,16 +58,42 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
      * ------------------------------------------------ */
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0
+    uint256 private constant _LOAN_STATE_MASK_ =
+        115792089237316195423570985008687907853269984665640564039457584007913129639920;
+    // 0x000000000000000000000000000000000000000000000000000000000000000F
     uint256 private constant _LOAN_STATE_MAP_ = 15;
-    uint256 private constant _LOAN_STATE_MASK_ = 240;
-    uint256 private constant _FIR_MAP_ = 4080;
-    uint256 private constant _LOAN_START_MASK_ = 4095;
-    uint256 private constant _LOAN_START_MAP_ = 17592186040320;
-    uint256 private constant _LOAN_CLOSE_MASK_ = 17592186044415;
-    uint256 private constant _LOAN_CLOSE_MAP_ = 75557863708322137374720;
-    uint256 private constant _BORROWER_MASK_ = 75557863725914323419135;
+
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0F
+    uint256 private constant _FIR_INTERVAL_MASK_ =
+        115792089237316195423570985008687907853269984665640564039457584007913129639695;
+    // 0x00000000000000000000000000000000000000000000000000000000000000F0
+    uint256 private constant _FIR_INTERVAL_MAP_ = 240;
+
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FF
+    uint256 private constant _FIR_MASK_ =
+        115792089237316195423570985008687907853269984665640564039457584007913129574655;
+    // 0x000000000000000000000000000000000000000000000000000000000000FF00
+    uint256 private constant _FIR_MAP_ = 65280;
+
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFF
+    uint256 private constant _LOAN_START_MASK_ =
+        115792089237316195423570985008687907853269984665640564039457583726438152994815;
+    // 0x0000000000000000000000000000000000000000000000000000FFFFFFFF0000
+    uint256 private constant _LOAN_START_MAP_ = 281474976645120;
+
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFF
+    uint256 private constant _LOAN_CLOSE_MASK_ =
+        115792089237316195423570985008687907853269984665640562830531764674758931644415;
+    // 0x00000000000000000000000000000000000000000000FFFFFFFF000000000000
+    uint256 private constant _LOAN_CLOSE_MAP_ = 1208925819333154197995520;
+
+    // 0xFFFF0000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFFF
+    uint256 private constant _BORROWER_MASK_ =
+        115790322390251417039241401711187164934754157181743689629425282016341011726335;
+    // 0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000
     uint256 private constant _BORROWER_MAP_ =
-        110427941548649020598956093796432407239217743554650627018874473257369600;
+        1766847064778384329583297500742918515827483896874410032301991572117913600;
 
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
@@ -363,22 +389,29 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         bytes32 _contractTerms
     ) internal {
         bytes32 _loanAgreement;
+        uint8 _fixedInterestRate;
         uint32 _duration;
         uint32 _loanStart = _toUint32(block.timestamp);
 
         assembly {
+            // Get packed fixed interest rate
+            mstore(0x02, _contractTerms)
+            _fixedInterestRate := mload(0)
+
             // Get packed duration
-            mstore(0x18, _contractTerms)
+            mstore(0x19, _contractTerms)
             _duration := mload(0)
         }
+        console.log(_fixedInterestRate);
+        console.log(_duration);
 
         console.logBytes32(_contractTerms);
 
-        // _contractTerms >>= 4;
+        _contractTerms >>= 4;
         // console.logBytes32(_contractTerms);
 
         assembly {
-            // Pack fixed interest rate and loan state (uint8 and uint4)
+            // Pack fixed interest rate interval and loan state (uint4 and uint4)
             switch _duration
             case 0 {
                 mstore(0x20, xor(_contractTerms, _ACTIVE_STATE_))
@@ -387,12 +420,21 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 mstore(0x20, xor(_contractTerms, _ACTIVE_GRACE_STATE_))
             }
 
+            // Pack fixed interest rate (uint8)
+            mstore(
+                0x20,
+                xor(
+                    and(_FIR_MASK_, mload(0x20)),
+                    and(_FIR_MAP_, shl(8, _fixedInterestRate))
+                )
+            )
+
             // Pack loan start time (uint32)
             mstore(
                 0x20,
                 xor(
                     and(_LOAN_START_MASK_, mload(0x20)),
-                    and(_LOAN_START_MAP_, shl(12, _loanStart))
+                    and(_LOAN_START_MAP_, shl(16, _loanStart))
                 )
             )
 
@@ -401,7 +443,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 0x20,
                 xor(
                     and(_LOAN_CLOSE_MASK_, mload(0x20)),
-                    and(_LOAN_CLOSE_MAP_, shl(44, add(_loanStart, _duration)))
+                    and(_LOAN_CLOSE_MAP_, shl(48, add(_loanStart, _duration)))
                 )
             )
 
@@ -410,12 +452,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 0x20,
                 xor(
                     and(_BORROWER_MASK_, mload(0x20)),
-                    and(_BORROWER_MAP_, shl(76, _borrower))
+                    and(_BORROWER_MAP_, shl(80, _borrower))
                 )
             )
 
             _loanAgreement := mload(0x20)
         }
+
+        console.logBytes32(_loanAgreement);
 
         if (_duration == 0) revert InvalidLoanParameter(_DURATION_ERROR_ID_);
 
