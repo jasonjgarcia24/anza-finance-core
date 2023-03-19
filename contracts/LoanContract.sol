@@ -35,9 +35,31 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     uint8 private constant _PAID_STATE_ = 12;
 
     /* ------------------------------------------------ *
+     *       Fixed Interest Rate (FIR) Intervals        *
+     * ------------------------------------------------ */
+    //  Need to validate duration > FIR interval
+    uint8 private constant _SECONDLY_ = 0;
+    uint8 private constant _MINUTELY_ = 1;
+    uint8 private constant _HOURLY_ = 2;
+    uint8 private constant _DAILY_ = 3;
+    uint8 private constant _WEEKLY_ = 4;
+    uint8 private constant _2_WEEKLY_ = 5;
+    uint8 private constant _4_WEEKLY_ = 6;
+    uint8 private constant _6_WEEKLY_ = 7;
+    uint8 private constant _8_WEEKLY_ = 8;
+    uint8 private constant _MONTHLY_ = 9;
+    uint8 private constant _2_MONTHLY_ = 10;
+    uint8 private constant _3_MONTHLY_ = 11;
+    uint8 private constant _4_MONTHLY_ = 12;
+    uint8 private constant _6_MONTHLY_ = 13;
+    uint8 private constant _360_DAILY_ = 14;
+    uint8 private constant _ANNUALLY_ = 15;
+
+    /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
      * ------------------------------------------------ */
     uint256 private constant _LOAN_STATE_MAP_ = 15;
+    uint256 private constant _LOAN_STATE_MASK_ = 240;
     uint256 private constant _FIR_MAP_ = 4080;
     uint256 private constant _LOAN_START_MASK_ = 4095;
     uint256 private constant _LOAN_START_MAP_ = 17592186040320;
@@ -82,19 +104,12 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     // Count of total inactive/active debts
     uint256 public totalDebts;
 
-    constructor(
-        address _admin,
-        address _collateralVault,
-        address _treasurer,
-        address _collector
-    ) {
+    constructor(address _collateralVault) {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
         _setRoleAdmin(Roles._COLLECTOR_, Roles._ADMIN_);
 
-        _grantRole(Roles._ADMIN_, _admin);
-        _grantRole(Roles._TREASURER_, _treasurer);
-        _grantRole(Roles._COLLECTOR_, _collector);
+        _grantRole(Roles._ADMIN_, msg.sender);
 
         collateralVault = _collateralVault;
     }
@@ -155,65 +170,65 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _collateralId,
         bytes calldata _borrowerSignature
     ) external payable {
-        _verifyTermsExpiry(_contractTerms);
-        _verifyDuration(_contractTerms);
+        // _verifyTermsExpiry(_contractTerms);
+        // _verifyDuration(_contractTerms);
 
-        uint256 _principal = msg.value;
-        _verifyPrincipal(_contractTerms, _principal);
+        // uint256 _principal = msg.value;
+        // _verifyPrincipal(_contractTerms, _principal);
 
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
 
-        if (
-            _borrower !=
-            __recoverSigner(
-                _contractTerms,
-                _collateralAddress,
-                _collateralId,
-                getCollateralNonce(_collateralAddress, _collateralId),
-                _borrowerSignature
-            )
-        ) revert InvalidParticipant({account: _borrower});
+        // if (
+        //     _borrower !=
+        //     __recoverSigner(
+        //         _contractTerms,
+        //         _collateralAddress,
+        //         _collateralId,
+        //         getCollateralNonce(_collateralAddress, _collateralId),
+        //         _borrowerSignature
+        //     )
+        // ) revert InvalidParticipant({account: _borrower});
 
-        // Add debt ID to collateral mapping
-        debtIds[_collateralAddress][_collateralId].push(totalDebts);
+        // // Add debt ID to collateral mapping
+        // debtIds[_collateralAddress][_collateralId].push(totalDebts);
         _setLoanAgreement(_borrower, _contractTerms);
 
-        // Transfer collateral to collateral vault.
-        // The collateral ID and address will be mapped within
-        // the loan collateral vault to the debt ID.
-        _collateralToken.safeTransferFrom(
-            _borrower,
-            collateralVault,
-            _collateralId,
-            abi.encodePacked(_collateralAddress)
-        );
+        // // Transfer collateral to collateral vault.
+        // // The collateral ID and address will be mapped within
+        // // the loan collateral vault to the debt ID.
+        // _collateralToken.safeTransferFrom(
+        //     _borrower,
+        //     collateralVault,
+        //     _collateralId,
+        //     abi.encodePacked(_collateralAddress)
+        // );
 
-        // Transfer funds to borrower
-        (bool _success, ) = _borrower.call{value: _principal}("");
-        if (!_success) revert FailedFundsTransfer();
+        // // Transfer funds to borrower
+        // (bool _success, ) = _borrower.call{value: _principal}("");
+        // if (!_success) revert FailedFundsTransfer();
 
-        // Mint debt ALC debt tokens for borrower and lender.
-        // This will grant the borrower recal access control
-        // of the collateral following full loan repayment.
-        anzaToken.mint(
-            msg.sender,
-            totalDebts * 2,
-            _principal,
-            _collateralToken.tokenURI(_collateralId),
-            abi.encodePacked(_borrower, totalDebts)
-        );
+        // // Mint debt ALC debt tokens for borrower and lender.
+        // // This will grant the borrower recal access control
+        // // of the collateral following full loan repayment.
+        // anzaToken.mint(
+        //     msg.sender,
+        //     totalDebts * 2,
+        //     _principal,
+        //     _collateralToken.tokenURI(_collateralId),
+        //     abi.encodePacked(_borrower, totalDebts)
+        // );
 
-        // Emit initialization event
-        emit LoanContractInitialized(
-            _collateralAddress,
-            _collateralId,
-            totalDebts
-        );
+        // // Emit initialization event
+        // emit LoanContractInitialized(
+        //     _collateralAddress,
+        //     _collateralId,
+        //     totalDebts
+        // );
 
-        // Setup for next debt ID
-        totalDebts += 1;
+        // // Setup for next debt ID
+        // totalDebts += 1;
     }
 
     function mintReplica(uint256 _debtId) external {
@@ -299,10 +314,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
+    /*
+     * @dev Updates loan state.
+    //  */
     function updateLoanState(
         uint256 _debtId
     ) external onlyRole(Roles._TREASURER_) {
-        if (_checkLoanActive(_debtId)) revert InactiveLoanState(_debtId);
+        if (checkLoanActive(_debtId) == false)
+            revert InactiveLoanState(_debtId);
 
         // Loan defaulted
         if (_checkLoanExpired(_debtId)) {
@@ -311,30 +330,32 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         // Loan fully paid off
         else if (anzaToken.totalSupply(_debtId * 2) <= 0) {
             _setLoanState(_debtId, _PAID_STATE_);
-
-            // Burn replica
-            anzaToken.burn(borrower(_debtId), (_debtId * 2) + 1, 1);
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
-            // Need to mint more debt tokens
-            uint256 _balance = anzaToken.totalSupply(_debtId * 2);
-            uint256 _n = loanClose(_debtId) - block.timestamp; // THIS ISN'T CORRECT
-            uint256 _newDebt = _balance -
-                _compound(_balance, fixedInterestRate(_debtId), _n);
-
-            anzaToken.mint(
-                anzaToken.lenderOf(_debtId),
-                totalDebts * 2,
-                _newDebt,
-                "",
-                ""
-            );
+            // // Need to mint more debt tokens
+            // uint256 _balance = anzaToken.totalSupply(_debtId * 2);
+            // uint256 _n = loanClose(_debtId) - block.timestamp; // TODO: THIS ISN'T CORRECT
+            // uint256 _newDebt = _balance -
+            //     _compound(_balance, fixedInterestRate(_debtId), _n);
+            // anzaToken.mint(
+            //     anzaToken.lenderOf(_debtId),
+            //     totalDebts * 2,
+            //     _newDebt,
+            //     "",
+            //     ""
+            // );
         }
         // Loan no longer in grace period
         else if (_checkGracePeriod(_debtId) == false) {
             _setLoanState(_debtId, _ACTIVE_STATE_);
         }
+    }
+
+    function checkLoanActive(uint256 _debtId) public view returns (bool) {
+        return
+            loanState(_debtId) >= _ACTIVE_GRACE_STATE_ &&
+            loanState(_debtId) <= _ACTIVE_STATE_;
     }
 
     function _setLoanAgreement(
@@ -351,7 +372,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             _duration := mload(0)
         }
 
-        _contractTerms >>= 4;
+        console.logBytes32(_contractTerms);
+
+        // _contractTerms >>= 4;
+        // console.logBytes32(_contractTerms);
 
         assembly {
             // Pack fixed interest rate and loan state (uint8 and uint4)
@@ -414,16 +438,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         return loanStart(_debtId) > block.timestamp;
     }
 
-    function _checkLoanActive(uint256 _debtId) internal view returns (bool) {
-        return
-            loanState(_debtId) > _ACTIVE_GRACE_STATE_ &&
-            loanState(_debtId) < _DEFAULT_STATE_;
-    }
-
     function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
         return
             anzaToken.totalSupply(_debtId * 2) > 0 &&
-            loanClose(_debtId) >= block.timestamp;
+            loanClose(_debtId) <= block.timestamp;
     }
 
     function _verifyTermsExpiry(bytes32 _contractTerms) internal pure {

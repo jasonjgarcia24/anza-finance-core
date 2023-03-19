@@ -34,9 +34,30 @@ abstract contract LoanContractGlobalConstants {
     uint8 public constant _CLOSE_STATE_ = 12;
 
     /* ------------------------------------------------ *
+     *       Fixed Interest Rate (FIR) Intervals        *
+     * ------------------------------------------------ */
+    uint8 private constant _SECONDLY_ = 0;
+    uint8 private constant _MINUTELY_ = 1;
+    uint8 private constant _HOURLY_ = 2;
+    uint8 private constant _DAILY_ = 3;
+    uint8 private constant _WEEKLY_ = 4;
+    uint8 private constant _2_WEEKLY_ = 5;
+    uint8 private constant _4_WEEKLY_ = 6;
+    uint8 private constant _6_WEEKLY_ = 7;
+    uint8 private constant _8_WEEKLY_ = 8;
+    uint8 private constant _MONTHLY_ = 9;
+    uint8 private constant _2_MONTHLY_ = 10;
+    uint8 private constant _3_MONTHLY_ = 11;
+    uint8 private constant _4_MONTHLY_ = 12;
+    uint8 private constant _6_MONTHLY_ = 13;
+    uint8 private constant _360_DAILY_ = 14;
+    uint8 private constant _ANNUALLY_ = 15;
+
+    /* ------------------------------------------------ *
      *                  Loan Terms                      *
      * ------------------------------------------------ */
     uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
+    uint8 public constant _FIR_INTERVAL_ = 4; // Biweekly
     uint8 public constant _FIXED_INTEREST_RATE_ = 100; // 0.05
     uint128 public constant _PRINCIPAL_ = 32; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
@@ -95,16 +116,17 @@ abstract contract LoanContractDeployer is
     DemoToken public demoToken;
 
     function setUp() public virtual {
+        vm.deal(admin, 1 ether);
+        vm.startPrank(admin);
+
         // Deploy LoanCollateralVault
-        loanCollateralVault = new LoanCollateralVault(admin);
+        loanCollateralVault = new LoanCollateralVault();
 
         // Deploy LoanContract
-        loanContract = new LoanContract(
-            admin,
-            address(loanCollateralVault),
-            treasurer,
-            collector
-        );
+        loanContract = new LoanContract(address(loanCollateralVault));
+
+        // Deploy AnzaToken
+        anzaToken = new AnzaToken();
 
         // Deploy LoanTreasurey
         loanTreasurer = new LoanTreasurey(
@@ -113,18 +135,9 @@ abstract contract LoanContractDeployer is
             address(anzaToken)
         );
 
-        // Deploy AnzaToken
-        anzaToken = new AnzaToken(
-            admin,
-            address(loanContract),
-            address(loanTreasurer)
-        );
-
-        vm.deal(admin, 1 ether);
-        vm.startPrank(admin);
-
         // Set LoanContract access control roles
         loanContract.grantRole(Roles._TREASURER_, address(loanTreasurer));
+        loanContract.grantRole(Roles._COLLECTOR_, collector);
 
         // Set LoanCollateralVault access control roles
         loanCollateralVault.grantRole(
@@ -136,6 +149,10 @@ abstract contract LoanContractDeployer is
             Roles._TREASURER_,
             address(loanTreasurer)
         );
+
+        // Set AnzaToken access control roles
+        anzaToken.grantRole(Roles._LOAN_CONTRACT_, address(loanContract));
+        anzaToken.grantRole(Roles._TREASURER_, address(loanTreasurer));
 
         // Set AnzaToken address
         loanContract.setAnzaToken(address(anzaToken));
@@ -162,11 +179,12 @@ abstract contract LoanSigned is LoanContractDeployer {
 
         assembly {
             mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1c, _PRINCIPAL_)
-            mstore(0x0c, _GRACE_PERIOD_)
-            mstore(0x08, _DURATION_)
-            mstore(0x04, _TERMS_EXPIRY_)
+            mstore(0x1f, _FIR_INTERVAL_)
+            mstore(0x1e, _FIXED_INTEREST_RATE_)
+            mstore(0x1b, _PRINCIPAL_)
+            mstore(0x0b, _GRACE_PERIOD_)
+            mstore(0x07, _DURATION_)
+            mstore(0x03, _TERMS_EXPIRY_)
 
             _contractTerms := mload(0x20)
         }

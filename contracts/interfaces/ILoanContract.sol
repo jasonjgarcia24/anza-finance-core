@@ -58,9 +58,7 @@ interface ILoanContract {
 
     function borrower(uint256 _debtId) external view returns (address);
 
-    // function depositPayment(uint256 _debtId) external payable;
-
-    // function withdrawPayment(uint256 _amount) external returns (bool);
-
     function updateLoanState(uint256 _debtId) external;
+
+    function checkLoanActive(uint256 _debtId) external view returns (bool);
 }

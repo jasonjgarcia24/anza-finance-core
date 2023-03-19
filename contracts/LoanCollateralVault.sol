@@ -16,12 +16,12 @@ contract LoanCollateralVault is
     uint256 private __totalCollateral;
     Collateral[] private __collaterals;
 
-    constructor(address _admin) {
+    constructor() {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
 
-        _grantRole(Roles._ADMIN_, _admin);
+        _grantRole(Roles._ADMIN_, msg.sender);
     }
 
     function totalCollateral() external view returns (uint256) {

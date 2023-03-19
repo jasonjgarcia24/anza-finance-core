@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -14,6 +15,7 @@ import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} fr
 
 error InvalidParticipant(address account);
 error InsufficientFunds(uint256 amount);
+error InactiveLoanState(uint256 debtId);
 
 contract LoanTreasurey is Ownable, ReentrancyGuard {
     using Address for address payable;
@@ -21,11 +23,17 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
     event Deposited(address indexed payee, uint256 weiAmount);
     event Withdrawn(address indexed payee, uint256 weiAmount);
 
+    /* ------------------------------------------------ *
+     *              Priviledged Accounts                *
+     * ------------------------------------------------ */
     address public immutable loanContract;
     address public immutable loanCollateralVault;
     address public immutable anzaToken;
     uint256 public poolBalance;
 
+    /* ------------------------------------------------ *
+     *                    Databases                     *
+     * ------------------------------------------------ */
     // Mapping from participant to withdrawable balance
     mapping(address => uint256) public withdrawableBalance;
 
@@ -53,7 +61,7 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
     function withdrawPayment(uint256 _amount) external returns (bool) {
         address _payee = msg.sender;
 
-        if (withdrawableBalance[_payee] < _amount)
+        if (_amount == 0 || _amount > withdrawableBalance[_payee])
             revert ILoanContract.InvalidFundsTransfer({amount: _amount});
 
         // Update lender's withdrawable balance
@@ -77,8 +85,8 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
     }
 
     function _depositPayment(uint256 _debtId, uint256 _payment) internal {
+        ILoanContract _loanContract = ILoanContract(loanContract);
         IAnzaToken _anzaTokenContract = IAnzaToken(anzaToken);
-
         address _lender = _anzaTokenContract.lenderOf(_debtId);
 
         // Update lender's withdrawable balance
@@ -87,50 +95,18 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         // Burn ALC debt token
         _anzaTokenContract.burn(_lender, _debtId * 2, _payment);
 
-        // Conditionally update debt
-        ILoanContract(loanContract).updateLoanState(_debtId);
+        // Update loan state
+        _loanContract.updateLoanState(_debtId);
+
+        // Conditionally burn replica
+        if (_loanContract.checkLoanActive(_debtId) == false) {
+            _anzaTokenContract.burn(
+                _loanContract.borrower(_debtId),
+                _anzaTokenContract.borrowerTokenId(_debtId),
+                1
+            );
+        }
     }
-
-    // // function sponsorPayment(uint256 _debtId) external payable {
-    // //     _depositPayment(_debtId, msg.value);
-    // // }
-
-    // // function depositPayment(uint256 _debtId) external payable {
-    // //     if (msg.sender != borrower(_debtId))
-    // //         revert InvalidParticipant(msg.sender);
-
-    // //     _depositPayment(_debtId, msg.value);
-    // // }
-
-    // // function withdrawPayment(uint256 _amount) external returns (bool) {
-    // //     address _payee = msg.sender;
-
-    // //     if (withdrawableBalance[_payee] < _amount) {
-    // //         revert InvalidFundsTransfer({amount: _amount});
-    // //     }
-
-    // //     // Update lender's withdrawable balance
-    // //     withdrawableBalance[_payee] -= _amount;
-
-    // //     // Transfer payment funds to lender
-    // //     (bool _success, ) = _payee.call{value: _amount}("");
-    // //     require(_success);
-
-    // //     return _success;
-    // // }
-
-    // // function _depositPayment(uint256 _debtId, uint256 _payment) internal {
-    // //     address _lender = anzaToken.lenderOf(_debtId);
-
-    // //     // Update lender's withdrawable balance
-    // //     withdrawableBalance[_lender] += _payment;
-
-    // //     // Burn ALC debt token
-    // //     anzaToken.burn(_lender, _debtId * 2, _payment);
-
-    // //     // Conditionally update debt
-    // //     updateLoanState(_debtId);
-    // // }
 
     // function depositPool(address _payee) external payable {
     //     uint256 _amount = msg.value;

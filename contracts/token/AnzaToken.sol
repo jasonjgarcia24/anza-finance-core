@@ -21,14 +21,12 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
     mapping(uint256 => address) private __owners;
     mapping(uint256 => uint256) private _totalSupply;
 
-    constructor(address _admin, address _debtFactory, address _treasurer) {
+    constructor() {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
 
-        _grantRole(Roles._ADMIN_, _admin);
-        _grantRole(Roles._LOAN_CONTRACT_, _debtFactory);
-        _grantRole(Roles._TREASURER_, _treasurer);
+        _grantRole(Roles._ADMIN_, msg.sender);
     }
 
     function supportsInterface(
@@ -142,6 +140,12 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
         address _account,
         address _operator
     ) public view override returns (bool) {
+        if (hasRole(Roles._TREASURER_, _operator) == false) {
+            console.log(hasRole(Roles._TREASURER_, _operator));
+            console.logAddress(_operator);
+            console.log(msg.sender);
+        }
+
         return
             hasRole(Roles._TREASURER_, _operator) ||
             super.isApprovedForAll(_account, _operator);
@@ -172,7 +176,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
                 uint256 supply = _totalSupply[id];
                 require(
                     supply >= amount,
-                    "ERC1155: burn amount exceeds totalSupply"
+                    "AnzaToken: burn amount exceeds totalSupply"
                 );
                 unchecked {
                     _totalSupply[id] = supply - amount;
