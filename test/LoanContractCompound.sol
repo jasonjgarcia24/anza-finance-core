@@ -15,7 +15,7 @@ contract LoanContractCompounding is LoanContractSubmitted, ILoanContractEvents {
         console.log(loanTreasurer.setBalanceWithInterest(_debtId));
         console.log(loanContract.loanLastChecked(_debtId));
 
-        vm.warp(loanContract.loanStart(_debtId) + 8);
+        vm.warp(loanContract.loanStart(_debtId) + 1);
 
         console.log(loanTreasurer.setBalanceWithInterest(_debtId));
         console.log(loanContract.loanLastChecked(_debtId));

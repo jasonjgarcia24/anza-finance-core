@@ -115,26 +115,37 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         }
     }
 
+    // TODO: Need to revisit to ensure accuracy at larger total debt values
+    // (e.g. 10000 * 10**18).
     function setBalanceWithInterest(uint256 _debtId) public returns (uint256) {
         ILoanContract _loanContract = ILoanContract(loanContract);
 
         uint256 _prevCheck = _loanContract.loanLastChecked(_debtId);
         _loanContract.updateLoanState(_debtId);
-        uint256 _timeDiff = _loanContract.loanLastChecked(_debtId) - _prevCheck;
 
-        if (_timeDiff > 1) {
+        uint256 _timeDiff = _loanContract.loanLastChecked(_debtId) - _prevCheck;
+        uint256 _totalDebt = IAnzaToken(anzaToken).totalSupply(_debtId * 2);
+        uint256 _fixedInterestRate = _loanContract.fixedInterestRate(_debtId);
+
+        if (_timeDiff > 0) {
             return
                 _compound(
-                    IAnzaToken(anzaToken).totalSupply(_debtId * 2),
+                    _totalDebt,
                     _loanContract.fixedInterestRate(_debtId),
                     _timeDiff
-                );
-        } else if (_timeDiff == 1) {
-            return
-                _compound(
-                    IAnzaToken(anzaToken).totalSupply(_debtId * 2),
-                    _loanContract.fixedInterestRate(_debtId) + 1,
-                    _timeDiff
+                ) +
+                (
+                    _fixedInterestRate == 100 ? 0 : _fixedInterestRate >= 10
+                        ? _timeDiff == 1 && _totalDebt >= 10
+                            ? 1
+                            : _totalDebt >= 1000
+                            ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
+                            : 0
+                        : _fixedInterestRate == 1
+                        ? _timeDiff == 1 && _totalDebt >= 100
+                            ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
+                            : 0
+                        : 0
                 );
         } else {
             return IAnzaToken(anzaToken).totalSupply(_debtId * 2);
