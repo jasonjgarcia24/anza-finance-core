@@ -115,23 +115,30 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         }
     }
 
-    function getBalanceWithInterest(uint256 _debtId) public returns (uint256) {
+    function setBalanceWithInterest(uint256 _debtId) public returns (uint256) {
         ILoanContract _loanContract = ILoanContract(loanContract);
 
         uint256 _prevCheck = _loanContract.loanLastChecked(_debtId);
         _loanContract.updateLoanState(_debtId);
         uint256 _timeDiff = _loanContract.loanLastChecked(_debtId) - _prevCheck;
 
-        if (_timeDiff > 0) {
-        uint256 _newBalance = _compound(
-            IAnzaToken(anzaToken).totalSupply(_debtId * 2),
-            ILoanContract(loanContract).fixedInterestRate(_debtId),
-            20
-        );
-
-        console.log(IAnzaToken(anzaToken).totalSupply(_debtId * 2));
-
-        return _newBalance;
+        if (_timeDiff > 1) {
+            return
+                _compound(
+                    IAnzaToken(anzaToken).totalSupply(_debtId * 2),
+                    _loanContract.fixedInterestRate(_debtId),
+                    _timeDiff
+                );
+        } else if (_timeDiff == 1) {
+            return
+                _compound(
+                    IAnzaToken(anzaToken).totalSupply(_debtId * 2),
+                    _loanContract.fixedInterestRate(_debtId) + 1,
+                    _timeDiff
+                );
+        } else {
+            return IAnzaToken(anzaToken).totalSupply(_debtId * 2);
+        }
     }
 
     function _compound(
@@ -154,6 +161,7 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
 
     function _pow(int128 _x, uint256 _n) internal pure returns (int128) {
         int128 _r = ABDKMath64x64.fromUInt(1);
+
         while (_n > 0) {
             if (_n % 2 == 1) {
                 _r = ABDKMath64x64.mul(_r, _x);

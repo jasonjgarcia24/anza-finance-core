@@ -371,24 +371,31 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     function updateLoanState(
         uint256 _debtId
     ) external onlyRole(Roles._TREASURER_) {
-        if (checkLoanActive(_debtId) == false)
+        if (checkLoanActive(_debtId) == false) {
+            console.log("Inactive loan");
             revert InactiveLoanState(_debtId);
+        }
 
         // Loan defaulted
         if (_checkLoanExpired(_debtId)) {
+            console.log("Expired loan");
             _setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
         else if (anzaToken.totalSupply(_debtId * 2) <= 0) {
+            console.log("Paid loan");
             _setLoanState(_debtId, _PAID_STATE_);
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
+            console.log("Active loan");
             _updateLoanTimes(_debtId);
         }
         // Loan no longer in grace period
         else if (_checkGracePeriod(_debtId) == false) {
+            console.log("Newly active loan");
             _setLoanState(_debtId, _ACTIVE_STATE_);
+            _updateLoanTimes(_debtId);
         }
     }
 
@@ -404,13 +411,17 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     ) internal {
         bytes32 _loanAgreement;
         uint8 _fixedInterestRate;
+        uint32 _gracePeriod;
         uint32 _duration;
-        uint32 _loanStart = _toUint32(block.timestamp);
 
         assembly {
             // Get packed fixed interest rate
             mstore(0x02, _contractTerms)
             _fixedInterestRate := mload(0)
+
+            // Get packed grace period
+            mstore(0x15, _contractTerms)
+            _gracePeriod := mload(0)
 
             // Get packed duration
             mstore(0x19, _contractTerms)
@@ -446,7 +457,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 0x20,
                 xor(
                     and(_LOAN_START_MASK_, mload(0x20)),
-                    and(_LOAN_START_MAP_, shl(16, _loanStart))
+                    and(
+                        _LOAN_START_MAP_,
+                        shl(16, add(timestamp(), _gracePeriod))
+                    )
                 )
             )
 
@@ -480,11 +494,19 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     }
 
     function _setLoanState(uint256 _debtId, uint8 _loanState) internal {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId] >> 16;
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
 
         assembly {
-            mstore(0x20, _loanState)
-            mstore(0x1e, _contractTerms)
+            mstore(0x20, _contractTerms)
+
+            mstore(
+                0x20,
+                xor(
+                    and(_LOAN_STATE_MASK_, mload(0x20)),
+                    and(_LOAN_STATE_MAP_, _loanState)
+                )
+            )
+
             _contractTerms := mload(0x20)
         }
 
@@ -501,7 +523,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             loanClose(_debtId) <= block.timestamp;
     }
 
-    function _updateLoanTimes(uint256 _debtId) internal view {
+    function _updateLoanTimes(uint256 _debtId) internal {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
 
         assembly {
@@ -510,8 +532,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
             // Store loan close time
             let _loanClose := add(
-                shr(16, and(_contractTerms, _LOAN_START_MAP_)),
-                shr(48, and(_contractTerms, _LOAN_DURATION_MAP_))
+                shr(16, and(_LOAN_START_MAP_, _contractTerms)),
+                shr(48, and(_LOAN_DURATION_MAP_, _contractTerms))
             )
 
             // Update loan last checked. This could be a transition from
@@ -533,7 +555,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                     and(_LOAN_DURATION_MAP_, shl(48, sub(_loanClose, _now)))
                 )
             )
+
+            _contractTerms := mload(0x20)
         }
+
+        __packedDebtTerms[_debtId] = _contractTerms;
     }
 
     function _verifyTermsExpiry(bytes32 _contractTerms) internal pure {
