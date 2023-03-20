@@ -17,6 +17,7 @@ library LibOfficerRoles {
     bytes32 public constant _OWNER_ = keccak256("OWNER");
     bytes32 public constant _TREASURER_ = keccak256("TREASURER");
     bytes32 public constant _COLLECTOR_ = keccak256("COLLECTOR");
+    bytes32 public constant _DEBT_STOREFRONT_ = keccak256("DEBT_STOREFRONT");
 }
 
 library LibLoanContractTerms {
@@ -139,7 +140,7 @@ library LibLoanContractSigning {
         return ecrecover(_message, v, r, s);
     }
 
-    function prefixed(bytes32 _hash) internal pure returns (bytes32) {
+    function prefixed(bytes32 _hash) public pure returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash)

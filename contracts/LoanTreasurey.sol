@@ -85,7 +85,9 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         address _borrower = msg.sender;
         bytes32 _role = keccak256(abi.encodePacked(_borrower, _debtId));
 
-        if (IAccessControl(anzaToken).hasRole(_role, _borrower) == false)
+        // The borrower is essentially stored in the borrower Anza Replica
+        // token's access control
+        if (!IAccessControl(anzaToken).hasRole(_role, _borrower))
             revert InvalidParticipant(_borrower);
 
         ILoanCollateralVault(loanCollateralVault).withdraw(_borrower, _debtId);
@@ -106,7 +108,7 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         _loanContract.updateLoanState(_debtId);
 
         // Conditionally burn replica
-        if (_loanContract.checkLoanActive(_debtId) == false) {
+        if (!_loanContract.checkLoanActive(_debtId)) {
             _anzaTokenContract.burn(
                 _loanContract.borrower(_debtId),
                 _anzaTokenContract.borrowerTokenId(_debtId),
@@ -123,30 +125,18 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         uint256 _prevCheck = _loanContract.loanLastChecked(_debtId);
         _loanContract.updateLoanState(_debtId);
 
-        uint256 _timeDiff = _loanContract.loanLastChecked(_debtId) - _prevCheck;
+        // Calculate time intervals passed
+        uint256 _firIntervals = _loanContract.totalFirIntervals(
+            _debtId,
+            _loanContract.loanLastChecked(_debtId) - _prevCheck
+        );
         uint256 _totalDebt = IAnzaToken(anzaToken).totalSupply(_debtId * 2);
         uint256 _fixedInterestRate = _loanContract.fixedInterestRate(_debtId);
 
-        if (_timeDiff > 0) {
+        if (_firIntervals > 0) {
             return
-                _compound(
-                    _totalDebt,
-                    _loanContract.fixedInterestRate(_debtId),
-                    _timeDiff
-                ) +
-                (
-                    _fixedInterestRate == 100 ? 0 : _fixedInterestRate >= 10
-                        ? _timeDiff == 1 && _totalDebt >= 10
-                            ? 1
-                            : _totalDebt >= 1000
-                            ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
-                            : 0
-                        : _fixedInterestRate == 1
-                        ? _timeDiff == 1 && _totalDebt >= 100
-                            ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
-                            : 0
-                        : 0
-                );
+                _compound(_totalDebt, _fixedInterestRate, _firIntervals) +
+                _topoff(_totalDebt, _fixedInterestRate, _firIntervals);
         } else {
             return IAnzaToken(anzaToken).totalSupply(_debtId * 2);
         }
@@ -186,61 +176,23 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         return _r;
     }
 
-    // function depositPool(address _payee) external payable {
-    //     uint256 _amount = msg.value;
-    //     __deposit(_payee, _amount);
-    // }
-
-    // function depositPayment(
-    //     address _lender,
-    //     uint256 _debtId
-    // ) external payable nonReentrant {
-    //     // ILoanContract _loanContract = ILoanContract(loanContract);
-    //     // address _borrower = msg.sender;
-    //     // if (_borrower != _loanContract.borrowerOf(_debtId))
-    //     //     revert InvalidParticipant({account: _borrower});
-    //     // uint256 _payment = msg.value;
-    //     // __deposit(_lender, _payment);
-    //     // // ILoanContract(__loanContract).recordPayment(_debtId);
-    // }
-
-    // /**
-    //  * @dev Stores the sent amount as credit to be withdrawn.
-    //  * @param _payee The destination address of the funds.
-    //  *
-    //  * Emits a {Deposited} event.
-    //  */
-    // function __deposit(address _payee, uint256 _payment) private {
-    //     __balances[_payee] += _payment;
-
-    //     poolBalance += _payment;
-
-    //     emit Deposited(_payee, _payment);
-    // }
-
-    // /**
-    //  * @dev Withdraw accumulated balance for a payee, forwarding all gas to the
-    //  * recipient.
-    //  *
-    //  * WARNING: Forwarding all gas opens the door to reentrancy vulnerabilities.
-    //  * Make sure you trust the recipient, or are either following the
-    //  * checks-effects-interactions pattern or using {ReentrancyGuard}.
-    //  *
-    //  * @param _payee The address whose funds will be withdrawn and transferred to.
-    //  *
-    //  * Emits a {Withdrawn} event.
-    //  */
-    // function __withdraw(
-    //     address payable _payee,
-    //     uint256 _payment
-    // ) private nonReentrant {
-    //     if (_payment <= __balances[_payee])
-    //         revert InsufficientFunds({amount: __balances[_payee]});
-
-    //     __balances[_payee] -= _payment;
-    //     poolBalance -= _payment;
-    //     _payee.sendValue(_payment);
-
-    //     emit Withdrawn(_payee, _payment);
-    // }
+    // Topoff to account for small inaccuracies in compound calculations
+    function _topoff(
+        uint256 _totalDebt,
+        uint256 _fixedInterestRate,
+        uint256 _firIntervals
+    ) internal pure returns (uint256) {
+        return
+            _fixedInterestRate == 100 ? 0 : _fixedInterestRate >= 10
+                ? _firIntervals == 1 && _totalDebt >= 10
+                    ? 1
+                    : _totalDebt >= 1000
+                    ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
+                    : 0
+                : _fixedInterestRate == 1
+                ? _firIntervals == 1 && _totalDebt >= 100
+                    ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
+                    : 0
+                : 0;
+    }
 }

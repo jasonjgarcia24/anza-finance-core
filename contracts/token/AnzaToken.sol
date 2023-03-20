@@ -25,6 +25,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
+        _setRoleAdmin(Roles._DEBT_STOREFRONT_, Roles._ADMIN_);
 
         _grantRole(Roles._ADMIN_, msg.sender);
     }
@@ -140,14 +141,11 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
         address _account,
         address _operator
     ) public view override returns (bool) {
-        if (hasRole(Roles._TREASURER_, _operator) == false) {
-            console.log(hasRole(Roles._TREASURER_, _operator));
-            console.logAddress(_operator);
-            console.log(msg.sender);
-        }
-
+        // This token is recallable by the Anza treasurer
+        // account
         return
             hasRole(Roles._TREASURER_, _operator) ||
+            hasRole(Roles._DEBT_STOREFRONT_, _operator) ||
             super.isApprovedForAll(_account, _operator);
     }
 

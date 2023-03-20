@@ -7,8 +7,8 @@ interface ILoanContract {
     error InvalidTokenId(uint256 tokenId);
     error InvalidParticipant(address account);
     error InvalidFundsTransfer(uint256 amount);
-    error InsufficientFunds();
     error InvalidLoanParameter(bytes4 parameter);
+    error InsufficientFunds();
     error OverflowLoanTerm();
     error InactiveLoanState(uint256 debtId);
     error FailedFundsTransfer();
@@ -26,6 +26,12 @@ interface ILoanContract {
         uint256 amount
     );
 
+    event LoanStateChanged(
+        uint256 indexed debtId,
+        uint8 indexed newLoanState,
+        uint8 indexed oldLoanState
+    );
+
     function debtIds(
         address _collateralAddress,
         uint256 _collateralId,
@@ -38,6 +44,13 @@ interface ILoanContract {
         address _collateralAddress,
         uint256 _collateralId
     ) external view returns (uint256);
+
+    function getCollateralDebtId(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) external view returns (uint256);
+
+    function getDebtTerms(uint256 _debtId) external view returns (bytes32);
 
     function initLoanContract(
         bytes32 _contractTerms,
@@ -61,6 +74,11 @@ interface ILoanContract {
     function loanClose(uint256 _debtId) external view returns (uint256);
 
     function borrower(uint256 _debtId) external view returns (address);
+
+    function totalFirIntervals(
+        uint256 _debtId,
+        uint256 _seconds
+    ) external view returns (uint256);
 
     function updateLoanState(uint256 _debtId) external;
 

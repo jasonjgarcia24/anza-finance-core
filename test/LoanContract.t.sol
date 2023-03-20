@@ -36,45 +36,47 @@ abstract contract LoanContractGlobalConstants {
     /* ------------------------------------------------ *
      *       Fixed Interest Rate (FIR) Intervals        *
      * ------------------------------------------------ */
-    uint8 private constant _SECONDLY_ = 0;
-    uint8 private constant _MINUTELY_ = 1;
-    uint8 private constant _HOURLY_ = 2;
-    uint8 private constant _DAILY_ = 3;
-    uint8 private constant _WEEKLY_ = 4;
-    uint8 private constant _2_WEEKLY_ = 5;
-    uint8 private constant _4_WEEKLY_ = 6;
-    uint8 private constant _6_WEEKLY_ = 7;
-    uint8 private constant _8_WEEKLY_ = 8;
-    uint8 private constant _360_DAILY_ = 9;
-    uint8 private constant _365_DAILY_ = 10;
+    uint256 public constant _SECONDLY_ = 0;
+    uint256 public constant _MINUTELY_ = 1;
+    uint256 public constant _HOURLY_ = 2;
+    uint256 public constant _DAILY_ = 3;
+    uint256 public constant _WEEKLY_ = 4;
+    uint256 public constant _2_WEEKLY_ = 5;
+    uint256 public constant _4_WEEKLY_ = 6;
+    uint256 public constant _6_WEEKLY_ = 7;
+    uint256 public constant _8_WEEKLY_ = 8;
+    uint256 public constant _360_DAILY_ = 9;
+    uint256 public constant _365_DAILY_ = 10;
 
     // Need oracle for correct times
-    uint8 private constant _MONTHLY_ = 11;
-    uint8 private constant _2_MONTHLY_ = 12;
-    uint8 private constant _3_MONTHLY_ = 13;
-    uint8 private constant _4_MONTHLY_ = 14;
-    uint8 private constant _6_MONTHLY_ = 15;
+    uint256 public constant _MONTHLY_ = 11;
+    uint256 public constant _2_MONTHLY_ = 12;
+    uint256 public constant _3_MONTHLY_ = 13;
+    uint256 public constant _4_MONTHLY_ = 14;
+    uint256 public constant _6_MONTHLY_ = 15;
 
     /* ------------------------------------------------ *
      *                  Loan Terms                      *
      * ------------------------------------------------ */
     uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
-    uint8 public constant _FIR_INTERVAL_ = 14; // Biweekly
-    uint8 public constant _FIXED_INTEREST_RATE_ = 1; // 0.05
-    uint128 public constant _PRINCIPAL_ = 10000 * 10 ** 18; // ETH // 226854911280625642308916404954512140970
+    uint8 public constant _FIR_INTERVAL_ = 9;
+    uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
+    uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
-    uint32 public constant _DURATION_ = 7257600; // 12 weeks (seconds) // 1145324612
+    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2;
     uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
     uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
 
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
      * ------------------------------------------------ */
-    bytes4 public constant _DURATION_ERROR_ID_ = 0x64757261;
-    bytes4 public constant _PRINCIPAL_ERROR_ID_ = 0x7072696e;
-    bytes4 public constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x66697865;
-    bytes4 public constant _GRACE_PERIOD_ERROR_ID_ = 0x67726163;
-    bytes4 public constant _TIME_EXPIRY_ERROR_ID_ = 0x74696d65;
+    bytes4 public constant _LOAN_STATE_ERROR_ID_ = 0xdacce9d3;
+    bytes4 public constant _FIR_INTERVAL_ERROR_ID_ = 0xa13e8948;
+    bytes4 public constant _DURATION_ERROR_ID_ = 0xfcbf8511;
+    bytes4 public constant _PRINCIPAL_ERROR_ID_ = 0x6a901435;
+    bytes4 public constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
+    bytes4 public constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
+    bytes4 public constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
 
     /* ------------------------------------------------ *
      *                    CONSTANTS                     *

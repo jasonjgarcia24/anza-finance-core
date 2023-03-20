@@ -7,8 +7,8 @@ interface ILoanContractEvents {
     error InvalidTokenId(uint256 tokenId);
     error InvalidParticipant(address account);
     error InvalidFundsTransfer(uint256 amount);
-    error InsufficientFunds();
     error InvalidLoanParameter(bytes4 parameter);
+    error InsufficientFunds();
     error OverflowLoanTerm();
     error InactiveLoanState(uint256 debtId);
     error FailedFundsTransfer();
@@ -24,5 +24,11 @@ interface ILoanContractEvents {
         address indexed borrower,
         address indexed lender,
         uint256 amount
+    );
+
+    event LoanStateChanged(
+        uint256 indexed debtId,
+        uint8 indexed newLoanState,
+        uint8 indexed oldLoanState
     );
 }

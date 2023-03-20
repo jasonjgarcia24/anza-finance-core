@@ -336,6 +336,7 @@ contract LoanContractFuzzSubmit is
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
+        // Submit proposal
         initLoanContractExpectations(
             address(loanContract),
             lender,
@@ -346,7 +347,6 @@ contract LoanContractFuzzSubmit is
             _TERMS_EXPIRY_
         );
 
-        // Submit proposal
         vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
         vm.startPrank(lender);
 

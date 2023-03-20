@@ -54,6 +54,21 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     uint8 private constant _ANNUALLY_ = 15;
 
     /* ------------------------------------------------ *
+     *               FIR Interval Multipliers           *
+     * ------------------------------------------------ */
+    uint256 private constant _SECONDLY_MULTIPLIER_ = 1;
+    uint256 private constant _MINUTELY_MULTIPLIER_ = 60;
+    uint256 private constant _HOURLY_MULTIPLIER_ = 60 * 60;
+    uint256 private constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
+    uint256 private constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
+    uint256 private constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
+    uint256 private constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
+    uint256 private constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
+    uint256 private constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
+    uint256 private constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
+    uint256 private constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
+
+    /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
      * ------------------------------------------------ */
     uint256 private constant _LOAN_STATE_MASK_ =
@@ -85,11 +100,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
      * ------------------------------------------------ */
-    bytes4 private constant _DURATION_ERROR_ID_ = 0x64757261;
-    bytes4 private constant _PRINCIPAL_ERROR_ID_ = 0x7072696e;
-    bytes4 private constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x66697865;
-    bytes4 private constant _GRACE_PERIOD_ERROR_ID_ = 0x67726163;
-    bytes4 private constant _TIME_EXPIRY_ERROR_ID_ = 0x74696d65;
+    bytes4 private constant _LOAN_STATE_ERROR_ID_ = 0xdacce9d3;
+    bytes4 private constant _FIR_INTERVAL_ERROR_ID_ = 0xa13e8948;
+    bytes4 private constant _DURATION_ERROR_ID_ = 0xfcbf8511;
+    bytes4 private constant _PRINCIPAL_ERROR_ID_ = 0x6a901435;
+    bytes4 private constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
+    bytes4 private constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
+    bytes4 private constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
 
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
@@ -158,6 +175,20 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         return debtIds[_collateralAddress][_collateralId].length;
     }
 
+    function getCollateralDebtId(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) public view returns (uint256) {
+        return
+            debtIds[_collateralAddress][_collateralId][
+                debtIds[_collateralAddress][_collateralId].length - 1
+            ];
+    }
+
+    function getDebtTerms(uint256 _debtId) external view returns (bytes32) {
+        return __packedDebtTerms[_debtId];
+    }
+
     /*
      * TODO: Test
      *
@@ -207,7 +238,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
         // Add debt ID to collateral mapping
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
-        _setLoanAgreement(_borrower, _contractTerms);
+        __setLoanAgreement(_borrower, _contractTerms);
 
         // Transfer collateral to collateral vault.
         // The collateral ID and address will be mapped within
@@ -365,13 +396,69 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
+    function totalFirIntervals(
+        uint256 _debtId,
+        uint256 _seconds
+    ) public view returns (uint256) {
+        if (_checkLoanExpired(_debtId)) revert InactiveLoanState(_debtId);
+
+        uint256 _firInterval = firInterval(_debtId);
+
+        // _SECONDLY_
+        if (_firInterval == 0) {
+            return _seconds;
+        }
+        // _MINUTELY_
+        else if (_firInterval == 1) {
+            return _seconds / _MINUTELY_MULTIPLIER_;
+        }
+        // _HOURLY_
+        else if (_firInterval == 2) {
+            return _seconds / _HOURLY_MULTIPLIER_;
+        }
+        // _DAILY_
+        else if (_firInterval == 3) {
+            return _seconds / _DAILY_MULTIPLIER_;
+        }
+        // _WEEKLY_
+        else if (_firInterval == 4) {
+            return _seconds / _WEEKLY_MULTIPLIER_;
+        }
+        // _2_WEEKLY_
+        else if (_firInterval == 5) {
+            return _seconds / _2_WEEKLY_MULTIPLIER_;
+        }
+        // _4_WEEKLY_
+        else if (_firInterval == 6) {
+            return _seconds / _4_WEEKLY_MULTIPLIER_;
+        }
+        // _6_WEEKLY_
+        else if (_firInterval == 7) {
+            return _seconds / _6_WEEKLY_MULTIPLIER_;
+        }
+        // _8_WEEKLY_
+        else if (_firInterval == 8) {
+            return _seconds / _8_WEEKLY_MULTIPLIER_;
+        }
+        // _360_DAILY_
+        else if (_firInterval == 9) {
+            return _seconds / _360_DAILY_MULTIPLIER_;
+        }
+        // _365_DAILY_
+        else if (_firInterval == 10) {
+            return _seconds / _365_DAILY_MULTIPLIER_;
+        }
+
+        revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
+    }
+
     /*
      * @dev Updates loan state.
      */
     function updateLoanState(
         uint256 _debtId
     ) external onlyRole(Roles._TREASURER_) {
-        if (checkLoanActive(_debtId) == false) {
+        if (!checkLoanActive(_debtId)) {
             console.log("Inactive loan");
             revert InactiveLoanState(_debtId);
         }
@@ -379,23 +466,24 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         // Loan defaulted
         if (_checkLoanExpired(_debtId)) {
             console.log("Expired loan");
-            _setLoanState(_debtId, _DEFAULT_STATE_);
+            __updateLoanTimes(_debtId);
+            __setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
         else if (anzaToken.totalSupply(_debtId * 2) <= 0) {
             console.log("Paid loan");
-            _setLoanState(_debtId, _PAID_STATE_);
+            __setLoanState(_debtId, _PAID_STATE_);
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
             console.log("Active loan");
-            _updateLoanTimes(_debtId);
+            __updateLoanTimes(_debtId);
         }
         // Loan no longer in grace period
-        else if (_checkGracePeriod(_debtId) == false) {
+        else if (!_checkGracePeriod(_debtId)) {
             console.log("Newly active loan");
-            _setLoanState(_debtId, _ACTIVE_STATE_);
-            _updateLoanTimes(_debtId);
+            __setLoanState(_debtId, _ACTIVE_STATE_);
+            __updateLoanTimes(_debtId);
         }
     }
 
@@ -405,10 +493,69 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             loanState(_debtId) <= _ACTIVE_STATE_;
     }
 
-    function _setLoanAgreement(
+    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
+        return loanStart(_debtId) > block.timestamp;
+    }
+
+    function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
+        return
+            anzaToken.totalSupply(_debtId * 2) > 0 &&
+            loanClose(_debtId) <= block.timestamp;
+    }
+
+    function _verifyTermsExpiry(bytes32 _contractTerms) internal pure {
+        uint32 _termsExpiry;
+
+        assembly {
+            mstore(0x1d, _contractTerms)
+            _termsExpiry := mload(0)
+        }
+
+        unchecked {
+            if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
+                revert InvalidLoanParameter(_TIME_EXPIRY_ERROR_ID_);
+            }
+        }
+    }
+
+    function _verifyDuration(bytes32 _contractTerms) internal view {
+        uint32 _duration;
+        uint32 _loanStart = __toUint32(block.timestamp);
+
+        assembly {
+            mstore(0x19, _contractTerms)
+            _duration := mload(0)
+        }
+
+        unchecked {
+            if (
+                uint256(_duration) == 0 ||
+                uint256(_duration) + uint256(_loanStart) > type(uint32).max
+            ) {
+                revert InvalidLoanParameter(_DURATION_ERROR_ID_);
+            }
+        }
+    }
+
+    function _verifyPrincipal(
+        bytes32 _contractTerms,
+        uint256 _amount
+    ) internal pure {
+        uint128 _principal;
+
+        assembly {
+            mstore(0x05, _contractTerms)
+            _principal := mload(0)
+        }
+
+        if (_principal == 0 || _principal != _amount)
+            revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+    }
+
+    function __setLoanAgreement(
         address _borrower,
         bytes32 _contractTerms
-    ) internal {
+    ) private {
         bytes32 _loanAgreement;
         uint8 _fixedInterestRate;
         uint32 _gracePeriod;
@@ -493,17 +640,25 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         __packedDebtTerms[totalDebts] = _loanAgreement;
     }
 
-    function _setLoanState(uint256 _debtId, uint8 _loanState) internal {
+    function __setLoanState(uint256 _debtId, uint8 _newLoanState) private {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        uint8 _oldLoanState;
 
         assembly {
+            _oldLoanState := and(_LOAN_STATE_MAP_, _contractTerms)
+
+            // If the loan states are the same, do nothing
+            if eq(_oldLoanState, _newLoanState) {
+                revert(0, 0)
+            }
+
             mstore(0x20, _contractTerms)
 
             mstore(
                 0x20,
                 xor(
                     and(_LOAN_STATE_MASK_, mload(0x20)),
-                    and(_LOAN_STATE_MAP_, _loanState)
+                    and(_LOAN_STATE_MAP_, _newLoanState)
                 )
             )
 
@@ -511,22 +666,21 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
 
         __packedDebtTerms[_debtId] = _contractTerms;
+
+        emit LoanStateChanged(_debtId, _newLoanState, _oldLoanState);
     }
 
-    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
-        return loanStart(_debtId) > block.timestamp;
-    }
-
-    function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
-        return
-            anzaToken.totalSupply(_debtId * 2) > 0 &&
-            loanClose(_debtId) <= block.timestamp;
-    }
-
-    function _updateLoanTimes(uint256 _debtId) internal {
+    function __updateLoanTimes(uint256 _debtId) private {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
 
         assembly {
+            let _loanState := and(_LOAN_STATE_MAP_, _contractTerms)
+
+            // If loan state is beyond active, do nothing
+            if gt(_loanState, _ACTIVE_STATE_) {
+                revert(0, 0)
+            }
+
             let _now := timestamp()
             mstore(0x20, _contractTerms)
 
@@ -562,55 +716,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         __packedDebtTerms[_debtId] = _contractTerms;
     }
 
-    function _verifyTermsExpiry(bytes32 _contractTerms) internal pure {
-        uint32 _termsExpiry;
-
-        assembly {
-            mstore(0x1d, _contractTerms)
-            _termsExpiry := mload(0)
-        }
-
-        unchecked {
-            if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
-                revert InvalidLoanParameter(_TIME_EXPIRY_ERROR_ID_);
-            }
-        }
-    }
-
-    function _verifyDuration(bytes32 _contractTerms) internal view {
-        uint32 _duration;
-        uint32 _loanStart = _toUint32(block.timestamp);
-
-        assembly {
-            mstore(0x19, _contractTerms)
-            _duration := mload(0)
-        }
-
-        unchecked {
-            if (
-                uint256(_duration) == 0 ||
-                uint256(_duration) + uint256(_loanStart) > type(uint32).max
-            ) {
-                revert InvalidLoanParameter(_DURATION_ERROR_ID_);
-            }
-        }
-    }
-
-    function _verifyPrincipal(
-        bytes32 _contractTerms,
-        uint256 _amount
-    ) internal pure {
-        uint128 _principal;
-
-        assembly {
-            mstore(0x05, _contractTerms)
-            _principal := mload(0)
-        }
-
-        if (_principal == 0 || _principal != _amount)
-            revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
-    }
-
     /**
      * @dev Returns the downcasted uint32 from uint256, reverting on
      * overflow (when the input is greater than largest uint32).
@@ -623,7 +728,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      *
      * _Available since v2.5._
      */
-    function _toUint32(uint256 value) internal pure returns (uint32) {
+    function __toUint32(uint256 value) private pure returns (uint32) {
         require(
             value <= type(uint32).max,
             "SafeCast: value doesn't fit in 32 bits"
