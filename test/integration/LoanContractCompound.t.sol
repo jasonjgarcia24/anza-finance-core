@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
-import {Test, console, LoanSigned} from "./LoanContract.t.sol";
+import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
+import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractSubmitFunctions} from "./LoanContractSubmission.t.sol";
-import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
 
 contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
     function setUp() public virtual override {

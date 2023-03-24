@@ -83,7 +83,7 @@ abstract contract LoanContractGlobalConstants {
      * ------------------------------------------------ */
     string public constant _BASE_URI_ = "https://www.a_base_uri.com/";
     string public baseURI = "https://www.demo_token_metadata_uri.com/";
-    uint256 public constant collateralId = 0;
+    uint256 public constant collateralId = 3;
 
     function getTokenURI(uint256 _tokenId) public pure returns (string memory) {
         return
@@ -92,6 +92,21 @@ abstract contract LoanContractGlobalConstants {
                     _BASE_URI_,
                     "debt-token/",
                     Strings.toString(_tokenId)
+                )
+            );
+    }
+
+    function getAccessControlFailMsg(
+        bytes32 _role,
+        address _account
+    ) public pure returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    "AccessControl: account ",
+                    Strings.toHexString(uint160(_account), 20),
+                    " is missing role ",
+                    Strings.toHexString(uint256(_role), 32)
                 )
             );
     }

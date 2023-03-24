@@ -37,16 +37,13 @@ contract LoanCollateralVault is
     function withdraw(
         address _to,
         uint256 _debtId
-    ) external onlyRole(Roles._TREASURER_) {
+    ) external onlyRole(Roles._TREASURER_) returns (bool) {
         __totalCollateral -= 1;
 
         Collateral storage _collateral = __collaterals[_debtId];
-        IERC721 _collateralContract = IERC721(_collateral.collateralAddress);
 
-        _collateralContract.approve(msg.sender, _collateral.collateralId);
-
-        _collateralContract.safeTransferFrom(
-            msg.sender,
+        IERC721(_collateral.collateralAddress).safeTransferFrom(
+            address(this),
             _to,
             _collateral.collateralId,
             ""
@@ -57,6 +54,8 @@ contract LoanCollateralVault is
             _collateral.collateralAddress,
             _collateral.collateralId
         );
+
+        return true;
     }
 
     /**
@@ -74,10 +73,14 @@ contract LoanCollateralVault is
     ) public override returns (bytes4) {
         _checkRole(Roles._LOAN_CONTRACT_, _operator);
 
-        __totalCollateral += 1;
-
+        // Ensure collateral address is packaged in _data
         address _collateralAddress = address(bytes20(_data));
 
+        if (msg.sender != _collateralAddress)
+            revert InvalidDepositMsg(msg.sender, _collateralAddress);
+
+        // Add collateral to inventory
+        __totalCollateral += 1;
         __collaterals.push(Collateral(_collateralAddress, _collateralId));
 
         emit CollateralDeposited(_from, _collateralAddress, _collateralId);

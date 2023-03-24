@@ -5,12 +5,17 @@ pragma solidity ^0.8.0;
 
 interface ILoanCollateralVault {
     error InvalidParticipant(address account);
+    error InvalidDepositMsg(
+        address expectedTokenAddress,
+        address actualTokenAddress
+    );
 
     event CollateralDeposited(
         address indexed from,
         address indexed collateralAddress,
         uint256 indexed collateralId
     );
+
     event CollateralWithdrawn(
         address indexed to,
         address indexed collateralAddress,
@@ -28,5 +33,5 @@ interface ILoanCollateralVault {
         uint256 _debtId
     ) external view returns (Collateral memory);
 
-    function withdraw(address _to, uint256 _debtId) external;
+    function withdraw(address _to, uint256 _debtId) external returns (bool);
 }

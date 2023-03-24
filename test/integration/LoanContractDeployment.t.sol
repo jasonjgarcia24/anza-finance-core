@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {LibOfficerRoles as Roles, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
-import {Test, LoanContractDeployer, LoanContractSubmitted} from "./LoanContract.t.sol";
+import {LibOfficerRoles as Roles, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
+import {Test, LoanContractDeployer, LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractTestDeployment is LoanContractDeployer {
     function testDeploymentStateVars() public {

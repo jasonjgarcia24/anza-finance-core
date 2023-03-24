@@ -24,20 +24,24 @@ interface IAnzaDebtStorefront {
         uint256 price
     );
 
-    function listDebt(
-        uint256 _debtId,
-        uint256 _price,
-        bytes32 _debtTerms
-    ) external;
+    struct Listing {
+        uint256 price;
+        address debtOwner;
+        address collateralAddress;
+        uint256 collateralId;
+        bytes32 debtTerms;
+    }
+
+    function listDebt(uint256 _debtId, uint256 _price) external;
 
     function cancelListing(uint256 _debtId) external;
 
     function buyDebt(
         address _collateralAddress,
         uint256 _collateralId
-    ) external;
+    ) external payable;
 
-    function buyDebt(uint256 _debtId) external;
+    function buyDebt(uint256 _debtId) external payable;
 
     function updateListing(uint256 _debtId, uint256 _newPrice) external;
 
@@ -46,5 +50,9 @@ interface IAnzaDebtStorefront {
     function getListing(
         address _collateralAddress,
         uint256 _collateralId
-    ) external;
+    ) external view returns (Listing memory);
+
+    function getListing(uint256 _debtId) external view returns (Listing memory);
+
+    function getProceeds(address _seller) external view returns (uint256);
 }

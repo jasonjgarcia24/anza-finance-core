@@ -17,14 +17,6 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     address public immutable loanCollateralVault;
     address public immutable anzaToken;
 
-    struct Listing {
-        uint256 price;
-        address debtOwner;
-        address collateralAddress;
-        uint256 collateralId;
-        bytes32 debtTerms;
-    }
-
     mapping(uint256 => Listing) private __debtListings;
     mapping(address => uint256) private __proceeds;
 
@@ -39,8 +31,10 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     }
 
     modifier isDebtOwner(uint256 _debtId) {
-        if (!IERC721(anzaToken).ownerOf(Indexer.getBorrowerTokenId(_debtId)))
-            revert InvalidDebtOwner(msg.sender);
+        if (
+            IERC721(anzaToken).ownerOf(Indexer.getBorrowerTokenId(_debtId)) !=
+            msg.sender
+        ) revert InvalidDebtOwner(msg.sender);
 
         _;
     }
@@ -61,18 +55,12 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         uint256 _price
     ) external isDebtOwner(_debtId) isNotListed(_debtId) {
         address _debtOwner = msg.sender;
-        bytes32 _role = keccak256(abi.encodePacked(_debtOwner, _debtId));
 
-        if (
-            !IAccessControl(anzaToken).hasRole(
-                Roles._DEBT_STOREFRONT_,
-                address(this)
-            )
-        ) revert NotApprovedForMarketplace();
-
+        // Verify listing price
         if (_price <= 0 || _price > type(uint128).max)
             revert InvalidListingPrice(_price);
 
+        // List debt
         ILoanCollateralVault.Collateral
             memory _collateral = ILoanCollateralVault(loanCollateralVault)
                 .getCollateralAt(_debtId);
@@ -98,16 +86,22 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     function buyDebt(
         address _collateralAddress,
         uint256 _collateralId
-    ) external {
-        buyDebt(
-            ILoanContract(loanContract).getCollateralDebtId(
-                _collateralAddress,
-                _collateralId
+    ) external payable {
+        (bool success, ) = address(this).call{value: msg.value}(
+            abi.encodeWithSignature(
+                "buyDebt(uint256)",
+                ILoanContract(loanContract).getCollateralDebtId(
+                    _collateralAddress,
+                    _collateralId
+                )
             )
         );
+        require(success);
     }
 
-    function buyDebt(uint256 _debtId) public isListed(_debtId) nonReentrant {
+    function buyDebt(
+        uint256 _debtId
+    ) public payable isListed(_debtId) nonReentrant {
         Listing memory _debtListing = __debtListings[_debtId];
         uint256 _payment = msg.value;
 
@@ -152,7 +146,7 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     function getListing(
         address _collateralAddress,
         uint256 _collateralId
-    ) external returns (Listing memory) {
+    ) external view returns (Listing memory) {
         return
             getListing(
                 ILoanContract(loanContract).getCollateralDebtId(
@@ -162,11 +156,11 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
             );
     }
 
-    function getListing(uint256 _debtId) public returns (Listing memory) {
+    function getListing(uint256 _debtId) public view returns (Listing memory) {
         return __debtListings[_debtId];
     }
 
-    function getProceeds(address _seller) external returns (uint256) {
-        return proceeds[_seller];
+    function getProceeds(address _seller) external view returns (uint256) {
+        return __proceeds[_seller];
     }
 }

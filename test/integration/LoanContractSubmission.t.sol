@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import {DemoToken} from "../contracts/DemoToken.sol";
-import {IAnzaToken} from "../contracts/token/interfaces/IAnzaToken.sol";
-import {IAnzaEvents} from "./interfaces/IAnzaEvents.t.sol";
-import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
-import {ILoanContract} from "../contracts/interfaces/ILoanContract.sol";
-import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
+import {IAnzaToken} from "../../contracts/token/interfaces/IAnzaToken.sol";
+import {IAnzaEvents} from "../interfaces/IAnzaEvents.t.sol";
+import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
+import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
+import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {Test, console, LoanContractGlobalConstants, LoanContractDeployer, LoanSigned} from "./LoanContract.t.sol";
-import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../contracts/libraries/LibLoanContract.sol";
+import {Test, console, LoanContractGlobalConstants, LoanContractDeployer, LoanSigned} from "../LoanContract.t.sol";
+import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
 
 abstract contract LoanContractSubmitFunctions is
     Test,

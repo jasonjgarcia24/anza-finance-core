@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
-import {Test, console, LoanContractSubmitted} from "./LoanContract.t.sol";
+import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
+import {Test, console, LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
     function setUp() public virtual override {

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
+import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import "./token/interfaces/IAnzaToken.sol";
@@ -14,15 +15,8 @@ import "./abdk-libraries-solidity/ABDKMath64x64.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
 
-error InvalidParticipant(address account);
-error InsufficientFunds(uint256 amount);
-error InactiveLoanState(uint256 debtId);
-
-contract LoanTreasurey is Ownable, ReentrancyGuard {
+contract LoanTreasurey is ILoanTreasurey, Ownable, ReentrancyGuard {
     using Address for address payable;
-
-    event Deposited(address indexed payee, uint256 weiAmount);
-    event Withdrawn(address indexed payee, uint256 weiAmount);
 
     /* ------------------------------------------------ *
      *                Contract Constants                *
@@ -81,7 +75,7 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         return _success;
     }
 
-    function withdrawCollateral(uint256 _debtId) external {
+    function withdrawCollateral(uint256 _debtId) external returns (bool) {
         address _borrower = msg.sender;
         bytes32 _role = keccak256(abi.encodePacked(_borrower, _debtId));
 
@@ -90,31 +84,11 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
         if (!IAccessControl(anzaToken).hasRole(_role, _borrower))
             revert InvalidParticipant(_borrower);
 
-        ILoanCollateralVault(loanCollateralVault).withdraw(_borrower, _debtId);
-    }
-
-    function _depositPayment(uint256 _debtId, uint256 _payment) internal {
-        ILoanContract _loanContract = ILoanContract(loanContract);
-        IAnzaToken _anzaTokenContract = IAnzaToken(anzaToken);
-        address _lender = _anzaTokenContract.lenderOf(_debtId);
-
-        // Update lender's withdrawable balance
-        withdrawableBalance[_lender] += _payment;
-
-        // Burn ALC debt token
-        _anzaTokenContract.burn(_lender, _debtId * 2, _payment);
-
-        // Update loan state
-        _loanContract.updateLoanState(_debtId);
-
-        // Conditionally burn replica
-        if (!_loanContract.checkLoanActive(_debtId)) {
-            _anzaTokenContract.burn(
-                _loanContract.borrower(_debtId),
-                _anzaTokenContract.borrowerTokenId(_debtId),
-                1
+        return
+            ILoanCollateralVault(loanCollateralVault).withdraw(
+                _borrower,
+                _debtId
             );
-        }
     }
 
     // TODO: Need to revisit to ensure accuracy at larger total debt values
@@ -139,6 +113,30 @@ contract LoanTreasurey is Ownable, ReentrancyGuard {
                 _topoff(_totalDebt, _fixedInterestRate, _firIntervals);
         } else {
             return IAnzaToken(anzaToken).totalSupply(_debtId * 2);
+        }
+    }
+
+    function _depositPayment(uint256 _debtId, uint256 _payment) internal {
+        ILoanContract _loanContract = ILoanContract(loanContract);
+        IAnzaToken _anzaTokenContract = IAnzaToken(anzaToken);
+        address _lender = _anzaTokenContract.lenderOf(_debtId);
+
+        // Update lender's withdrawable balance
+        withdrawableBalance[_lender] += _payment;
+
+        // Burn ALC debt token
+        _anzaTokenContract.burn(_lender, _debtId * 2, _payment);
+
+        // Update loan state
+        _loanContract.updateLoanState(_debtId);
+
+        // Conditionally burn replica
+        if (!_loanContract.checkLoanActive(_debtId)) {
+            _anzaTokenContract.burn(
+                _loanContract.borrower(_debtId),
+                _anzaTokenContract.borrowerTokenId(_debtId),
+                1
+            );
         }
     }
 

@@ -88,25 +88,25 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
         string calldata _collateralURI,
         bytes memory _data
     ) external onlyRole(Roles._LOAN_CONTRACT_) {
-        address _borrower = address(bytes20(_data));
         bytes32 _tokenAdminRole = keccak256(_data);
 
         /* Lender Token */
         if (_id % 2 == 0) {
-            _checkRole(Roles._LOAN_CONTRACT_, msg.sender);
-
             // Only allow treasurer to grant/revoke access control.
             // This is necessary to allow a single account to recall
             // the collateral upon full repayment.
             _setRoleAdmin(_tokenAdminRole, Roles._TREASURER_);
-            _grantRole(_tokenAdminRole, _borrower);
+
+            // Grant the encoded borrower's address token admin access
+            // control
+            _grantRole(_tokenAdminRole, address(bytes20(_data)));
 
             // Preset borrower token's URI
             _setURI(_id + 1, _collateralURI);
         }
         /* Borrower Token */
         else {
-            _checkRole(_tokenAdminRole, _borrower);
+            _checkRole(_tokenAdminRole, _to);
         }
 
         // Mint ALC debt tokens
@@ -145,8 +145,38 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
         // account
         return
             hasRole(Roles._TREASURER_, _operator) ||
-            hasRole(Roles._DEBT_STOREFRONT_, _operator) ||
             super.isApprovedForAll(_account, _operator);
+    }
+
+    function _safeTransferFrom(
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _amount,
+        bytes memory _data
+    ) internal override {
+        require(
+            hasRole(Roles._TREASURER_, _from) ||
+                hasRole(keccak256(abi.encodePacked(_from, _id)), _from),
+            "Transfer denied"
+        );
+        super._safeTransferFrom(_from, _to, _id, _amount, _data);
+    }
+
+    function _safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
+        bytes memory _data
+    ) internal override {
+        if (!hasRole(Roles._TREASURER_, _from)) {
+            for (uint256 i = 0; i < _ids.length; ++i) {
+                _checkRole(keccak256(abi.encodePacked(_from, _ids[i])), _from);
+            }
+        }
+
+        super._safeBatchTransferFrom(_from, _to, _ids, _amounts, _data);
     }
 
     function _beforeTokenTransfer(
