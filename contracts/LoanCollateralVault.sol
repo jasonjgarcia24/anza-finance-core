@@ -73,12 +73,6 @@ contract LoanCollateralVault is
     ) public override returns (bytes4) {
         _checkRole(Roles._LOAN_CONTRACT_, _operator);
 
-        // // Ensure collateral address is packaged in _data
-        // address _collateralAddress = address(bytes20(_data));
-
-        // if (msg.sender != _collateralAddress)
-        //     revert InvalidDepositMsg(msg.sender, _collateralAddress);
-
         // Add collateral to inventory
         __totalCollateral += 1;
         address _collateralAddress = msg.sender;
