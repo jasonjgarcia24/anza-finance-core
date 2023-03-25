@@ -3,15 +3,16 @@ pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
 import "./interfaces/ILoanCollateralVault.sol";
+import "./interfaces/ILoanContract.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 
 contract LoanCollateralVault is
+    ILoanCollateralVault,
     AccessControl,
-    ERC721Holder,
-    ILoanCollateralVault
+    ERC721Holder
 {
     uint256 private __totalCollateral;
     Collateral[] private __collaterals;
@@ -38,9 +39,8 @@ contract LoanCollateralVault is
         address _to,
         uint256 _debtId
     ) external onlyRole(Roles._TREASURER_) returns (bool) {
-        __totalCollateral -= 1;
-
         Collateral storage _collateral = __collaterals[_debtId];
+        __totalCollateral -= 1;
 
         IERC721(_collateral.collateralAddress).safeTransferFrom(
             address(this),
@@ -49,7 +49,7 @@ contract LoanCollateralVault is
             ""
         );
 
-        emit CollateralWithdrawn(
+        emit WithdrawnCollateral(
             _to,
             _collateral.collateralAddress,
             _collateral.collateralId
@@ -73,17 +73,18 @@ contract LoanCollateralVault is
     ) public override returns (bytes4) {
         _checkRole(Roles._LOAN_CONTRACT_, _operator);
 
-        // Ensure collateral address is packaged in _data
-        address _collateralAddress = address(bytes20(_data));
+        // // Ensure collateral address is packaged in _data
+        // address _collateralAddress = address(bytes20(_data));
 
-        if (msg.sender != _collateralAddress)
-            revert InvalidDepositMsg(msg.sender, _collateralAddress);
+        // if (msg.sender != _collateralAddress)
+        //     revert InvalidDepositMsg(msg.sender, _collateralAddress);
 
         // Add collateral to inventory
         __totalCollateral += 1;
+        address _collateralAddress = msg.sender;
         __collaterals.push(Collateral(_collateralAddress, _collateralId));
 
-        emit CollateralDeposited(_from, _collateralAddress, _collateralId);
+        emit DepositedCollateral(_from, _collateralAddress, _collateralId);
 
         return
             bytes4(

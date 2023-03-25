@@ -10,8 +10,15 @@ contract DemoToken is ERC721 {
 
     constructor() ERC721("Demo Token", "DT") {
         while (totalSupply < 50) {
-            _safeMint(msg.sender, totalSupply);
-            totalSupply++;
+            _safeMint(msg.sender, ++totalSupply);
+        }
+    }
+
+    function mint(uint256 _amount) public {
+        uint256 _updatedSupply = totalSupply + _amount;
+
+        while (totalSupply < _updatedSupply) {
+            _safeMint(msg.sender, ++totalSupply);
         }
     }
 

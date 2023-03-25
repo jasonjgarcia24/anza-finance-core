@@ -10,13 +10,13 @@ interface ILoanCollateralVault {
         address actualTokenAddress
     );
 
-    event CollateralDeposited(
+    event DepositedCollateral(
         address indexed from,
         address indexed collateralAddress,
         uint256 indexed collateralId
     );
 
-    event CollateralWithdrawn(
+    event WithdrawnCollateral(
         address indexed to,
         address indexed collateralAddress,
         uint256 indexed collateralId
@@ -33,5 +33,8 @@ interface ILoanCollateralVault {
         uint256 _debtId
     ) external view returns (Collateral memory);
 
-    function withdraw(address _to, uint256 _debtId) external returns (bool);
+    function withdraw(
+        address _loanContractAddress,
+        uint256 _debtId
+    ) external returns (bool);
 }

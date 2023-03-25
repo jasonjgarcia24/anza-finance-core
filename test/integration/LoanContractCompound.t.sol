@@ -55,6 +55,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
             _debtId,
             10,
             62208000,
+            _GRACE_PERIOD_,
             _TERMS_EXPIRY_
         );
 
@@ -79,7 +80,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
         uint256 _initialLoanLastChecked = loanContract.loanLastChecked(_debtId);
         assertGt(_initialLoanLastChecked, block.timestamp);
 
-        loanTreasurer.setBalanceWithInterest(_debtId);
+        loanTreasurer.updateDebt(_debtId);
         assertEq(
             loanContract.loanLastChecked(_debtId),
             _initialLoanLastChecked
@@ -91,7 +92,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
         vm.expectEmit(true, true, true, true);
         emit LoanStateChanged(_debtId, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_);
 
-        assertEq(loanTreasurer.setBalanceWithInterest(_debtId), 11);
+        assertEq(loanTreasurer.updateDebt(_debtId), 11);
         assertGt(
             loanContract.loanLastChecked(_debtId),
             _initialLoanLastChecked
@@ -109,6 +110,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
             _debtId,
             _PRINCIPAL_,
             _DURATION_,
+            _GRACE_PERIOD_,
             _TERMS_EXPIRY_
         );
 

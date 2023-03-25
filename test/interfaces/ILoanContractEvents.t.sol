@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 interface ILoanContractEvents {
     error InvalidTokenId(uint256 tokenId);
     error InvalidParticipant(address account);
-    error InvalidFundsTransfer(uint256 amount);
     error InvalidLoanParameter(bytes4 parameter);
     error InsufficientFunds();
     error OverflowLoanTerm();

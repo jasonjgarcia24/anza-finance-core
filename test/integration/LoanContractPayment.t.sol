@@ -2,7 +2,8 @@
 pragma solidity ^0.8.7;
 
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
-import {Test, console, LoanContractSubmitted} from "../LoanContract.t.sol";
+import {ILoanTreasureyEvents} from "../interfaces/ILoanTreasureyEvents.t.sol";
+import {Test, console, stdError, LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
     function setUp() public virtual override {
@@ -26,7 +27,7 @@ contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawPayment(_PRINCIPAL_);
+        success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
         require(success);
         vm.stopPrank();
 
@@ -60,7 +61,7 @@ contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawPayment(_PRINCIPAL_);
+        success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
         require(success);
         vm.stopPrank();
 
@@ -92,7 +93,7 @@ contract LoanContractPayment is LoanContractSubmitted, ILoanContractEvents {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawPayment(_payment);
+        success = loanTreasurer.withdrawFromBalance(_payment);
         require(success);
         vm.stopPrank();
 
@@ -120,10 +121,8 @@ contract LoanContractPayment is LoanContractSubmitted, ILoanContractEvents {
 
         // Deny lender to withdraw payment
         vm.startPrank(lender);
-        vm.expectRevert(
-            abi.encodeWithSelector(InvalidFundsTransfer.selector, _payment)
-        );
-        success = loanTreasurer.withdrawPayment(_payment);
+        vm.expectRevert(stdError.arithmeticError);
+        success = loanTreasurer.withdrawFromBalance(_payment);
         require(success == false);
         vm.stopPrank();
 
@@ -155,7 +154,7 @@ contract LoanContractWithdrawal is LoanContractSubmitted, ILoanContractEvents {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawPayment(_withdrawal);
+        success = loanTreasurer.withdrawFromBalance(_withdrawal);
         require(success);
         vm.stopPrank();
 
@@ -184,10 +183,8 @@ contract LoanContractWithdrawal is LoanContractSubmitted, ILoanContractEvents {
 
         // Deny lender to over withdraw
         vm.startPrank(lender);
-        vm.expectRevert(
-            abi.encodeWithSelector(InvalidFundsTransfer.selector, _withdrawal)
-        );
-        success = loanTreasurer.withdrawPayment(_withdrawal);
+        vm.expectRevert(stdError.arithmeticError);
+        success = loanTreasurer.withdrawFromBalance(_withdrawal);
         require(success == false);
         vm.stopPrank();
 
@@ -200,12 +197,19 @@ contract LoanContractFuzzPayments is
     LoanContractSubmitted,
     ILoanContractEvents
 {
+    uint256 public updatedCollateralId;
+
     function setUp() public virtual override {
         super.setUp();
     }
 
     function testFuzzPayment(uint256 _payment) public {
+        // Setup
         bound(_payment, 0, 2 ** 128);
+        mintDemoTokens(1);
+        updatedCollateralId = demoToken.totalSupply();
+        bool _success = createLoanContract(updatedCollateralId);
+        require(_success);
 
         uint256 _debtId = loanContract.totalDebts() - 1;
         bool _invalidPayment = _payment == 0 || _payment > _PRINCIPAL_;
@@ -215,10 +219,10 @@ contract LoanContractFuzzPayments is
         vm.startPrank(borrower);
 
         // If _invalidPayment, "AnzaToken: burn amount exceeds totalSupply"
-        (bool success, ) = address(loanTreasurer).call{value: _payment}(
+        (_success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success || _invalidPayment);
+        require(_success || _invalidPayment);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
@@ -229,13 +233,17 @@ contract LoanContractFuzzPayments is
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        if (_invalidPayment) {
+        if (_payment == 0) {
             vm.expectRevert(
-                abi.encodeWithSelector(InvalidFundsTransfer.selector, _payment)
+                abi.encodeWithSelector(
+                    ILoanTreasureyEvents.InvalidFundsTransfer.selector
+                )
             );
+        } else if (_payment > _PRINCIPAL_) {
+            vm.expectRevert(stdError.arithmeticError);
         }
-        success = loanTreasurer.withdrawPayment(_payment);
-        require(success || _invalidPayment);
+        _success = loanTreasurer.withdrawFromBalance(_payment);
+        require(_success || _invalidPayment);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
@@ -246,7 +254,7 @@ contract LoanContractFuzzPayments is
         bound(_withdrawal, 0, 2 ** 128);
 
         uint256 _debtId = loanContract.totalDebts() - 1;
-        uint256 _payment = _PRINCIPAL_ / 10;
+        uint256 _payment = _PRINCIPAL_;
         bool _invalidWithdrawal = _withdrawal == 0 || _withdrawal > _payment;
 
         // Pay off loan
@@ -264,24 +272,26 @@ contract LoanContractFuzzPayments is
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        if (_invalidWithdrawal) {
+        if (_withdrawal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    InvalidFundsTransfer.selector,
-                    _withdrawal
+                    ILoanTreasureyEvents.InvalidFundsTransfer.selector
                 )
             );
+        } else if (_withdrawal > _payment) {
+            vm.expectRevert(stdError.arithmeticError);
         }
-
-        success = loanTreasurer.withdrawPayment(_withdrawal);
+        success = loanTreasurer.withdrawFromBalance(_withdrawal);
         require(success || _invalidWithdrawal);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
-        assertEq(
-            loanTreasurer.withdrawableBalance(lender),
-            _invalidWithdrawal ? _payment : _payment - _withdrawal
-        );
+        if (_withdrawal <= _payment) {
+            assertEq(
+                loanTreasurer.withdrawableBalance(lender),
+                _invalidWithdrawal ? _payment : _payment - _withdrawal
+            );
+        }
     }
 
     function testFuzzExchanges(uint256 _payment, uint256 _withdrawal) public {
@@ -311,16 +321,16 @@ contract LoanContractFuzzPayments is
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        if (_invalidPayment || _invalidWithdrawal) {
+        if (_withdrawal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    InvalidFundsTransfer.selector,
-                    _withdrawal
+                    ILoanTreasureyEvents.InvalidFundsTransfer.selector
                 )
             );
+        } else if (_payment > _PRINCIPAL_ || _withdrawal > _payment) {
+            vm.expectRevert(stdError.arithmeticError);
         }
-
-        success = loanTreasurer.withdrawPayment(_withdrawal);
+        success = loanTreasurer.withdrawFromBalance(_withdrawal);
         require(success || _invalidPayment || _invalidWithdrawal);
         vm.stopPrank();
 

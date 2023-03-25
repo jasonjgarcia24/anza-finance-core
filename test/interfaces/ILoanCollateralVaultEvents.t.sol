@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.2;
+pragma solidity ^0.8.7;
 
 interface ILoanCollateralVaultEvents {
-    event CollateralDeposited(
+    event DepositedCollateral(
         address indexed from,
         address indexed collateralAddress,
         uint256 indexed collateralId
     );
 
-    event CollateralWithdrawn(
+    event WithdrawnCollateral(
         address indexed to,
         address indexed collateralAddress,
         uint256 indexed collateralId

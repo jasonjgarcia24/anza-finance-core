@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import {LibLoanContractStates as States} from "../utils/LibLoanContractStates.sol";
+import {LibLoanContractStates as States} from "../utils/___LibLoanContractStates.sol";
 
 error InitializationLocked();
 error ControllerNotInitialized();
@@ -75,11 +75,9 @@ library StateControlUint256 {
      * - The property lock must be set (equal to 1).
      *
      */
-    function getThreshold(Property storage _property)
-        public
-        view
-        returns (States.LoanState)
-    {
+    function getThreshold(
+        Property storage _property
+    ) public view returns (States.LoanState) {
         if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._stateThreshold;
@@ -175,11 +173,9 @@ library StateControlAddress {
      * - The property lock must be set (equal to 1).
      *
      */
-    function getThreshold(Property storage _property)
-        public
-        view
-        returns (States.LoanState)
-    {
+    function getThreshold(
+        Property storage _property
+    ) public view returns (States.LoanState) {
         if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._stateThreshold;
@@ -275,11 +271,9 @@ library StateControlBool {
      * - The property lock must be set (equal to 1).
      *
      */
-    function getThreshold(Property storage _property)
-        public
-        view
-        returns (States.LoanState)
-    {
+    function getThreshold(
+        Property storage _property
+    ) public view returns (States.LoanState) {
         if (_property._lock == 0) revert ControllerNotInitialized();
 
         return _property._stateThreshold;
@@ -352,11 +346,10 @@ library StateControlUtils {
     /**
      * @dev Return if the state threshold of`_property` is beyond `_state`.
      */
-    function isActive(States.LoanState _state, States.LoanState _stateThreshold)
-        public
-        pure
-        returns (bool)
-    {
+    function isActive(
+        States.LoanState _state,
+        States.LoanState _stateThreshold
+    ) public pure returns (bool) {
         return _state <= _stateThreshold;
     }
 }

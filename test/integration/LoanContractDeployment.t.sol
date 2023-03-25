@@ -16,7 +16,9 @@ contract LoanContractTestDeployment is LoanContractDeployer {
 contract LoanContractTestAccessControl is LoanContractDeployer {
     function testHasRole() public {
         assertTrue(loanContract.hasRole(Roles._ADMIN_, admin));
-        assertTrue(loanContract.hasRole(Roles._TREASURER_, treasurer));
+        assertTrue(
+            loanContract.hasRole(Roles._TREASURER_, address(loanTreasurer))
+        );
         assertTrue(loanContract.hasRole(Roles._COLLECTOR_, collector));
     }
 

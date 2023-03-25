@@ -73,14 +73,15 @@ contract LoanCollateralVaultUnitTest is
         uint256 _debtId = loanContract.totalDebts() - 1;
 
         // DENY :: Try admin
+        vm.startPrank(admin);
         vm.expectRevert(
             bytes(getAccessControlFailMsg(Roles._TREASURER_, admin))
         );
-        vm.startPrank(admin);
         loanCollateralVault.withdraw(admin, _debtId);
         vm.stopPrank();
 
         // DENY :: Try loan contract
+        vm.startPrank(address(loanContract));
         vm.expectRevert(
             bytes(
                 getAccessControlFailMsg(
@@ -89,11 +90,11 @@ contract LoanCollateralVaultUnitTest is
                 )
             )
         );
-        vm.startPrank(address(loanContract));
         loanCollateralVault.withdraw(address(loanContract), _debtId);
         vm.stopPrank();
 
         // DENY :: Try loan collateral vault
+        vm.startPrank(address(loanCollateralVault));
         vm.expectRevert(
             bytes(
                 getAccessControlFailMsg(
@@ -102,15 +103,14 @@ contract LoanCollateralVaultUnitTest is
                 )
             )
         );
-        vm.startPrank(address(loanCollateralVault));
         loanCollateralVault.withdraw(address(loanCollateralVault), _debtId);
         vm.stopPrank();
 
         // SUCCEED :: Try loan treasurer
         vm.startPrank(address(loanTreasurer));
         vm.expectEmit(true, true, true, true);
-        emit CollateralWithdrawn(admin, address(demoToken), collateralId);
-        loanCollateralVault.withdraw(admin, _debtId);
+        emit WithdrawnCollateral(borrower, address(demoToken), collateralId);
+        loanCollateralVault.withdraw(borrower, _debtId);
         vm.stopPrank();
     }
 
@@ -122,7 +122,7 @@ contract LoanCollateralVaultUnitTest is
         );
 
         vm.startPrank(_sender);
-        loanCollateralVault.withdraw(_sender, _debtId);
+        loanCollateralVault.withdraw(borrower, _debtId);
         vm.stopPrank();
     }
 
@@ -194,6 +194,27 @@ contract LoanCollateralVaultUnitTest is
         );
         vm.stopPrank();
 
+        // // DENY :: Invalid deposit data field
+        // vm.startPrank(borrower);
+        // demoToken.approve(address(loanContract), _testCollateralId);
+        // vm.stopPrank();
+
+        // vm.startPrank(address(loanContract));
+        // vm.expectRevert(
+        //     abi.encodeWithSelector(
+        //         ILoanCollateralVault.InvalidDepositMsg.selector,
+        //         address(demoToken),
+        //         address(0)
+        //     )
+        // );
+        // demoToken.safeTransferFrom(
+        //     borrower,
+        //     address(loanCollateralVault),
+        //     _testCollateralId,
+        //     ""
+        // );
+        // vm.stopPrank();
+
         // SUCCEED :: Try loan contract
         vm.startPrank(borrower);
         demoToken.approve(address(loanContract), _testCollateralId);
@@ -201,7 +222,7 @@ contract LoanCollateralVaultUnitTest is
 
         vm.startPrank(address(loanContract));
         vm.expectEmit(true, true, true, true);
-        emit CollateralDeposited(
+        emit DepositedCollateral(
             borrower,
             address(demoToken),
             _testCollateralId
@@ -236,7 +257,7 @@ contract LoanCollateralVaultUnitTest is
             borrower,
             address(loanCollateralVault),
             _testCollateralId,
-            ""
+            abi.encodePacked(address(demoToken))
         );
         vm.stopPrank();
     }

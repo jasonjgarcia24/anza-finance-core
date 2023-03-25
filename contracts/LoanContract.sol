@@ -14,6 +14,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      *                Contract Constants                *
      * ------------------------------------------------ */
     uint256 private constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
+    uint256 private constant _UINT32_MAX_ = 4294967295;
 
     /* ------------------------------------------------ *
      *                  Loan States                     *
@@ -216,7 +217,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         bytes calldata _borrowerSignature
     ) external payable {
         _verifyTermsExpiry(_contractTerms);
-        _verifyDuration(_contractTerms);
 
         uint256 _principal = msg.value;
         _verifyPrincipal(_contractTerms, _principal);
@@ -487,6 +487,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
+    function verifyLoanActive(uint256 _debtId) public view {
+        if (!checkLoanActive(_debtId)) revert InactiveLoanState(_debtId);
+    }
+
     function checkLoanActive(uint256 _debtId) public view returns (bool) {
         return
             loanState(_debtId) >= _ACTIVE_GRACE_STATE_ &&
@@ -518,11 +522,19 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
-    function _verifyDuration(bytes32 _contractTerms) internal view {
+    function _verifyDuration(
+        bytes32 _contractTerms,
+        uint32 _loanStart
+    ) internal pure {
+        uint32 _gracePeriod;
         uint32 _duration;
-        uint32 _loanStart = __toUint32(block.timestamp);
 
         assembly {
+            // Get packed grace period
+            mstore(0x15, _contractTerms)
+            _gracePeriod := mload(0)
+
+            // Get packed duration
             mstore(0x19, _contractTerms)
             _duration := mload(0)
         }
@@ -530,7 +542,10 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         unchecked {
             if (
                 uint256(_duration) == 0 ||
-                uint256(_duration) + uint256(_loanStart) > type(uint32).max
+                (uint256(_loanStart) +
+                    uint256(_duration) +
+                    uint256(_gracePeriod)) >
+                type(uint32).max
             ) {
                 revert InvalidLoanParameter(_DURATION_ERROR_ID_);
             }
@@ -556,6 +571,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         address _borrower,
         bytes32 _contractTerms
     ) private {
+        uint32 _now = __toUint32(block.timestamp);
         bytes32 _loanAgreement;
         uint8 _fixedInterestRate;
         uint32 _gracePeriod;
@@ -574,6 +590,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             mstore(0x19, _contractTerms)
             _duration := mload(0)
         }
+
+        _verifyDuration(_contractTerms, _now);
 
         // Remove loan state and pack fixed interest rate (fir) interval
         _contractTerms >>= 4;
@@ -604,10 +622,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 0x20,
                 xor(
                     and(_LOAN_START_MASK_, mload(0x20)),
-                    and(
-                        _LOAN_START_MAP_,
-                        shl(16, add(timestamp(), _gracePeriod))
-                    )
+                    and(_LOAN_START_MAP_, shl(16, add(_now, _gracePeriod)))
                 )
             )
 

@@ -12,10 +12,15 @@ import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
 import {DemoToken} from "../contracts/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
-import {LibLoanContractStates as States} from "../contracts/utils/LibLoanContractStates.sol";
 import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
 
 abstract contract LoanContractGlobalConstants {
+    /* ------------------------------------------------ *
+     *                Contract Constants                *
+     * ------------------------------------------------ */
+    uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
+    uint256 public constant _UINT32_MAX_ = 4294967295;
+
     /* ------------------------------------------------ *
      *                  Loan States                     *
      * ------------------------------------------------ */
@@ -36,36 +41,68 @@ abstract contract LoanContractGlobalConstants {
     /* ------------------------------------------------ *
      *       Fixed Interest Rate (FIR) Intervals        *
      * ------------------------------------------------ */
-    uint256 public constant _SECONDLY_ = 0;
-    uint256 public constant _MINUTELY_ = 1;
-    uint256 public constant _HOURLY_ = 2;
-    uint256 public constant _DAILY_ = 3;
-    uint256 public constant _WEEKLY_ = 4;
-    uint256 public constant _2_WEEKLY_ = 5;
-    uint256 public constant _4_WEEKLY_ = 6;
-    uint256 public constant _6_WEEKLY_ = 7;
-    uint256 public constant _8_WEEKLY_ = 8;
-    uint256 public constant _360_DAILY_ = 9;
-    uint256 public constant _365_DAILY_ = 10;
+    uint8 public constant _SECONDLY_ = 0;
+    uint8 public constant _MINUTELY_ = 1;
+    uint8 public constant _HOURLY_ = 2;
+    uint8 public constant _DAILY_ = 3;
+    uint8 public constant _WEEKLY_ = 4;
+    uint8 public constant _2_WEEKLY_ = 5;
+    uint8 public constant _4_WEEKLY_ = 6;
+    uint8 public constant _6_WEEKLY_ = 7;
+    uint8 public constant _8_WEEKLY_ = 8;
+    uint8 public constant _360_DAILY_ = 9;
+    uint8 public constant _365_DAILY_ = 10;
 
     // Need oracle for correct times
-    uint256 public constant _MONTHLY_ = 11;
-    uint256 public constant _2_MONTHLY_ = 12;
-    uint256 public constant _3_MONTHLY_ = 13;
-    uint256 public constant _4_MONTHLY_ = 14;
-    uint256 public constant _6_MONTHLY_ = 15;
+    uint8 public constant _MONTHLY_ = 11;
+    uint8 public constant _2_MONTHLY_ = 12;
+    uint8 public constant _3_MONTHLY_ = 13;
+    uint8 public constant _4_MONTHLY_ = 14;
+    uint8 public constant _6_MONTHLY_ = 15;
 
     /* ------------------------------------------------ *
-     *                  Loan Terms                      *
+     *               FIR Interval Multipliers           *
      * ------------------------------------------------ */
-    uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
-    uint8 public constant _FIR_INTERVAL_ = 9;
-    uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
-    uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
-    uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
-    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2;
-    uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
-    uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
+    uint256 public constant _SECONDLY_MULTIPLIER_ = 1;
+    uint256 public constant _MINUTELY_MULTIPLIER_ = 60;
+    uint256 public constant _HOURLY_MULTIPLIER_ = 60 * 60;
+    uint256 public constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
+    uint256 public constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
+    uint256 public constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
+    uint256 public constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
+    uint256 public constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
+    uint256 public constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
+    uint256 public constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
+    uint256 public constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
+
+    /* ------------------------------------------------ *
+     *           Packed Debt Term Mappings              *
+     * ------------------------------------------------ */
+    uint256 public constant _LOAN_STATE_MASK_ =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0;
+    uint256 public constant _LOAN_STATE_MAP_ =
+        0x000000000000000000000000000000000000000000000000000000000000000F;
+    uint256 public constant _FIR_INTERVAL_MASK_ =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0F;
+    uint256 public constant _FIR_INTERVAL_MAP_ =
+        0x00000000000000000000000000000000000000000000000000000000000000F0;
+    uint256 public constant _FIR_MASK_ =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FF;
+    uint256 public constant _FIR_MAP_ =
+        0x000000000000000000000000000000000000000000000000000000000000FF00;
+    uint256 public constant _LOAN_START_MASK_ =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFF;
+    uint256 public constant _LOAN_START_MAP_ =
+        0x0000000000000000000000000000000000000000000000000000FFFFFFFF0000;
+    uint256 public constant _LOAN_DURATION_MASK_ =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFF;
+    uint256 public constant _LOAN_DURATION_MAP_ =
+        0x00000000000000000000000000000000000000000000FFFFFFFF000000000000;
+    uint256 public constant _BORROWER_MASK_ =
+        0xFFFF0000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFFF;
+    uint256 public constant _BORROWER_MAP_ =
+        0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000;
+    uint256 public constant _CLEANUP_MASK_ = (1 << 240) - 1;
 
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
@@ -77,6 +114,17 @@ abstract contract LoanContractGlobalConstants {
     bytes4 public constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
     bytes4 public constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
     bytes4 public constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
+
+    /* ------------------------------------------------ *
+     *                  Loan Terms                      *
+     * ------------------------------------------------ */
+    uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
+    uint8 public constant _FIR_INTERVAL_ = 9;
+    uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
+    uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
+    uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
+    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2;
+    uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
 
     /* ------------------------------------------------ *
      *                    CONSTANTS                     *
@@ -183,19 +231,40 @@ abstract contract LoanContractDeployer is
         demoToken.approve(address(loanContract), collateralId);
         vm.stopPrank();
     }
+
+    function mintDemoTokens(uint256 _amount) public virtual {
+        vm.startPrank(borrower);
+        demoToken.mint(_amount);
+        vm.stopPrank();
+    }
 }
 
 abstract contract LoanSigned is LoanContractDeployer {
-    uint256 collateralNonce = 0;
-    bytes32 contractTerms;
-
+    uint256 public collateralNonce;
+    bytes32 public contractTerms;
     bytes public signature;
 
     function setUp() public virtual override {
         super.setUp();
 
-        bytes32 _contractTerms;
+        collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
 
+        contractTerms = createContractTerms();
+        signature = createContractSignature(
+            collateralId,
+            collateralNonce,
+            contractTerms
+        );
+    }
+
+    function createContractTerms()
+        public
+        virtual
+        returns (bytes32 _contractTerms)
+    {
         assembly {
             mstore(0x20, _LOAN_STATE_)
             mstore(0x1f, _FIR_INTERVAL_)
@@ -207,24 +276,73 @@ abstract contract LoanSigned is LoanContractDeployer {
 
             _contractTerms := mload(0x20)
         }
+    }
 
-        contractTerms = _contractTerms;
-
+    function createContractSignature(
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        bytes32 _contractTerms
+    ) public virtual returns (bytes memory _signature) {
         // Create message for signing
-        bytes32 message = Signing.prefixed(
+        bytes32 _message = Signing.prefixed(
             keccak256(
                 abi.encode(
-                    contractTerms,
+                    _contractTerms,
                     address(demoToken),
-                    collateralId,
-                    collateralNonce
+                    _collateralId,
+                    _collateralNonce
                 )
             )
         );
 
         // Sign borrower's terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        signature = abi.encodePacked(r, s, v);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _collateralId,
+        bytes memory _signature
+    ) public virtual returns (bool) {
+        vm.startPrank(borrower);
+        demoToken.approve(address(loanContract), _collateralId);
+        vm.stopPrank();
+
+        // Create loan contract
+        vm.startPrank(lender);
+        (bool _success, ) = address(loanContract).call{value: _PRINCIPAL_}(
+            abi.encodeWithSignature(
+                "initLoanContract(bytes32,address,uint256,bytes)",
+                _contractTerms,
+                address(demoToken),
+                _collateralId,
+                _signature
+            )
+        );
+        require(_success);
+        vm.stopPrank();
+
+        return _success;
+    }
+
+    function createLoanContract(
+        uint256 _collateralId
+    ) public virtual returns (bool) {
+        bytes32 _contractTerms = createContractTerms();
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            _collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            _collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        return initLoanContract(_contractTerms, _collateralId, _signature);
     }
 }
 
@@ -237,7 +355,7 @@ abstract contract LoanContractSubmitted is LoanSigned {
 
         // Create loan contract
         vm.startPrank(lender);
-        (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
+        (bool _success, ) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
                 contractTerms,
@@ -246,7 +364,7 @@ abstract contract LoanContractSubmitted is LoanSigned {
                 signature
             )
         );
-        require(success);
+        require(_success);
         vm.stopPrank();
 
         // Mint replica token

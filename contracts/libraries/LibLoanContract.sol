@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 import "../interfaces/ILoanContract.sol";
-import {LibLoanContractStates as States} from "../utils/LibLoanContractStates.sol";
-import "../utils/StateControl.sol";
 import "../utils/BlockTime.sol";
-import "hardhat/console.sol";
 
 library LibOfficerRoles {
     bytes32 public constant _ADMIN_ = keccak256("ADMIN");
