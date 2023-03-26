@@ -194,27 +194,6 @@ contract LoanCollateralVaultUnitTest is
         );
         vm.stopPrank();
 
-        // // DENY :: Invalid deposit data field
-        // vm.startPrank(borrower);
-        // demoToken.approve(address(loanContract), _testCollateralId);
-        // vm.stopPrank();
-
-        // vm.startPrank(address(loanContract));
-        // vm.expectRevert(
-        //     abi.encodeWithSelector(
-        //         ILoanCollateralVault.InvalidDepositMsg.selector,
-        //         address(demoToken),
-        //         address(0)
-        //     )
-        // );
-        // demoToken.safeTransferFrom(
-        //     borrower,
-        //     address(loanCollateralVault),
-        //     _testCollateralId,
-        //     ""
-        // );
-        // vm.stopPrank();
-
         // SUCCEED :: Try loan contract
         vm.startPrank(borrower);
         demoToken.approve(address(loanContract), _testCollateralId);
@@ -231,7 +210,7 @@ contract LoanCollateralVaultUnitTest is
             borrower,
             address(loanCollateralVault),
             _testCollateralId,
-            abi.encodePacked(address(demoToken))
+            ""
         );
         vm.stopPrank();
 

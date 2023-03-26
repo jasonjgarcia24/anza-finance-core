@@ -1,7 +1,7 @@
-// SPDX-License-Identifer: MIT
-pragma solidity ^0.8.7;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-interface IAnzaDebtStorefront {
+interface IAnzaDebtStorefrontEvents {
     error InvalidDebtOwner(address debtOwner);
     error InvalidListingTerms();
     error InsufficientPayment(uint256 payment);
@@ -31,17 +31,4 @@ interface IAnzaDebtStorefront {
         uint256 collateralId;
         bytes32 debtTerms;
     }
-
-    function buyDebt(
-        bytes32 _listingTerms,
-        address _collateralAddress,
-        uint256 _collateralId,
-        bytes calldata _sellerSignature
-    ) external payable;
-
-    function buyDebt(
-        bytes32 _listingTerms,
-        uint256 _debtId,
-        bytes calldata _sellerSignature
-    ) external payable;
 }

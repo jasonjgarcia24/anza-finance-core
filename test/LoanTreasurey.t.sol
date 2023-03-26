@@ -20,9 +20,10 @@ contract LoanCollateralTreasureyUnitTest is
     function payLoan(uint256 _debtId, uint256 _payment) public virtual {
         vm.deal(borrower, _payment);
         vm.startPrank(borrower);
-        address(loanTreasurer).call{value: _payment}(
+        (bool _success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
+        require(_success);
         vm.stopPrank();
     }
 

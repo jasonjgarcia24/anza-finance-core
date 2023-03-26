@@ -2,20 +2,18 @@
 pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/IAccessControl.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import "./token/interfaces/IAnzaToken.sol";
 import "./abdk-libraries-solidity/ABDKMath64x64.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
-import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
 
-contract LoanTreasurey is ILoanTreasurey, Ownable, ReentrancyGuard {
+contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     using Address for address payable;
 
     /* ------------------------------------------------ *
@@ -56,15 +54,16 @@ contract LoanTreasurey is ILoanTreasurey, Ownable, ReentrancyGuard {
     mapping(address => uint256) public withdrawableBalance;
 
     constructor(
-        address _loanContractAddress,
-        address _loanCollateralVaultAddress,
-        address _anzaTokenAddress
+        address _loanContract,
+        address _loanCollateralVault,
+        address _anzaToken
     ) {
-        __loanContract = ILoanContract(_loanContractAddress);
-        __loanCollateralVault = ILoanCollateralVault(
-            _loanCollateralVaultAddress
-        );
-        __anzaToken = IAnzaToken(_anzaTokenAddress);
+        __loanContract = ILoanContract(_loanContract);
+        __loanCollateralVault = ILoanCollateralVault(_loanCollateralVault);
+        __anzaToken = IAnzaToken(_anzaToken);
+
+        _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
+        _setRoleAdmin(Roles._DEBT_STOREFRONT_, Roles._ADMIN_);
     }
 
     modifier debtUpdater(uint256 _debtId) {
@@ -152,6 +151,45 @@ contract LoanTreasurey is ILoanTreasurey, Ownable, ReentrancyGuard {
             revert InvalidParticipant();
 
         return __loanCollateralVault.withdraw(_borrower, _debtId);
+    }
+
+    function buyDebt(
+        uint256 _debtId,
+        address _borrower,
+        address _purchaser
+    )
+        external
+        payable
+        onlyRole(Roles._DEBT_STOREFRONT_)
+        onlyActiveLoan(_debtId)
+        debtUpdater(_debtId)
+        returns (bool)
+    {
+        uint256 _balance = __loanContract.debtBalanceOf(_debtId);
+        uint256 _payment = msg.value;
+
+        // Transfer collateral
+        if (_payment >= _balance) {
+            _depositPayment(_debtId, _balance);
+
+            __loanCollateralVault.withdraw(_purchaser, _debtId);
+
+            withdrawableBalance[_borrower] += _payment - _balance;
+        }
+        // Transfer debt
+        else {
+            _depositPayment(_debtId, _payment);
+
+            __anzaToken.safeTransferFrom(
+                _borrower,
+                _purchaser,
+                __anzaToken.borrowerTokenId(_debtId),
+                1,
+                ""
+            );
+        }
+
+        return true;
     }
 
     // TODO: Need to revisit to ensure accuracy at larger total debt values

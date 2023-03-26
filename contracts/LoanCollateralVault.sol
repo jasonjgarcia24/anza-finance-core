@@ -69,7 +69,7 @@ contract LoanCollateralVault is
         address _operator,
         address _from,
         uint256 _collateralId,
-        bytes memory _data
+        bytes memory
     ) public override returns (bytes4) {
         _checkRole(Roles._LOAN_CONTRACT_, _operator);
 

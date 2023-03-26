@@ -2,10 +2,11 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/access/IAccessControl.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "./token/interfaces/IAnzaToken.sol";
 import "./interfaces/IAnzaDebtStorefront.sol";
 import "./interfaces/ILoanContract.sol";
+import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import {LibOfficerRoles as Roles, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
 
@@ -14,6 +15,7 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     address public immutable loanContract;
+    address public immutable loanTreasurer;
     address public immutable loanCollateralVault;
     address public immutable anzaToken;
 
@@ -22,18 +24,21 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
 
     constructor(
         address _loanContract,
+        address _loanTreasurer,
         address _loanCollateralVault,
         address _anzaToken
     ) {
         loanContract = _loanContract;
+        loanTreasurer = _loanTreasurer;
         loanCollateralVault = _loanCollateralVault;
         anzaToken = _anzaToken;
     }
 
     modifier isDebtOwner(uint256 _debtId) {
         if (
-            IERC721(anzaToken).ownerOf(Indexer.getBorrowerTokenId(_debtId)) !=
-            msg.sender
+            IAnzaToken(anzaToken).ownerOf(
+                Indexer.getBorrowerTokenId(_debtId)
+            ) != msg.sender
         ) revert InvalidDebtOwner(msg.sender);
 
         _;
@@ -50,117 +55,85 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         _;
     }
 
-    function listDebt(
-        uint256 _debtId,
-        uint256 _price
-    ) external isDebtOwner(_debtId) isNotListed(_debtId) {
-        address _debtOwner = msg.sender;
-
-        // Verify listing price
-        if (_price <= 0 || _price > type(uint128).max)
-            revert InvalidListingPrice(_price);
-
-        // List debt
-        ILoanCollateralVault.Collateral
-            memory _collateral = ILoanCollateralVault(loanCollateralVault)
-                .getCollateralAt(_debtId);
-
-        __debtListings[_debtId] = Listing({
-            price: _price,
-            debtOwner: _debtOwner,
-            collateralAddress: _collateral.collateralAddress,
-            collateralId: _collateral.collateralId,
-            debtTerms: ILoanContract(loanContract).getDebtTerms(_debtId)
-        });
-
-        emit DebtListed(_debtOwner, _debtId, _price);
-    }
-
-    function cancelListing(
-        uint256 _debtId
-    ) external isDebtOwner(_debtId) isListed(_debtId) {
-        delete (__debtListings[_debtId]);
-        emit ListingCancelled(msg.sender, _debtId);
-    }
-
     function buyDebt(
+        bytes32 _listingTerms,
         address _collateralAddress,
-        uint256 _collateralId
+        uint256 _collateralId,
+        bytes calldata _sellerSignature
     ) external payable {
         (bool success, ) = address(this).call{value: msg.value}(
             abi.encodeWithSignature(
-                "buyDebt(uint256)",
+                "buyDebt(bytes32,uint256,bytes)",
+                _listingTerms,
                 ILoanContract(loanContract).getCollateralDebtId(
                     _collateralAddress,
                     _collateralId
-                )
+                ),
+                _sellerSignature
             )
         );
         require(success);
     }
 
+    // @param _listingTerms The keccak256 hash of the IPFS CID.
     function buyDebt(
-        uint256 _debtId
+        bytes32 _listingTerms,
+        uint256 _debtId,
+        bytes calldata _sellerSignature
     ) public payable isListed(_debtId) nonReentrant {
-        Listing memory _debtListing = __debtListings[_debtId];
+        IAnzaToken _anzaToken = IAnzaToken(anzaToken);
+        address _borrower = _anzaToken.borrowerOf(_debtId);
         uint256 _payment = msg.value;
 
-        if (_payment < _debtListing.price) revert InsufficientPayment(_payment);
+        if (
+            _borrower !=
+            __recoverSigner(_listingTerms, _debtId, _payment, _sellerSignature)
+        ) revert InvalidListingTerms();
 
-        __proceeds[_debtListing.debtOwner] += _payment;
+        // Transfer debt
+        address _purchaser = msg.sender;
+        (bool _success, ) = loanTreasurer.call{value: _payment}(
+            abi.encodeWithSignature(
+                "buyDebt(uint256,address,address)",
+                _debtId,
+                _borrower,
+                _purchaser
+            )
+        );
+        require(_success);
 
-        delete (__debtListings[_debtId]);
+        emit DebtPurchased(_purchaser, _debtId, _payment);
+    }
 
-        IERC721(anzaToken).safeTransferFrom(
-            _debtListing.debtOwner,
-            msg.sender,
-            Indexer.getBorrowerTokenId(_debtId)
+    function __recoverSigner(
+        bytes32 _listingTerms,
+        uint256 _debtId,
+        uint256 _payment,
+        bytes memory _signature
+    ) private pure returns (address) {
+        bytes32 _message = __prefixed(
+            keccak256(abi.encode(_listingTerms, _debtId, _payment))
         );
 
-        emit DebtPurchased(msg.sender, _debtId, _debtListing.price);
+        (uint8 v, bytes32 r, bytes32 s) = __splitSignature(_signature);
+
+        return ecrecover(_message, v, r, s);
     }
 
-    function updateListing(
-        uint256 _debtId,
-        uint256 _newPrice
-    ) external isDebtOwner(_debtId) isListed(_debtId) nonReentrant {
-        if (_newPrice == 0) revert InvalidListingPrice(_newPrice);
-
-        __debtListings[_debtId].price = _newPrice;
-
-        emit DebtListed(msg.sender, _debtId, _newPrice);
-    }
-
-    function withdrawProceeds() external {
-        address _payee = msg.sender;
-        uint256 _proceeds = __proceeds[_payee];
-
-        if (_proceeds <= 0) revert InsufficientProceeds(_payee);
-
-        __proceeds[_payee] = 0;
-
-        (bool success, ) = payable(_payee).call{value: _proceeds}("");
-        require(success, "Transfer failed");
-    }
-
-    function getListing(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) external view returns (Listing memory) {
+    function __prefixed(bytes32 _hash) private pure returns (bytes32) {
         return
-            getListing(
-                ILoanContract(loanContract).getCollateralDebtId(
-                    _collateralAddress,
-                    _collateralId
-                )
+            keccak256(
+                abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash)
             );
     }
 
-    function getListing(uint256 _debtId) public view returns (Listing memory) {
-        return __debtListings[_debtId];
-    }
-
-    function getProceeds(address _seller) external view returns (uint256) {
-        return __proceeds[_seller];
+    function __splitSignature(
+        bytes memory _signature
+    ) private pure returns (uint8 v, bytes32 r, bytes32 s) {
+        assembly {
+            r := mload(add(_signature, 32))
+            s := mload(add(_signature, 64))
+            v := byte(0, mload(add(_signature, 96)))
+        }
     }
 }

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.7;
 
 import {IAnzaToken} from "../../contracts/token/interfaces/IAnzaToken.sol";
-import {IAnzaEvents} from "../interfaces/IAnzaEvents.t.sol";
 import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
 import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
@@ -12,7 +11,6 @@ import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} fr
 
 abstract contract LoanContractSubmitFunctions is
     Test,
-    IAnzaEvents,
     IERC1155Events,
     ILoanContractEvents,
     LoanContractGlobalConstants

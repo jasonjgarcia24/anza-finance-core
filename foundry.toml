@@ -7,7 +7,7 @@ remappings = [
     'eth-gas-reporter/=node_modules/eth-gas-reporter/',
 ]
 solc = "0.8.17"
-gas_reports = ["LoanContract"]
+gas_reports = ["LoanContract", "LoanTreasurey", "LoanCollateralVault", "AnzaDebtStorefront"]
 [fuzz]
 runs = 300
 

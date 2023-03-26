@@ -7,7 +7,7 @@ import "./interfaces/IAnzaToken.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import {LibOfficerRoles as Roles} from "../libraries/LibLoanContract.sol";
 
-contract AnzaToken is AnzaERC1155URIStorage, AccessControl, IAnzaToken {
+contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */

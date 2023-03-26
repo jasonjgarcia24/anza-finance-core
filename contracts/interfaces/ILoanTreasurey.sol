@@ -23,5 +23,11 @@ interface ILoanTreasurey {
 
     function withdrawCollateral(uint256 _debtId) external returns (bool);
 
+    function buyDebt(
+        uint256 _debtId,
+        address _borrower,
+        address _purchaser
+    ) external payable returns (bool);
+
     function updateDebt(uint256 _debtId) external returns (uint256);
 }
