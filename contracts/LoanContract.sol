@@ -96,7 +96,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         0xFFFF0000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFFF;
     uint256 private constant _BORROWER_MAP_ =
         0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000;
-    uint256 private constant _CLEANUP_MASK_ = (1 << 240) - 1;
+    uint256 private constant _LENDER_ROYALTIES_MASK_ =
+        0xFF00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    uint256 private constant _LENDER_ROYALTIES_MAP_ =
+        0x00FF000000000000000000000000000000000000000000000000000000000000;
+    uint256 private constant _CLEANUP_MASK_ = (1 << 252) - 1;
 
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
@@ -127,7 +131,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     //  > 032 - [16..47]   `loanStart`
     //  > 032 - [48..79]   `loanDuration`
     //  > 160 - [80..239]  `borrower`
-    //  > 016 - [240..255] extra space
+    //  > 008 - [240..247] `lenderRoyalties`
+    //  > 008 - [248..255] extra space
     mapping(uint256 => bytes32) private __packedDebtTerms;
 
     // Mapping from participant to withdrawable balance
@@ -216,7 +221,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _collateralId,
         bytes calldata _borrowerSignature
     ) external payable {
+        // Verify loan terms
         _verifyTermsExpiry(_contractTerms);
+
+        uint32 _now = __toUint32(block.timestamp);
+        _verifyDuration(_contractTerms, _now);
 
         uint256 _principal = msg.value;
         _verifyPrincipal(_contractTerms, _principal);
@@ -238,7 +247,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
         // Add debt ID to collateral mapping
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
-        __setLoanAgreement(_borrower, _contractTerms);
+        __setLoanAgreement(_now, _borrower, _contractTerms);
 
         // Transfer collateral to collateral vault.
         // The collateral ID and address will be mapped within
@@ -396,6 +405,19 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
+    function lenderRoyalties(
+        uint256 _debtId
+    ) public view returns (uint256 _lenderRoyalties) {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+
+        assembly {
+            _lenderRoyalties := shr(
+                88,
+                and(_contractTerms, _LENDER_ROYALTIES_MAP_)
+            )
+        }
+    }
+
     function totalFirIntervals(
         uint256 _debtId,
         uint256 _seconds
@@ -511,7 +533,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint32 _termsExpiry;
 
         assembly {
-            mstore(0x1d, _contractTerms)
+            mstore(0x1b, _contractTerms)
             _termsExpiry := mload(0)
         }
 
@@ -531,11 +553,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
         assembly {
             // Get packed grace period
-            mstore(0x15, _contractTerms)
+            mstore(0x13, _contractTerms)
             _gracePeriod := mload(0)
 
             // Get packed duration
-            mstore(0x19, _contractTerms)
+            mstore(0x17, _contractTerms)
             _duration := mload(0)
         }
 
@@ -559,7 +581,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint128 _principal;
 
         assembly {
-            mstore(0x05, _contractTerms)
+            mstore(0x03, _contractTerms)
             _principal := mload(0)
         }
 
@@ -568,45 +590,55 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     }
 
     function __setLoanAgreement(
+        uint32 _now,
         address _borrower,
         bytes32 _contractTerms
     ) private {
-        uint32 _now = __toUint32(block.timestamp);
         bytes32 _loanAgreement;
-        uint8 _fixedInterestRate;
-        uint32 _gracePeriod;
-        uint32 _duration;
 
         assembly {
             // Get packed fixed interest rate
-            mstore(0x02, _contractTerms)
-            _fixedInterestRate := mload(0)
+            mstore(0x01, _contractTerms)
+            let _fixedInterestRate := mload(0)
 
             // Get packed grace period
-            mstore(0x15, _contractTerms)
-            _gracePeriod := mload(0)
+            mstore(0x14, _contractTerms)
+            let _gracePeriod := mload(0)
 
             // Get packed duration
-            mstore(0x19, _contractTerms)
-            _duration := mload(0)
-        }
+            mstore(0x18, _contractTerms)
+            let _duration := mload(0)
 
-        _verifyDuration(_contractTerms, _now);
+            // Get packed lender royalties
+            mstore(0x1f, _contractTerms)
+            let _lenderTerms := mload(0)
 
-        // Remove loan state and pack fixed interest rate (fir) interval
-        _contractTerms >>= 4;
+            // Shif left to make space for loan state
+            mstore(0x20, shl(4, _contractTerms))
 
-        assembly {
             // Pack loan state (uint4)
             switch _duration
             case 0 {
-                mstore(0x20, xor(_contractTerms, _ACTIVE_STATE_))
+                mstore(
+                    0x20,
+                    xor(
+                        and(_LOAN_STATE_MASK_, mload(0x20)),
+                        and(_LOAN_STATE_MAP_, _ACTIVE_STATE_)
+                    )
+                )
             }
             default {
-                mstore(0x20, xor(_contractTerms, _ACTIVE_GRACE_STATE_))
+                mstore(
+                    0x20,
+                    xor(
+                        and(_LOAN_STATE_MASK_, mload(0x20)),
+                        and(_LOAN_STATE_MAP_, _ACTIVE_GRACE_STATE_)
+                    )
+                )
             }
 
-            // Pack fir interval already performed (uint4)
+            // Pack fir interval (uint4)
+            // Already performed and not needed.
 
             // Pack fixed interest rate (uint8)
             mstore(
@@ -631,7 +663,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 0x20,
                 xor(
                     and(_LOAN_DURATION_MASK_, mload(0x20)),
-                    and(_LOAN_DURATION_MAP_, shl(48, _duration))
+                    and(_LOAN_DURATION_MAP_, shl(56, _duration))
                 )
             )
 
@@ -644,13 +676,20 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 )
             )
 
+            // Pack lender royalties (uint8)
+            mstore(
+                0x20,
+                xor(
+                    and(_LENDER_ROYALTIES_MASK_, mload(0x20)),
+                    and(_LENDER_ROYALTIES_MAP_, shl(240, _lenderTerms))
+                )
+            )
+
             // Cleanup
             mstore(0x20, and(_CLEANUP_MASK_, mload(0x20)))
 
             _loanAgreement := mload(0x20)
         }
-
-        if (_duration == 0) revert InvalidLoanParameter(_DURATION_ERROR_ID_);
 
         __packedDebtTerms[totalDebts] = _loanAgreement;
     }

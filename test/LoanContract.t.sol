@@ -118,12 +118,12 @@ abstract contract LoanContractGlobalConstants {
     /* ------------------------------------------------ *
      *                  Loan Terms                      *
      * ------------------------------------------------ */
-    uint8 public constant _LOAN_STATE_ = 2; // Unsponsored
+    uint8 public constant _LENDER_ROYALTIES_ = 25; // 0.25
     uint8 public constant _FIR_INTERVAL_ = 9;
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
     uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
-    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2;
+    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2; //
     uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
 
     /* ------------------------------------------------ *
@@ -266,13 +266,13 @@ abstract contract LoanSigned is LoanContractDeployer {
         returns (bytes32 _contractTerms)
     {
         assembly {
-            mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, _FIR_INTERVAL_)
-            mstore(0x1e, _FIXED_INTEREST_RATE_)
-            mstore(0x1b, _PRINCIPAL_)
-            mstore(0x0b, _GRACE_PERIOD_)
-            mstore(0x07, _DURATION_)
-            mstore(0x03, _TERMS_EXPIRY_)
+            mstore(0x20, _FIR_INTERVAL_)
+            mstore(0x1f, _FIXED_INTEREST_RATE_)
+            mstore(0x1d, _PRINCIPAL_)
+            mstore(0x0d, _GRACE_PERIOD_)
+            mstore(0x09, _DURATION_)
+            mstore(0x05, _TERMS_EXPIRY_)
+            mstore(0x01, _LENDER_ROYALTIES_)
 
             _contractTerms := mload(0x20)
         }
@@ -351,6 +351,8 @@ abstract contract LoanContractSubmitted is LoanSigned {
         super.setUp();
 
         uint256 _debtId = loanContract.totalDebts();
+        console.log("***");
+        console.log(_debtId);
         assertEq(_debtId, 0);
 
         // Create loan contract

@@ -18,13 +18,13 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
         bytes32 _contractTerms;
 
         assembly {
-            mstore(0x20, _LOAN_STATE_)
-            mstore(0x1f, 9)
-            mstore(0x1e, 10)
-            mstore(0x1b, 10)
-            mstore(0x0b, _GRACE_PERIOD_)
-            mstore(0x07, 62208000)
-            mstore(0x03, _TERMS_EXPIRY_)
+            mstore(0x20, _FIR_INTERVAL_)
+            mstore(0x1f, _FIXED_INTEREST_RATE_)
+            mstore(0x1d, _PRINCIPAL_)
+            mstore(0x0d, _GRACE_PERIOD_)
+            mstore(0x09, _DURATION_)
+            mstore(0x05, _TERMS_EXPIRY_)
+            mstore(0x01, _LENDER_ROYALTIES_)
 
             _contractTerms := mload(0x20)
         }
@@ -99,7 +99,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
         );
     }
 
-    function testBasicLenderSubmitProposal() public {
+    function testBasicLenderCompoundingSubmitProposal() public {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 

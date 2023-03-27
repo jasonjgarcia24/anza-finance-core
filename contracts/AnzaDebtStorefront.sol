@@ -19,7 +19,6 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     address public immutable loanCollateralVault;
     address public immutable anzaToken;
 
-    mapping(uint256 => Listing) private __debtListings;
     mapping(address => uint256) private __proceeds;
 
     constructor(
@@ -32,27 +31,6 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         loanTreasurer = _loanTreasurer;
         loanCollateralVault = _loanCollateralVault;
         anzaToken = _anzaToken;
-    }
-
-    modifier isDebtOwner(uint256 _debtId) {
-        if (
-            IAnzaToken(anzaToken).ownerOf(
-                Indexer.getBorrowerTokenId(_debtId)
-            ) != msg.sender
-        ) revert InvalidDebtOwner(msg.sender);
-
-        _;
-    }
-
-    modifier isNotListed(uint256 _debtId) {
-        if (__debtListings[_debtId].price > 0) revert ExistingListing(_debtId);
-        _;
-    }
-
-    modifier isListed(uint256 _debtId) {
-        if (__debtListings[_debtId].price <= 0)
-            revert NonExistingListing(_debtId);
-        _;
     }
 
     function buyDebt(
@@ -80,7 +58,7 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         bytes32 _listingTerms,
         uint256 _debtId,
         bytes calldata _sellerSignature
-    ) public payable isListed(_debtId) nonReentrant {
+    ) public payable nonReentrant {
         IAnzaToken _anzaToken = IAnzaToken(anzaToken);
         address _borrower = _anzaToken.borrowerOf(_debtId);
         uint256 _payment = msg.value;
