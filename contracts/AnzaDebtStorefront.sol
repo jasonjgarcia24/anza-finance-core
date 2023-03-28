@@ -16,7 +16,6 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
      * ------------------------------------------------ */
     address public immutable loanContract;
     address public immutable loanTreasurer;
-    address public immutable loanCollateralVault;
     address public immutable anzaToken;
 
     mapping(address => uint256) private __proceeds;
@@ -24,12 +23,10 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     constructor(
         address _loanContract,
         address _loanTreasurer,
-        address _loanCollateralVault,
         address _anzaToken
     ) {
         loanContract = _loanContract;
         loanTreasurer = _loanTreasurer;
-        loanCollateralVault = _loanCollateralVault;
         anzaToken = _anzaToken;
     }
 
@@ -65,7 +62,7 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
 
         if (
             _borrower !=
-            __recoverSigner(_listingTerms, _debtId, _payment, _sellerSignature)
+            __recoverSigner(_listingTerms, _payment, _debtId, _sellerSignature)
         ) revert InvalidListingTerms();
 
         // Transfer debt
@@ -85,12 +82,12 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
 
     function __recoverSigner(
         bytes32 _listingTerms,
-        uint256 _debtId,
         uint256 _payment,
+        uint256 _debtId,
         bytes memory _signature
     ) private pure returns (address) {
         bytes32 _message = __prefixed(
-            keccak256(abi.encode(_listingTerms, _debtId, _payment))
+            keccak256(abi.encode(_listingTerms, _payment, _debtId))
         );
 
         (uint8 v, bytes32 r, bytes32 s) = __splitSignature(_signature);

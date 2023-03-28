@@ -118,13 +118,13 @@ abstract contract LoanContractGlobalConstants {
     /* ------------------------------------------------ *
      *                  Loan Terms                      *
      * ------------------------------------------------ */
-    uint8 public constant _LENDER_ROYALTIES_ = 25; // 0.25
     uint8 public constant _FIR_INTERVAL_ = 9;
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
     uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
-    uint32 public constant _GRACE_PERIOD_ = 604800; // 1 week (seconds)
-    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2; //
-    uint32 public constant _TERMS_EXPIRY_ = 1209600; // 2 weeks (seconds)
+    uint32 public constant _GRACE_PERIOD_ = 60 * 60 * 24 * 7; // 604800 (1 week)
+    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2; // 62208000 (2 years)
+    uint32 public constant _TERMS_EXPIRY_ = 60 * 60 * 24 * 7 * 2; // 1209600 (2 weeks)
+    uint8 public constant _LENDER_ROYALTIES_ = 25; // 0.25
 
     /* ------------------------------------------------ *
      *                    CONSTANTS                     *
@@ -351,8 +351,6 @@ abstract contract LoanContractSubmitted is LoanSigned {
         super.setUp();
 
         uint256 _debtId = loanContract.totalDebts();
-        console.log("***");
-        console.log(_debtId);
         assertEq(_debtId, 0);
 
         // Create loan contract
@@ -371,6 +369,13 @@ abstract contract LoanContractSubmitted is LoanSigned {
 
         // Mint replica token
         vm.deal(borrower, 100 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+    }
+
+    function mintReplica(uint256 _debtId) public virtual {
+        vm.deal(borrower, 1 ether);
         vm.startPrank(borrower);
         loanContract.mintReplica(_debtId);
         vm.stopPrank();

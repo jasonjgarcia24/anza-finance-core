@@ -64,6 +64,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._DEBT_STOREFRONT_, Roles._ADMIN_);
+        _grantRole(Roles._ADMIN_, msg.sender);
     }
 
     modifier debtUpdater(uint256 _debtId) {
@@ -187,6 +188,8 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
                 1,
                 ""
             );
+
+            __loanContract.updateBorrower(_debtId, _purchaser);
         }
 
         return true;

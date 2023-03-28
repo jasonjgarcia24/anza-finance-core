@@ -6,7 +6,7 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
 import {console, stdError, LoanContractSubmitted} from "./LoanContract.t.sol";
 import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
-import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractSigning as Signing, LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 
 contract AnzaDebtStorefrontUnitTest is
     IAnzaDebtStorefrontEvents,
@@ -19,7 +19,6 @@ contract AnzaDebtStorefrontUnitTest is
         anzaDebtStorefront = new AnzaDebtStorefront(
             address(loanContract),
             address(loanTreasurer),
-            address(loanCollateralVault),
             address(anzaToken)
         );
 
@@ -31,22 +30,61 @@ contract AnzaDebtStorefrontUnitTest is
         vm.stopPrank();
     }
 
+    function createListingSignature(
+        bytes32 _listingHash,
+        uint256 _price,
+        uint256 _debtId
+    ) public virtual returns (bytes memory _signature) {
+        // Create message for signing
+        bytes32 _message = Signing.prefixed(
+            keccak256(abi.encode(_listingHash, _price, _debtId))
+        );
+
+        // Sign borrower's listing terms
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
     function testStorefrontStateVars() public {
         assertEq(anzaDebtStorefront.loanContract(), address(loanContract));
-        assertEq(
-            anzaDebtStorefront.loanCollateralVault(),
-            address(loanCollateralVault)
-        );
+        assertEq(anzaDebtStorefront.loanTreasurer(), address(loanTreasurer));
         assertEq(anzaDebtStorefront.anzaToken(), address(anzaToken));
     }
 
-    function testListDebt() public {
-        // uint256 _debtId = loanContract.totalDebts() - 1;
-        // uint256 _price = 3;
-        // vm.startPrank(borrower);
-        // vm.expectEmit(true, true, true, true);
-        // emit DebtListed(borrower, _debtId, _price);
-        // anzaDebtStorefront.listDebt(_debtId, _price);
-        // vm.stopPrank();
+    function testBuyDebt() public {
+        uint256 _debtId = loanContract.totalDebts() - 1;
+        uint256 _price = _PRINCIPAL_ - 1;
+        bytes32 _listingHash = keccak256(
+            "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
+        );
+
+        bytes memory _signature = createListingSignature(
+            _listingHash,
+            _price,
+            _debtId
+        );
+
+        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        assertEq(anzaToken.ownerOf(_borrowerTokenId), borrower);
+        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
+
+        vm.deal(alt_account, 4 ether);
+        vm.startPrank(alt_account);
+        vm.expectEmit(true, true, true, true);
+        emit DebtPurchased(alt_account, _debtId, _price);
+        (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
+            abi.encodeWithSignature(
+                "buyDebt(bytes32,uint256,bytes)",
+                _listingHash,
+                _debtId,
+                _signature
+            )
+        );
+        require(_success);
+        vm.stopPrank();
+
+        assertEq(anzaToken.ownerOf(_borrowerTokenId), alt_account);
+        assertEq(loanContract.borrower(_debtId), alt_account);
+        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_ - _price);
     }
 }

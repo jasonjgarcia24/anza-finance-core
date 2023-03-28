@@ -26,6 +26,12 @@ interface ILoanContract {
         uint256 amount
     );
 
+    event LoanBorrowerChanged(
+        uint256 indexed debtId,
+        address indexed newBorrower,
+        address indexed oldBorrower
+    );
+
     event LoanStateChanged(
         uint256 indexed debtId,
         uint8 indexed newLoanState,
@@ -81,6 +87,8 @@ interface ILoanContract {
     ) external view returns (uint256);
 
     function updateLoanState(uint256 _debtId) external;
+
+    function updateBorrower(uint256 _debtId, address _newBorrower) external;
 
     function verifyLoanActive(uint256 _debtId) external view;
 

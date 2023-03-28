@@ -509,6 +509,43 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
+    /*
+     * @dev Updates borrower.
+     */
+    function updateBorrower(
+        uint256 _debtId,
+        address _newBorrower
+    ) external onlyRole(Roles._TREASURER_) {
+        if (!checkLoanActive(_debtId)) {
+            console.log("Inactive loan");
+            revert InactiveLoanState(_debtId);
+        }
+
+        // Loan defaulted
+        if (_checkLoanExpired(_debtId)) {
+            console.log("Expired loan");
+            __updateLoanTimes(_debtId);
+            __setLoanState(_debtId, _DEFAULT_STATE_);
+        }
+        // Loan fully paid off
+        else if (anzaToken.totalSupply(_debtId * 2) <= 0) {
+            console.log("Paid loan");
+            __setLoanState(_debtId, _PAID_STATE_);
+        }
+        // // Loan active and interest compounding
+        // else if (loanState(_debtId) == _ACTIVE_STATE_) {
+        //     console.log("Active loan");
+        // }
+        // Loan no longer in grace period
+        else if (!_checkGracePeriod(_debtId)) {
+            console.log("Newly active loan");
+            __setLoanState(_debtId, _ACTIVE_STATE_);
+            __setBorrower(_debtId, _newBorrower);
+        } else {
+            __setBorrower(_debtId, _newBorrower);
+        }
+    }
+
     function verifyLoanActive(uint256 _debtId) public view {
         if (!checkLoanActive(_debtId)) revert InactiveLoanState(_debtId);
     }
@@ -722,6 +759,36 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         __packedDebtTerms[_debtId] = _contractTerms;
 
         emit LoanStateChanged(_debtId, _newLoanState, _oldLoanState);
+    }
+
+    function __setBorrower(uint256 _debtId, address _newBorrower) private {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        address _oldBorrower;
+
+        assembly {
+            _oldBorrower := and(_BORROWER_MAP_, _contractTerms)
+
+            // If the loan states are the same, do nothing
+            if eq(_oldBorrower, _newBorrower) {
+                revert(0, 0)
+            }
+
+            mstore(0x20, _contractTerms)
+
+            mstore(
+                0x20,
+                xor(
+                    and(_BORROWER_MASK_, mload(0x20)),
+                    and(_BORROWER_MAP_, shl(80, _newBorrower))
+                )
+            )
+
+            _contractTerms := mload(0x20)
+        }
+
+        __packedDebtTerms[_debtId] = _contractTerms;
+
+        emit LoanBorrowerChanged(_debtId, _newBorrower, _oldBorrower);
     }
 
     function __updateLoanTimes(uint256 _debtId) private {

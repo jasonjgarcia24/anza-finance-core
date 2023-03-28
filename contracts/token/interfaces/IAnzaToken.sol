@@ -14,6 +14,11 @@ interface IAnzaToken {
 
     function ownerOf(uint256 _tokenId) external view returns (address);
 
+    function balanceOf(
+        address account,
+        uint256 id
+    ) external view returns (uint256);
+
     /// @notice Get the borrower of a debt.
     /// @param _debtId The debt ID of the loan.
     /// @return The borrower of the debt.

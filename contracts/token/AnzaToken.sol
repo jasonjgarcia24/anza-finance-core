@@ -60,11 +60,11 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     }
 
     function borrowerTokenId(uint256 _debtId) public pure returns (uint256) {
-        return _debtId * 2;
+        return (_debtId * 2) + 1;
     }
 
     function lenderTokenId(uint256 _debtId) public pure returns (uint256) {
-        return (_debtId * 2) + 1;
+        return _debtId * 2;
     }
 
     /**
@@ -148,36 +148,36 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
             super.isApprovedForAll(_account, _operator);
     }
 
-    function _safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount,
-        bytes memory _data
-    ) internal override {
-        require(
-            hasRole(Roles._TREASURER_, _from) ||
-                hasRole(keccak256(abi.encodePacked(_from, _id)), _from),
-            "Transfer denied"
-        );
-        super._safeTransferFrom(_from, _to, _id, _amount, _data);
-    }
+    // function _safeTransferFrom(
+    //     address _from,
+    //     address _to,
+    //     uint256 _id,
+    //     uint256 _amount,
+    //     bytes memory _data
+    // ) internal override {
+    //     require(
+    //         hasRole(Roles._TREASURER_, msg.sender) ||
+    //             hasRole(keccak256(abi.encodePacked(_from, _id)), _from),
+    //         "Transfer denied"
+    //     );
+    //     super._safeTransferFrom(_from, _to, _id, _amount, _data);
+    // }
 
-    function _safeBatchTransferFrom(
-        address _from,
-        address _to,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        bytes memory _data
-    ) internal override {
-        if (!hasRole(Roles._TREASURER_, _from)) {
-            for (uint256 i = 0; i < _ids.length; ++i) {
-                _checkRole(keccak256(abi.encodePacked(_from, _ids[i])), _from);
-            }
-        }
+    // function _safeBatchTransferFrom(
+    //     address _from,
+    //     address _to,
+    //     uint256[] memory _ids,
+    //     uint256[] memory _amounts,
+    //     bytes memory _data
+    // ) internal override {
+    //     if (!hasRole(Roles._TREASURER_, _from)) {
+    //         for (uint256 i = 0; i < _ids.length; ++i) {
+    //             _checkRole(keccak256(abi.encodePacked(_from, _ids[i])), _from);
+    //         }
+    //     }
 
-        super._safeBatchTransferFrom(_from, _to, _ids, _amounts, _data);
-    }
+    //     super._safeBatchTransferFrom(_from, _to, _ids, _amounts, _data);
+    // }
 
     function _beforeTokenTransfer(
         address operator,
@@ -187,10 +187,12 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         uint256[] memory amounts,
         bytes memory data
     ) internal virtual override {
-        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-
         if (from == address(0)) {
             require(ids.length == 1, "Invalid Anza mint");
+            require(
+                ids[0] % 2 == 0 || _totalSupply[ids[0]] == 0,
+                "Cannot remint replica"
+            );
 
             for (uint256 i = 0; i < ids.length; ++i) {
                 _totalSupply[ids[i]] += amounts[i];
@@ -224,10 +226,6 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         uint256[] memory,
         bytes memory
     ) internal override {
-        if (from != address(0)) {
-            return;
-        }
-
         // Set token owners
         __owners[ids[0]] = to;
     }
