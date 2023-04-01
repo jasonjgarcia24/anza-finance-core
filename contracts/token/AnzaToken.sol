@@ -180,12 +180,12 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     // }
 
     function _beforeTokenTransfer(
-        address operator,
+        address,
         address from,
         address to,
         uint256[] memory ids,
         uint256[] memory amounts,
-        bytes memory data
+        bytes memory
     ) internal virtual override {
         if (from == address(0)) {
             require(ids.length == 1, "Invalid Anza mint");
@@ -220,7 +220,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
      */
     function _afterTokenTransfer(
         address,
-        address from,
+        address,
         address to,
         uint256[] memory ids,
         uint256[] memory,

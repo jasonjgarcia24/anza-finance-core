@@ -243,6 +243,8 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
             return;
         }
 
+        console.log(loanContract.activeLoanCount(_debtId));
+
         // Verify balance of borrower token is zero
         uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
         assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);

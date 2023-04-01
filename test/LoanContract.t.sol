@@ -31,12 +31,13 @@ abstract contract LoanContractGlobalConstants {
     uint8 public constant _FUNDED_STATE_ = 4;
     uint8 public constant _ACTIVE_GRACE_STATE_ = 5;
     uint8 public constant _ACTIVE_STATE_ = 6;
-    uint8 public constant _PAID_STATE_ = 7;
-    uint8 public constant _DEFAULT_STATE_ = 8;
-    uint8 public constant _COLLECTION_STATE_ = 9;
-    uint8 public constant _AUCTION_STATE_ = 10;
-    uint8 public constant _AWARDED_STATE_ = 11;
+    uint8 public constant _DEFAULT_STATE_ = 7;
+    uint8 public constant _COLLECTION_STATE_ = 8;
+    uint8 public constant _AUCTION_STATE_ = 9;
+    uint8 public constant _AWARDED_STATE_ = 10;
+    uint8 public constant _PAID_PENDING_STATE_ = 11;
     uint8 public constant _CLOSE_STATE_ = 12;
+    uint8 public constant _PAID_STATE_ = 13;
 
     /* ------------------------------------------------ *
      *       Fixed Interest Rate (FIR) Intervals        *
@@ -379,5 +380,16 @@ abstract contract LoanContractSubmitted is LoanSigned {
         vm.startPrank(borrower);
         loanContract.mintReplica(_debtId);
         vm.stopPrank();
+    }
+}
+
+contract LoanContractUnitTest is LoanContractSubmitted {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function testPass() public {}
+
+    function testCheckLoanRefinanceAllowed() public {
     }
 }

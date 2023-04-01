@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 interface ILoanContract {
+    error InvalidCollateral();
     error InvalidTokenId(uint256 tokenId);
     error InvalidParticipant(address account);
     error InvalidFundsTransfer(uint256 amount);

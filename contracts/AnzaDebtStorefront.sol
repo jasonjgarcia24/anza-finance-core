@@ -38,7 +38,7 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     ) external payable {
         (bool success, ) = address(this).call{value: msg.value}(
             abi.encodeWithSignature(
-                "buyDebt(bytes32,uint256,bytes)",
+                "executeDebtPurchase(bytes32,uint256,bytes)",
                 _listingTerms,
                 ILoanContract(loanContract).getCollateralDebtId(
                     _collateralAddress,
@@ -69,7 +69,7 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         address _purchaser = msg.sender;
         (bool _success, ) = loanTreasurer.call{value: _payment}(
             abi.encodeWithSignature(
-                "buyDebt(uint256,address,address)",
+                "executeDebtPurchase(uint256,address,address)",
                 _debtId,
                 _borrower,
                 _purchaser
@@ -78,6 +78,10 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         require(_success);
 
         emit DebtPurchased(_purchaser, _debtId, _payment);
+    }
+
+    function refinance() public payable nonReentrant {
+        
     }
 
     function __recoverSigner(

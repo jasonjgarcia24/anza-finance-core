@@ -25,19 +25,20 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     /* ------------------------------------------------ *
      *                  Loan States                     *
      * ------------------------------------------------ */
-    uint256 private constant _UNDEFINED_STATE_ = 0;
-    uint256 private constant _NONLEVERAGED_STATE_ = 1;
-    uint256 private constant _UNSPONSORED_STATE_ = 2;
-    uint256 private constant _SPONSORED_STATE_ = 3;
-    uint256 private constant _FUNDED_STATE_ = 4;
-    uint256 private constant _ACTIVE_GRACE_STATE_ = 5;
-    uint256 private constant _ACTIVE_STATE_ = 6;
-    uint256 private constant _DEFAULT_STATE_ = 7;
-    uint256 private constant _COLLECTION_STATE_ = 8;
-    uint256 private constant _AUCTION_STATE_ = 9;
-    uint256 private constant _AWARDED_STATE_ = 10;
-    uint256 private constant _CLOSE_STATE_ = 11;
-    uint256 private constant _PAID_STATE_ = 12;
+    uint8 private constant _UNDEFINED_STATE_ = 0;
+    uint8 private constant _NONLEVERAGED_STATE_ = 1;
+    uint8 private constant _UNSPONSORED_STATE_ = 2;
+    uint8 private constant _SPONSORED_STATE_ = 3;
+    uint8 private constant _FUNDED_STATE_ = 4;
+    uint8 private constant _ACTIVE_GRACE_STATE_ = 5;
+    uint8 private constant _ACTIVE_STATE_ = 6;
+    uint8 private constant _DEFAULT_STATE_ = 7;
+    uint8 private constant _COLLECTION_STATE_ = 8;
+    uint8 private constant _AUCTION_STATE_ = 9;
+    uint8 private constant _AWARDED_STATE_ = 10;
+    uint8 private constant _PAID_PENDING_STATE_ = 11;
+    uint8 private constant _CLOSE_STATE_ = 12;
+    uint8 private constant _PAID_STATE_ = 13;
 
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
@@ -154,7 +155,24 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         return __loanCollateralVault.withdraw(_borrower, _debtId);
     }
 
-    function buyDebt(
+    /*
+     * A full transfer of debt responsibilities of the current borrower
+     * to the purchaser.
+     *
+     * Scenario #1:
+     *   Should the payment cover the cost of the debt, the payment less
+     *   the excess funds is used to close out the loan, the excess funds
+     *   from the payment, if any, will be transferred to the borrower's
+     *   account and the purchaser will be able to withdraw the collateral
+     *   to their account.
+     *
+     * Scenario #2:
+     *   Should the payment not cover the entirety of the debt, the
+     *   payment is applied directly to the loan, the borrower's withdrawable
+     *   balance remains unchanged, and the purchaser will become the
+     *   loan's borrower.
+     */
+    function executeDebtPurchase(
         uint256 _debtId,
         address _borrower,
         address _purchaser
