@@ -18,6 +18,41 @@ library LibOfficerRoles {
     bytes32 public constant _DEBT_STOREFRONT_ = keccak256("DEBT_STOREFRONT");
 }
 
+library LibLoanContractStates {
+    uint8 public constant _UNDEFINED_STATE_ = 0;
+    uint8 public constant _NONLEVERAGED_STATE_ = 1;
+    uint8 public constant _UNSPONSORED_STATE_ = 2;
+    uint8 public constant _SPONSORED_STATE_ = 3;
+    uint8 public constant _FUNDED_STATE_ = 4;
+    uint8 public constant _ACTIVE_GRACE_STATE_ = 5;
+    uint8 public constant _ACTIVE_STATE_ = 6;
+    uint8 public constant _DEFAULT_STATE_ = 7;
+    uint8 public constant _COLLECTION_STATE_ = 8;
+    uint8 public constant _AUCTION_STATE_ = 9;
+    uint8 public constant _AWARDED_STATE_ = 10;
+    uint8 public constant _CLOSE_STATE_ = 12;
+    uint8 public constant _PAID_STATE_ = 13;
+}
+
+library LibLoanContractFIRIntervals {
+    uint8 public constant _SECONDLY_ = 0;
+    uint8 public constant _MINUTELY_ = 1;
+    uint8 public constant _HOURLY_ = 2;
+    uint8 public constant _DAILY_ = 3;
+    uint8 public constant _WEEKLY_ = 4;
+    uint8 public constant _2_WEEKLY_ = 5;
+    uint8 public constant _4_WEEKLY_ = 6;
+    uint8 public constant _6_WEEKLY_ = 7;
+    uint8 public constant _8_WEEKLY_ = 8;
+    uint8 public constant _MONTHLY_ = 9;
+    uint8 public constant _2_MONTHLY_ = 10;
+    uint8 public constant _3_MONTHLY_ = 11;
+    uint8 public constant _4_MONTHLY_ = 12;
+    uint8 public constant _6_MONTHLY_ = 13;
+    uint8 public constant _360_DAILY_ = 14;
+    uint8 public constant _ANNUALLY_ = 15;
+}
+
 library LibLoanContractTerms {
     /* ------------------------------------------------ *
      *                  Loan States                     *
@@ -33,8 +68,8 @@ library LibLoanContractTerms {
     uint8 private constant _COLLECTION_STATE_ = 8;
     uint8 private constant _AUCTION_STATE_ = 9;
     uint8 private constant _AWARDED_STATE_ = 10;
-    uint8 private constant _CLOSE_STATE_ = 11;
-    uint8 private constant _PAID_STATE_ = 12;
+    uint8 private constant _CLOSE_STATE_ = 12;
+    uint8 private constant _PAID_STATE_ = 13;
 
     /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *

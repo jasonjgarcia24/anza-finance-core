@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 interface ILoanContract {
+    error InvalidCollateral();
     error InvalidTokenId(uint256 tokenId);
     error InvalidParticipant(address account);
     error InvalidFundsTransfer(uint256 amount);
@@ -24,6 +25,12 @@ interface ILoanContract {
         address indexed borrower,
         address indexed lender,
         uint256 amount
+    );
+
+    event LoanBorrowerChanged(
+        uint256 indexed debtId,
+        address indexed newBorrower,
+        address indexed oldBorrower
     );
 
     event LoanStateChanged(
@@ -81,6 +88,8 @@ interface ILoanContract {
     ) external view returns (uint256);
 
     function updateLoanState(uint256 _debtId) external;
+
+    function updateBorrower(uint256 _debtId, address _newBorrower) external;
 
     function verifyLoanActive(uint256 _debtId) external view;
 

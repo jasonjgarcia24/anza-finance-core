@@ -25,19 +25,20 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     /* ------------------------------------------------ *
      *                  Loan States                     *
      * ------------------------------------------------ */
-    uint256 private constant _UNDEFINED_STATE_ = 0;
-    uint256 private constant _NONLEVERAGED_STATE_ = 1;
-    uint256 private constant _UNSPONSORED_STATE_ = 2;
-    uint256 private constant _SPONSORED_STATE_ = 3;
-    uint256 private constant _FUNDED_STATE_ = 4;
-    uint256 private constant _ACTIVE_GRACE_STATE_ = 5;
-    uint256 private constant _ACTIVE_STATE_ = 6;
-    uint256 private constant _DEFAULT_STATE_ = 7;
-    uint256 private constant _COLLECTION_STATE_ = 8;
-    uint256 private constant _AUCTION_STATE_ = 9;
-    uint256 private constant _AWARDED_STATE_ = 10;
-    uint256 private constant _CLOSE_STATE_ = 11;
-    uint256 private constant _PAID_STATE_ = 12;
+    uint8 private constant _UNDEFINED_STATE_ = 0;
+    uint8 private constant _NONLEVERAGED_STATE_ = 1;
+    uint8 private constant _UNSPONSORED_STATE_ = 2;
+    uint8 private constant _SPONSORED_STATE_ = 3;
+    uint8 private constant _FUNDED_STATE_ = 4;
+    uint8 private constant _ACTIVE_GRACE_STATE_ = 5;
+    uint8 private constant _ACTIVE_STATE_ = 6;
+    uint8 private constant _DEFAULT_STATE_ = 7;
+    uint8 private constant _COLLECTION_STATE_ = 8;
+    uint8 private constant _AUCTION_STATE_ = 9;
+    uint8 private constant _AWARDED_STATE_ = 10;
+    uint8 private constant _PAID_PENDING_STATE_ = 11;
+    uint8 private constant _CLOSE_STATE_ = 12;
+    uint8 private constant _PAID_STATE_ = 13;
 
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
@@ -63,7 +64,10 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         __anzaToken = IAnzaToken(_anzaToken);
 
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
+        _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
         _setRoleAdmin(Roles._DEBT_STOREFRONT_, Roles._ADMIN_);
+        _grantRole(Roles._ADMIN_, msg.sender);
+        _grantRole(Roles._LOAN_CONTRACT_, _loanContract);
     }
 
     modifier debtUpdater(uint256 _debtId) {
@@ -88,7 +92,14 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         return address(__anzaToken);
     }
 
+    function depositFunds(
+        address _account
+    ) external payable onlyRole(Roles._LOAN_CONTRACT_) nonReentrant {
+        withdrawableBalance[_account] += msg.value;
+    }
+
     function sponsorPayment(
+        address _sponsor,
         uint256 _debtId
     ) external payable onlyActiveLoan(_debtId) debtUpdater(_debtId) {
         uint256 _payment = msg.value;
@@ -97,9 +108,9 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         // Therefore, no need to check here.
         if (_payment == 0) revert InvalidFundsTransfer();
 
-        _depositPayment(_debtId, _payment);
+        _depositPayment(_sponsor, _debtId, _payment);
 
-        emit Deposited(_debtId, msg.sender, _payment);
+        emit Deposited(_debtId, _sponsor, _payment);
     }
 
     function depositPayment(
@@ -115,7 +126,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         if (_borrower != __loanContract.borrower(_debtId))
             revert InvalidParticipant();
 
-        _depositPayment(_debtId, _payment);
+        _depositPayment(_borrower, _debtId, _payment);
 
         emit Deposited(_debtId, _borrower, _payment);
     }
@@ -153,7 +164,24 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         return __loanCollateralVault.withdraw(_borrower, _debtId);
     }
 
-    function buyDebt(
+    /*
+     * A full transfer of debt responsibilities of the current borrower
+     * to the purchaser.
+     *
+     * Scenario #1:
+     *   Should the payment cover the cost of the debt, the payment less
+     *   the excess funds is used to close out the loan, the excess funds
+     *   from the payment, if any, will be transferred to the borrower's
+     *   account and the purchaser will be able to withdraw the collateral
+     *   to their account.
+     *
+     * Scenario #2:
+     *   Should the payment not cover the entirety of the debt, the
+     *   payment is applied directly to the loan, the borrower's withdrawable
+     *   balance remains unchanged, and the purchaser will become the
+     *   loan's borrower.
+     */
+    function executeDebtPurchase(
         uint256 _debtId,
         address _borrower,
         address _purchaser
@@ -170,7 +198,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
         // Transfer collateral
         if (_payment >= _balance) {
-            _depositPayment(_debtId, _balance);
+            _depositPayment(_purchaser, _debtId, _balance);
 
             __loanCollateralVault.withdraw(_purchaser, _debtId);
 
@@ -178,7 +206,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         }
         // Transfer debt
         else {
-            _depositPayment(_debtId, _payment);
+            _depositPayment(_purchaser, _debtId, _payment);
 
             __anzaToken.safeTransferFrom(
                 _borrower,
@@ -187,6 +215,8 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
                 1,
                 ""
             );
+
+            __loanContract.updateBorrower(_debtId, _purchaser);
         }
 
         return true;
@@ -218,14 +248,27 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         }
     }
 
-    function _depositPayment(uint256 _debtId, uint256 _payment) internal {
+    function _depositPayment(
+        address _payer,
+        uint256 _debtId,
+        uint256 _payment
+    ) internal {
         address _lender = __anzaToken.lenderOf(_debtId);
+        uint256 _balance = __anzaToken.balanceOf(_lender, _debtId * 2);
 
         // Update lender's withdrawable balance
-        withdrawableBalance[_lender] += _payment;
+        if (_balance > _payment) {
+            withdrawableBalance[_lender] += _payment;
 
-        // Burn ALC debt token
-        __anzaToken.burn(_lender, _debtId * 2, _payment);
+            // Burn ALC debt token
+            __anzaToken.burn(_lender, _debtId * 2, _payment);
+        } else {
+            withdrawableBalance[_lender] += _balance;
+            withdrawableBalance[_payer] += _balance - _payment;
+
+            // Burn ALC debt token
+            __anzaToken.burn(_lender, _debtId * 2, _balance);
+        }
 
         // Update loan state
         __loanContract.updateLoanState(_debtId);
