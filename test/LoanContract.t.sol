@@ -9,7 +9,7 @@ import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
 import {LoanCollateralVault} from "../contracts/LoanCollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
-import {DemoToken} from "../contracts/DemoToken.sol";
+import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
