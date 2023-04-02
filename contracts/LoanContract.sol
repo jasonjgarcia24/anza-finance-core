@@ -10,131 +10,132 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
+import {LibLoanContractStates as States} from "./libraries/LibLoanContractConstants.sol";
 
 contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
-    uint256 private constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
-    uint256 private constant _UINT32_MAX_ = 4294967295;
+    uint256 internal constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
+    uint256 internal constant _UINT32_MAX_ = 4294967295;
 
     /* ------------------------------------------------ *
      *                  Loan States                     *
      * ------------------------------------------------ */
-    uint8 private constant _UNDEFINED_STATE_ = 0;
-    uint8 private constant _NONLEVERAGED_STATE_ = 1;
-    uint8 private constant _UNSPONSORED_STATE_ = 2;
-    uint8 private constant _SPONSORED_STATE_ = 3;
-    uint8 private constant _FUNDED_STATE_ = 4;
-    uint8 private constant _ACTIVE_GRACE_STATE_ = 5;
-    uint8 private constant _ACTIVE_STATE_ = 6;
-    uint8 private constant _DEFAULT_STATE_ = 7;
-    uint8 private constant _COLLECTION_STATE_ = 8;
-    uint8 private constant _AUCTION_STATE_ = 9;
-    uint8 private constant _AWARDED_STATE_ = 10;
-    uint8 private constant _PAID_PENDING_STATE_ = 11;
-    uint8 private constant _CLOSE_STATE_ = 12;
-    uint8 private constant _PAID_STATE_ = 13;
-    uint8 private constant _CLOSE_DEFAULT_STATE_ = 14;
+    uint8 internal constant _UNDEFINED_STATE_ = 0;
+    uint8 internal constant _NONLEVERAGED_STATE_ = 1;
+    uint8 internal constant _UNSPONSORED_STATE_ = 2;
+    uint8 internal constant _SPONSORED_STATE_ = 3;
+    uint8 internal constant _FUNDED_STATE_ = 4;
+    uint8 internal constant _ACTIVE_GRACE_STATE_ = 5;
+    uint8 internal constant _ACTIVE_STATE_ = 6;
+    uint8 internal constant _DEFAULT_STATE_ = 7;
+    uint8 internal constant _COLLECTION_STATE_ = 8;
+    uint8 internal constant _AUCTION_STATE_ = 9;
+    uint8 internal constant _AWARDED_STATE_ = 10;
+    uint8 internal constant _PAID_PENDING_STATE_ = 11;
+    uint8 internal constant _CLOSE_STATE_ = 12;
+    uint8 internal constant _PAID_STATE_ = 13;
+    uint8 internal constant _CLOSE_DEFAULT_STATE_ = 14;
 
     /* ------------------------------------------------ *
      *       Fixed Interest Rate (FIR) Intervals        *
      * ------------------------------------------------ */
     //  Need to validate duration > FIR interval
-    uint8 private constant _SECONDLY_ = 0;
-    uint8 private constant _MINUTELY_ = 1;
-    uint8 private constant _HOURLY_ = 2;
-    uint8 private constant _DAILY_ = 3;
-    uint8 private constant _WEEKLY_ = 4;
-    uint8 private constant _2_WEEKLY_ = 5;
-    uint8 private constant _4_WEEKLY_ = 6;
-    uint8 private constant _6_WEEKLY_ = 7;
-    uint8 private constant _8_WEEKLY_ = 8;
-    uint8 private constant _MONTHLY_ = 9;
-    uint8 private constant _2_MONTHLY_ = 10;
-    uint8 private constant _3_MONTHLY_ = 11;
-    uint8 private constant _4_MONTHLY_ = 12;
-    uint8 private constant _6_MONTHLY_ = 13;
-    uint8 private constant _360_DAILY_ = 14;
-    uint8 private constant _ANNUALLY_ = 15;
+    uint8 internal constant _SECONDLY_ = 0;
+    uint8 internal constant _MINUTELY_ = 1;
+    uint8 internal constant _HOURLY_ = 2;
+    uint8 internal constant _DAILY_ = 3;
+    uint8 internal constant _WEEKLY_ = 4;
+    uint8 internal constant _2_WEEKLY_ = 5;
+    uint8 internal constant _4_WEEKLY_ = 6;
+    uint8 internal constant _6_WEEKLY_ = 7;
+    uint8 internal constant _8_WEEKLY_ = 8;
+    uint8 internal constant _MONTHLY_ = 9;
+    uint8 internal constant _2_MONTHLY_ = 10;
+    uint8 internal constant _3_MONTHLY_ = 11;
+    uint8 internal constant _4_MONTHLY_ = 12;
+    uint8 internal constant _6_MONTHLY_ = 13;
+    uint8 internal constant _360_DAILY_ = 14;
+    uint8 internal constant _ANNUALLY_ = 15;
 
     /* ------------------------------------------------ *
      *               FIR Interval Multipliers           *
      * ------------------------------------------------ */
-    uint256 private constant _SECONDLY_MULTIPLIER_ = 1;
-    uint256 private constant _MINUTELY_MULTIPLIER_ = 60;
-    uint256 private constant _HOURLY_MULTIPLIER_ = 60 * 60;
-    uint256 private constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
-    uint256 private constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
-    uint256 private constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
-    uint256 private constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
-    uint256 private constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
-    uint256 private constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
-    uint256 private constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
-    uint256 private constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
+    uint256 internal constant _SECONDLY_MULTIPLIER_ = 1;
+    uint256 internal constant _MINUTELY_MULTIPLIER_ = 60;
+    uint256 internal constant _HOURLY_MULTIPLIER_ = 60 * 60;
+    uint256 internal constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
+    uint256 internal constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
+    uint256 internal constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
+    uint256 internal constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
+    uint256 internal constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
+    uint256 internal constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
+    uint256 internal constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
+    uint256 internal constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
 
     /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
      * ------------------------------------------------ */
-    uint256 private constant _LOAN_STATE_MASK_ =
+    uint256 internal constant _LOAN_STATE_MASK_ =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0;
-    uint256 private constant _LOAN_STATE_MAP_ =
+    uint256 internal constant _LOAN_STATE_MAP_ =
         0x000000000000000000000000000000000000000000000000000000000000000F;
-    uint256 private constant _FIR_INTERVAL_MASK_ =
+    uint256 internal constant _FIR_INTERVAL_MASK_ =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0F;
-    uint256 private constant _FIR_INTERVAL_MAP_ =
+    uint256 internal constant _FIR_INTERVAL_MAP_ =
         0x00000000000000000000000000000000000000000000000000000000000000F0;
-    uint256 private constant _FIR_MASK_ =
+    uint256 internal constant _FIR_MASK_ =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FF;
-    uint256 private constant _FIR_MAP_ =
+    uint256 internal constant _FIR_MAP_ =
         0x000000000000000000000000000000000000000000000000000000000000FF00;
-    uint256 private constant _LOAN_START_MASK_ =
+    uint256 internal constant _LOAN_START_MASK_ =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFF;
-    uint256 private constant _LOAN_START_MAP_ =
+    uint256 internal constant _LOAN_START_MAP_ =
         0x0000000000000000000000000000000000000000000000000000FFFFFFFF0000;
-    uint256 private constant _LOAN_DURATION_MASK_ =
+    uint256 internal constant _LOAN_DURATION_MASK_ =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFF;
-    uint256 private constant _LOAN_DURATION_MAP_ =
+    uint256 internal constant _LOAN_DURATION_MAP_ =
         0x00000000000000000000000000000000000000000000FFFFFFFF000000000000;
-    uint256 private constant _BORROWER_MASK_ =
+    uint256 internal constant _BORROWER_MASK_ =
         0xFFFF0000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFFF;
-    uint256 private constant _BORROWER_MAP_ =
+    uint256 internal constant _BORROWER_MAP_ =
         0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000;
-    uint256 private constant _LENDER_ROYALTIES_MASK_ =
+    uint256 internal constant _LENDER_ROYALTIES_MASK_ =
         0xFF00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-    uint256 private constant _LENDER_ROYALTIES_MAP_ =
+    uint256 internal constant _LENDER_ROYALTIES_MAP_ =
         0x00FF000000000000000000000000000000000000000000000000000000000000;
-    uint256 private constant _LOAN_COUNT_MASK_ =
+    uint256 internal constant _LOAN_COUNT_MASK_ =
         0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-    uint256 private constant _LOAN_COUNT_MAP_ =
+    uint256 internal constant _LOAN_COUNT_MAP_ =
         0xFF00000000000000000000000000000000000000000000000000000000000000;
 
-    uint8 private constant _LOAN_STATE_POS_ = 0;
-    uint8 private constant _FIR_INTERVAL_POS_ = 4;
-    uint8 private constant _FIR_POS_ = 8;
-    uint8 private constant _LOAN_START_POS_ = 16;
-    uint8 private constant _LOAN_DURATION_POS_ = 48;
-    uint8 private constant _BORROWER_POS_ = 80;
-    uint8 private constant _LENDER_ROYALTIES_POS_ = 240;
-    uint8 private constant _LOAN_COUNT_POS_ = 248;
+    uint8 internal constant _LOAN_STATE_POS_ = 0;
+    uint8 internal constant _FIR_INTERVAL_POS_ = 4;
+    uint8 internal constant _FIR_POS_ = 8;
+    uint8 internal constant _LOAN_START_POS_ = 16;
+    uint8 internal constant _LOAN_DURATION_POS_ = 48;
+    uint8 internal constant _BORROWER_POS_ = 80;
+    uint8 internal constant _LENDER_ROYALTIES_POS_ = 240;
+    uint8 internal constant _LOAN_COUNT_POS_ = 248;
 
     /* ------------------------------------------------ *
      *           Loan Term Standard Errors              *
      * ------------------------------------------------ */
-    bytes4 private constant _LOAN_STATE_ERROR_ID_ = 0xdacce9d3;
-    bytes4 private constant _FIR_INTERVAL_ERROR_ID_ = 0xa13e8948;
-    bytes4 private constant _DURATION_ERROR_ID_ = 0xfcbf8511;
-    bytes4 private constant _PRINCIPAL_ERROR_ID_ = 0x6a901435;
-    bytes4 private constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
-    bytes4 private constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
-    bytes4 private constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
+    bytes4 internal constant _LOAN_STATE_ERROR_ID_ = 0xdacce9d3;
+    bytes4 internal constant _FIR_INTERVAL_ERROR_ID_ = 0xa13e8948;
+    bytes4 internal constant _DURATION_ERROR_ID_ = 0xfcbf8511;
+    bytes4 internal constant _PRINCIPAL_ERROR_ID_ = 0x6a901435;
+    bytes4 internal constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
+    bytes4 internal constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
+    bytes4 internal constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
 
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     address public immutable collateralVault;
-    ILoanTreasurey public loanTreasurer;
-    IAnzaToken public anzaToken;
+    ILoanTreasurey private __loanTreasurer;
+    IAnzaToken private __anzaToken;
 
     /* ------------------------------------------------ *
      *                    Databases                     *
@@ -172,18 +173,28 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     function setLoanTreasurer(
         address _loanTreasurer
     ) external onlyRole(Roles._ADMIN_) {
-        loanTreasurer = ILoanTreasurey(_loanTreasurer);
+        __loanTreasurer = ILoanTreasurey(_loanTreasurer);
     }
 
     function setAnzaToken(
         address _anzaTokenAddress
     ) external onlyRole(Roles._ADMIN_) {
-        anzaToken = IAnzaToken(_anzaTokenAddress);
+        __anzaToken = IAnzaToken(_anzaTokenAddress);
+    }
+
+    function loanTreasurer() external view returns (address) {
+        return address(__loanTreasurer);
+    }
+
+    function anzaToken() external view returns (address) {
+        return address(__anzaToken);
     }
 
     function setMaxRefinances(
         uint256 _maxRefinances
     ) external onlyRole(Roles._ADMIN_) {
+        if (_maxRefinances > 255) revert ExceededRefinanceLimit();
+
         maxRefinances = _maxRefinances;
     }
 
@@ -201,7 +212,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      * TODO: Test
      */
     function debtBalanceOf(uint256 _debtId) public view returns (uint256) {
-        return anzaToken.totalSupply(_debtId * 2);
+        return __anzaToken.totalSupply(_debtId * 2);
     }
 
     function getCollateralNonce(
@@ -275,13 +286,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         );
 
         // Transfer funds to borrower's account in treasurey
-        (bool _success, ) = address(loanTreasurer).call{value: _principal}(
+        (bool _success, ) = address(__loanTreasurer).call{value: _principal}(
             abi.encodeWithSignature("depositFunds(address)", _borrower)
         );
         if (!_success) revert FailedFundsTransfer();
 
         // Mint debt ALC debt tokens for lender
-        anzaToken.mint(
+        __anzaToken.mint(
             msg.sender,
             totalDebts * 2,
             _principal,
@@ -301,6 +312,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     }
 
     /*
+     * TODO: Need to factor in lender royalties on refinancing.
+     *
      * Input _contractTerms:
      *  > 008 - [0..7]     `loanState`
      *  > 008 - [8..15]    `fixedInterestRate`
@@ -359,7 +372,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
         uint256 _balance = debtBalanceOf(_debtId);
-        (bool _success, ) = address(loanTreasurer).call{
+        (bool _success, ) = address(__loanTreasurer).call{
             value: _principal >= _balance ? _balance : _principal
         }(
             abi.encodeWithSignature(
@@ -371,7 +384,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         if (!_success) revert FailedFundsTransfer();
 
         // Mint debt ALC debt tokens for lender.
-        anzaToken.mint(
+        __anzaToken.mint(
             msg.sender,
             totalDebts * 2,
             _principal,
@@ -398,7 +411,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         if (_borrower != borrower(_debtId))
             revert InvalidParticipant(_borrower);
 
-        anzaToken.mint(
+        __anzaToken.mint(
             _borrower,
             (_debtId * 2) + 1,
             1,
@@ -635,7 +648,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             __setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
-        else if (anzaToken.totalSupply(_debtId * 2) <= 0) {
+        else if (__anzaToken.totalSupply(_debtId * 2) <= 0) {
             console.log("Paid loan");
             __setLoanState(_debtId, _PAID_STATE_);
         }
@@ -684,7 +697,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
     function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
         return
-            anzaToken.totalSupply(_debtId * 2) > 0 &&
+            __anzaToken.totalSupply(_debtId * 2) > 0 &&
             loanClose(_debtId) <= block.timestamp;
     }
 
@@ -745,6 +758,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _activeLoanIndex,
         bytes32 _contractTerms
     ) private {
+        if (_activeLoanIndex > maxRefinances) revert ExceededRefinanceLimit();
+
         bytes32 _loanAgreement;
 
         assembly {
@@ -753,11 +768,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             let _fixedInterestRate := mload(0)
 
             // Get packed grace period
-            mstore(0x14, _contractTerms)
+            mstore(0x13, _contractTerms)
             let _gracePeriod := mload(0)
 
             // Get packed duration
-            mstore(0x18, _contractTerms)
+            mstore(0x17, _contractTerms)
             let _duration := mload(0)
 
             // Get packed lender royalties
@@ -768,7 +783,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             mstore(0x20, shl(4, _contractTerms))
 
             // Pack loan state (uint4)
-            switch _duration
+            switch _gracePeriod
             case 0 {
                 mstore(
                     0x20,
