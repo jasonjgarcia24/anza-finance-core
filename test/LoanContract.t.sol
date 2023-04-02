@@ -223,6 +223,7 @@ abstract contract LoanContractDeployer is
         anzaToken.grantRole(Roles._TREASURER_, address(loanTreasurer));
 
         // Set AnzaToken address
+        loanContract.setLoanTreasurer(address(loanTreasurer));
         loanContract.setAnzaToken(address(anzaToken));
 
         vm.stopPrank();
@@ -390,6 +391,5 @@ contract LoanContractUnitTest is LoanContractSubmitted {
 
     function testPass() public {}
 
-    function testCheckLoanRefinanceAllowed() public {
-    }
+    function testCheckLoanRefinanceAllowed() public {}
 }

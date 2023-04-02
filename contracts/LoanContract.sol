@@ -4,6 +4,8 @@ pragma solidity ^0.8.7;
 import "hardhat/console.sol";
 import "./token/interfaces/IAnzaToken.sol";
 import "./interfaces/ILoanContract.sol";
+import "./interfaces/ILoanTreasurey.sol";
+import "./interfaces/ILoanCollateralVault.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -131,6 +133,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     address public immutable collateralVault;
+    ILoanTreasurey public loanTreasurer;
     IAnzaToken public anzaToken;
 
     /* ------------------------------------------------ *
@@ -164,6 +167,12 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         _grantRole(Roles._ADMIN_, msg.sender);
 
         collateralVault = _collateralVault;
+    }
+
+    function setLoanTreasurer(
+        address _loanTreasurer
+    ) external onlyRole(Roles._ADMIN_) {
+        loanTreasurer = ILoanTreasurey(_loanTreasurer);
     }
 
     function setAnzaToken(
@@ -217,8 +226,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     }
 
     /*
-     * TODO: Test
-     *
      * Input _contractTerms:
      *  > 008 - [0..7]     `loanState`
      *  > 008 - [8..15]    `fixedInterestRate`
@@ -227,14 +234,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      *  > 032 - [176..207] `duration`
      *  > 032 - [208..239] `termsExpiry`
      *  > 016 - [240..255] unused space
-     *
-     * Saved _contractAgreement:
-     *  > 008 - [0..7]     `loanState`
-     *  > 008 - [8..15]    `fixedInterestRate`
-     *  > 128 - [16..143]  `principal`
-     *  > 032 - [144..175] `loanStart`
-     *  > 032 - [176..207] `loanClose`
-     *  > 016 - [208..255] unused space
      */
     function initLoanContract(
         bytes32 _contractTerms,
@@ -242,9 +241,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _collateralId,
         bytes calldata _borrowerSignature
     ) external payable {
-        // Verify loan allowed
-        uint256[] storage _debtIds = debtIds[_collateralAddress][_collateralId];
-
         // Validate loan terms
         uint32 _now = __toUint32(block.timestamp);
         uint256 _principal = msg.value;
@@ -265,43 +261,26 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             )
         ) revert InvalidParticipant({account: _borrower});
 
-        // If first time token is collateralized, allow lending and add debt
-        // to database and bring collateral into loan collateral vault
-        if (_debtIds.length == 0) {
-            __setLoanAgreement(_now, _borrower, 0, _contractTerms);
+        // Add debt to database
+        __setLoanAgreement(_now, _borrower, 0, _contractTerms);
+        debtIds[_collateralAddress][_collateralId].push(totalDebts);
 
-            // The collateral ID and address will be mapped within
-            // the loan collateral vault to the debt ID.
-            _collateralToken.safeTransferFrom(
-                _borrower,
-                collateralVault,
-                _collateralId,
-                abi.encodePacked(_collateralAddress)
-            );
-        }
-        // If token is currently locked up in default, do not allow lending
-        else if (checkLoanDefault(_debtIds[_debtIds.length - 1])) {
-            revert InvalidCollateral();
-        }
-        // If token is currently collateralized, the loan is in good standing,
-        // and the maximum number of loans haven't been reached, allow lending
-        else if (loanState(_debtIds[_debtIds.length - 1]) < _DEFAULT_STATE_) {
-            __setLoanAgreement(
-                _now,
-                _borrower,
-                activeLoanCount(_debtIds.length - 1),
-                _contractTerms
-            );
-        }
-        _debtIds.push(totalDebts);
+        // The collateral ID and address will be mapped within
+        // the loan collateral vault to the debt ID.
+        _collateralToken.safeTransferFrom(
+            _borrower,
+            collateralVault,
+            _collateralId,
+            abi.encodePacked(_collateralAddress)
+        );
 
-        // Transfer funds to borrower
-        (bool _success, ) = _borrower.call{value: _principal}("");
+        // Transfer funds to borrower's account in treasurey
+        (bool _success, ) = address(loanTreasurer).call{value: _principal}(
+            abi.encodeWithSignature("depositFunds(address)", _borrower)
+        );
         if (!_success) revert FailedFundsTransfer();
 
-        // Mint debt ALC debt tokens for borrower and lender.
-        // This will grant the borrower recal access control
-        // of the collateral following full loan repayment.
+        // Mint debt ALC debt tokens for lender
         anzaToken.mint(
             msg.sender,
             totalDebts * 2,
@@ -314,6 +293,98 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         emit LoanContractInitialized(
             _collateralAddress,
             _collateralId,
+            totalDebts
+        );
+
+        // Setup for next debt ID
+        totalDebts += 1;
+    }
+
+    /*
+     * Input _contractTerms:
+     *  > 008 - [0..7]     `loanState`
+     *  > 008 - [8..15]    `fixedInterestRate`
+     *  > 128 - [16..143]  `principal`
+     *  > 032 - [144..175] `gracePeriod`
+     *  > 032 - [176..207] `duration`
+     *  > 032 - [208..239] `termsExpiry`
+     *  > 016 - [240..255] unused space
+     */
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _debtId,
+        bytes calldata _borrowerSignature
+    ) external payable {
+        // Verify existing loan is in good standing
+        if (checkLoanDefault(_debtId)) revert InvalidCollateral();
+
+        // Validate loan terms
+        uint32 _now = __toUint32(block.timestamp);
+        uint256 _principal = msg.value;
+        _validateLoanTerms(_contractTerms, _now, _principal);
+
+        // Verify borrower participation
+        ILoanCollateralVault.Collateral
+            memory _collateral = ILoanCollateralVault(collateralVault)
+                .getCollateralAt(_debtId);
+        address _borrower = borrower(_debtId);
+
+        if (
+            _borrower !=
+            __recoverSigner(
+                _contractTerms,
+                _collateral.collateralAddress,
+                _collateral.collateralId,
+                getCollateralNonce(
+                    _collateral.collateralAddress,
+                    _collateral.collateralId
+                ),
+                _borrowerSignature
+            )
+        ) revert InvalidParticipant({account: _borrower});
+
+        // Add debt to database
+        uint256[] storage _debtIds = debtIds[_collateral.collateralAddress][
+            _collateral.collateralId
+        ];
+
+        __setLoanAgreement(
+            _now,
+            _borrower,
+            activeLoanCount(_debtIds[_debtIds.length - 1]) + 1,
+            _contractTerms
+        );
+        _debtIds.push(totalDebts);
+
+        // Replace or reduce previous debt. Any excess funds will
+        // be available for withdrawal in the treasurey.
+        uint256 _balance = debtBalanceOf(_debtId);
+        (bool _success, ) = address(loanTreasurer).call{
+            value: _principal >= _balance ? _balance : _principal
+        }(
+            abi.encodeWithSignature(
+                "sponsorPayment(address,uint256)",
+                _borrower,
+                _debtId
+            )
+        );
+        if (!_success) revert FailedFundsTransfer();
+
+        // Mint debt ALC debt tokens for lender.
+        anzaToken.mint(
+            msg.sender,
+            totalDebts * 2,
+            _principal,
+            IERC721Metadata(_collateral.collateralAddress).tokenURI(
+                _collateral.collateralId
+            ),
+            abi.encodePacked(_borrower, totalDebts)
+        );
+
+        // Emit initialization event
+        emit LoanContractInitialized(
+            _collateral.collateralAddress,
+            _collateral.collateralId,
             totalDebts
         );
 

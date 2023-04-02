@@ -148,37 +148,6 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
             super.isApprovedForAll(_account, _operator);
     }
 
-    // function _safeTransferFrom(
-    //     address _from,
-    //     address _to,
-    //     uint256 _id,
-    //     uint256 _amount,
-    //     bytes memory _data
-    // ) internal override {
-    //     require(
-    //         hasRole(Roles._TREASURER_, msg.sender) ||
-    //             hasRole(keccak256(abi.encodePacked(_from, _id)), _from),
-    //         "Transfer denied"
-    //     );
-    //     super._safeTransferFrom(_from, _to, _id, _amount, _data);
-    // }
-
-    // function _safeBatchTransferFrom(
-    //     address _from,
-    //     address _to,
-    //     uint256[] memory _ids,
-    //     uint256[] memory _amounts,
-    //     bytes memory _data
-    // ) internal override {
-    //     if (!hasRole(Roles._TREASURER_, _from)) {
-    //         for (uint256 i = 0; i < _ids.length; ++i) {
-    //             _checkRole(keccak256(abi.encodePacked(_from, _ids[i])), _from);
-    //         }
-    //     }
-
-    //     super._safeBatchTransferFrom(_from, _to, _ids, _amounts, _data);
-    // }
-
     function _beforeTokenTransfer(
         address,
         address from,

@@ -51,7 +51,11 @@ contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
 
         // Pay off loan expected success
         (success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature("sponsorPayment(uint256)", _debtId)
+            abi.encodeWithSignature(
+                "sponsorPayment(address,uint256)",
+                alt_account,
+                _debtId
+            )
         );
         require(success);
         vm.stopPrank();

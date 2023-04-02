@@ -64,8 +64,10 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         __anzaToken = IAnzaToken(_anzaToken);
 
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
+        _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
         _setRoleAdmin(Roles._DEBT_STOREFRONT_, Roles._ADMIN_);
         _grantRole(Roles._ADMIN_, msg.sender);
+        _grantRole(Roles._LOAN_CONTRACT_, _loanContract);
     }
 
     modifier debtUpdater(uint256 _debtId) {
@@ -90,7 +92,14 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         return address(__anzaToken);
     }
 
+    function depositFunds(
+        address _account
+    ) external payable onlyRole(Roles._LOAN_CONTRACT_) nonReentrant {
+        withdrawableBalance[_account] += msg.value;
+    }
+
     function sponsorPayment(
+        address _sponsor,
         uint256 _debtId
     ) external payable onlyActiveLoan(_debtId) debtUpdater(_debtId) {
         uint256 _payment = msg.value;
@@ -99,9 +108,9 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         // Therefore, no need to check here.
         if (_payment == 0) revert InvalidFundsTransfer();
 
-        _depositPayment(_debtId, _payment);
+        _depositPayment(_sponsor, _debtId, _payment);
 
-        emit Deposited(_debtId, msg.sender, _payment);
+        emit Deposited(_debtId, _sponsor, _payment);
     }
 
     function depositPayment(
@@ -117,7 +126,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         if (_borrower != __loanContract.borrower(_debtId))
             revert InvalidParticipant();
 
-        _depositPayment(_debtId, _payment);
+        _depositPayment(_borrower, _debtId, _payment);
 
         emit Deposited(_debtId, _borrower, _payment);
     }
@@ -189,7 +198,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
         // Transfer collateral
         if (_payment >= _balance) {
-            _depositPayment(_debtId, _balance);
+            _depositPayment(_purchaser, _debtId, _balance);
 
             __loanCollateralVault.withdraw(_purchaser, _debtId);
 
@@ -197,7 +206,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         }
         // Transfer debt
         else {
-            _depositPayment(_debtId, _payment);
+            _depositPayment(_purchaser, _debtId, _payment);
 
             __anzaToken.safeTransferFrom(
                 _borrower,
@@ -239,14 +248,27 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         }
     }
 
-    function _depositPayment(uint256 _debtId, uint256 _payment) internal {
+    function _depositPayment(
+        address _payer,
+        uint256 _debtId,
+        uint256 _payment
+    ) internal {
         address _lender = __anzaToken.lenderOf(_debtId);
+        uint256 _balance = __anzaToken.balanceOf(_lender, _debtId * 2);
 
         // Update lender's withdrawable balance
-        withdrawableBalance[_lender] += _payment;
+        if (_balance > _payment) {
+            withdrawableBalance[_lender] += _payment;
 
-        // Burn ALC debt token
-        __anzaToken.burn(_lender, _debtId * 2, _payment);
+            // Burn ALC debt token
+            __anzaToken.burn(_lender, _debtId * 2, _payment);
+        } else {
+            withdrawableBalance[_lender] += _balance;
+            withdrawableBalance[_payer] += _balance - _payment;
+
+            // Burn ALC debt token
+            __anzaToken.burn(_lender, _debtId * 2, _balance);
+        }
 
         // Update loan state
         __loanContract.updateLoanState(_debtId);

@@ -15,7 +15,7 @@ interface ILoanTreasurey {
 
     event Withdrawn(address indexed payee, uint256 weiAmount);
 
-    function sponsorPayment(uint256 _debtId) external payable;
+    function sponsorPayment(address _sponsor, uint256 _debtId) external payable;
 
     function depositPayment(uint256 _debtId) external payable;
 

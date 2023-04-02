@@ -54,7 +54,11 @@ contract LoanCollateralTreasureyUnitTest is
         vm.expectEmit(true, true, true, true);
         emit Deposited(_debtId, _sender, 1 wei);
         (bool success, ) = address(loanTreasurer).call{value: 1 wei}(
-            abi.encodeWithSignature("sponsorPayment(uint256)", _debtId)
+            abi.encodeWithSignature(
+                "sponsorPayment(address,uint256)",
+                _sender,
+                _debtId
+            )
         );
         require(success);
         vm.stopPrank();
@@ -155,7 +159,11 @@ contract LoanCollateralTreasureyUnitTest is
             abi.encodeWithSelector(InvalidParticipant.selector, _sender)
         );
         (bool success, ) = address(loanTreasurer).call{value: 1 wei}(
-            abi.encodeWithSignature("sponsorPayment(uint256)", _debtId)
+            abi.encodeWithSignature(
+                "sponsorPayment(address,uint256)",
+                _sender,
+                _debtId
+            )
         );
         require(success == false);
         vm.stopPrank();
