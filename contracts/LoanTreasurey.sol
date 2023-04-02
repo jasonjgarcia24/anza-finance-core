@@ -96,6 +96,8 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         address _account
     ) external payable onlyRole(Roles._LOAN_CONTRACT_) nonReentrant {
         withdrawableBalance[_account] += msg.value;
+
+        emit Deposited(type(uint256).max, _account, msg.value);
     }
 
     function sponsorPayment(

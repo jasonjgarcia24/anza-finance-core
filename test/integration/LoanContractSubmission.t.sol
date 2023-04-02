@@ -6,14 +6,16 @@ import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
 import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {Test, console, LoanContractGlobalConstants, LoanContractDeployer, LoanSigned} from "../LoanContract.t.sol";
+import {Test, console, LoanContractDeployer, LoanSigned} from "../LoanContract.t.sol";
+import {Utils} from "../Setup.t.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractStates as States, LibLoanContractConstants as Constants, LibLoanContractStandardErrors as StandardErrors} from "../../contracts/libraries/LibLoanContractConstants.sol";
 
 abstract contract LoanContractSubmitFunctions is
     Test,
+    Utils,
     IERC1155Events,
-    ILoanContractEvents,
-    LoanContractGlobalConstants
+    ILoanContractEvents
 {
     struct TestTermsStruct {
         uint8 loanState;
@@ -38,7 +40,7 @@ abstract contract LoanContractSubmitFunctions is
         if (
             _principal != 0 &&
             _duration != 0 &&
-            _termsExpiry >= _SECONDS_PER_24_MINUTES_RATIO_SCALED_ &&
+            _termsExpiry >= Constants._SECONDS_PER_24_MINUTES_RATIO_SCALED_ &&
             (block.timestamp + uint256(_duration) + uint256(_gracePeriod)) <=
             type(uint32).max
         ) {
@@ -60,18 +62,18 @@ abstract contract LoanContractSubmitFunctions is
             );
         }
 
-        if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
+        if (_termsExpiry < Constants._SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
             vm.expectRevert(
                 abi.encodeWithSelector(
                     InvalidLoanParameter.selector,
-                    _TIME_EXPIRY_ERROR_ID_
+                    StandardErrors._TIME_EXPIRY_ERROR_ID_
                 )
             );
         } else if (_principal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
                     InvalidLoanParameter.selector,
-                    _PRINCIPAL_ERROR_ID_
+                    StandardErrors._PRINCIPAL_ERROR_ID_
                 )
             );
         } else if (
@@ -82,7 +84,7 @@ abstract contract LoanContractSubmitFunctions is
             vm.expectRevert(
                 abi.encodeWithSelector(
                     InvalidLoanParameter.selector,
-                    _DURATION_ERROR_ID_
+                    StandardErrors._DURATION_ERROR_ID_
                 )
             );
         }
@@ -139,7 +141,7 @@ abstract contract LoanContractSubmitFunctions is
             _termsStruct.fixedInterestRate,
             "Invalid fixed interest rate"
         );
-        console.log("___");
+
         _loanContract.loanStart(_debtId);
         _loanContract.loanClose(_debtId);
         // console.log(
@@ -264,7 +266,7 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
             address(loanContract),
             _debtId,
             TestTermsStruct({
-                loanState: _ACTIVE_GRACE_STATE_,
+                loanState: States._ACTIVE_GRACE_STATE_,
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
                 principal: 0,
@@ -404,7 +406,7 @@ contract LoanContractFuzzSubmit is
             address(loanContract),
             _debtId,
             TestTermsStruct({
-                loanState: _ACTIVE_GRACE_STATE_,
+                loanState: States._ACTIVE_GRACE_STATE_,
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _fixedInterestRate,
                 principal: 0,
@@ -530,7 +532,7 @@ contract LoanContractFuzzSubmit is
             address(loanContract),
             _debtId,
             TestTermsStruct({
-                loanState: _ACTIVE_GRACE_STATE_,
+                loanState: States._ACTIVE_GRACE_STATE_,
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
                 principal: 0,
@@ -663,7 +665,7 @@ contract LoanContractFuzzSubmit is
             address(loanContract),
             _debtId,
             TestTermsStruct({
-                loanState: _ACTIVE_GRACE_STATE_,
+                loanState: States._ACTIVE_GRACE_STATE_,
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
                 principal: 0,
@@ -786,7 +788,7 @@ contract LoanContractFuzzSubmit is
             address(loanContract),
             _debtId,
             TestTermsStruct({
-                loanState: _ACTIVE_GRACE_STATE_,
+                loanState: States._ACTIVE_GRACE_STATE_,
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
                 principal: 0,
@@ -914,7 +916,7 @@ contract LoanContractFuzzSubmit is
             address(loanContract),
             _debtId,
             TestTermsStruct({
-                loanState: _ACTIVE_GRACE_STATE_,
+                loanState: States._ACTIVE_GRACE_STATE_,
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
                 principal: 0,

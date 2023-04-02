@@ -13,6 +13,7 @@ interface ILoanContract {
     error OverflowLoanTerm();
     error InactiveLoanState(uint256 debtId);
     error FailedFundsTransfer();
+    error ExceededRefinanceLimit();
 
     event LoanContractInitialized(
         address indexed collateralAddress,
@@ -63,6 +64,12 @@ interface ILoanContract {
         bytes32 _contractTerms,
         address _collateralAddress,
         uint256 _collateralId,
+        bytes calldata _borrowerSignature
+    ) external payable;
+
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _debtId,
         bytes calldata _borrowerSignature
     ) external payable;
 

@@ -5,6 +5,7 @@ import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractSubmitFunctions} from "./LoanContractSubmission.t.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractStates as States} from "../../contracts/libraries/LibLoanContractConstants.sol";
 
 contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
     function setUp() public virtual override {
@@ -90,7 +91,11 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
         vm.warp(loanContract.loanStart(_debtId) + 60 * 60 * 24 * 360);
 
         vm.expectEmit(true, true, true, true);
-        emit LoanStateChanged(_debtId, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_);
+        emit LoanStateChanged(
+            _debtId,
+            States._ACTIVE_STATE_,
+            States._ACTIVE_GRACE_STATE_
+        );
 
         assertEq(loanTreasurer.updateDebt(_debtId), 11);
         assertGt(
@@ -152,7 +157,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
             address(loanContract),
             _debtId,
             TestTermsStruct({
-                loanState: _ACTIVE_GRACE_STATE_,
+                loanState: States._ACTIVE_GRACE_STATE_,
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
                 principal: 0,
