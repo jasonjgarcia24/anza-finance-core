@@ -134,8 +134,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     address public immutable collateralVault;
-    ILoanTreasurey public loanTreasurer;
-    IAnzaToken public anzaToken;
+    ILoanTreasurey private __loanTreasurer;
+    IAnzaToken private __anzaToken;
 
     /* ------------------------------------------------ *
      *                    Databases                     *
@@ -173,18 +173,28 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     function setLoanTreasurer(
         address _loanTreasurer
     ) external onlyRole(Roles._ADMIN_) {
-        loanTreasurer = ILoanTreasurey(_loanTreasurer);
+        __loanTreasurer = ILoanTreasurey(_loanTreasurer);
     }
 
     function setAnzaToken(
         address _anzaTokenAddress
     ) external onlyRole(Roles._ADMIN_) {
-        anzaToken = IAnzaToken(_anzaTokenAddress);
+        __anzaToken = IAnzaToken(_anzaTokenAddress);
+    }
+
+    function loanTreasurer() external view returns (address) {
+        return address(__loanTreasurer);
+    }
+
+    function anzaToken() external view returns (address) {
+        return address(__anzaToken);
     }
 
     function setMaxRefinances(
         uint256 _maxRefinances
     ) external onlyRole(Roles._ADMIN_) {
+        if (_maxRefinances > 255) revert ExceededRefinanceLimit();
+
         maxRefinances = _maxRefinances;
     }
 
@@ -202,7 +212,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
      * TODO: Test
      */
     function debtBalanceOf(uint256 _debtId) public view returns (uint256) {
-        return anzaToken.totalSupply(_debtId * 2);
+        return __anzaToken.totalSupply(_debtId * 2);
     }
 
     function getCollateralNonce(
@@ -276,13 +286,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         );
 
         // Transfer funds to borrower's account in treasurey
-        (bool _success, ) = address(loanTreasurer).call{value: _principal}(
+        (bool _success, ) = address(__loanTreasurer).call{value: _principal}(
             abi.encodeWithSignature("depositFunds(address)", _borrower)
         );
         if (!_success) revert FailedFundsTransfer();
 
         // Mint debt ALC debt tokens for lender
-        anzaToken.mint(
+        __anzaToken.mint(
             msg.sender,
             totalDebts * 2,
             _principal,
@@ -362,7 +372,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
         uint256 _balance = debtBalanceOf(_debtId);
-        (bool _success, ) = address(loanTreasurer).call{
+        (bool _success, ) = address(__loanTreasurer).call{
             value: _principal >= _balance ? _balance : _principal
         }(
             abi.encodeWithSignature(
@@ -374,7 +384,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         if (!_success) revert FailedFundsTransfer();
 
         // Mint debt ALC debt tokens for lender.
-        anzaToken.mint(
+        __anzaToken.mint(
             msg.sender,
             totalDebts * 2,
             _principal,
@@ -401,7 +411,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         if (_borrower != borrower(_debtId))
             revert InvalidParticipant(_borrower);
 
-        anzaToken.mint(
+        __anzaToken.mint(
             _borrower,
             (_debtId * 2) + 1,
             1,
@@ -638,7 +648,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             __setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
-        else if (anzaToken.totalSupply(_debtId * 2) <= 0) {
+        else if (__anzaToken.totalSupply(_debtId * 2) <= 0) {
             console.log("Paid loan");
             __setLoanState(_debtId, _PAID_STATE_);
         }
@@ -687,7 +697,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
     function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
         return
-            anzaToken.totalSupply(_debtId * 2) > 0 &&
+            __anzaToken.totalSupply(_debtId * 2) > 0 &&
             loanClose(_debtId) <= block.timestamp;
     }
 
@@ -751,7 +761,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         if (_activeLoanIndex > maxRefinances) revert ExceededRefinanceLimit();
 
         bytes32 _loanAgreement;
-        uint256 _activeState;
 
         assembly {
             // Get packed fixed interest rate
@@ -759,11 +768,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             let _fixedInterestRate := mload(0)
 
             // Get packed grace period
-            mstore(0x14, _contractTerms)
+            mstore(0x13, _contractTerms)
             let _gracePeriod := mload(0)
 
             // Get packed duration
-            mstore(0x18, _contractTerms)
+            mstore(0x17, _contractTerms)
             let _duration := mload(0)
 
             // Get packed lender royalties
@@ -774,7 +783,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             mstore(0x20, shl(4, _contractTerms))
 
             // Pack loan state (uint4)
-            switch _duration
+            switch _gracePeriod
             case 0 {
                 mstore(
                     0x20,

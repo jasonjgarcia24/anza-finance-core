@@ -3,18 +3,17 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
-import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
 import {LoanCollateralVault} from "../contracts/LoanCollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
+import {ILoanContract} from "../contracts/interfaces/ILoanContract.sol";
+import {ILoanTreasurey} from "../contracts/interfaces/ILoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractConstants, LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers, LibLoanContractPackMappings, LibLoanContractStandardErrors} from "../contracts/libraries/LibLoanContractConstants.sol";
-import {Setup, LoanContractHarness} from "./Setup.t.sol";
+import {Utils, Setup, LoanContractHarness} from "./Setup.t.sol";
 
 abstract contract LoanContractDeployer is Setup {
     function setUp() public virtual override {
@@ -23,10 +22,6 @@ abstract contract LoanContractDeployer is Setup {
 }
 
 abstract contract LoanSigned is LoanContractDeployer {
-    uint256 public collateralNonce;
-    bytes32 public contractTerms;
-    bytes public signature;
-
     function setUp() public virtual override {
         super.setUp();
 
@@ -42,91 +37,6 @@ abstract contract LoanSigned is LoanContractDeployer {
             contractTerms
         );
     }
-
-    function createContractTerms()
-        public
-        virtual
-        returns (bytes32 _contractTerms)
-    {
-        assembly {
-            mstore(0x20, _FIR_INTERVAL_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1d, _PRINCIPAL_)
-            mstore(0x0d, _GRACE_PERIOD_)
-            mstore(0x09, _DURATION_)
-            mstore(0x05, _TERMS_EXPIRY_)
-            mstore(0x01, _LENDER_ROYALTIES_)
-
-            _contractTerms := mload(0x20)
-        }
-    }
-
-    function createContractSignature(
-        uint256 _collateralId,
-        uint256 _collateralNonce,
-        bytes32 _contractTerms
-    ) public virtual returns (bytes memory _signature) {
-        // Create message for signing
-        bytes32 _message = Signing.prefixed(
-            keccak256(
-                abi.encode(
-                    _contractTerms,
-                    address(demoToken),
-                    _collateralId,
-                    _collateralNonce
-                )
-            )
-        );
-
-        // Sign borrower's terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, _message);
-        _signature = abi.encodePacked(r, s, v);
-    }
-
-    function initLoanContract(
-        bytes32 _contractTerms,
-        uint256 _collateralId,
-        bytes memory _signature
-    ) public virtual returns (bool) {
-        vm.startPrank(borrower);
-        demoToken.approve(address(loanContract), _collateralId);
-        vm.stopPrank();
-
-        // Create loan contract
-        vm.startPrank(lender);
-        (bool _success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                _contractTerms,
-                address(demoToken),
-                _collateralId,
-                _signature
-            )
-        );
-        require(_success);
-        vm.stopPrank();
-
-        return _success;
-    }
-
-    function createLoanContract(
-        uint256 _collateralId
-    ) public virtual returns (bool) {
-        bytes32 _contractTerms = createContractTerms();
-
-        uint256 _collateralNonce = loanContract.getCollateralNonce(
-            address(demoToken),
-            _collateralId
-        );
-
-        bytes memory _signature = createContractSignature(
-            _collateralId,
-            _collateralNonce,
-            _contractTerms
-        );
-
-        return initLoanContract(_contractTerms, _collateralId, _signature);
-    }
 }
 
 abstract contract LoanContractSubmitted is LoanSigned {
@@ -137,18 +47,7 @@ abstract contract LoanContractSubmitted is LoanSigned {
         assertEq(_debtId, 0);
 
         // Create loan contract
-        vm.startPrank(lender);
-        (bool _success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                contractTerms,
-                address(demoToken),
-                collateralId,
-                signature
-            )
-        );
-        require(_success);
-        vm.stopPrank();
+        createLoanContract(collateralId);
 
         // Mint replica token
         vm.deal(borrower, 100 ether);
@@ -555,12 +454,440 @@ contract LoanContractConstantsTest is Test {
     }
 }
 
-contract LoanContractUnitTest is LoanContractSubmitted {
+contract LoanContractViewsUnitTest is LoanSigned {
     function setUp() public virtual override {
         super.setUp();
     }
 
     function testPass() public {}
 
-    function testCheckLoanRefinanceAllowed() public {}
+    function testLoanContractStateVars() public {
+        assertEq(
+            loanContract.collateralVault(),
+            address(loanCollateralVault),
+            "Should match loanCollateralVault"
+        );
+
+        assertEq(
+            loanContract.loanTreasurer(),
+            address(loanTreasurer),
+            "Should match loanTreasurer"
+        );
+
+        assertEq(
+            loanContract.anzaToken(),
+            address(anzaToken),
+            "Should match anzaToken"
+        );
+
+        assertEq(
+            loanContract.maxRefinances(),
+            255,
+            "maxRefinances should currently be 255"
+        );
+
+        assertEq(
+            loanContract.totalDebts(),
+            0,
+            "totalDebts should currently be 0"
+        );
+    }
+
+    function testSetLoanTreasurer() public {
+        assertTrue(
+            loanContract.loanTreasurer() == address(loanTreasurer),
+            "0 :: Should be loan treasurer"
+        );
+
+        // Allow
+        vm.deal(admin, 1 ether);
+        vm.startPrank(admin);
+        loanContract.setLoanTreasurer(address(0));
+
+        assertTrue(
+            loanContract.loanTreasurer() == address(0),
+            "1 :: Should be address zero"
+        );
+
+        // Allow
+        loanContract.setLoanTreasurer(address(loanTreasurer));
+        vm.stopPrank();
+
+        assertTrue(
+            loanContract.loanTreasurer() == address(loanTreasurer),
+            "2 :: Should be loan treasurer"
+        );
+    }
+
+    function testFuzzSetLoanTreasurerDeny(address _account) public {
+        vm.assume(_account != admin);
+
+        assertTrue(
+            loanContract.loanTreasurer() == address(loanTreasurer),
+            "0 :: Should be loan treasurer"
+        );
+
+        // Disallow
+        vm.deal(_account, 1 ether);
+        vm.startPrank(_account);
+        vm.expectRevert(
+            bytes(Utils.getAccessControlFailMsg(Roles._ADMIN_, _account))
+        );
+        loanContract.setLoanTreasurer(address(loanTreasurer));
+        vm.stopPrank();
+
+        assertTrue(
+            loanContract.loanTreasurer() == address(loanTreasurer),
+            "1 :: Should be loan treasurer"
+        );
+    }
+
+    function testSetAnzaToken() public {
+        assertTrue(
+            loanContract.anzaToken() == address(anzaToken),
+            "0 :: Should be AnzaToken"
+        );
+
+        // Allow
+        vm.deal(admin, 1 ether);
+        vm.startPrank(admin);
+        loanContract.setAnzaToken(address(0));
+
+        assertTrue(
+            loanContract.anzaToken() == address(0),
+            "1 :: Should be address zero"
+        );
+
+        // Allow
+        loanContract.setAnzaToken(address(anzaToken));
+        vm.stopPrank();
+
+        assertTrue(
+            loanContract.anzaToken() == address(anzaToken),
+            "2 :: Should be AnzaToken"
+        );
+    }
+
+    function testFuzzSetAnzaTokenDeny(address _account) public {
+        vm.assume(_account != admin);
+
+        assertTrue(
+            loanContract.anzaToken() == address(anzaToken),
+            "0 :: Should be AnzaToken"
+        );
+
+        // Disallow
+        vm.deal(_account, 1 ether);
+        vm.startPrank(_account);
+        vm.expectRevert(
+            bytes(Utils.getAccessControlFailMsg(Roles._ADMIN_, _account))
+        );
+        loanContract.setAnzaToken(address(anzaToken));
+        vm.stopPrank();
+
+        assertTrue(
+            loanContract.anzaToken() == address(anzaToken),
+            "1 :: Should be AnzaToken"
+        );
+    }
+
+    function testSetMaxRefinances() public {
+        assertTrue(loanContract.maxRefinances() == 255, "0 :: Should be 255");
+
+        // Allow
+        vm.deal(admin, 1 ether);
+        vm.startPrank(admin);
+        loanContract.setMaxRefinances(15);
+
+        assertTrue(loanContract.maxRefinances() == 15, "1 :: Should be 15");
+
+        // Allow
+        loanContract.setMaxRefinances(255);
+        vm.stopPrank();
+
+        assertTrue(loanContract.maxRefinances() == 255, "2 :: Should be 255");
+    }
+
+    function testFuzzSetMaxRefinancesDeny(address _account) public {
+        vm.assume(_account != admin);
+
+        assertTrue(loanContract.maxRefinances() == 255, "0 :: Should be 255");
+
+        // Disallow
+        vm.deal(_account, 1 ether);
+        vm.startPrank(_account);
+        vm.expectRevert(
+            bytes(Utils.getAccessControlFailMsg(Roles._ADMIN_, _account))
+        );
+        loanContract.setMaxRefinances(15);
+        vm.stopPrank();
+
+        assertTrue(loanContract.maxRefinances() == 255, "1 :: Should be 255");
+    }
+
+    function testFuzzSetMaxRefinancesDeny(uint256 _amount) public {
+        _amount = bound(_amount, 256, type(uint256).max);
+
+        assertTrue(loanContract.maxRefinances() == 255, "0 :: Should be 255");
+
+        // Disallow
+        vm.deal(admin, 1 ether);
+        vm.startPrank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILoanContract.ExceededRefinanceLimit.selector
+            )
+        );
+        loanContract.setMaxRefinances(_amount);
+        vm.stopPrank();
+
+        assertTrue(loanContract.maxRefinances() == 255, "1 :: Should be 255");
+    }
+
+    function testDebtBalanceOf() public {
+        assertEq(
+            loanContract.debtBalanceOf(0),
+            0,
+            "0 :: Debt balance for token 0 should be zero"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.debtBalanceOf(0),
+            _PRINCIPAL_,
+            "1 :: Debt balance for token 0 should be _PRINCIPAL_"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId + 1);
+
+        assertEq(
+            loanContract.debtBalanceOf(1),
+            _PRINCIPAL_,
+            "Debt balance for token 2 should be _PRINCIPAL_"
+        );
+    }
+
+    function testGetCollateralNonce() public {
+        assertEq(
+            loanContract.getCollateralNonce(address(demoToken), collateralId),
+            0,
+            "0 :: Collateral nonce should be zero"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.getCollateralNonce(address(demoToken), collateralId),
+            1,
+            "1 :: Collateral nonce should be one"
+        );
+
+        assertEq(
+            loanContract.getCollateralNonce(
+                address(demoToken),
+                collateralId + 1
+            ),
+            0,
+            "2 :: Collateral nonce should be zero"
+        );
+    }
+
+    function testGetCollateralDebtId() public {
+        vm.expectRevert(stdError.arithmeticError);
+        loanContract.getCollateralDebtId(address(demoToken), collateralId);
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.getCollateralDebtId(address(demoToken), collateralId),
+            0,
+            "0 :: Collateral debt ID should be zero"
+        );
+    }
+
+    function testLoanState() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.loanState(_debtId),
+            uint256(LibLoanContractStates._UNDEFINED_STATE_),
+            "0 :: loan state should be _UNDEFINED_STATE_"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.loanState(_debtId),
+            uint256(LibLoanContractStates._ACTIVE_GRACE_STATE_),
+            "1 ::loan state should be _ACTIVE_GRACE_STATE_"
+        );
+    }
+
+    function testFirInterval() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.firInterval(_debtId),
+            uint256(LibLoanContractFIRIntervals._SECONDLY_),
+            "0 :: fir interval should be the default _SECONDLY_"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.firInterval(_debtId),
+            _FIR_INTERVAL_,
+            "1 :: fir interval should be _FIR_INTERVAL_"
+        );
+    }
+
+    function testFixedInterestRate() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.fixedInterestRate(_debtId),
+            0,
+            "0 :: fixed interest rate should be the default 0"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.fixedInterestRate(_debtId),
+            _FIXED_INTEREST_RATE_,
+            "1 :: fixed interest rate should be _FIXED_INTEREST_RATE_"
+        );
+    }
+
+    function testLoanLastChecked() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.loanLastChecked(_debtId),
+            0,
+            "0 :: loan last checked should be the default 0"
+        );
+
+        // Create loan contract
+        uint256 _now = block.timestamp;
+        createLoanContract(collateralId);
+
+        assertGt(
+            loanContract.loanLastChecked(_debtId),
+            _now,
+            "1 :: loan last checked should be greater than time now"
+        );
+    }
+
+    function testLoanStart() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.loanStart(_debtId),
+            0,
+            "0 :: loan start should be the default 0"
+        );
+
+        // Create loan contract
+        uint256 _now = block.timestamp;
+        createLoanContract(collateralId);
+
+        assertGt(
+            loanContract.loanStart(_debtId),
+            _now,
+            "1 :: loan start should be greater than time now"
+        );
+    }
+
+    function testLoanDuration() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.loanDuration(_debtId),
+            0,
+            "0 :: loan duration should be the default 0"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.loanDuration(_debtId),
+            _DURATION_,
+            "1 :: loan duration should be _DURATION_"
+        );
+    }
+
+    function testLoanClose() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.loanClose(_debtId),
+            0,
+            "0 :: loan close should be the default 0"
+        );
+
+        // Create loan contract
+        uint256 _now = block.timestamp;
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.loanClose(_debtId),
+            loanContract.loanStart(_debtId) +
+                loanContract.loanDuration(_debtId),
+            "1 :: loan close should be the sum of loan start and loan duration"
+        );
+
+        assertGt(
+            loanContract.loanClose(_debtId),
+            _now,
+            "2 :: loan close should be greater than time now"
+        );
+    }
+
+    function testBorrower() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.borrower(_debtId),
+            address(0),
+            "0 :: loan borrower should be the default address zero"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.borrower(_debtId),
+            borrower,
+            "1 :: loan borrower should be borrower"
+        );
+    }
+
+    function testLenderRoyalties() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.lenderRoyalties(_debtId),
+            0,
+            "0 :: loan royalties should be the default 0"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.lenderRoyalties(_debtId),
+            _LENDER_ROYALTIES_,
+            "1 :: loan royalties should be _LENDER_ROYALTIES_"
+        );
+    }
 }

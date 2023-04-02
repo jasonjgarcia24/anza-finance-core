@@ -310,8 +310,6 @@ contract LoanContractFuzzSubmit is
     LoanContractDeployer,
     LoanContractSubmitFunctions
 {
-    uint256 collateralNonce = 0;
-
     function setUp() public virtual override {
         super.setUp();
     }
