@@ -11,7 +11,7 @@ import {ILoanTreasurey} from "../contracts/interfaces/ILoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
-import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractSigning as Signing, LibLoanContractTerms as Terms} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractConstants, LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers, LibLoanContractPackMappings, LibLoanContractStandardErrors} from "../contracts/libraries/LibLoanContractConstants.sol";
 import {Utils, Setup, LoanContractHarness} from "./Setup.t.sol";
 
@@ -454,43 +454,9 @@ contract LoanContractConstantsTest is Test {
     }
 }
 
-contract LoanContractViewsUnitTest is LoanSigned {
+contract LoanContractSetterUnitTest is LoanSigned {
     function setUp() public virtual override {
         super.setUp();
-    }
-
-    function testPass() public {}
-
-    function testLoanContractStateVars() public {
-        assertEq(
-            loanContract.collateralVault(),
-            address(loanCollateralVault),
-            "Should match loanCollateralVault"
-        );
-
-        assertEq(
-            loanContract.loanTreasurer(),
-            address(loanTreasurer),
-            "Should match loanTreasurer"
-        );
-
-        assertEq(
-            loanContract.anzaToken(),
-            address(anzaToken),
-            "Should match anzaToken"
-        );
-
-        assertEq(
-            loanContract.maxRefinances(),
-            255,
-            "maxRefinances should currently be 255"
-        );
-
-        assertEq(
-            loanContract.totalDebts(),
-            0,
-            "totalDebts should currently be 0"
-        );
     }
 
     function testSetLoanTreasurer() public {
@@ -643,6 +609,46 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         assertTrue(loanContract.maxRefinances() == 255, "1 :: Should be 255");
     }
+}
+
+contract LoanContractViewsUnitTest is LoanSigned {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function testPass() public {}
+
+    function testLoanContractStateVars() public {
+        assertEq(
+            loanContract.collateralVault(),
+            address(loanCollateralVault),
+            "Should match loanCollateralVault"
+        );
+
+        assertEq(
+            loanContract.loanTreasurer(),
+            address(loanTreasurer),
+            "Should match loanTreasurer"
+        );
+
+        assertEq(
+            loanContract.anzaToken(),
+            address(anzaToken),
+            "Should match anzaToken"
+        );
+
+        assertEq(
+            loanContract.maxRefinances(),
+            255,
+            "maxRefinances should currently be 255"
+        );
+
+        assertEq(
+            loanContract.totalDebts(),
+            0,
+            "totalDebts should currently be 0"
+        );
+    }
 
     function testDebtBalanceOf() public {
         assertEq(
@@ -710,6 +716,94 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
+    function testGetDebtTerms() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.getDebtTerms(_debtId),
+            bytes32(0),
+            "0 :: debt terms should be bytes32(0)"
+        );
+
+        // Create loan contract
+        uint256 _now = block.timestamp;
+        createLoanContract(collateralId);
+
+        bytes32 _contractTerms = loanContract.getDebtTerms(_debtId);
+
+        assertTrue(
+            _contractTerms != bytes32(0),
+            "1 :: debt terms should not be bytes32(0)"
+        );
+
+        assertEq(
+            Terms.loanState(_contractTerms),
+            uint256(LibLoanContractStates._ACTIVE_GRACE_STATE_),
+            "2 :: loan state should be _ACTIVE_GRACE_STATE_"
+        );
+
+        assertEq(
+            Terms.firInterval(_contractTerms),
+            _FIR_INTERVAL_,
+            "3 :: fir interval should be _FIR_INTERVAL_"
+        );
+
+        assertEq(
+            Terms.fixedInterestRate(_contractTerms),
+            _FIXED_INTEREST_RATE_,
+            "4 :: fixed interest rate should be _FIXED_INTEREST_RATE_"
+        );
+
+        assertGt(
+            Terms.loanLastChecked(_contractTerms),
+            _now,
+            "5 :: loan last checked should be greater than time now"
+        );
+
+        assertGt(
+            Terms.loanStart(_contractTerms),
+            _now,
+            "6 :: loan start should be greater than time now"
+        );
+
+        assertEq(
+            Terms.loanDuration(_contractTerms),
+            _DURATION_,
+            "7 :: loan duration should be _DURATION_"
+        );
+
+        assertEq(
+            Terms.loanClose(_contractTerms),
+            Terms.loanStart(_contractTerms) +
+                Terms.loanDuration(_contractTerms),
+            "8 :: loan close should be the sum of loan start and loan duration"
+        );
+
+        assertGt(
+            Terms.loanClose(_contractTerms),
+            _now,
+            "9 :: loan close should be greater than time now"
+        );
+
+        assertEq(
+            Terms.borrower(_contractTerms),
+            borrower,
+            "10 :: loan borrower should be borrower"
+        );
+
+        assertEq(
+            Terms.lenderRoyalties(_contractTerms),
+            _LENDER_ROYALTIES_,
+            "11 :: loan royalties should be _LENDER_ROYALTIES_"
+        );
+
+        assertEq(
+            Terms.activeLoanCount(_contractTerms),
+            0,
+            "12 :: active loan count should be 0"
+        );
+    }
+
     function testLoanState() public {
         uint256 _debtId = loanContract.totalDebts();
 
@@ -725,7 +819,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.loanState(_debtId),
             uint256(LibLoanContractStates._ACTIVE_GRACE_STATE_),
-            "1 ::loan state should be _ACTIVE_GRACE_STATE_"
+            "1 :: loan state should be _ACTIVE_GRACE_STATE_"
         );
     }
 
@@ -888,6 +982,47 @@ contract LoanContractViewsUnitTest is LoanSigned {
             loanContract.lenderRoyalties(_debtId),
             _LENDER_ROYALTIES_,
             "1 :: loan royalties should be _LENDER_ROYALTIES_"
+        );
+    }
+
+    function testActiveLoanCount() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.activeLoanCount(_debtId),
+            0,
+            "0 :: active loan count should be the default 0"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.activeLoanCount(_debtId),
+            0,
+            "1 :: active loan count should be 0"
+        );
+
+        // Create loan contract partial refinance
+        refinanceDebt(_debtId);
+
+        uint256 _refDebtId = loanContract.totalDebts() - 1;
+
+        assertEq(
+            loanContract.activeLoanCount(_refDebtId),
+            1,
+            "2 :: active loan count should be 1"
+        );
+
+        // Create loan contract partial refinance
+        refinanceDebt(_debtId);
+
+        _refDebtId = loanContract.totalDebts() - 1;
+
+        assertEq(
+            loanContract.activeLoanCount(_refDebtId),
+            2,
+            "3 :: active loan count should be 2"
         );
     }
 }
