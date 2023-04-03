@@ -140,9 +140,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *                    Databases                     *
      * ------------------------------------------------ */
+    // Count of total inactive/active debts
+    uint256 public totalDebts;
+
+    // Max number of loan refinances (default is unlimited)
+    uint256 public maxRefinances = 2008;
+
     // Mapping from collateral to debt ID
     mapping(address => mapping(uint256 => uint256[])) public debtIds;
-    uint256 public maxRefinances = 255;
 
     //  > 004 - [0..3]     `loanState`
     //  > 004 - [4..7]     `firInterval`
@@ -153,12 +158,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     //  > 008 - [240..247] `lenderRoyalties`
     //  > 008 - [248..255] `activeLoanIndex`
     mapping(uint256 => bytes32) private __packedDebtTerms;
-
-    // Mapping from participant to withdrawable balance
-    mapping(address => uint256) public withdrawableBalance;
-
-    // Count of total inactive/active debts
-    uint256 public totalDebts;
 
     constructor(address _collateralVault) {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
