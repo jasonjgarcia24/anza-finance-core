@@ -190,12 +190,12 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     function _afterTokenTransfer(
         address,
         address,
-        address to,
-        uint256[] memory ids,
+        address _to,
+        uint256[] memory _ids,
         uint256[] memory,
         bytes memory
     ) internal override {
         // Set token owners
-        __owners[ids[0]] = to;
+        if (_to != address(0)) __owners[_ids[0]] = _to;
     }
 }

@@ -282,7 +282,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             _borrower,
             collateralVault,
             _collateralId,
-            abi.encodePacked(_collateralAddress)
+            abi.encodePacked(totalDebts)
         );
 
         // Transfer funds to borrower's account in treasurey
@@ -337,9 +337,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         _validateLoanTerms(_contractTerms, _now, _principal);
 
         // Verify borrower participation
+        ILoanCollateralVault _loanCollateralVault = ILoanCollateralVault(
+            collateralVault
+        );
         ILoanCollateralVault.Collateral
-            memory _collateral = ILoanCollateralVault(collateralVault)
-                .getCollateralAt(_debtId);
+            memory _collateral = _loanCollateralVault.getCollateralAt(_debtId);
         address _borrower = borrower(_debtId);
 
         if (

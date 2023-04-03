@@ -15,7 +15,8 @@ contract LoanCollateralVault is
     ERC721Holder
 {
     uint256 private __totalCollateral;
-    Collateral[] private __collaterals;
+    address private __loanContract;
+    mapping(uint256 => Collateral) private __collaterals;
 
     constructor() {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
@@ -23,6 +24,16 @@ contract LoanCollateralVault is
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
 
         _grantRole(Roles._ADMIN_, msg.sender);
+    }
+
+    function loanContract() external view returns (address) {
+        return __loanContract;
+    }
+
+    function setLoanContract(
+        address _loanContract
+    ) external onlyRole(Roles._ADMIN_) {
+        __loanContract = _loanContract;
     }
 
     function totalCollateral() external view returns (uint256) {
@@ -66,23 +77,47 @@ contract LoanCollateralVault is
      * If any other value is returned or the interface is not implemented by the recipient, the transfer will be reverted.
      */
     function onERC721Received(
-        address _operator,
+        address,
         address _from,
         uint256 _collateralId,
-        bytes memory
+        bytes memory _data
     ) public override returns (bytes4) {
-        _checkRole(Roles._LOAN_CONTRACT_, _operator);
+        address _collateralAddress = msg.sender;
+        uint256 _debtId = uint256(bytes32(_data));
+
+        // Validate debt ID
+        _checkDebtId(_collateralAddress, _collateralId, _debtId);
 
         // Add collateral to inventory
         __totalCollateral += 1;
-        address _collateralAddress = msg.sender;
-        __collaterals.push(Collateral(_collateralAddress, _collateralId));
+        __collaterals[_debtId] = Collateral(_collateralAddress, _collateralId);
 
         emit DepositedCollateral(_from, _collateralAddress, _collateralId);
 
-        return
-            bytes4(
-                keccak256("onERC721Received(address,address,uint256,bytes)")
-            );
+        // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
+        return 0x150b7a02;
+    }
+
+    /*
+     * This check ensures two things:
+     *   1. The collateral token is associated with the `_debtId`
+     *      within the loan contract
+     *   2. No collateral token has not been previously deposited
+     *      for this `_debtId`
+     */
+    function _checkDebtId(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId
+    ) internal {
+        if (
+            ILoanContract(__loanContract).debtIds(
+                _collateralAddress,
+                _collateralId,
+                0
+            ) !=
+            _debtId ||
+            __collaterals[_debtId].collateralAddress != address(0)
+        ) revert IllegalDebtId();
     }
 }

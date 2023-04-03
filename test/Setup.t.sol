@@ -6,6 +6,7 @@ import "forge-std/console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
+import {ILoanCollateralVault} from "../contracts/interfaces/ILoanCollateralVault.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
 import {LoanCollateralVault} from "../contracts/LoanCollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
@@ -26,6 +27,14 @@ abstract contract Utils {
     uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2; // 62208000 (2 years)
     uint32 public constant _TERMS_EXPIRY_ = 60 * 60 * 24 * 7 * 2; // 1209600 (2 weeks)
     uint8 public constant _LENDER_ROYALTIES_ = 25; // 0.25
+
+    uint8 public constant _ALT_FIR_INTERVAL_ = 5;
+    uint8 public constant _ALT_FIXED_INTEREST_RATE_ = 5; // 0.05
+    uint128 public constant _ALT_PRINCIPAL_ = 4; // ETH // 226854911280625642308916404954512140970
+    uint32 public constant _ALT_GRACE_PERIOD_ = 60 * 60 * 24 * 5; // 604800 (5 days)
+    uint32 public constant _ALT_DURATION_ = 60 * 60 * 24 * 360 * 1; // 62208000 (1 year)
+    uint32 public constant _ALT_TERMS_EXPIRY_ = 60 * 60 * 24 * 4; // 1209600 (4 days)
+    uint8 public constant _ALT_LENDER_ROYALTIES_ = 10; // 0.10
 
     /* ------------------------------------------------ *
      *                    CONSTANTS                     *
@@ -412,6 +421,16 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     bytes32 public contractTerms;
     bytes public signature;
 
+    struct ContractTerms {
+        uint8 firInterval;
+        uint8 fixedInterestRate;
+        uint128 principal;
+        uint32 gracePeriod;
+        uint32 duration;
+        uint32 termsExpiry;
+        uint8 lenderRoyalties;
+    }
+
     function setUp() public virtual {
         vm.deal(admin, 1 ether);
         vm.startPrank(admin);
@@ -437,6 +456,8 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         loanContract.grantRole(Roles._COLLECTOR_, collector);
 
         // Set LoanCollateralVault access control roles
+        loanCollateralVault.setLoanContract(address(loanContract));
+
         loanCollateralVault.grantRole(
             Roles._LOAN_CONTRACT_,
             address(loanContract)
@@ -481,6 +502,30 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         }
     }
 
+    function createContractTerms(
+        ContractTerms memory _terms
+    ) public virtual returns (bytes32 _contractTerms) {
+        uint8 _firInterval = _terms.firInterval;
+        uint8 _fixedInterestRate = _terms.fixedInterestRate;
+        uint128 _principal = _terms.principal;
+        uint32 _gracePeriod = _terms.gracePeriod;
+        uint32 _duration = _terms.duration;
+        uint32 _termsExpiry = _terms.termsExpiry;
+        uint8 _lenderRoyalties = _terms.lenderRoyalties;
+
+        assembly {
+            mstore(0x20, _firInterval)
+            mstore(0x1f, _fixedInterestRate)
+            mstore(0x1d, _principal)
+            mstore(0x0d, _gracePeriod)
+            mstore(0x09, _duration)
+            mstore(0x05, _termsExpiry)
+            mstore(0x01, _lenderRoyalties)
+
+            _contractTerms := mload(0x20)
+        }
+    }
+
     function createContractSignature(
         uint256 _collateralId,
         uint256 _collateralNonce,
@@ -505,6 +550,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     function initLoanContract(
         bytes32 _contractTerms,
+        address _collateralAddress,
         uint256 _collateralId,
         bytes memory _signature
     ) public virtual returns (bool) {
@@ -518,8 +564,51 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
                 _contractTerms,
-                address(demoToken),
+                _collateralAddress,
                 _collateralId,
+                _signature
+            )
+        );
+        require(_success);
+        vm.stopPrank();
+
+        return _success;
+    }
+
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _debtId,
+        bytes memory _signature
+    ) public virtual returns (bool) {
+        // Create loan contract
+        vm.startPrank(lender);
+        (bool _success, ) = address(loanContract).call{value: _PRINCIPAL_}(
+            abi.encodeWithSignature(
+                "initLoanContract(bytes32,uint256,bytes)",
+                _contractTerms,
+                _debtId,
+                _signature
+            )
+        );
+        require(_success);
+        vm.stopPrank();
+
+        return _success;
+    }
+
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _debtId,
+        uint128 _principal,
+        bytes memory _signature
+    ) public virtual returns (bool) {
+        // Create loan contract
+        vm.startPrank(lender);
+        (bool _success, ) = address(loanContract).call{value: _principal}(
+            abi.encodeWithSignature(
+                "initLoanContract(bytes32,uint256,bytes)",
+                _contractTerms,
+                _debtId,
                 _signature
             )
         );
@@ -545,7 +634,50 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             _contractTerms
         );
 
-        return initLoanContract(_contractTerms, _collateralId, _signature);
+        return
+            initLoanContract(
+                _contractTerms,
+                address(demoToken),
+                _collateralId,
+                _signature
+            );
+    }
+
+    function refinanceDebt(uint256 _debtId) public virtual returns (bool) {
+        bytes32 _contractTerms = createContractTerms(
+            ContractTerms({
+                firInterval: _ALT_FIR_INTERVAL_,
+                fixedInterestRate: _ALT_FIXED_INTEREST_RATE_,
+                principal: _ALT_PRINCIPAL_,
+                gracePeriod: _ALT_GRACE_PERIOD_,
+                duration: _ALT_DURATION_,
+                termsExpiry: _ALT_TERMS_EXPIRY_,
+                lenderRoyalties: _ALT_LENDER_ROYALTIES_
+            })
+        );
+
+        ILoanCollateralVault.Collateral
+            memory _collateral = ILoanCollateralVault(loanCollateralVault)
+                .getCollateralAt(_debtId);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            _collateral.collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            _collateral.collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        return
+            initLoanContract(
+                _contractTerms,
+                _debtId,
+                _ALT_PRINCIPAL_,
+                _signature
+            );
     }
 
     function mintDemoTokens(uint256 _amount) public virtual {

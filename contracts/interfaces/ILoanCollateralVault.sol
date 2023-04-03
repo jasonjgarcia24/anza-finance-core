@@ -4,7 +4,9 @@
 pragma solidity ^0.8.0;
 
 interface ILoanCollateralVault {
-    error InvalidParticipant(address account);
+    error InvalidParticipant();
+    error IllegalDebtId();
+
     error InvalidDepositMsg(
         address expectedTokenAddress,
         address actualTokenAddress
@@ -26,6 +28,10 @@ interface ILoanCollateralVault {
         address collateralAddress;
         uint256 collateralId;
     }
+
+    function loanContract() external view returns (address);
+
+    function setLoanContract(address _loanContract) external;
 
     function totalCollateral() external view returns (uint256);
 
