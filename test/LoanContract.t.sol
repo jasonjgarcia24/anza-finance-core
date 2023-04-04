@@ -1024,5 +1024,20 @@ contract LoanContractViewsUnitTest is LoanSigned {
             2,
             "3 :: active loan count should be 2"
         );
+
+        // Create loan contract partial refinance
+        refinanceDebt(_refDebtId);
+
+        _refDebtId = loanContract.totalDebts() - 1;
+
+        assertEq(
+            loanContract.activeLoanCount(_refDebtId),
+            3,
+            "4 :: active loan count should be 3"
+        );
+    }
+
+    function testTotalFirIntervalsFuzz() public {
+        
     }
 }

@@ -40,10 +40,26 @@ contract LoanCollateralVault is
         return __totalCollateral;
     }
 
-    function getCollateralAt(
+    function getCollateral(
         uint256 _debtId
     ) external view returns (Collateral memory) {
         return __collaterals[_debtId];
+    }
+
+    function setCollateral(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId
+    ) external onlyRole(Roles._LOAN_CONTRACT_) {
+        // Validate debt ID
+        _checkDebtId(_collateralAddress, _collateralId, _debtId);
+
+        // Pin collateral to debtId
+        __collaterals[_debtId] = Collateral(
+            _collateralAddress,
+            _collateralId,
+            false
+        );
     }
 
     function withdraw(
@@ -90,7 +106,11 @@ contract LoanCollateralVault is
 
         // Add collateral to inventory
         __totalCollateral += 1;
-        __collaterals[_debtId] = Collateral(_collateralAddress, _collateralId);
+        __collaterals[_debtId] = Collateral(
+            _collateralAddress,
+            _collateralId,
+            true
+        );
 
         emit DepositedCollateral(_from, _collateralAddress, _collateralId);
 
@@ -110,11 +130,13 @@ contract LoanCollateralVault is
         uint256 _collateralId,
         uint256 _debtId
     ) internal {
+        ILoanContract _loanContract = ILoanContract(__loanContract);
+
         if (
-            ILoanContract(__loanContract).debtIds(
+            _loanContract.debtIds(
                 _collateralAddress,
                 _collateralId,
-                0
+                _loanContract.activeLoanCount(_debtId)
             ) !=
             _debtId ||
             __collaterals[_debtId].collateralAddress != address(0)

@@ -89,10 +89,9 @@ interface ILoanContract {
 
     function borrower(uint256 _debtId) external view returns (address);
 
-    function totalFirIntervals(
-        uint256 _debtId,
-        uint256 _seconds
-    ) external view returns (uint256);
+    function lenderRoyalties(uint256 _debtId) external view returns (uint256);
+
+    function activeLoanCount(uint256 _debtId) external view returns (uint256);
 
     function updateLoanState(uint256 _debtId) external;
 
@@ -101,4 +100,8 @@ interface ILoanContract {
     function verifyLoanActive(uint256 _debtId) external view;
 
     function checkLoanActive(uint256 _debtId) external view returns (bool);
+
+    function checkLoanDefault(uint256 _debtId) external view returns (bool);
+
+    function checkLoanExpired(uint256 _debtId) external view returns (bool);
 }

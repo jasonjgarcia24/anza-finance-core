@@ -27,6 +27,7 @@ interface ILoanCollateralVault {
     struct Collateral {
         address collateralAddress;
         uint256 collateralId;
+        bool vault;
     }
 
     function loanContract() external view returns (address);
@@ -35,9 +36,15 @@ interface ILoanCollateralVault {
 
     function totalCollateral() external view returns (uint256);
 
-    function getCollateralAt(
+    function getCollateral(
         uint256 _debtId
     ) external view returns (Collateral memory);
+
+    function setCollateral(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId
+    ) external;
 
     function withdraw(
         address _loanContractAddress,

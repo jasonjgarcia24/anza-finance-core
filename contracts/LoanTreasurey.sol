@@ -41,6 +41,42 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     uint8 private constant _PAID_STATE_ = 13;
 
     /* ------------------------------------------------ *
+     *       Fixed Interest Rate (FIR) Intervals        *
+     * ------------------------------------------------ */
+    //  Need to validate duration > FIR interval
+    uint8 internal constant _SECONDLY_ = 0;
+    uint8 internal constant _MINUTELY_ = 1;
+    uint8 internal constant _HOURLY_ = 2;
+    uint8 internal constant _DAILY_ = 3;
+    uint8 internal constant _WEEKLY_ = 4;
+    uint8 internal constant _2_WEEKLY_ = 5;
+    uint8 internal constant _4_WEEKLY_ = 6;
+    uint8 internal constant _6_WEEKLY_ = 7;
+    uint8 internal constant _8_WEEKLY_ = 8;
+    uint8 internal constant _MONTHLY_ = 9;
+    uint8 internal constant _2_MONTHLY_ = 10;
+    uint8 internal constant _3_MONTHLY_ = 11;
+    uint8 internal constant _4_MONTHLY_ = 12;
+    uint8 internal constant _6_MONTHLY_ = 13;
+    uint8 internal constant _360_DAILY_ = 14;
+    uint8 internal constant _ANNUALLY_ = 15;
+
+    /* ------------------------------------------------ *
+     *               FIR Interval Multipliers           *
+     * ------------------------------------------------ */
+    uint256 internal constant _SECONDLY_MULTIPLIER_ = 1;
+    uint256 internal constant _MINUTELY_MULTIPLIER_ = 60;
+    uint256 internal constant _HOURLY_MULTIPLIER_ = 60 * 60;
+    uint256 internal constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
+    uint256 internal constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
+    uint256 internal constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
+    uint256 internal constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
+    uint256 internal constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
+    uint256 internal constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
+    uint256 internal constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
+    uint256 internal constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
+
+    /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     ILoanContract private immutable __loanContract;
@@ -248,6 +284,63 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         } else {
             return __anzaToken.totalSupply(_debtId * 2);
         }
+    }
+
+    function totalFirIntervals(
+        uint256 _debtId,
+        uint256 _seconds
+    ) public view returns (uint256) {
+        if (__loanContract.checkLoanExpired(_debtId))
+            revert __loanContract.InactiveLoanState(_debtId);
+
+        uint256 _firInterval = __loanContract.firInterval(_debtId);
+
+        // _SECONDLY_
+        if (_firInterval == 0) {
+            return _seconds;
+        }
+        // _MINUTELY_
+        else if (_firInterval == 1) {
+            return _seconds / _MINUTELY_MULTIPLIER_;
+        }
+        // _HOURLY_
+        else if (_firInterval == 2) {
+            return _seconds / _HOURLY_MULTIPLIER_;
+        }
+        // _DAILY_
+        else if (_firInterval == 3) {
+            return _seconds / _DAILY_MULTIPLIER_;
+        }
+        // _WEEKLY_
+        else if (_firInterval == 4) {
+            return _seconds / _WEEKLY_MULTIPLIER_;
+        }
+        // _2_WEEKLY_
+        else if (_firInterval == 5) {
+            return _seconds / _2_WEEKLY_MULTIPLIER_;
+        }
+        // _4_WEEKLY_
+        else if (_firInterval == 6) {
+            return _seconds / _4_WEEKLY_MULTIPLIER_;
+        }
+        // _6_WEEKLY_
+        else if (_firInterval == 7) {
+            return _seconds / _6_WEEKLY_MULTIPLIER_;
+        }
+        // _8_WEEKLY_
+        else if (_firInterval == 8) {
+            return _seconds / _8_WEEKLY_MULTIPLIER_;
+        }
+        // _360_DAILY_
+        else if (_firInterval == 9) {
+            return _seconds / _360_DAILY_MULTIPLIER_;
+        }
+        // _365_DAILY_
+        else if (_firInterval == 10) {
+            return _seconds / _365_DAILY_MULTIPLIER_;
+        }
+
+        revert __loanContract.InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
     }
 
     function _depositPayment(

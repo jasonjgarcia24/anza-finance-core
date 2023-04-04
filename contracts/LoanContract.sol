@@ -39,42 +39,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     uint8 internal constant _CLOSE_DEFAULT_STATE_ = 14;
 
     /* ------------------------------------------------ *
-     *       Fixed Interest Rate (FIR) Intervals        *
-     * ------------------------------------------------ */
-    //  Need to validate duration > FIR interval
-    uint8 internal constant _SECONDLY_ = 0;
-    uint8 internal constant _MINUTELY_ = 1;
-    uint8 internal constant _HOURLY_ = 2;
-    uint8 internal constant _DAILY_ = 3;
-    uint8 internal constant _WEEKLY_ = 4;
-    uint8 internal constant _2_WEEKLY_ = 5;
-    uint8 internal constant _4_WEEKLY_ = 6;
-    uint8 internal constant _6_WEEKLY_ = 7;
-    uint8 internal constant _8_WEEKLY_ = 8;
-    uint8 internal constant _MONTHLY_ = 9;
-    uint8 internal constant _2_MONTHLY_ = 10;
-    uint8 internal constant _3_MONTHLY_ = 11;
-    uint8 internal constant _4_MONTHLY_ = 12;
-    uint8 internal constant _6_MONTHLY_ = 13;
-    uint8 internal constant _360_DAILY_ = 14;
-    uint8 internal constant _ANNUALLY_ = 15;
-
-    /* ------------------------------------------------ *
-     *               FIR Interval Multipliers           *
-     * ------------------------------------------------ */
-    uint256 internal constant _SECONDLY_MULTIPLIER_ = 1;
-    uint256 internal constant _MINUTELY_MULTIPLIER_ = 60;
-    uint256 internal constant _HOURLY_MULTIPLIER_ = 60 * 60;
-    uint256 internal constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
-    uint256 internal constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
-    uint256 internal constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
-    uint256 internal constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
-    uint256 internal constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
-    uint256 internal constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
-    uint256 internal constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
-    uint256 internal constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
-
-    /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
      * ------------------------------------------------ */
     uint256 internal constant _LOAN_STATE_MASK_ =
@@ -340,7 +304,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             collateralVault
         );
         ILoanCollateralVault.Collateral
-            memory _collateral = _loanCollateralVault.getCollateralAt(_debtId);
+            memory _collateral = _loanCollateralVault.getCollateral(_debtId);
         address _borrower = borrower(_debtId);
 
         if (
@@ -369,6 +333,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             _contractTerms
         );
         _debtIds.push(totalDebts);
+
+        // Store collateral-debtId mapping in vault
+        _loanCollateralVault.setCollateral(
+            _collateral.collateralAddress,
+            _collateral.collateralId,
+            totalDebts
+        );
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
@@ -575,62 +546,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         }
     }
 
-    function totalFirIntervals(
-        uint256 _debtId,
-        uint256 _seconds
-    ) public view returns (uint256) {
-        if (_checkLoanExpired(_debtId)) revert InactiveLoanState(_debtId);
-
-        uint256 _firInterval = firInterval(_debtId);
-
-        // _SECONDLY_
-        if (_firInterval == 0) {
-            return _seconds;
-        }
-        // _MINUTELY_
-        else if (_firInterval == 1) {
-            return _seconds / _MINUTELY_MULTIPLIER_;
-        }
-        // _HOURLY_
-        else if (_firInterval == 2) {
-            return _seconds / _HOURLY_MULTIPLIER_;
-        }
-        // _DAILY_
-        else if (_firInterval == 3) {
-            return _seconds / _DAILY_MULTIPLIER_;
-        }
-        // _WEEKLY_
-        else if (_firInterval == 4) {
-            return _seconds / _WEEKLY_MULTIPLIER_;
-        }
-        // _2_WEEKLY_
-        else if (_firInterval == 5) {
-            return _seconds / _2_WEEKLY_MULTIPLIER_;
-        }
-        // _4_WEEKLY_
-        else if (_firInterval == 6) {
-            return _seconds / _4_WEEKLY_MULTIPLIER_;
-        }
-        // _6_WEEKLY_
-        else if (_firInterval == 7) {
-            return _seconds / _6_WEEKLY_MULTIPLIER_;
-        }
-        // _8_WEEKLY_
-        else if (_firInterval == 8) {
-            return _seconds / _8_WEEKLY_MULTIPLIER_;
-        }
-        // _360_DAILY_
-        else if (_firInterval == 9) {
-            return _seconds / _360_DAILY_MULTIPLIER_;
-        }
-        // _365_DAILY_
-        else if (_firInterval == 10) {
-            return _seconds / _365_DAILY_MULTIPLIER_;
-        }
-
-        revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
-    }
-
     /*
      * @dev Updates loan state.
      */
@@ -638,29 +553,29 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _debtId
     ) external onlyRole(Roles._TREASURER_) {
         if (!checkLoanActive(_debtId)) {
-            console.log("Inactive loan");
+            console.log("Inactive loan: %s", _debtId);
             revert InactiveLoanState(_debtId);
         }
 
         // Loan defaulted
-        if (_checkLoanExpired(_debtId)) {
-            console.log("Expired loan");
+        if (checkLoanExpired(_debtId)) {
+            console.log("Expired loan: %s", _debtId);
             __updateLoanTimes(_debtId);
             __setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
         else if (__anzaToken.totalSupply(_debtId * 2) <= 0) {
-            console.log("Paid loan");
+            console.log("Paid loan: %s", _debtId);
             __setLoanState(_debtId, _PAID_STATE_);
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
-            console.log("Active loan");
+            console.log("Active loan: %s", _debtId);
             __updateLoanTimes(_debtId);
         }
         // Loan no longer in grace period
         else if (!_checkGracePeriod(_debtId)) {
-            console.log("Newly active loan");
+            console.log("Newly active loan: %s", _debtId);
             __setLoanState(_debtId, _ACTIVE_STATE_);
             __updateLoanTimes(_debtId);
         }
@@ -692,14 +607,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             loanState(_debtId) <= _AWARDED_STATE_;
     }
 
-    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
-        return loanStart(_debtId) > block.timestamp;
-    }
-
-    function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
+    function checkLoanExpired(uint256 _debtId) public view returns (bool) {
         return
             __anzaToken.totalSupply(_debtId * 2) > 0 &&
             loanClose(_debtId) <= block.timestamp;
+    }
+
+    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
+        return loanStart(_debtId) > block.timestamp;
     }
 
     function _validateLoanTerms(

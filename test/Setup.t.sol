@@ -658,7 +658,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
         ILoanCollateralVault.Collateral
             memory _collateral = ILoanCollateralVault(loanCollateralVault)
-                .getCollateralAt(_debtId);
+                .getCollateral(_debtId);
 
         uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
