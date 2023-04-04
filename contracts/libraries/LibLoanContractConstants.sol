@@ -2,6 +2,7 @@
 pragma solidity ^0.8.7;
 
 library LibLoanContractConstants {
+    uint256 internal constant _MATH_ACCURACY_ = 10 ** 8;
     uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
     uint256 public constant _UINT32_MAX_ = 4294967295;
 }
@@ -54,7 +55,6 @@ library LibLoanContractFIRIntervalMultipliers {
     uint256 public constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
     uint256 public constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
     uint256 public constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
-    uint256 public constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
 }
 
 library LibLoanContractPackMappings {

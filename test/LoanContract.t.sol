@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
 import {LoanCollateralVault} from "../contracts/LoanCollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
@@ -70,6 +71,11 @@ contract LoanContractConstantsTest is Test {
     function testLoanContractConstants() public {
         LoanContractHarness _loanContractHarness = new LoanContractHarness();
 
+        assertEq(
+            _loanContractHarness.exposed__MATH_ACCURACY_(),
+            LibLoanContractConstants._MATH_ACCURACY_,
+            "_MATH_ACCURACY_"
+        );
         assertEq(
             _loanContractHarness
                 .exposed__SECONDS_PER_24_MINUTES_RATIO_SCALED_(),
@@ -288,11 +294,6 @@ contract LoanContractConstantsTest is Test {
             _loanContractHarness.exposed__360_DAILY_MULTIPLIER_(),
             LibLoanContractFIRIntervalMultipliers._360_DAILY_MULTIPLIER_,
             "_360_DAILY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__365_DAILY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._365_DAILY_MULTIPLIER_,
-            "_365_DAILY_MULTIPLIER_"
         );
 
         assertEq(
@@ -558,7 +559,7 @@ contract LoanContractSetterUnitTest is LoanSigned {
     }
 
     function testSetMaxRefinances() public {
-        assertTrue(loanContract.maxRefinances() == 255, "0 :: Should be 255");
+        assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
 
         // Allow
         vm.deal(admin, 1 ether);
@@ -577,7 +578,7 @@ contract LoanContractSetterUnitTest is LoanSigned {
     function testFuzzSetMaxRefinancesDeny(address _account) public {
         vm.assume(_account != admin);
 
-        assertTrue(loanContract.maxRefinances() == 255, "0 :: Should be 255");
+        assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
 
         // Disallow
         vm.deal(_account, 1 ether);
@@ -588,13 +589,13 @@ contract LoanContractSetterUnitTest is LoanSigned {
         loanContract.setMaxRefinances(15);
         vm.stopPrank();
 
-        assertTrue(loanContract.maxRefinances() == 255, "1 :: Should be 255");
+        assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
     }
 
     function testFuzzSetMaxRefinancesDeny(uint256 _amount) public {
         _amount = bound(_amount, 256, type(uint256).max);
 
-        assertTrue(loanContract.maxRefinances() == 255, "0 :: Should be 255");
+        assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
 
         // Disallow
         vm.deal(admin, 1 ether);
@@ -607,7 +608,7 @@ contract LoanContractSetterUnitTest is LoanSigned {
         loanContract.setMaxRefinances(_amount);
         vm.stopPrank();
 
-        assertTrue(loanContract.maxRefinances() == 255, "1 :: Should be 255");
+        assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
     }
 }
 
@@ -639,8 +640,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         assertEq(
             loanContract.maxRefinances(),
-            255,
-            "maxRefinances should currently be 255"
+            2008,
+            "maxRefinances should currently be 2008"
         );
 
         assertEq(
@@ -1037,7 +1038,447 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testTotalFirIntervalsFuzz() public {
-        
+    function testTotalFirIntervals() public {
+        // Create loan contract
+        uint256 _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._SECONDLY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._SECONDLY_MULTIPLIER_
+            ),
+            1,
+            "0 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 1,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._MINUTELY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._MINUTELY_MULTIPLIER_ - 1
+            ),
+            0,
+            "1 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._MINUTELY_MULTIPLIER_
+            ),
+            1,
+            "2 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 2,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._HOURLY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._HOURLY_MULTIPLIER_ - 1
+            ),
+            0,
+            "3 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._HOURLY_MULTIPLIER_
+            ),
+            1,
+            "4 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 3,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._DAILY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._DAILY_MULTIPLIER_ - 1
+            ),
+            0,
+            "5 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._DAILY_MULTIPLIER_
+            ),
+            1,
+            "6 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 4,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._WEEKLY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._WEEKLY_MULTIPLIER_ - 1
+            ),
+            0,
+            "7 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._WEEKLY_MULTIPLIER_
+            ),
+            1,
+            "8 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 5,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._2_WEEKLY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._2_WEEKLY_MULTIPLIER_ - 1
+            ),
+            0,
+            "9 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._2_WEEKLY_MULTIPLIER_
+            ),
+            1,
+            "10 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 6,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._4_WEEKLY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._4_WEEKLY_MULTIPLIER_ - 1
+            ),
+            0,
+            "10 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._4_WEEKLY_MULTIPLIER_
+            ),
+            1,
+            "11 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 7,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._6_WEEKLY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._6_WEEKLY_MULTIPLIER_ - 1
+            ),
+            0,
+            "12 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._6_WEEKLY_MULTIPLIER_
+            ),
+            1,
+            "13 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 8,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._8_WEEKLY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._8_WEEKLY_MULTIPLIER_ - 1
+            ),
+            0,
+            "14 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._8_WEEKLY_MULTIPLIER_
+            ),
+            1,
+            "15 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _debtId = loanContract.totalDebts();
+        createLoanContract(
+            collateralId + 9,
+            ContractTerms({
+                firInterval: LibLoanContractFIRIntervals._360_DAILY_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._360_DAILY_MULTIPLIER_ - 1
+            ),
+            0,
+            "16 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(
+                _debtId,
+                LibLoanContractFIRIntervalMultipliers._360_DAILY_MULTIPLIER_
+            ),
+            1,
+            "17 :: total fir intervals should be 1"
+        );
+    }
+
+    function testVerifyLoanActive() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILoanContractEvents.InactiveLoanState.selector
+            )
+        );
+        loanContract.verifyLoanActive(_debtId);
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        loanContract.verifyLoanActive(_debtId);
+
+        // Create loan contract partial refinance
+        refinanceDebt(
+            _debtId,
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        loanContract.verifyLoanActive(_debtId);
+
+        uint256 _refDebtId = loanContract.totalDebts() - 1;
+        loanContract.verifyLoanActive(_refDebtId);
+
+        // Create loan contract partial refinance
+        refinanceDebt(
+            _refDebtId,
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        loanContract.verifyLoanActive(_debtId);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILoanContractEvents.InactiveLoanState.selector
+            )
+        );
+        loanContract.verifyLoanActive(_refDebtId);
+    }
+
+    function testCheckLoanActive() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.checkLoanActive(_debtId),
+            false,
+            "0 :: loan should be inactive"
+        );
+
+        // Create loan contract
+        createLoanContract(collateralId);
+
+        assertEq(
+            loanContract.checkLoanActive(_debtId),
+            true,
+            "1 :: loan should be active"
+        );
+
+        // Create loan contract partial refinance
+        refinanceDebt(
+            _debtId,
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.checkLoanActive(_debtId),
+            true,
+            "2 :: loan should be active"
+        );
+
+        uint256 _refDebtId = loanContract.totalDebts() - 1;
+        assertEq(
+            loanContract.checkLoanActive(_refDebtId),
+            true,
+            "3 :: refinanced loan should be active"
+        );
+
+        // Create loan contract partial refinance
+        refinanceDebt(
+            _refDebtId,
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        assertEq(
+            loanContract.checkLoanActive(_debtId),
+            true,
+            "4 :: loan should be active"
+        );
+
+        assertEq(
+            loanContract.checkLoanActive(_refDebtId),
+            false,
+            "5 :: refinanced loan should be inactive"
+        );
     }
 }

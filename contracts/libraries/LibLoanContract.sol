@@ -14,6 +14,40 @@ library LibOfficerRoles {
 }
 
 library LibLoanContractSigning {
+    struct ContractTerms {
+        uint8 firInterval;
+        uint8 fixedInterestRate;
+        uint128 principal;
+        uint32 gracePeriod;
+        uint32 duration;
+        uint32 termsExpiry;
+        uint8 lenderRoyalties;
+    }
+
+    function createContractTerms(
+        ContractTerms memory _terms
+    ) public pure returns (bytes32 _contractTerms) {
+        uint8 _firInterval = _terms.firInterval;
+        uint8 _fixedInterestRate = _terms.fixedInterestRate;
+        uint128 _principal = _terms.principal;
+        uint32 _gracePeriod = _terms.gracePeriod;
+        uint32 _duration = _terms.duration;
+        uint32 _termsExpiry = _terms.termsExpiry;
+        uint8 _lenderRoyalties = _terms.lenderRoyalties;
+
+        assembly {
+            mstore(0x20, _firInterval)
+            mstore(0x1f, _fixedInterestRate)
+            mstore(0x1d, _principal)
+            mstore(0x0d, _gracePeriod)
+            mstore(0x09, _duration)
+            mstore(0x05, _termsExpiry)
+            mstore(0x01, _lenderRoyalties)
+
+            _contractTerms := mload(0x20)
+        }
+    }
+
     function recoverSigner(
         bytes32 _contractTerms,
         address _collateralAddress,

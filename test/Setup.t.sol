@@ -20,7 +20,7 @@ abstract contract Utils {
     /* ------------------------------------------------ *
      *                  Loan Terms                      *
      * ------------------------------------------------ */
-    uint8 public constant _FIR_INTERVAL_ = 9;
+    uint8 public constant _FIR_INTERVAL_ = 3;
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
     uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 60 * 60 * 24 * 7; // 604800 (1 week)
@@ -28,7 +28,7 @@ abstract contract Utils {
     uint32 public constant _TERMS_EXPIRY_ = 60 * 60 * 24 * 7 * 2; // 1209600 (2 weeks)
     uint8 public constant _LENDER_ROYALTIES_ = 25; // 0.25
 
-    uint8 public constant _ALT_FIR_INTERVAL_ = 5;
+    uint8 public constant _ALT_FIR_INTERVAL_ = 14;
     uint8 public constant _ALT_FIXED_INTEREST_RATE_ = 5; // 0.05
     uint128 public constant _ALT_PRINCIPAL_ = 4; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _ALT_GRACE_PERIOD_ = 60 * 60 * 24 * 5; // 604800 (5 days)
@@ -76,6 +76,10 @@ contract LoanContractHarness is LoanContract {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
+    function exposed__MATH_ACCURACY_() public pure returns (uint256) {
+        return _MATH_ACCURACY_;
+    }
+
     function exposed__SECONDS_PER_24_MINUTES_RATIO_SCALED_()
         public
         pure
@@ -259,10 +263,6 @@ contract LoanContractHarness is LoanContract {
 
     function exposed__360_DAILY_MULTIPLIER_() public pure returns (uint256) {
         return _360_DAILY_MULTIPLIER_;
-    }
-
-    function exposed__365_DAILY_MULTIPLIER_() public pure returns (uint256) {
-        return _365_DAILY_MULTIPLIER_;
     }
 
     /* ------------------------------------------------ *
@@ -504,7 +504,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     function createContractTerms(
         ContractTerms memory _terms
-    ) public virtual returns (bytes32 _contractTerms) {
+    ) public pure virtual returns (bytes32 _contractTerms) {
         uint8 _firInterval = _terms.firInterval;
         uint8 _fixedInterestRate = _terms.fixedInterestRate;
         uint128 _principal = _terms.principal;
@@ -643,6 +643,32 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             );
     }
 
+    function createLoanContract(
+        uint256 _collateralId,
+        ContractTerms memory _terms
+    ) public virtual returns (bool) {
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            _collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            _collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        return
+            initLoanContract(
+                _contractTerms,
+                address(demoToken),
+                _collateralId,
+                _signature
+            );
+    }
+
     function refinanceDebt(uint256 _debtId) public virtual returns (bool) {
         bytes32 _contractTerms = createContractTerms(
             ContractTerms({
@@ -676,6 +702,36 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 _contractTerms,
                 _debtId,
                 _ALT_PRINCIPAL_,
+                _signature
+            );
+    }
+
+    function refinanceDebt(
+        uint256 _debtId,
+        ContractTerms memory _terms
+    ) public virtual returns (bool) {
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        ILoanCollateralVault.Collateral
+            memory _collateral = ILoanCollateralVault(loanCollateralVault)
+                .getCollateral(_debtId);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            _collateral.collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            _collateral.collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        return
+            initLoanContract(
+                _contractTerms,
+                _debtId,
+                _terms.principal,
                 _signature
             );
     }

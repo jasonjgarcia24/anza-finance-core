@@ -6,15 +6,19 @@ import "./token/interfaces/IAnzaToken.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanCollateralVault.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "./libraries/LibLoanContractConstants.sol";
 
 contract LoanContract is ILoanContract, AccessControl {
+    using SafeMath for uint256;
+
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
+    uint256 internal constant _MATH_ACCURACY_ = 10 ** 8;
     uint256 internal constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
     uint256 internal constant _UINT32_MAX_ = 4294967295;
 
@@ -71,7 +75,6 @@ contract LoanContract is ILoanContract, AccessControl {
     uint256 internal constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
     uint256 internal constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
     uint256 internal constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
-    uint256 internal constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
 
     /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
@@ -228,9 +231,7 @@ contract LoanContract is ILoanContract, AccessControl {
     function setMaxRefinances(
         uint256 _maxRefinances
     ) external onlyRole(Roles._ADMIN_) {
-        if (_maxRefinances > 255) revert ExceededRefinanceLimit();
-
-        maxRefinances = _maxRefinances;
+        maxRefinances = _maxRefinances <= 255 ? _maxRefinances : 2008;
     }
 
     /*
@@ -624,12 +625,8 @@ contract LoanContract is ILoanContract, AccessControl {
             return _seconds / _8_WEEKLY_MULTIPLIER_;
         }
         // _360_DAILY_
-        else if (_firInterval == 9) {
+        else if (_firInterval == 14) {
             return _seconds / _360_DAILY_MULTIPLIER_;
-        }
-        // _365_DAILY_
-        else if (_firInterval == 10) {
-            return _seconds / _365_DAILY_MULTIPLIER_;
         }
 
         revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
