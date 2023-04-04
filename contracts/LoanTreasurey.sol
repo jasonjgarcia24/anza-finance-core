@@ -41,6 +41,42 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     uint8 private constant _PAID_STATE_ = 13;
 
     /* ------------------------------------------------ *
+     *       Fixed Interest Rate (FIR) Intervals        *
+     * ------------------------------------------------ */
+    //  Need to validate duration > FIR interval
+    uint8 internal constant _SECONDLY_ = 0;
+    uint8 internal constant _MINUTELY_ = 1;
+    uint8 internal constant _HOURLY_ = 2;
+    uint8 internal constant _DAILY_ = 3;
+    uint8 internal constant _WEEKLY_ = 4;
+    uint8 internal constant _2_WEEKLY_ = 5;
+    uint8 internal constant _4_WEEKLY_ = 6;
+    uint8 internal constant _6_WEEKLY_ = 7;
+    uint8 internal constant _8_WEEKLY_ = 8;
+    uint8 internal constant _MONTHLY_ = 9;
+    uint8 internal constant _2_MONTHLY_ = 10;
+    uint8 internal constant _3_MONTHLY_ = 11;
+    uint8 internal constant _4_MONTHLY_ = 12;
+    uint8 internal constant _6_MONTHLY_ = 13;
+    uint8 internal constant _360_DAILY_ = 14;
+    uint8 internal constant _ANNUALLY_ = 15;
+
+    /* ------------------------------------------------ *
+     *               FIR Interval Multipliers           *
+     * ------------------------------------------------ */
+    uint256 internal constant _SECONDLY_MULTIPLIER_ = 1;
+    uint256 internal constant _MINUTELY_MULTIPLIER_ = 60;
+    uint256 internal constant _HOURLY_MULTIPLIER_ = 60 * 60;
+    uint256 internal constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
+    uint256 internal constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
+    uint256 internal constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
+    uint256 internal constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
+    uint256 internal constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
+    uint256 internal constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
+    uint256 internal constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
+    uint256 internal constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
+
+    /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     ILoanContract private immutable __loanContract;

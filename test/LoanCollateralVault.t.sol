@@ -51,7 +51,7 @@ contract LoanCollateralVaultUnitTest is
     }
 
     /*
-     * @note The LoanCollateralVAult::getCollateralAt() should return
+     * @note The LoanCollateralVAult::getCollateral() should return
      * a ILoanCollateralVault.Collateral struct with the collateralized
      * token's address and ID.
      */
@@ -59,7 +59,7 @@ contract LoanCollateralVaultUnitTest is
         uint256 _debtId = loanContract.totalDebts() - 1;
 
         ILoanCollateralVault.Collateral memory _collateral = loanCollateralVault
-            .getCollateralAt(_debtId);
+            .getCollateral(_debtId);
 
         assertEq(_collateral.collateralAddress, address(demoToken));
         assertEq(_collateral.collateralId, collateralId);

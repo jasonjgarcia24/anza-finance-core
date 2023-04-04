@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.5.0) (token/ERC721/extensions/IERC721Enumerable.sol)
-
 pragma solidity ^0.8.0;
 
 interface ILoanContract {
     error InvalidCollateral();
-    error InvalidTokenId(uint256 tokenId);
-    error InvalidParticipant(address account);
-    error InvalidFundsTransfer(uint256 amount);
+    error InvalidParticipant();
     error InvalidLoanParameter(bytes4 parameter);
-    error InsufficientFunds();
-    error OverflowLoanTerm();
-    error InactiveLoanState(uint256 debtId);
+    error InactiveLoanState();
     error FailedFundsTransfer();
     error ExceededRefinanceLimit();
 
@@ -46,6 +40,14 @@ interface ILoanContract {
         uint256 _debtIdx
     ) external returns (uint256);
 
+    function loanTreasurer() external returns (address);
+
+    function anzaToken() external returns (address);
+
+    function totalDebts() external returns (uint256);
+
+    function maxRefinances() external returns (uint256);
+
     function debtBalanceOf(uint256 _debtId) external view returns (uint256);
 
     function getCollateralNonce(
@@ -59,6 +61,12 @@ interface ILoanContract {
     ) external view returns (uint256);
 
     function getDebtTerms(uint256 _debtId) external view returns (bytes32);
+
+    function setLoanTreasurer(address _loanTreasurer) external;
+
+    function setAnzaToken(address _anzaToken) external;
+
+    function setMaxRefinances(uint256 _maxRefinances) external;
 
     function initLoanContract(
         bytes32 _contractTerms,
@@ -89,6 +97,10 @@ interface ILoanContract {
 
     function borrower(uint256 _debtId) external view returns (address);
 
+    function lenderRoyalties(uint256 _debtId) external view returns (uint256);
+
+    function activeLoanCount(uint256 _debtId) external view returns (uint256);
+
     function totalFirIntervals(
         uint256 _debtId,
         uint256 _seconds
@@ -101,4 +113,8 @@ interface ILoanContract {
     function verifyLoanActive(uint256 _debtId) external view;
 
     function checkLoanActive(uint256 _debtId) external view returns (bool);
+
+    function checkLoanDefault(uint256 _debtId) external view returns (bool);
+
+    function checkLoanExpired(uint256 _debtId) external view returns (bool);
 }

@@ -6,16 +6,19 @@ import "./token/interfaces/IAnzaToken.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanCollateralVault.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
-import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "./libraries/LibLoanContractConstants.sol";
 
-contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
+contract LoanContract is ILoanContract, AccessControl {
+    using SafeMath for uint256;
+
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
+    uint256 internal constant _MATH_ACCURACY_ = 10 ** 8;
     uint256 internal constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
     uint256 internal constant _UINT32_MAX_ = 4294967295;
 
@@ -72,7 +75,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     uint256 internal constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
     uint256 internal constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
     uint256 internal constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
-    uint256 internal constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
 
     /* ------------------------------------------------ *
      *           Packed Debt Term Mappings              *
@@ -140,9 +142,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     /* ------------------------------------------------ *
      *                    Databases                     *
      * ------------------------------------------------ */
+    // Count of total inactive/active debts
+    uint256 public totalDebts;
+
+    // Max number of loan refinances (default is unlimited)
+    uint256 public maxRefinances = 2008;
+
     // Mapping from collateral to debt ID
     mapping(address => mapping(uint256 => uint256[])) public debtIds;
-    uint256 public maxRefinances = 255;
 
     //  > 004 - [0..3]     `loanState`
     //  > 004 - [4..7]     `firInterval`
@@ -154,12 +161,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     //  > 008 - [248..255] `activeLoanIndex`
     mapping(uint256 => bytes32) private __packedDebtTerms;
 
-    // Mapping from participant to withdrawable balance
-    mapping(address => uint256) public withdrawableBalance;
-
-    // Count of total inactive/active debts
-    uint256 public totalDebts;
-
     constructor(address _collateralVault) {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
@@ -170,18 +171,6 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         collateralVault = _collateralVault;
     }
 
-    function setLoanTreasurer(
-        address _loanTreasurer
-    ) external onlyRole(Roles._ADMIN_) {
-        __loanTreasurer = ILoanTreasurey(_loanTreasurer);
-    }
-
-    function setAnzaToken(
-        address _anzaTokenAddress
-    ) external onlyRole(Roles._ADMIN_) {
-        __anzaToken = IAnzaToken(_anzaTokenAddress);
-    }
-
     function loanTreasurer() external view returns (address) {
         return address(__loanTreasurer);
     }
@@ -190,20 +179,11 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         return address(__anzaToken);
     }
 
-    function setMaxRefinances(
-        uint256 _maxRefinances
-    ) external onlyRole(Roles._ADMIN_) {
-        if (_maxRefinances > 255) revert ExceededRefinanceLimit();
-
-        maxRefinances = _maxRefinances;
-    }
-
     function supportsInterface(
         bytes4 _interfaceId
-    ) public view override(AccessControl, ERC1155Receiver) returns (bool) {
+    ) public view override(AccessControl) returns (bool) {
         return
             _interfaceId == type(ILoanContract).interfaceId ||
-            ERC1155Receiver.supportsInterface(_interfaceId) ||
             AccessControl.supportsInterface(_interfaceId);
     }
 
@@ -234,6 +214,24 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
 
     function getDebtTerms(uint256 _debtId) external view returns (bytes32) {
         return __packedDebtTerms[_debtId];
+    }
+
+    function setLoanTreasurer(
+        address _loanTreasurer
+    ) external onlyRole(Roles._ADMIN_) {
+        __loanTreasurer = ILoanTreasurey(_loanTreasurer);
+    }
+
+    function setAnzaToken(
+        address _anzaTokenAddress
+    ) external onlyRole(Roles._ADMIN_) {
+        __anzaToken = IAnzaToken(_anzaTokenAddress);
+    }
+
+    function setMaxRefinances(
+        uint256 _maxRefinances
+    ) external onlyRole(Roles._ADMIN_) {
+        maxRefinances = _maxRefinances <= 255 ? _maxRefinances : 2008;
     }
 
     /*
@@ -270,7 +268,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 getCollateralNonce(_collateralAddress, _collateralId),
                 _borrowerSignature
             )
-        ) revert InvalidParticipant({account: _borrower});
+        ) revert InvalidParticipant();
 
         // Add debt to database
         __setLoanAgreement(_now, _borrower, 0, _contractTerms);
@@ -341,7 +339,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             collateralVault
         );
         ILoanCollateralVault.Collateral
-            memory _collateral = _loanCollateralVault.getCollateralAt(_debtId);
+            memory _collateral = _loanCollateralVault.getCollateral(_debtId);
         address _borrower = borrower(_debtId);
 
         if (
@@ -356,7 +354,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
                 ),
                 _borrowerSignature
             )
-        ) revert InvalidParticipant({account: _borrower});
+        ) revert InvalidParticipant();
 
         // Add debt to database
         uint256[] storage _debtIds = debtIds[_collateral.collateralAddress][
@@ -370,6 +368,13 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             _contractTerms
         );
         _debtIds.push(totalDebts);
+
+        // Store collateral-debtId mapping in vault
+        _loanCollateralVault.setCollateral(
+            _collateral.collateralAddress,
+            _collateral.collateralId,
+            totalDebts
+        );
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
@@ -410,8 +415,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     function mintReplica(uint256 _debtId) external {
         address _borrower = msg.sender;
 
-        if (_borrower != borrower(_debtId))
-            revert InvalidParticipant(_borrower);
+        if (_borrower != borrower(_debtId)) revert InvalidParticipant();
 
         __anzaToken.mint(
             _borrower,
@@ -580,7 +584,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _debtId,
         uint256 _seconds
     ) public view returns (uint256) {
-        if (_checkLoanExpired(_debtId)) revert InactiveLoanState(_debtId);
+        if (checkLoanExpired(_debtId)) revert InactiveLoanState();
 
         uint256 _firInterval = firInterval(_debtId);
 
@@ -621,12 +625,8 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             return _seconds / _8_WEEKLY_MULTIPLIER_;
         }
         // _360_DAILY_
-        else if (_firInterval == 9) {
+        else if (_firInterval == 14) {
             return _seconds / _360_DAILY_MULTIPLIER_;
-        }
-        // _365_DAILY_
-        else if (_firInterval == 10) {
-            return _seconds / _365_DAILY_MULTIPLIER_;
         }
 
         revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
@@ -639,29 +639,29 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
         uint256 _debtId
     ) external onlyRole(Roles._TREASURER_) {
         if (!checkLoanActive(_debtId)) {
-            console.log("Inactive loan");
-            revert InactiveLoanState(_debtId);
+            console.log("Inactive loan: %s", _debtId);
+            revert InactiveLoanState();
         }
 
         // Loan defaulted
-        if (_checkLoanExpired(_debtId)) {
-            console.log("Expired loan");
+        if (checkLoanExpired(_debtId)) {
+            console.log("Expired loan: %s", _debtId);
             __updateLoanTimes(_debtId);
             __setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
         else if (__anzaToken.totalSupply(_debtId * 2) <= 0) {
-            console.log("Paid loan");
+            console.log("Paid loan: %s", _debtId);
             __setLoanState(_debtId, _PAID_STATE_);
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
-            console.log("Active loan");
+            console.log("Active loan: %s", _debtId);
             __updateLoanTimes(_debtId);
         }
         // Loan no longer in grace period
         else if (!_checkGracePeriod(_debtId)) {
-            console.log("Newly active loan");
+            console.log("Newly active loan: %s", _debtId);
             __setLoanState(_debtId, _ACTIVE_STATE_);
             __updateLoanTimes(_debtId);
         }
@@ -678,7 +678,7 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
     }
 
     function verifyLoanActive(uint256 _debtId) public view {
-        if (!checkLoanActive(_debtId)) revert InactiveLoanState(_debtId);
+        if (!checkLoanActive(_debtId)) revert InactiveLoanState();
     }
 
     function checkLoanActive(uint256 _debtId) public view returns (bool) {
@@ -693,14 +693,14 @@ contract LoanContract is ILoanContract, AccessControl, ERC1155Holder {
             loanState(_debtId) <= _AWARDED_STATE_;
     }
 
-    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
-        return loanStart(_debtId) > block.timestamp;
-    }
-
-    function _checkLoanExpired(uint256 _debtId) internal view returns (bool) {
+    function checkLoanExpired(uint256 _debtId) public view returns (bool) {
         return
             __anzaToken.totalSupply(_debtId * 2) > 0 &&
             loanClose(_debtId) <= block.timestamp;
+    }
+
+    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
+        return loanStart(_debtId) > block.timestamp;
     }
 
     function _validateLoanTerms(
