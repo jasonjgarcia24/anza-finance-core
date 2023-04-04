@@ -286,63 +286,6 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         }
     }
 
-    function totalFirIntervals(
-        uint256 _debtId,
-        uint256 _seconds
-    ) public view returns (uint256) {
-        if (__loanContract.checkLoanExpired(_debtId))
-            revert __loanContract.InactiveLoanState(_debtId);
-
-        uint256 _firInterval = __loanContract.firInterval(_debtId);
-
-        // _SECONDLY_
-        if (_firInterval == 0) {
-            return _seconds;
-        }
-        // _MINUTELY_
-        else if (_firInterval == 1) {
-            return _seconds / _MINUTELY_MULTIPLIER_;
-        }
-        // _HOURLY_
-        else if (_firInterval == 2) {
-            return _seconds / _HOURLY_MULTIPLIER_;
-        }
-        // _DAILY_
-        else if (_firInterval == 3) {
-            return _seconds / _DAILY_MULTIPLIER_;
-        }
-        // _WEEKLY_
-        else if (_firInterval == 4) {
-            return _seconds / _WEEKLY_MULTIPLIER_;
-        }
-        // _2_WEEKLY_
-        else if (_firInterval == 5) {
-            return _seconds / _2_WEEKLY_MULTIPLIER_;
-        }
-        // _4_WEEKLY_
-        else if (_firInterval == 6) {
-            return _seconds / _4_WEEKLY_MULTIPLIER_;
-        }
-        // _6_WEEKLY_
-        else if (_firInterval == 7) {
-            return _seconds / _6_WEEKLY_MULTIPLIER_;
-        }
-        // _8_WEEKLY_
-        else if (_firInterval == 8) {
-            return _seconds / _8_WEEKLY_MULTIPLIER_;
-        }
-        // _360_DAILY_
-        else if (_firInterval == 9) {
-            return _seconds / _360_DAILY_MULTIPLIER_;
-        }
-        // _365_DAILY_
-        else if (_firInterval == 10) {
-            return _seconds / _365_DAILY_MULTIPLIER_;
-        }
-
-        revert __loanContract.InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
-    }
-
     function _depositPayment(
         address _payer,
         uint256 _debtId,
