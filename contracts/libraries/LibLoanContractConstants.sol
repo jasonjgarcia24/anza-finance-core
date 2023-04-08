@@ -2,7 +2,6 @@
 pragma solidity ^0.8.7;
 
 library LibLoanContractConstants {
-    uint256 internal constant _MATH_ACCURACY_ = 10 ** 8;
     uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
     uint256 public constant _UINT32_MAX_ = 4294967295;
 }

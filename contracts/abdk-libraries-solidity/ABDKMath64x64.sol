@@ -147,7 +147,7 @@ library ABDKMath64x64 {
     function mul(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
             int256 result = (int256(x) * y) >> 64;
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= MIN_64x64 && result <= MAX_64x64, "fail");
             return int128(result);
         }
     }

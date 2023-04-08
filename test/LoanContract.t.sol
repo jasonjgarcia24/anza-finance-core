@@ -16,7 +16,7 @@ import {LibLoanContractSigning as Signing, LibLoanContractTerms as Terms} from "
 import {LibLoanContractConstants, LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers, LibLoanContractPackMappings, LibLoanContractStandardErrors} from "../contracts/libraries/LibLoanContractConstants.sol";
 import {Utils, Setup, LoanContractHarness} from "./Setup.t.sol";
 
-abstract contract LoanContractDeployer is Setup {
+abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -71,11 +71,6 @@ contract LoanContractConstantsTest is Test {
     function testLoanContractConstants() public {
         LoanContractHarness _loanContractHarness = new LoanContractHarness();
 
-        assertEq(
-            _loanContractHarness.exposed__MATH_ACCURACY_(),
-            LibLoanContractConstants._MATH_ACCURACY_,
-            "_MATH_ACCURACY_"
-        );
         assertEq(
             _loanContractHarness
                 .exposed__SECONDS_PER_24_MINUTES_RATIO_SCALED_(),
@@ -455,9 +450,15 @@ contract LoanContractConstantsTest is Test {
     }
 }
 
-contract LoanContractSetterUnitTest is LoanSigned {
+contract LoanContractSetterUnitTest is LoanContractDeployer {
+    uint256 public localCollateralId = collateralId;
+
     function setUp() public virtual override {
         super.setUp();
+
+        vm.startPrank(borrower);
+        demoToken.mint(300);
+        vm.stopPrank();
     }
 
     function testSetLoanTreasurer() public {
@@ -609,6 +610,237 @@ contract LoanContractSetterUnitTest is LoanSigned {
         vm.stopPrank();
 
         assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
+    }
+
+    function testUpdateLoanStateValidate() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        // Expect to fail for access control
+        vm.startPrank(admin);
+        vm.expectRevert(
+            bytes(getAccessControlFailMsg(Roles._TREASURER_, admin))
+        );
+        loanContract.updateLoanState(_debtId);
+        vm.stopPrank();
+
+        // Loan state update should fail because there is no loan
+        vm.deal(treasurer, 1 ether);
+        vm.startPrank(address(loanTreasurer));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILoanContract.InactiveLoanState.selector)
+        );
+        loanContract.updateLoanState(_debtId);
+        vm.stopPrank();
+
+        // Create loan contract
+        uint256 _timeLoanCreated = block.timestamp;
+        createLoanContract(collateralId);
+        _debtId = loanContract.totalDebts() - 1;
+
+        // Loan state should remain unchanged
+        vm.startPrank(address(loanTreasurer));
+        loanContract.updateLoanState(_debtId);
+        assertEq(
+            loanContract.loanState(_debtId),
+            LibLoanContractStates._ACTIVE_GRACE_STATE_,
+            "Loan state should remain unchanged"
+        );
+        assertEq(
+            loanContract.loanLastChecked(_debtId),
+            _timeLoanCreated + _GRACE_PERIOD_,
+            "Loan last checked time should remain the loan start time"
+        );
+
+        // Loan state should change to _ACTIVE_STATE_
+        vm.warp(loanContract.loanStart(_debtId));
+        vm.expectEmit(true, true, true, true, address(loanContract));
+        emit LoanStateChanged(
+            _debtId,
+            LibLoanContractStates._ACTIVE_STATE_,
+            LibLoanContractStates._ACTIVE_GRACE_STATE_
+        );
+        loanContract.updateLoanState(_debtId);
+        assertEq(
+            loanContract.loanState(_debtId),
+            LibLoanContractStates._ACTIVE_STATE_,
+            "Loan state should change to _ACTIVE_STATE_"
+        );
+        assertEq(
+            loanContract.loanLastChecked(_debtId),
+            _timeLoanCreated + _GRACE_PERIOD_,
+            "Loan last checked time should remain the loan start time"
+        );
+
+        // Loan state should remain _ACTIVE_
+        vm.warp(loanContract.loanClose(_debtId) - 1);
+        uint256 _now = block.timestamp;
+        loanContract.updateLoanState(_debtId);
+        assertEq(
+            loanContract.loanState(_debtId),
+            LibLoanContractStates._ACTIVE_STATE_,
+            "Loan state should remain _ACTIVE_"
+        );
+        assertEq(
+            loanContract.loanLastChecked(_debtId),
+            _now,
+            "Loan last checked time should be updated to now"
+        );
+
+        // Loan state should change to _DEFAULT_STATE_
+        vm.warp(loanContract.loanClose(_debtId));
+        vm.expectEmit(true, true, true, true, address(loanContract));
+        emit LoanStateChanged(
+            _debtId,
+            LibLoanContractStates._DEFAULT_STATE_,
+            LibLoanContractStates._ACTIVE_STATE_
+        );
+        _now = block.timestamp;
+        loanContract.updateLoanState(_debtId);
+        assertEq(
+            loanContract.loanState(_debtId),
+            LibLoanContractStates._DEFAULT_STATE_,
+            "Loan state should change to _DEFAULT_STATE_"
+        );
+        assertEq(
+            loanContract.loanLastChecked(_debtId),
+            _now,
+            "Loan last checked time should be updated to now"
+        );
+        vm.stopPrank();
+
+        // Loan payoff
+        createLoanContract(collateralId + 1);
+        _debtId = loanContract.totalDebts() - 1;
+
+        vm.deal(borrower, _PRINCIPAL_);
+        vm.startPrank(borrower);
+        vm.expectEmit(true, true, true, true, address(loanContract));
+        emit LoanStateChanged(
+            _debtId,
+            LibLoanContractStates._PAID_STATE_,
+            LibLoanContractStates._ACTIVE_GRACE_STATE_
+        );
+        uint256 _loanStart = loanContract.loanStart(_debtId);
+        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
+        );
+        require(_success, "Payment was unsuccessful");
+        assertEq(
+            loanContract.loanState(_debtId),
+            LibLoanContractStates._PAID_STATE_,
+            "Loan state should be paid in full"
+        );
+        assertEq(
+            loanContract.loanLastChecked(_debtId),
+            _loanStart,
+            "Loan last checked time should remain the loan start time"
+        );
+        vm.stopPrank();
+    }
+
+    function testFuzzUpdateLoanStateValidate(
+        uint256 _now,
+        uint256 _payment
+    ) public {
+        _payment = bound(_payment, 1, type(uint128).max);
+        _now = bound(
+            _now,
+            block.timestamp - 10,
+            block.timestamp + type(uint32).max
+        );
+
+        uint256 _debtId = loanContract.totalDebts();
+
+        // Create loan contract
+        uint256 _timeLoanCreated = block.timestamp;
+        (bool _success, ) = address(this).call{value: 0}(
+            abi.encodeWithSignature(
+                "createLoanContract(uint256)",
+                localCollateralId++
+            )
+        );
+        // Ignore conditions where loan terms are invalid. Specifically,
+        // scenarios where the calculated compounded interest is beyond
+        // the maximum value signed 64.64-bit fixed point number.
+        if (!_success) return;
+
+        // Update time
+        vm.warp(_now);
+
+        // Set time flags
+        uint256 _prevLoanState = loanContract.loanState(_debtId);
+        bool _isGracePeriod = _now < (_timeLoanCreated + _GRACE_PERIOD_);
+        bool _isExpired = _now >=
+            (_timeLoanCreated + _GRACE_PERIOD_ + _DURATION_);
+
+        // Make payment
+        vm.deal(borrower, _payment);
+        vm.startPrank(borrower);
+        uint256 _loanStart = loanContract.loanStart(_debtId);
+        (_success, ) = address(loanTreasurer).call{value: _payment}(
+            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
+        );
+        require(_isExpired || _success, "Payment was unsuccessful");
+        vm.stopPrank();
+
+        // Set state payoff flag
+        bool _isPayoff = anzaToken.totalSupply(_debtId * 2) <= 0;
+
+        vm.startPrank(address(loanTreasurer));
+        // Loan state should remain unchanged
+        if (!_isPayoff && _isGracePeriod) {
+            loanContract.updateLoanState(_debtId);
+            assertEq(
+                loanContract.loanState(_debtId),
+                _prevLoanState,
+                "0 :: Loan state should remain unchanged"
+            );
+            assertEq(
+                loanContract.loanLastChecked(_debtId),
+                _timeLoanCreated + _GRACE_PERIOD_,
+                "1 :: Loan last checked time should remain the loan start time"
+            );
+        }
+        // Loan state should change to _ACTIVE_STATE_
+        else if (!_isPayoff && !_isGracePeriod && !_isExpired) {
+            assertEq(
+                loanContract.loanState(_debtId),
+                LibLoanContractStates._ACTIVE_STATE_,
+                "2 :: Loan state should change to _ACTIVE_STATE_"
+            );
+            assertEq(
+                loanContract.loanLastChecked(_debtId),
+                _now,
+                "3 :: Loan last checked time should be now"
+            );
+        }
+        // Loan state should change to _DEFAULT_STATE_
+        else if (!_isPayoff && _isExpired) {
+            assertEq(
+                loanContract.loanState(_debtId),
+                LibLoanContractStates._DEFAULT_STATE_,
+                "4 :: Loan state should change to _DEFAULT_STATE_"
+            );
+            assertEq(
+                loanContract.loanLastChecked(_debtId),
+                loanContract.loanClose(_debtId),
+                "5 :: Loan last checked time should be updated to loan close time"
+            );
+        }
+        // Loan payoff
+        else if (_isPayoff) {
+            assertEq(
+                loanContract.loanState(_debtId),
+                LibLoanContractStates._PAID_STATE_,
+                "6 :: Loan state should be paid"
+            );
+            assertEq(
+                loanContract.loanLastChecked(_debtId),
+                _isGracePeriod ? _loanStart : _now,
+                "7 :: Loan last checked time should be either loan start or now"
+            );
+        }
+        vm.stopPrank();
     }
 }
 
@@ -1356,9 +1588,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                ILoanContractEvents.InactiveLoanState.selector
-            )
+            abi.encodeWithSelector(ILoanContract.InactiveLoanState.selector)
         );
         loanContract.verifyLoanActive(_debtId);
 
@@ -1403,9 +1633,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_debtId);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                ILoanContractEvents.InactiveLoanState.selector
-            )
+            abi.encodeWithSelector(ILoanContract.InactiveLoanState.selector)
         );
         loanContract.verifyLoanActive(_refDebtId);
     }

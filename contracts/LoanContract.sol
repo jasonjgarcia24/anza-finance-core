@@ -5,11 +5,13 @@ import "hardhat/console.sol";
 import "./token/interfaces/IAnzaToken.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanTreasurey.sol";
+import "./LoanTreasurey.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
-import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
+import {LibOfficerRoles as Roles, LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "./libraries/LibLoanContractConstants.sol";
 
 contract LoanContract is ILoanContract, AccessControl {
@@ -18,7 +20,6 @@ contract LoanContract is ILoanContract, AccessControl {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
-    uint256 internal constant _MATH_ACCURACY_ = 10 ** 8;
     uint256 internal constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
     uint256 internal constant _UINT32_MAX_ = 4294967295;
 
@@ -236,13 +237,14 @@ contract LoanContract is ILoanContract, AccessControl {
 
     /*
      * Input _contractTerms:
-     *  > 008 - [0..7]     `loanState`
-     *  > 008 - [8..15]    `fixedInterestRate`
-     *  > 128 - [16..143]  `principal`
-     *  > 032 - [144..175] `gracePeriod`
-     *  > 032 - [176..207] `duration`
-     *  > 032 - [208..239] `termsExpiry`
-     *  > 016 - [240..255] unused space
+     *  > 004 - [0..3]     `firInterval`
+     *  > 004 - [4..11]    `fixedInterestRate`
+     *  > 008 - [12..19]   unused space
+     *  > 128 - [20..147]  `principal`
+     *  > 032 - [148..179] `gracePeriod`
+     *  > 032 - [180..211] `duration`
+     *  > 032 - [212..243] `termsExpiry`
+     *  > 008 - [244..255] `lenderRoyalties`
      */
     function initLoanContract(
         bytes32 _contractTerms,
@@ -310,16 +312,15 @@ contract LoanContract is ILoanContract, AccessControl {
     }
 
     /*
-     * TODO: Need to factor in lender royalties on refinancing.
-     *
      * Input _contractTerms:
-     *  > 008 - [0..7]     `loanState`
-     *  > 008 - [8..15]    `fixedInterestRate`
-     *  > 128 - [16..143]  `principal`
-     *  > 032 - [144..175] `gracePeriod`
-     *  > 032 - [176..207] `duration`
-     *  > 032 - [208..239] `termsExpiry`
-     *  > 016 - [240..255] unused space
+     *  > 004 - [0..3]     `firInterval`
+     *  > 004 - [4..11]    `fixedInterestRate`
+     *  > 008 - [12..19]   unused space
+     *  > 128 - [20..147]  `principal`
+     *  > 032 - [148..179] `gracePeriod`
+     *  > 032 - [180..211] `duration`
+     *  > 032 - [212..243] `termsExpiry`
+     *  > 008 - [244..255] `lenderRoyalties`
      */
     function initLoanContract(
         bytes32 _contractTerms,
@@ -340,21 +341,23 @@ contract LoanContract is ILoanContract, AccessControl {
         );
         ILoanCollateralVault.Collateral
             memory _collateral = _loanCollateralVault.getCollateral(_debtId);
-        address _borrower = borrower(_debtId);
 
-        if (
-            _borrower !=
-            __recoverSigner(
-                _contractTerms,
+        address _borrower = __recoverSigner(
+            _contractTerms,
+            _collateral.collateralAddress,
+            _collateral.collateralId,
+            getCollateralNonce(
                 _collateral.collateralAddress,
-                _collateral.collateralId,
-                getCollateralNonce(
-                    _collateral.collateralAddress,
-                    _collateral.collateralId
-                ),
-                _borrowerSignature
-            )
-        ) revert InvalidParticipant();
+                _collateral.collateralId
+            ),
+            _borrowerSignature
+        );
+
+        // During initial loan submission (i.e. activeLoanIndex 0), in the
+        // AnzaToken contract, the borrower is given admin role specific to
+        // the debt ID. This is then used for borrower verification.
+        if (!__anzaToken.checkBorrowerOf(_debtId, _borrower))
+            revert InvalidParticipant();
 
         // Add debt to database
         uint256[] storage _debtIds = debtIds[_collateral.collateralAddress][
@@ -413,9 +416,8 @@ contract LoanContract is ILoanContract, AccessControl {
     }
 
     function mintReplica(uint256 _debtId) external {
+        // AnzaToken.sol manages replica mint access control.
         address _borrower = msg.sender;
-
-        if (_borrower != borrower(_debtId)) revert InvalidParticipant();
 
         __anzaToken.mint(
             _borrower,
@@ -584,52 +586,11 @@ contract LoanContract is ILoanContract, AccessControl {
         uint256 _debtId,
         uint256 _seconds
     ) public view returns (uint256) {
-        if (checkLoanExpired(_debtId)) revert InactiveLoanState();
-
         uint256 _firInterval = firInterval(_debtId);
+        uint256 _duration = loanDuration(_debtId);
+        _seconds = _seconds <= _duration ? _seconds : _duration;
 
-        // _SECONDLY_
-        if (_firInterval == 0) {
-            return _seconds;
-        }
-        // _MINUTELY_
-        else if (_firInterval == 1) {
-            return _seconds / _MINUTELY_MULTIPLIER_;
-        }
-        // _HOURLY_
-        else if (_firInterval == 2) {
-            return _seconds / _HOURLY_MULTIPLIER_;
-        }
-        // _DAILY_
-        else if (_firInterval == 3) {
-            return _seconds / _DAILY_MULTIPLIER_;
-        }
-        // _WEEKLY_
-        else if (_firInterval == 4) {
-            return _seconds / _WEEKLY_MULTIPLIER_;
-        }
-        // _2_WEEKLY_
-        else if (_firInterval == 5) {
-            return _seconds / _2_WEEKLY_MULTIPLIER_;
-        }
-        // _4_WEEKLY_
-        else if (_firInterval == 6) {
-            return _seconds / _4_WEEKLY_MULTIPLIER_;
-        }
-        // _6_WEEKLY_
-        else if (_firInterval == 7) {
-            return _seconds / _6_WEEKLY_MULTIPLIER_;
-        }
-        // _8_WEEKLY_
-        else if (_firInterval == 8) {
-            return _seconds / _8_WEEKLY_MULTIPLIER_;
-        }
-        // _360_DAILY_
-        else if (_firInterval == 14) {
-            return _seconds / _360_DAILY_MULTIPLIER_;
-        }
-
-        revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
+        return _getTotalFirIntervals(_firInterval, _seconds);
     }
 
     /*
@@ -645,7 +606,7 @@ contract LoanContract is ILoanContract, AccessControl {
 
         // Loan defaulted
         if (checkLoanExpired(_debtId)) {
-            console.log("Expired loan: %s", _debtId);
+            console.log("Defaulted loan: %s", _debtId);
             __updateLoanTimes(_debtId);
             __setLoanState(_debtId, _DEFAULT_STATE_);
         }
@@ -661,7 +622,7 @@ contract LoanContract is ILoanContract, AccessControl {
         }
         // Loan no longer in grace period
         else if (!_checkGracePeriod(_debtId)) {
-            console.log("Newly active loan: %s", _debtId);
+            console.log("Grace period expired: %s", _debtId);
             __setLoanState(_debtId, _ACTIVE_STATE_);
             __updateLoanTimes(_debtId);
         }
@@ -709,26 +670,36 @@ contract LoanContract is ILoanContract, AccessControl {
         uint256 _amount
     ) internal pure {
         uint32 _termsExpiry;
-        uint32 _gracePeriod;
         uint32 _duration;
+        uint32 _gracePeriod;
         uint128 _principal;
+        uint8 _fixedInterestRate;
+        uint8 _firInterval;
 
         assembly {
             // Get packed terms expiry
             mstore(0x1b, _contractTerms)
             _termsExpiry := mload(0)
 
-            // Get packed grace period
-            mstore(0x13, _contractTerms)
-            _gracePeriod := mload(0)
-
             // Get packed duration
             mstore(0x17, _contractTerms)
             _duration := mload(0)
 
+            // Get packed grace period
+            mstore(0x13, _contractTerms)
+            _gracePeriod := mload(0)
+
             // Get packed principal
             mstore(0x03, _contractTerms)
             _principal := mload(0)
+
+            // Get fixed interest rate
+            mstore(0x01, _contractTerms)
+            _fixedInterestRate := mload(0)
+
+            // Get fir interval
+            mstore(0x00, _contractTerms)
+            _firInterval := mload(0)
         }
 
         unchecked {
@@ -751,7 +722,66 @@ contract LoanContract is ILoanContract, AccessControl {
             // Check principal
             if (_principal == 0 || _principal != _amount)
                 revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+
+            // Check max compounded debt
+            try
+                Interest.compoundWithTopoff(
+                    _principal,
+                    _fixedInterestRate,
+                    _getTotalFirIntervals(_firInterval, _duration)
+                )
+            returns (uint256) {} catch {
+                revert InvalidLoanParameter(_FIXED_INTEREST_RATE_ERROR_ID_);
+            }
         }
+    }
+
+    function _getTotalFirIntervals(
+        uint256 _firInterval,
+        uint256 _seconds
+    ) internal pure returns (uint256) {
+        // _SECONDLY_
+        if (_firInterval == 0) {
+            return _seconds;
+        }
+        // _MINUTELY_
+        else if (_firInterval == 1) {
+            return _seconds / _MINUTELY_MULTIPLIER_;
+        }
+        // _HOURLY_
+        else if (_firInterval == 2) {
+            return _seconds / _HOURLY_MULTIPLIER_;
+        }
+        // _DAILY_
+        else if (_firInterval == 3) {
+            return _seconds / _DAILY_MULTIPLIER_;
+        }
+        // _WEEKLY_
+        else if (_firInterval == 4) {
+            return _seconds / _WEEKLY_MULTIPLIER_;
+        }
+        // _2_WEEKLY_
+        else if (_firInterval == 5) {
+            return _seconds / _2_WEEKLY_MULTIPLIER_;
+        }
+        // _4_WEEKLY_
+        else if (_firInterval == 6) {
+            return _seconds / _4_WEEKLY_MULTIPLIER_;
+        }
+        // _6_WEEKLY_
+        else if (_firInterval == 7) {
+            return _seconds / _6_WEEKLY_MULTIPLIER_;
+        }
+        // _8_WEEKLY_
+        else if (_firInterval == 8) {
+            return _seconds / _8_WEEKLY_MULTIPLIER_;
+        }
+        // _360_DAILY_
+        else if (_firInterval == 14) {
+            return _seconds / _360_DAILY_MULTIPLIER_;
+        }
+
+        return 0;
     }
 
     function __setLoanAgreement(
@@ -946,11 +976,10 @@ contract LoanContract is ILoanContract, AccessControl {
             let _loanState := and(_LOAN_STATE_MAP_, _contractTerms)
 
             // If loan state is beyond active, do nothing
-            if gt(_loanState, mload(_ACTIVE_STATE_)) {
+            if gt(_loanState, _ACTIVE_STATE_) {
                 revert(0, 0)
             }
 
-            let _now := timestamp()
             mstore(0x20, _contractTerms)
 
             // Store loan close time
@@ -958,6 +987,11 @@ contract LoanContract is ILoanContract, AccessControl {
                 shr(16, and(_LOAN_START_MAP_, _contractTerms)),
                 shr(48, and(_LOAN_DURATION_MAP_, _contractTerms))
             )
+
+            let _now := timestamp()
+            if gt(_now, _loanClose) {
+                _now := _loanClose
+            }
 
             // Update loan last checked. This could be a transition from
             // loan start to loan last checked if it is the first time this

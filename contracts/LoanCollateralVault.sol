@@ -8,13 +8,14 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
+import {LibLoanContractStates as States} from "./libraries/LibLoanContractConstants.sol";
 
 contract LoanCollateralVault is
     ILoanCollateralVault,
     AccessControl,
     ERC721Holder
 {
-    uint256 private __totalCollateral;
+    uint256 public totalCollateral;
     address private __loanContract;
     mapping(uint256 => Collateral) private __collaterals;
 
@@ -26,18 +27,23 @@ contract LoanCollateralVault is
         _grantRole(Roles._ADMIN_, msg.sender);
     }
 
+    modifier onlyDepositAllowed(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId
+    ) {
+        if (!depositAllowed(_collateralAddress, _collateralId, _debtId))
+            revert UnallowedDeposit();
+        _;
+    }
+
+    modifier onlyWithdrawalAllowed(address _to, uint256 _debtId) {
+        if (!withdrawalAllowed(_to, _debtId)) revert UnallowedWithdrawal();
+        _;
+    }
+
     function loanContract() external view returns (address) {
         return __loanContract;
-    }
-
-    function setLoanContract(
-        address _loanContract
-    ) external onlyRole(Roles._ADMIN_) {
-        __loanContract = _loanContract;
-    }
-
-    function totalCollateral() external view returns (uint256) {
-        return __totalCollateral;
     }
 
     function getCollateral(
@@ -46,28 +52,83 @@ contract LoanCollateralVault is
         return __collaterals[_debtId];
     }
 
+    function setLoanContract(
+        address _loanContract
+    ) external onlyRole(Roles._ADMIN_) {
+        __loanContract = _loanContract;
+    }
+
     function setCollateral(
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId
     ) external onlyRole(Roles._LOAN_CONTRACT_) {
-        // Validate debt ID
-        _checkDebtId(_collateralAddress, _collateralId, _debtId);
+        _deposit(false, msg.sender, _collateralAddress, _collateralId, _debtId);
+    }
 
-        // Pin collateral to debtId
-        __collaterals[_debtId] = Collateral(
-            _collateralAddress,
-            _collateralId,
-            false
-        );
+    /**
+     * @dev Returns whether a token is allowed to be deposited as collateral or
+     * stored as a reference to collateral.
+     * @param _collateralAddress The collateral token's contract address.
+     * @param _collateralId The collateral token's ID.
+     * @param _debtId The debt ID associated with the collateral.
+     *
+     * This checks two things:
+     *   1. The collateral token is associated with the `_debtId`
+     *      within the loan contract.
+     *   2. No collateral token has not been previously deposited
+     *      for this `_debtId`.
+     */
+    function depositAllowed(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId
+    ) public returns (bool) {
+        ILoanContract _loanContract = ILoanContract(__loanContract);
+
+        return
+            _loanContract.debtIds(
+                _collateralAddress,
+                _collateralId,
+                _loanContract.activeLoanCount(_debtId)
+            ) ==
+            _debtId &&
+            __collaterals[_debtId].collateralAddress == address(0);
+    }
+
+    /**
+     * @dev Returns whether an address is allowed to withdraw their collateral.
+     * @param _to The destination address of the collateral.
+     * @param _debtId The debt ID mapped to the collateral.
+     *
+     * This checks three things:
+     *   1. The debt ID is a vault containing the collateral.
+     *   2. The loan state is paid in full.
+     *   3. The recipient is the documented borrower.
+     */
+    function withdrawalAllowed(
+        address _to,
+        uint256 _debtId
+    ) public view returns (bool) {
+        ILoanContract _loanContract = ILoanContract(__loanContract);
+
+        return
+            __collaterals[_debtId].vault &&
+            _loanContract.loanState(_debtId) == States._PAID_STATE_ &&
+            _loanContract.borrower(_debtId) == _to;
     }
 
     function withdraw(
         address _to,
         uint256 _debtId
-    ) external onlyRole(Roles._TREASURER_) returns (bool) {
+    )
+        external
+        onlyRole(Roles._TREASURER_)
+        onlyWithdrawalAllowed(_to, _debtId)
+        returns (bool)
+    {
         Collateral storage _collateral = __collaterals[_debtId];
-        __totalCollateral -= 1;
+        totalCollateral -= 1;
 
         IERC721(_collateral.collateralAddress).safeTransferFrom(
             address(this),
@@ -86,11 +147,12 @@ contract LoanCollateralVault is
     }
 
     /**
-     * @dev Whenever an {IERC721} `tokenId` token is transferred to this contract via {IERC721-safeTransferFrom}
-     * by `operator` from `from`, this function is called.
+     * @dev Whenever an {IERC721} `tokenId` token is transferred to this contract via
+     * {IERC721-safeTransferFrom} by `operator` from `from`, this function is called.
      *
      * It must return its Solidity selector to confirm the token transfer.
-     * If any other value is returned or the interface is not implemented by the recipient, the transfer will be reverted.
+     * If any other value is returned or the interface is not implemented by the recipient,
+     * the transfer will be reverted.
      */
     function onERC721Received(
         address,
@@ -98,48 +160,30 @@ contract LoanCollateralVault is
         uint256 _collateralId,
         bytes memory _data
     ) public override returns (bytes4) {
-        address _collateralAddress = msg.sender;
         uint256 _debtId = uint256(bytes32(_data));
 
-        // Validate debt ID
-        _checkDebtId(_collateralAddress, _collateralId, _debtId);
-
-        // Add collateral to inventory
-        __totalCollateral += 1;
-        __collaterals[_debtId] = Collateral(
-            _collateralAddress,
-            _collateralId,
-            true
-        );
-
-        emit DepositedCollateral(_from, _collateralAddress, _collateralId);
+        _deposit(true, _from, msg.sender, _collateralId, _debtId);
 
         // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
         return 0x150b7a02;
     }
 
-    /*
-     * This check ensures two things:
-     *   1. The collateral token is associated with the `_debtId`
-     *      within the loan contract
-     *   2. No collateral token has not been previously deposited
-     *      for this `_debtId`
-     */
-    function _checkDebtId(
+    function _deposit(
+        bool _vault,
+        address _from,
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId
-    ) internal {
-        ILoanContract _loanContract = ILoanContract(__loanContract);
+    ) internal onlyDepositAllowed(_collateralAddress, _collateralId, _debtId) {
+        // Add collateral to inventory
+        totalCollateral += 1;
+        __collaterals[_debtId] = Collateral(
+            _collateralAddress,
+            _collateralId,
+            _vault
+        );
 
-        if (
-            _loanContract.debtIds(
-                _collateralAddress,
-                _collateralId,
-                _loanContract.activeLoanCount(_debtId)
-            ) !=
-            _debtId ||
-            __collaterals[_debtId].collateralAddress != address(0)
-        ) revert IllegalDebtId();
+        if (_vault)
+            emit DepositedCollateral(_from, _collateralAddress, _collateralId);
     }
 }

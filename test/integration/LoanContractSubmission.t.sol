@@ -65,14 +65,14 @@ abstract contract LoanContractSubmitFunctions is
         if (_termsExpiry < Constants._SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    InvalidLoanParameter.selector,
+                    ILoanContract.InvalidLoanParameter.selector,
                     StandardErrors._TIME_EXPIRY_ERROR_ID_
                 )
             );
         } else if (_principal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    InvalidLoanParameter.selector,
+                    ILoanContract.InvalidLoanParameter.selector,
                     StandardErrors._PRINCIPAL_ERROR_ID_
                 )
             );
@@ -83,7 +83,7 @@ abstract contract LoanContractSubmitFunctions is
         ) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    InvalidLoanParameter.selector,
+                    ILoanContract.InvalidLoanParameter.selector,
                     StandardErrors._DURATION_ERROR_ID_
                 )
             );
@@ -144,9 +144,6 @@ abstract contract LoanContractSubmitFunctions is
 
         _loanContract.loanStart(_debtId);
         _loanContract.loanClose(_debtId);
-        // console.log(
-        //     _loanContract.loanClose(_debtId) - _loanContract.loanStart(_debtId)
-        // );
         // assertEq(
         //     _loanContract.loanClose(_debtId) - _loanContract.loanStart(_debtId),
         //     _termsStruct.duration,

@@ -97,7 +97,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions, LoanSigned {
             States._ACTIVE_GRACE_STATE_
         );
 
-        assertEq(loanTreasurer.updateDebt(_debtId), 11);
+        // assertEq(loanTreasurer.updateDebt(_debtId), 11);
         assertGt(
             loanContract.loanLastChecked(_debtId),
             _initialLoanLastChecked

@@ -10,8 +10,7 @@ import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import "./token/interfaces/IAnzaToken.sol";
-import "./abdk-libraries-solidity/ABDKMath64x64.sol";
-import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
+import {LibOfficerRoles as Roles, LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 
 contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     using Address for address payable;
@@ -108,7 +107,10 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
     modifier debtUpdater(uint256 _debtId) {
         updateDebt(_debtId);
-        _;
+        if (!__loanContract.checkLoanExpired(_debtId)) {
+            _;
+            __loanContract.updateLoanState(_debtId);
+        }
     }
 
     modifier onlyActiveLoan(uint256 _debtId) {
@@ -126,6 +128,10 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
     function anzaToken() external view returns (address) {
         return address(__anzaToken);
+    }
+
+    function getDebtBalanceOf(uint256 _debtId) external view returns (uint256) {
+        return __anzaToken.totalSupply(_debtId * 2);
     }
 
     function depositFunds(
@@ -161,7 +167,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         // Therefore, no need to check here.
         if (_payment == 0) revert InvalidFundsTransfer();
 
-        if (_borrower != __loanContract.borrower(_debtId))
+        if (!__anzaToken.checkBorrowerOf(_debtId, _borrower))
             revert InvalidParticipant();
 
         _depositPayment(_borrower, _debtId, _payment);
@@ -191,15 +197,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     }
 
     function withdrawCollateral(uint256 _debtId) external returns (bool) {
-        if (__loanContract.loanState(_debtId) != _PAID_STATE_)
-            revert InvalidLoanState();
-
-        address _borrower = msg.sender;
-
-        if (__loanContract.borrower(_debtId) != _borrower)
-            revert InvalidParticipant();
-
-        return __loanCollateralVault.withdraw(_borrower, _debtId);
+        return __loanCollateralVault.withdraw(msg.sender, _debtId);
     }
 
     /*
@@ -229,7 +227,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         onlyRole(Roles._DEBT_STOREFRONT_)
         onlyActiveLoan(_debtId)
         debtUpdater(_debtId)
-        returns (bool)
+        returns (bool _results)
     {
         uint256 _balance = __loanContract.debtBalanceOf(_debtId);
         uint256 _payment = msg.value;
@@ -257,32 +255,33 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
             __loanContract.updateBorrower(_debtId, _purchaser);
         }
 
-        return true;
+        _results = true;
     }
 
     // TODO: Need to revisit to ensure accuracy at larger total debt values
     // (e.g. 10000 * 10**18).
-    function updateDebt(uint256 _debtId) public returns (uint256) {
+    function updateDebt(uint256 _debtId) public {
         uint256 _prevCheck = __loanContract.loanLastChecked(_debtId);
+
+        // Find time intervals passed
         __loanContract.updateLoanState(_debtId);
 
-        // Calculate time intervals passed
         uint256 _firIntervals = __loanContract.totalFirIntervals(
             _debtId,
             __loanContract.loanLastChecked(_debtId) - _prevCheck
         );
 
+        // Update debt
         if (_firIntervals > 0) {
             uint256 _totalDebt = __anzaToken.totalSupply(_debtId * 2);
-            uint256 _fixedInterestRate = __loanContract.fixedInterestRate(
-                _debtId
+
+            uint256 _updatedDebt = Interest.compoundWithTopoff(
+                _totalDebt,
+                __loanContract.fixedInterestRate(_debtId),
+                _firIntervals
             );
 
-            return
-                _compound(_totalDebt, _fixedInterestRate, _firIntervals) +
-                _topoff(_totalDebt, _fixedInterestRate, _firIntervals);
-        } else {
-            return __anzaToken.totalSupply(_debtId * 2);
+            __anzaToken.mint(_debtId, _updatedDebt - _totalDebt);
         }
     }
 
@@ -302,76 +301,15 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
             __anzaToken.burn(_lender, _debtId * 2, _payment);
         } else {
             withdrawableBalance[_lender] += _balance;
-            withdrawableBalance[_payer] += _balance - _payment;
+            withdrawableBalance[_payer] += _payment - _balance;
 
             // Burn ALC debt token
             __anzaToken.burn(_lender, _debtId * 2, _balance);
         }
 
-        // Update loan state
-        __loanContract.updateLoanState(_debtId);
-
         // Conditionally burn replica
         if (!__loanContract.checkLoanActive(_debtId)) {
-            __anzaToken.burn(
-                __loanContract.borrower(_debtId),
-                __anzaToken.borrowerTokenId(_debtId),
-                1
-            );
+            __anzaToken.burnBorrowerToken(_debtId);
         }
-    }
-
-    function _compound(
-        uint256 _principal,
-        uint256 _ratio,
-        uint256 _n
-    ) internal pure returns (uint256) {
-        return
-            ABDKMath64x64.mulu(
-                _pow(
-                    ABDKMath64x64.add(
-                        ABDKMath64x64.fromUInt(1),
-                        ABDKMath64x64.divu(_ratio, 100)
-                    ),
-                    _n
-                ),
-                _principal
-            );
-    }
-
-    function _pow(int128 _x, uint256 _n) internal pure returns (int128) {
-        int128 _r = ABDKMath64x64.fromUInt(1);
-
-        while (_n > 0) {
-            if (_n % 2 == 1) {
-                _r = ABDKMath64x64.mul(_r, _x);
-                _n -= 1;
-            } else {
-                _x = ABDKMath64x64.mul(_x, _x);
-                _n /= 2;
-            }
-        }
-
-        return _r;
-    }
-
-    // Topoff to account for small inaccuracies in compound calculations
-    function _topoff(
-        uint256 _totalDebt,
-        uint256 _fixedInterestRate,
-        uint256 _firIntervals
-    ) internal pure returns (uint256) {
-        return
-            _fixedInterestRate == 100 ? 0 : _fixedInterestRate >= 10
-                ? _firIntervals == 1 && _totalDebt >= 10
-                    ? 1
-                    : _totalDebt >= 1000
-                    ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
-                    : 0
-                : _fixedInterestRate == 1
-                ? _firIntervals == 1 && _totalDebt >= 100
-                    ? (_totalDebt / (10 ** 21)) >= 1 ? 10 : 1
-                    : 0
-                : 0;
     }
 }
