@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IAnzaToken {
+import "@openzeppelin/contracts/access/IAccessControl.sol";
+
+interface IAnzaToken is IAccessControl {
     /**
      * @dev Returns the token collection name.
      */
@@ -28,6 +30,11 @@ interface IAnzaToken {
     /// @param _debtId The debt ID of the loan.
     /// @return The lender of the debt.
     function lenderOf(uint256 _debtId) external view returns (address);
+
+    function checkBorrowerOf(
+        uint256 _debtId,
+        address _account
+    ) external view returns (bool);
 
     /// @notice Get the borrower token ID for a given debt.
     /// @param _debtId The debt ID of the loan.
@@ -62,6 +69,10 @@ interface IAnzaToken {
         bytes calldata _data
     ) external;
 
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
+    /// @param _value argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
+    function mint(uint256 _debtId, uint256 _value) external;
+
     /// @param _to argument MUST be the address of the recipient whose balance is increased.
     /// @param _id argument MUST be the token ID being transferred.
     /// @param _value argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
@@ -84,4 +95,6 @@ interface IAnzaToken {
         uint256[] memory _ids,
         uint256[] memory _values
     ) external;
+
+    function burnBorrowerToken(uint256 _debtId) external;
 }

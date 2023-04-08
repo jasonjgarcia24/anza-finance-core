@@ -4,13 +4,6 @@
 pragma solidity ^0.8.0;
 
 interface ILoanContractEvents {
-    error InvalidCollateral();
-    error InvalidParticipant();
-    error InvalidLoanParameter(bytes4 parameter);
-    error InactiveLoanState();
-    error FailedFundsTransfer();
-    error ExceededRefinanceLimit();
-
     event LoanContractInitialized(
         address indexed collateralAddress,
         uint256 indexed collateralId,

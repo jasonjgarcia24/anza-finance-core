@@ -59,6 +59,14 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         return __owners[_debtId * 2];
     }
 
+    function checkBorrowerOf(
+        uint256 _debtId,
+        address _account
+    ) external view returns (bool) {
+        return
+            hasRole(keccak256(abi.encodePacked(_account, _debtId)), _account);
+    }
+
     function borrowerTokenId(uint256 _debtId) public pure returns (uint256) {
         return (_debtId * 2) + 1;
     }
@@ -78,7 +86,15 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
      * @dev Indicates whether any token exist with a given id, or not.
      */
     function exists(uint256 id) public view virtual returns (bool) {
-        return AnzaToken.totalSupply(id) > 0;
+        return totalSupply(id) > 0;
+    }
+
+    function mint(
+        uint256 _debtId,
+        uint256 _amount
+    ) external onlyRole(Roles._TREASURER_) {
+        // Mint ALC debt tokens
+        _mint(lenderOf(_debtId), lenderTokenId(_debtId), _amount, "");
     }
 
     function mint(
@@ -113,15 +129,15 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         _mint(_to, _id, _amount, _data);
     }
 
-    function burn(address account, uint256 id, uint256 value) external {
-        if (exists(id) == false) return;
+    function burn(address _account, uint256 _id, uint256 _value) external {
+        if (!exists(_id)) return;
 
         require(
-            account == msg.sender || isApprovedForAll(account, msg.sender),
+            _account == msg.sender || isApprovedForAll(_account, msg.sender),
             "ERC1155: caller is not token owner nor approved"
         );
 
-        _burn(account, id, value);
+        _burn(_account, _id, _value);
     }
 
     function burnBatch(
@@ -135,6 +151,16 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         );
 
         _burnBatch(account, ids, values);
+    }
+
+    function burnBorrowerToken(
+        uint256 _debtId
+    ) external onlyRole(Roles._TREASURER_) {
+        uint256 _borrowerToken = borrowerTokenId(_debtId);
+
+        if (!exists(_borrowerToken)) return;
+
+        _burn(borrowerOf(_debtId), _borrowerToken, 1);
     }
 
     function isApprovedForAll(

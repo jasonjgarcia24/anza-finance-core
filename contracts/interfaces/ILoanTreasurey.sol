@@ -29,5 +29,5 @@ interface ILoanTreasurey {
         address _purchaser
     ) external payable returns (bool);
 
-    function updateDebt(uint256 _debtId) external returns (uint256);
+    function updateDebt(uint256 _debtId) external;
 }

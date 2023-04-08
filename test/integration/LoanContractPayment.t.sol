@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {ILoanTreasureyEvents} from "../interfaces/ILoanTreasureyEvents.t.sol";
 import {Test, console, stdError, LoanContractSubmitted} from "../LoanContract.t.sol";
 
-contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
+contract LoanContractPayoff is LoanContractSubmitted {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -39,7 +40,10 @@ contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
         uint256 _debtId = loanContract.totalDebts() - 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(InvalidParticipant.selector, alt_account)
+            abi.encodeWithSelector(
+                ILoanContract.InvalidParticipant.selector,
+                alt_account
+            )
         );
 
         // Pay off loan expected failure
@@ -74,7 +78,7 @@ contract LoanContractPayoff is LoanContractSubmitted, ILoanContractEvents {
     }
 }
 
-contract LoanContractPayment is LoanContractSubmitted, ILoanContractEvents {
+contract LoanContractPayment is LoanContractSubmitted {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -135,7 +139,7 @@ contract LoanContractPayment is LoanContractSubmitted, ILoanContractEvents {
     }
 }
 
-contract LoanContractWithdrawal is LoanContractSubmitted, ILoanContractEvents {
+contract LoanContractWithdrawal is LoanContractSubmitted {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -197,10 +201,7 @@ contract LoanContractWithdrawal is LoanContractSubmitted, ILoanContractEvents {
     }
 }
 
-contract LoanContractFuzzPayments is
-    LoanContractSubmitted,
-    ILoanContractEvents
-{
+contract LoanContractFuzzPayments is LoanContractSubmitted {
     uint256 public updatedCollateralId;
 
     function setUp() public virtual override {

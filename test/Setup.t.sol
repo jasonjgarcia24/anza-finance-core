@@ -20,13 +20,23 @@ abstract contract Utils {
     /* ------------------------------------------------ *
      *                  Loan Terms                      *
      * ------------------------------------------------ */
-    uint8 public constant _FIR_INTERVAL_ = 3;
+    uint8 public constant _FIR_INTERVAL_ = 14;
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
     uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 60 * 60 * 24 * 7; // 604800 (1 week)
     uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2; // 62208000 (2 years)
     uint32 public constant _TERMS_EXPIRY_ = 60 * 60 * 24 * 7 * 2; // 1209600 (2 weeks)
     uint8 public constant _LENDER_ROYALTIES_ = 25; // 0.25
+    // To calc max price of loan with compounding interest:
+    // principal = 10
+    // fixedInterestRate = 5
+    // duration = 62208000
+    // firInterval = 60 * 60 * 24
+    // compoundingPeriods = 1
+    // timePeriodOfLoan = duration / firInterval
+    //
+    // principal * (1 + (fixedInterestRate/100 / compoundingPeriods)) ^ (compoundingPeriods * timePeriodOfLoan)
+    // 10 * (1 + (0.05 / 1)) ** (1 * 720)
 
     uint8 public constant _ALT_FIR_INTERVAL_ = 14;
     uint8 public constant _ALT_FIXED_INTEREST_RATE_ = 5; // 0.05
@@ -76,10 +86,6 @@ contract LoanContractHarness is LoanContract {
     /* ------------------------------------------------ *
      *                Contract Constants                *
      * ------------------------------------------------ */
-    function exposed__MATH_ACCURACY_() public pure returns (uint256) {
-        return _MATH_ACCURACY_;
-    }
-
     function exposed__SECONDS_PER_24_MINUTES_RATIO_SCALED_()
         public
         pure
@@ -500,6 +506,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
             _contractTerms := mload(0x20)
         }
+        console.logBytes32(_contractTerms);
     }
 
     function createContractTerms(
