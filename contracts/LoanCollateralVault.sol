@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "hardhat/console.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import "./interfaces/ILoanContract.sol";
+import "./token/interfaces/IAnzaToken.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -17,14 +18,17 @@ contract LoanCollateralVault is
 {
     uint256 public totalCollateral;
     address private __loanContract;
+    address public immutable anzaToken;
     mapping(uint256 => Collateral) private __collaterals;
 
-    constructor() {
+    constructor(address _anzaToken) {
         _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
         _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
         _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
 
         _grantRole(Roles._ADMIN_, msg.sender);
+
+        anzaToken = _anzaToken;
     }
 
     modifier onlyDepositAllowed(
@@ -115,7 +119,7 @@ contract LoanCollateralVault is
         return
             __collaterals[_debtId].vault &&
             _loanContract.loanState(_debtId) == States._PAID_STATE_ &&
-            _loanContract.borrower(_debtId) == _to;
+            IAnzaToken(anzaToken).checkBorrowerOf(_to, _debtId);
     }
 
     function withdraw(

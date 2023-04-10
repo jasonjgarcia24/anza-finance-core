@@ -458,14 +458,14 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         vm.deal(admin, 1 ether);
         vm.startPrank(admin);
 
+        // Deploy AnzaToken
+        anzaToken = new AnzaToken();
+
         // Deploy LoanCollateralVault
-        loanCollateralVault = new LoanCollateralVault();
+        loanCollateralVault = new LoanCollateralVault(address(anzaToken));
 
         // Deploy LoanContract
         loanContract = new LoanContract(address(loanCollateralVault));
-
-        // Deploy AnzaToken
-        anzaToken = new AnzaToken();
 
         // Deploy LoanTreasurey
         loanTreasurer = new LoanTreasurey(

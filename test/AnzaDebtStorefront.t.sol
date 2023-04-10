@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
-import {console, stdError, LoanContractSubmitted} from "./LoanContract.t.sol";
+import {console, LoanContractSubmitted} from "./LoanContract.t.sol";
 import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
 import {LibLoanContractSigning as Signing, LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "../contracts/libraries/LibLoanContractConstants.sol";
@@ -52,7 +50,7 @@ contract AnzaDebtStorefrontUnitTest is
         assertEq(anzaDebtStorefront.anzaToken(), address(anzaToken));
     }
 
-    function testBuyDebt() public {
+    function testBasicBuyDebt() public {
         uint256 _debtId = loanContract.totalDebts() - 1;
         uint256 _price = _PRINCIPAL_ - 1;
         bytes32 _listingHash = keccak256(
@@ -66,22 +64,89 @@ contract AnzaDebtStorefrontUnitTest is
         );
 
         uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        assertTrue(
+            anzaToken.checkBorrowerOf(borrower, _debtId),
+            "0 :: borrower should be borrower"
+        );
         assertEq(
             anzaToken.ownerOf(_borrowerTokenId),
-            borrower,
-            "0 :: AnzaToken owner should be borrower"
+            address(0),
+            "1 :: AnzaToken owner should be address(0)"
         );
         assertEq(
             loanContract.debtBalanceOf(_debtId),
             _PRINCIPAL_,
-            "1 :: Debt balance should be _PRINCIPAL_"
+            "2 :: Debt balance should be _PRINCIPAL_"
+        );
+
+        vm.deal(alt_account, 4 ether);
+        vm.startPrank(alt_account);
+        vm.expectEmit(true, true, true, true);
+        emit DebtPurchased(alt_account, _debtId, _price);
+        (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
+            abi.encodeWithSignature(
+                "buyDebt(bytes32,uint256,bytes)",
+                _listingHash,
+                _debtId,
+                _signature
+            )
+        );
+        require(_success);
+        vm.stopPrank();
+
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            address(0),
+            "3 :: AnzaToken owner should be address(0)"
         );
         assertTrue(
-            anzaToken.hasRole(
-                keccak256(abi.encodePacked(borrower, _debtId)),
-                borrower
-            ),
-            "3 :: borrower should have AnzaToken borrower token role"
+            !anzaToken.checkBorrowerOf(borrower, _debtId),
+            "4 :: borrower should not have AnzaToken borrower token role"
+        );
+        assertTrue(
+            anzaToken.checkBorrowerOf(alt_account, _debtId),
+            "5 :: alt_account should have AnzaToken borrower token role"
+        );
+        assertEq(
+            loanContract.debtBalanceOf(_debtId),
+            _PRINCIPAL_ - _price,
+            "6 :: Debt balance should be _PRINCIPAL_ - _price"
+        );
+    }
+
+    function testReplicaBuyDebt() public {
+        uint256 _debtId = loanContract.totalDebts() - 1;
+        uint256 _price = _PRINCIPAL_ - 1;
+        bytes32 _listingHash = keccak256(
+            "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
+        );
+
+        // Mint replica token
+        vm.deal(borrower, 1 ether);
+        vm.startPrank(borrower);
+        loanContract.mintReplica(_debtId);
+        vm.stopPrank();
+
+        bytes memory _signature = createListingSignature(
+            _listingHash,
+            _price,
+            _debtId
+        );
+
+        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        assertTrue(
+            anzaToken.checkBorrowerOf(borrower, _debtId),
+            "0 :: borrower should have AnzaToken borrower token role"
+        );
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            borrower,
+            "1 :: AnzaToken owner should be borrower"
+        );
+        assertEq(
+            loanContract.debtBalanceOf(_debtId),
+            _PRINCIPAL_,
+            "2 :: Debt balance should be _PRINCIPAL_"
         );
 
         vm.deal(alt_account, 4 ether);
@@ -105,17 +170,11 @@ contract AnzaDebtStorefrontUnitTest is
             "3 :: AnzaToken owner should be alt_account"
         );
         assertTrue(
-            anzaToken.hasRole(
-                keccak256(abi.encodePacked(borrower, _debtId)),
-                borrower
-            ) == false,
+            !anzaToken.checkBorrowerOf(borrower, _debtId),
             "4 :: borrower should not have AnzaToken borrower token role"
         );
         assertTrue(
-            anzaToken.hasRole(
-                keccak256(abi.encodePacked(alt_account, _debtId)),
-                alt_account
-            ),
+            anzaToken.checkBorrowerOf(alt_account, _debtId),
             "5 :: alt_account should have AnzaToken borrower token role"
         );
         assertEq(

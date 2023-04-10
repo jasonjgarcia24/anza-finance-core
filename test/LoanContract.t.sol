@@ -49,12 +49,6 @@ abstract contract LoanContractSubmitted is LoanSigned {
 
         // Create loan contract
         createLoanContract(collateralId);
-
-        // Mint replica token
-        vm.deal(borrower, 100 ether);
-        vm.startPrank(borrower);
-        loanContract.mintReplica(_debtId);
-        vm.stopPrank();
     }
 
     function mintReplica(uint256 _debtId) public virtual {
@@ -856,8 +850,6 @@ contract LoanContractViewsUnitTest is LoanSigned {
         super.setUp();
     }
 
-    function testPass() public {}
-
     function testLoanContractStateVars() public {
         assertEq(
             loanContract.collateralVault(),
@@ -1026,21 +1018,15 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         assertEq(
-            Terms.borrower(_contractTerms),
-            borrower,
-            "10 :: loan borrower should be borrower"
-        );
-
-        assertEq(
             Terms.lenderRoyalties(_contractTerms),
             _LENDER_ROYALTIES_,
-            "11 :: loan royalties should be _LENDER_ROYALTIES_"
+            "10 :: loan royalties should be _LENDER_ROYALTIES_"
         );
 
         assertEq(
             Terms.activeLoanCount(_contractTerms),
             0,
-            "12 :: active loan count should be 0"
+            "11 :: active loan count should be 0"
         );
     }
 
@@ -1190,18 +1176,22 @@ contract LoanContractViewsUnitTest is LoanSigned {
     function testBorrower() public {
         uint256 _debtId = loanContract.totalDebts();
 
-        assertEq(
-            loanContract.borrower(_debtId),
-            address(0),
+        assertTrue(
+            anzaToken.hasRole(
+                keccak256(abi.encodePacked(address(0), _debtId)),
+                address(0)
+            ),
             "0 :: loan borrower should be the default address zero"
         );
 
         // Create loan contract
         createLoanContract(collateralId);
 
-        assertEq(
-            loanContract.borrower(_debtId),
-            borrower,
+        assertTrue(
+            anzaToken.hasRole(
+                keccak256(abi.encodePacked(borrower, _debtId)),
+                borrower
+            ),
             "1 :: loan borrower should be borrower"
         );
     }

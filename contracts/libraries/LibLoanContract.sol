@@ -217,17 +217,6 @@ library LibLoanContractTerms {
         }
     }
 
-    function borrower(
-        bytes32 _contractTerms
-    ) public pure returns (address _borrower) {
-        uint256 _borrowerPos = PackMappings._BORROWER_POS_;
-        uint256 _borrowerMap = PackMappings._BORROWER_MAP_;
-
-        assembly {
-            _borrower := shr(_borrowerPos, and(_contractTerms, _borrowerMap))
-        }
-    }
-
     function lenderRoyalties(
         bytes32 _contractTerms
     ) public pure returns (uint256 _lenderRoyalties) {

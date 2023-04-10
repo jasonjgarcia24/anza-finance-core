@@ -56,14 +56,16 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         uint256 _debtId,
         bytes calldata _sellerSignature
     ) public payable nonReentrant {
-        IAnzaToken _anzaToken = IAnzaToken(anzaToken);
-        address _borrower = _anzaToken.borrowerOf(_debtId);
         uint256 _payment = msg.value;
+        address _borrower = __recoverSigner(
+            _listingTerms,
+            _payment,
+            _debtId,
+            _sellerSignature
+        );
 
-        if (
-            _borrower !=
-            __recoverSigner(_listingTerms, _payment, _debtId, _sellerSignature)
-        ) revert InvalidListingTerms();
+        if (!IAnzaToken(anzaToken).checkBorrowerOf(_borrower, _debtId))
+            revert InvalidListingTerms();
 
         // Transfer debt
         address _purchaser = msg.sender;
@@ -80,9 +82,7 @@ contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
         emit DebtPurchased(_purchaser, _debtId, _payment);
     }
 
-    function refinance() public payable nonReentrant {
-        
-    }
+    function refinance() public payable nonReentrant {}
 
     function __recoverSigner(
         bytes32 _listingTerms,

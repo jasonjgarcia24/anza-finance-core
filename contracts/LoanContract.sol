@@ -158,7 +158,7 @@ contract LoanContract is ILoanContract, AccessControl {
     //  > 008 - [8..15]    `fixedInterestRate`
     //  > 032 - [16..47]   `loanStart`
     //  > 032 - [48..79]   `loanDuration`
-    //  > 160 - [80..239]  `borrower`   // can remove this
+    //  > 160 - [80..239]  unused space
     //  > 008 - [240..247] `lenderRoyalties`
     //  > 008 - [248..255] `activeLoanIndex`
     mapping(uint256 => bytes32) private __packedDebtTerms;
@@ -258,7 +258,6 @@ contract LoanContract is ILoanContract, AccessControl {
         // Validate loan terms
         uint32 _now = __toUint32(block.timestamp);
         uint256 _principal = msg.value;
-        console.log(_principal);
 
         _validateLoanTerms(_contractTerms, _now, _principal);
 
@@ -278,7 +277,7 @@ contract LoanContract is ILoanContract, AccessControl {
         ) revert InvalidParticipant();
 
         // Add debt to database
-        __setLoanAgreement(_now, _borrower, 0, _contractTerms);
+        __setLoanAgreement(_now, 0, _contractTerms);
         debtIds[_collateralAddress][_collateralId].push(totalDebts);
 
         // The collateral ID and address will be mapped within
@@ -361,7 +360,7 @@ contract LoanContract is ILoanContract, AccessControl {
         // During initial loan submission (i.e. activeLoanIndex 0), in the
         // AnzaToken contract, the borrower is given admin role specific to
         // the debt ID. This is then used for borrower verification.
-        if (!__anzaToken.checkBorrowerOf(_debtId, _borrower))
+        if (!__anzaToken.checkBorrowerOf(_borrower, _debtId))
             revert InvalidParticipant();
 
         // Add debt to database
@@ -371,7 +370,6 @@ contract LoanContract is ILoanContract, AccessControl {
 
         __setLoanAgreement(
             _now,
-            _borrower,
             activeLoanCount(_debtIds[_debtIds.length - 1]) + 1,
             _contractTerms
         );
@@ -542,17 +540,6 @@ contract LoanContract is ILoanContract, AccessControl {
 
         unchecked {
             _loanClose = __loanClose;
-        }
-    }
-
-    function borrower(uint256 _debtId) public view returns (address _borrower) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _borrower := shr(
-                _BORROWER_POS_,
-                and(_contractTerms, _BORROWER_MAP_)
-            )
         }
     }
 
@@ -797,7 +784,6 @@ contract LoanContract is ILoanContract, AccessControl {
 
     function __setLoanAgreement(
         uint32 _now,
-        address _borrower,
         uint256 _activeLoanIndex,
         bytes32 _contractTerms
     ) private {
@@ -882,14 +868,14 @@ contract LoanContract is ILoanContract, AccessControl {
                 )
             )
 
-            // Pack borrower (address)
-            mstore(
-                0x20,
-                xor(
-                    and(_BORROWER_MASK_, mload(0x20)),
-                    and(_BORROWER_MAP_, shl(_BORROWER_POS_, _borrower))
-                )
-            )
+            // // Pack borrower (address)
+            // mstore(
+            //     0x20,
+            //     xor(
+            //         and(_BORROWER_MASK_, mload(0x20)),
+            //         and(_BORROWER_MAP_, shl(_BORROWER_POS_, _borrower))
+            //     )
+            // )
 
             // Pack lender royalties (uint8)
             mstore(
