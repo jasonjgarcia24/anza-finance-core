@@ -251,8 +251,6 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
                 1,
                 ""
             );
-
-            __loanContract.updateBorrower(_debtId, _purchaser);
         }
 
         _results = true;

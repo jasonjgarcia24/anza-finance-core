@@ -132,6 +132,7 @@ contract LoanContract is ILoanContract, AccessControl {
     bytes4 internal constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
     bytes4 internal constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
     bytes4 internal constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
+    bytes4 internal constant _LENDER_ROYALTIES_ERROR_ID_ = 0xecc752dd;
 
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
@@ -157,7 +158,7 @@ contract LoanContract is ILoanContract, AccessControl {
     //  > 008 - [8..15]    `fixedInterestRate`
     //  > 032 - [16..47]   `loanStart`
     //  > 032 - [48..79]   `loanDuration`
-    //  > 160 - [80..239]  `borrower`
+    //  > 160 - [80..239]  `borrower`   // can remove this
     //  > 008 - [240..247] `lenderRoyalties`
     //  > 008 - [248..255] `activeLoanIndex`
     mapping(uint256 => bytes32) private __packedDebtTerms;
@@ -200,7 +201,9 @@ contract LoanContract is ILoanContract, AccessControl {
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (uint256) {
-        return debtIds[_collateralAddress][_collateralId].length;
+        uint256 _collateralNonce = debtIds[_collateralAddress][_collateralId]
+            .length;
+        return _collateralNonce;
     }
 
     function getCollateralDebtId(
@@ -255,6 +258,8 @@ contract LoanContract is ILoanContract, AccessControl {
         // Validate loan terms
         uint32 _now = __toUint32(block.timestamp);
         uint256 _principal = msg.value;
+        console.log(_principal);
+
         _validateLoanTerms(_contractTerms, _now, _principal);
 
         // Verify borrower participation
@@ -628,16 +633,6 @@ contract LoanContract is ILoanContract, AccessControl {
         }
     }
 
-    /*
-     * @dev Updates borrower.
-     */
-    function updateBorrower(
-        uint256 _debtId,
-        address _newBorrower
-    ) external onlyRole(Roles._TREASURER_) {
-        __setBorrower(_debtId, _newBorrower);
-    }
-
     function verifyLoanActive(uint256 _debtId) public view {
         if (!checkLoanActive(_debtId)) revert InactiveLoanState();
     }
@@ -669,6 +664,7 @@ contract LoanContract is ILoanContract, AccessControl {
         uint32 _loanStart,
         uint256 _amount
     ) internal pure {
+        uint8 _lenderRoyalties;
         uint32 _termsExpiry;
         uint32 _duration;
         uint32 _gracePeriod;
@@ -677,6 +673,10 @@ contract LoanContract is ILoanContract, AccessControl {
         uint8 _firInterval;
 
         assembly {
+            // Get packed lender royalties
+            mstore(0x1f, _contractTerms)
+            _lenderRoyalties := mload(0)
+
             // Get packed terms expiry
             mstore(0x1b, _contractTerms)
             _termsExpiry := mload(0)
@@ -703,12 +703,17 @@ contract LoanContract is ILoanContract, AccessControl {
         }
 
         unchecked {
+            // Check lender royalties
+            if (_lenderRoyalties > 100) {
+                revert InvalidLoanParameter(_LENDER_ROYALTIES_ERROR_ID_);
+            }
+
             // Check terms expiry
             if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
                 revert InvalidLoanParameter(_TIME_EXPIRY_ERROR_ID_);
             }
 
-            // Check duration
+            // Check duration and grace period
             if (
                 uint256(_duration) == 0 ||
                 (uint256(_loanStart) +
@@ -722,6 +727,12 @@ contract LoanContract is ILoanContract, AccessControl {
             // Check principal
             if (_principal == 0 || _principal != _amount)
                 revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+
+            // No fixed interest rate check necessary
+
+            // Check FIR interval
+            if (_firInterval > 15)
+                revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
 
             // Check max compounded debt
             try

@@ -108,4 +108,5 @@ library LibLoanContractStandardErrors {
     bytes4 public constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
     bytes4 public constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
     bytes4 public constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
+    bytes4 public constant _LENDER_ROYALTIES_ERROR_ID_ = 0xecc752dd;
 }

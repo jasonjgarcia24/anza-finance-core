@@ -447,6 +447,11 @@ contract LoanContractConstantsTest is Test {
             LibLoanContractStandardErrors._TIME_EXPIRY_ERROR_ID_,
             "_TIME_EXPIRY_ERROR_ID_"
         );
+        assertEq(
+            _loanContractHarness.exposed__LENDER_ROYALTIES_ERROR_ID_(),
+            LibLoanContractStandardErrors._LENDER_ROYALTIES_ERROR_ID_,
+            "_LENDER_ROYALTIES_ERROR_ID_"
+        );
     }
 }
 
@@ -845,6 +850,8 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
 }
 
 contract LoanContractViewsUnitTest is LoanSigned {
+    uint256 public localCollateralId = collateralId;
+
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1707,6 +1714,134 @@ contract LoanContractViewsUnitTest is LoanSigned {
             loanContract.checkLoanActive(_refDebtId),
             false,
             "5 :: refinanced loan should be inactive"
+        );
+    }
+
+    function testCheckLoanDefault() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.checkLoanDefault(_debtId),
+            false,
+            "0 :: non existent loan should not be default"
+        );
+
+        // Create loan contract
+        createLoanContract(localCollateralId++);
+
+        assertEq(
+            loanContract.checkLoanDefault(_debtId),
+            false,
+            "1 :: loan should not be default"
+        );
+
+        vm.warp(loanContract.loanClose(_debtId));
+
+        assertEq(
+            loanContract.checkLoanDefault(_debtId),
+            false,
+            "2 :: loan should not be default without an update performed"
+        );
+
+        vm.startPrank(address(loanTreasurer));
+        loanContract.updateLoanState(_debtId);
+        vm.stopPrank();
+
+        assertEq(
+            loanContract.checkLoanDefault(_debtId),
+            true,
+            "3 :: loan should be default with an update performed"
+        );
+
+        // Create loan contract
+        createLoanContract(localCollateralId++);
+        _debtId = loanContract.totalDebts() - 1;
+
+        // Pay off loan
+        vm.deal(borrower, _PRINCIPAL_);
+        vm.startPrank(borrower);
+        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
+        );
+        require(_success, "Payment was unsuccessful");
+        vm.stopPrank();
+
+        assertEq(
+            loanContract.checkLoanDefault(_debtId),
+            false,
+            "4 :: loan should not be default"
+        );
+
+        vm.warp(loanContract.loanClose(_debtId));
+
+        assertEq(
+            loanContract.checkLoanDefault(_debtId),
+            false,
+            "5:: loan should not be default"
+        );
+    }
+
+    function testCheckLoanExpired() public {
+        uint256 _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.checkLoanExpired(_debtId),
+            false,
+            "0 :: non existent loan should not be expired"
+        );
+
+        // Create loan contract
+        createLoanContract(localCollateralId++);
+
+        assertEq(
+            loanContract.checkLoanExpired(_debtId),
+            false,
+            "1 :: loan should not be expired"
+        );
+
+        vm.warp(loanContract.loanClose(_debtId));
+
+        assertEq(
+            loanContract.checkLoanExpired(_debtId),
+            true,
+            "2 :: loan should be expired regardless an update performed"
+        );
+
+        vm.startPrank(address(loanTreasurer));
+        loanContract.updateLoanState(_debtId);
+        vm.stopPrank();
+
+        assertEq(
+            loanContract.checkLoanExpired(_debtId),
+            true,
+            "3 :: loan should be expired with an update performed"
+        );
+
+        // Create loan contract
+        createLoanContract(localCollateralId++);
+        _debtId = loanContract.totalDebts() - 1;
+
+        // Pay off loan
+        vm.deal(borrower, _PRINCIPAL_);
+        vm.startPrank(borrower);
+        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
+        );
+        require(_success, "Payment was unsuccessful");
+        vm.stopPrank();
+
+        assertEq(
+            loanContract.checkLoanExpired(_debtId),
+            false,
+            "4 :: loan should not be expired"
+        );
+
+        vm.warp(loanContract.loanClose(_debtId));
+
+        assertEq(
+            loanContract.checkLoanExpired(_debtId),
+            false,
+            "5:: loan should not be expired"
         );
     }
 }

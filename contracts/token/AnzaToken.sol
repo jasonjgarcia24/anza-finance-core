@@ -108,14 +108,8 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
 
         /* Lender Token */
         if (_id % 2 == 0) {
-            // Only allow treasurer to grant/revoke access control.
-            // This is necessary to allow a single account to recall
-            // the collateral upon full repayment.
-            _setRoleAdmin(_tokenAdminRole, Roles._TREASURER_);
-
-            // Grant the encoded borrower's address token admin access
-            // control
-            _grantRole(_tokenAdminRole, address(bytes20(_data)));
+            // Update borrower token admin
+            __updateBorrowerRole(address(0), address(bytes20(_data)), _id / 2);
 
             // Preset borrower token's URI
             _setURI(_id + 1, _collateralURI);
@@ -176,35 +170,42 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
 
     function _beforeTokenTransfer(
         address,
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
         bytes memory
     ) internal virtual override {
-        if (from == address(0)) {
-            require(ids.length == 1, "Invalid Anza mint");
+        if (_from == address(0)) {
+            require(_ids.length == 1, "Invalid Anza mint");
             require(
-                ids[0] % 2 == 0 || _totalSupply[ids[0]] == 0,
+                ((_ids[0] % 2) == 0) || (_totalSupply[_ids[0]] == 0),
                 "Cannot remint replica"
             );
 
-            for (uint256 i = 0; i < ids.length; ++i) {
-                _totalSupply[ids[i]] += amounts[i];
+            for (uint256 i = 0; i < _ids.length; ++i) {
+                _totalSupply[_ids[i]] += _amounts[i];
+            }
+        } else {
+            for (uint256 i = 0; i < _ids.length; ++i) {
+                uint256 _id = _ids[i];
+
+                // Conditionally update borrower token admin on transfer.
+                if (_id % 2 == 1) __updateBorrowerRole(_from, _to, _id / 2);
             }
         }
 
-        if (to == address(0)) {
-            for (uint256 i = 0; i < ids.length; ++i) {
-                uint256 id = ids[i];
-                uint256 amount = amounts[i];
-                uint256 supply = _totalSupply[id];
+        if (_to == address(0)) {
+            for (uint256 i = 0; i < _ids.length; ++i) {
+                uint256 _id = _ids[i];
+                uint256 amount = _amounts[i];
+                uint256 supply = _totalSupply[_id];
                 require(
                     supply >= amount,
                     "AnzaToken: burn amount exceeds totalSupply"
                 );
                 unchecked {
-                    _totalSupply[id] = supply - amount;
+                    _totalSupply[_id] = supply - amount;
                 }
             }
         }
@@ -223,5 +224,29 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     ) internal override {
         // Set token owners
         if (_to != address(0)) __owners[_ids[0]] = _to;
+    }
+
+    function __updateBorrowerRole(
+        address _oldBorrower,
+        address _newBorrower,
+        uint256 _debtId
+    ) private {
+        bytes32 _newTokenAdminRole = keccak256(
+            abi.encodePacked(_newBorrower, _debtId)
+        );
+
+        // Close out prev role
+        _revokeRole(
+            keccak256(abi.encodePacked(_oldBorrower, _debtId)),
+            _oldBorrower
+        );
+
+        // Only allow treasurer to grant/revoke access control.
+        // This is necessary to allow a single account to recall
+        // the collateral upon full repayment.
+        _setRoleAdmin(_newTokenAdminRole, Roles._TREASURER_);
+
+        // Grant the borrower's address token admin access control.
+        _grantRole(_newTokenAdminRole, _newBorrower);
     }
 }

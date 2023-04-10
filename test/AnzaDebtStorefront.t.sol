@@ -66,8 +66,23 @@ contract AnzaDebtStorefrontUnitTest is
         );
 
         uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
-        assertEq(anzaToken.ownerOf(_borrowerTokenId), borrower);
-        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            borrower,
+            "0 :: AnzaToken owner should be borrower"
+        );
+        assertEq(
+            loanContract.debtBalanceOf(_debtId),
+            _PRINCIPAL_,
+            "1 :: Debt balance should be _PRINCIPAL_"
+        );
+        assertTrue(
+            anzaToken.hasRole(
+                keccak256(abi.encodePacked(borrower, _debtId)),
+                borrower
+            ),
+            "3 :: borrower should have AnzaToken borrower token role"
+        );
 
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
@@ -84,8 +99,29 @@ contract AnzaDebtStorefrontUnitTest is
         require(_success);
         vm.stopPrank();
 
-        assertEq(anzaToken.ownerOf(_borrowerTokenId), alt_account);
-        assertEq(loanContract.borrower(_debtId), alt_account);
-        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_ - _price);
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            alt_account,
+            "3 :: AnzaToken owner should be alt_account"
+        );
+        assertTrue(
+            anzaToken.hasRole(
+                keccak256(abi.encodePacked(borrower, _debtId)),
+                borrower
+            ) == false,
+            "4 :: borrower should not have AnzaToken borrower token role"
+        );
+        assertTrue(
+            anzaToken.hasRole(
+                keccak256(abi.encodePacked(alt_account, _debtId)),
+                alt_account
+            ),
+            "5 :: alt_account should have AnzaToken borrower token role"
+        );
+        assertEq(
+            loanContract.debtBalanceOf(_debtId),
+            _PRINCIPAL_ - _price,
+            "6 :: Debt balance should be _PRINCIPAL_ - _price"
+        );
     }
 }
