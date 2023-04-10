@@ -95,8 +95,6 @@ interface ILoanContract {
 
     function loanClose(uint256 _debtId) external view returns (uint256);
 
-    function borrower(uint256 _debtId) external view returns (address);
-
     function lenderRoyalties(uint256 _debtId) external view returns (uint256);
 
     function activeLoanCount(uint256 _debtId) external view returns (uint256);

@@ -167,7 +167,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         // Therefore, no need to check here.
         if (_payment == 0) revert InvalidFundsTransfer();
 
-        if (!__anzaToken.checkBorrowerOf(_debtId, _borrower))
+        if (!__anzaToken.checkBorrowerOf(_borrower, _debtId))
             revert InvalidParticipant();
 
         _depositPayment(_borrower, _debtId, _payment);
@@ -244,13 +244,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         else {
             _depositPayment(_purchaser, _debtId, _payment);
 
-            __anzaToken.safeTransferFrom(
-                _borrower,
-                _purchaser,
-                __anzaToken.borrowerTokenId(_debtId),
-                1,
-                ""
-            );
+            __anzaToken.anzaTransferFrom(_borrower, _purchaser, _debtId, "");
         }
 
         _results = true;

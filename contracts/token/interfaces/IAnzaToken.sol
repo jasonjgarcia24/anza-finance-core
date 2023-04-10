@@ -14,6 +14,18 @@ interface IAnzaToken is IAccessControl {
      */
     function symbol() external view returns (string memory);
 
+    /**
+     * @dev Indicates whether any token exist with a given id, or not.
+     */
+    function exists(uint256 id) external view returns (bool);
+
+    function anzaTransferFrom(
+        address _from,
+        address _to,
+        uint256 _debtId,
+        bytes memory _data
+    ) external;
+
     function ownerOf(uint256 _tokenId) external view returns (address);
 
     function balanceOf(
@@ -32,8 +44,8 @@ interface IAnzaToken is IAccessControl {
     function lenderOf(uint256 _debtId) external view returns (address);
 
     function checkBorrowerOf(
-        uint256 _debtId,
-        address _account
+        address _account,
+        uint256 _debtId
     ) external view returns (bool);
 
     /// @notice Get the borrower token ID for a given debt.

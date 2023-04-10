@@ -60,8 +60,8 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     }
 
     function checkBorrowerOf(
-        uint256 _debtId,
-        address _account
+        address _account,
+        uint256 _debtId
     ) external view returns (bool) {
         return
             hasRole(keccak256(abi.encodePacked(_account, _debtId)), _account);
@@ -85,8 +85,23 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     /**
      * @dev Indicates whether any token exist with a given id, or not.
      */
-    function exists(uint256 id) public view virtual returns (bool) {
+    function exists(uint256 id) public view returns (bool) {
         return totalSupply(id) > 0;
+    }
+
+    function anzaTransferFrom(
+        address _from,
+        address _to,
+        uint256 _debtId,
+        bytes memory _data
+    ) external onlyRole(Roles._TREASURER_) {
+        uint256 _id = borrowerTokenId(_debtId);
+
+        if (exists(_id)) {
+            safeTransferFrom(_from, _to, _id, 1, _data);
+        } else {
+            __updateBorrowerRole(_from, _to, _debtId);
+        }
     }
 
     function mint(

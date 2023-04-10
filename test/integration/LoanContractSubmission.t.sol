@@ -5,9 +5,8 @@ import {IAnzaToken} from "../../contracts/token/interfaces/IAnzaToken.sol";
 import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
 import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
 import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
-import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {Test, console, LoanContractDeployer, LoanSigned} from "../LoanContract.t.sol";
+import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {Setup, LoanContractHarness} from "../Setup.t.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer, LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States, LibLoanContractConstants as Constants, LibLoanContractStandardErrors as StandardErrors} from "../../contracts/libraries/LibLoanContractConstants.sol";
@@ -25,7 +24,6 @@ abstract contract LoanContractSubmitFunctions is
 
         // Lender royalties revert check
         if (_contractTerms.lenderRoyalties > 100) {
-            console.log("expect lender royalties revert");
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILoanContract.InvalidLoanParameter.selector,
@@ -167,15 +165,11 @@ abstract contract LoanContractSubmitFunctions is
             _contractTerms.fixedInterestRate,
             "Invalid fixed interest rate"
         );
-
-        loanContract.loanStart(_debtId);
-        loanContract.loanClose(_debtId);
-        // assertEq(
-        //     loanContract.loanClose(_debtId) - loanContract.loanStart(_debtId),
-        //     _contractTerms.duration,
-        //     "Invalid duration"
-        // );
-        assertEq(loanContract.borrower(_debtId), borrower, "Invalid borrower");
+        assertEq(
+            loanContract.loanClose(_debtId) - loanContract.loanStart(_debtId),
+            _contractTerms.duration,
+            "Invalid duration"
+        );
     }
 
     function verifyLoanParticipants(
@@ -274,8 +268,6 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
     }
 
     function testBasicLenderSubmitProposal() public {
-        console.logBytes32(keccak256("lender royalties"));
-
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
