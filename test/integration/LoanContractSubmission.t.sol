@@ -2,83 +2,55 @@
 pragma solidity ^0.8.7;
 
 import {IAnzaToken} from "../../contracts/token/interfaces/IAnzaToken.sol";
+import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
 import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
 import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Test, console, LoanContractDeployer, LoanSigned} from "../LoanContract.t.sol";
-import {Utils} from "../Setup.t.sol";
-import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
+import {Setup, LoanContractHarness} from "../Setup.t.sol";
+import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer, LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States, LibLoanContractConstants as Constants, LibLoanContractStandardErrors as StandardErrors} from "../../contracts/libraries/LibLoanContractConstants.sol";
 
 abstract contract LoanContractSubmitFunctions is
-    Test,
-    Utils,
+    IERC721Events,
     IERC1155Events,
-    ILoanContractEvents
+    LoanSigned
 {
-    struct TestTermsStruct {
-        uint8 loanState;
-        uint256 firInterval;
-        uint8 fixedInterestRate;
-        uint128 principal;
-        uint32 gracePeriod;
-        uint32 duration;
-        uint32 termsExpiry;
-    }
-
     function initLoanContractExpectations(
-        address _loanContractAddress,
-        address _lender,
-        address _collateralAddress,
         uint256 _debtId,
-        uint128 _principal,
-        uint32 _duration,
-        uint32 _gracePeriod,
-        uint32 _termsExpiry
+        ContractTerms memory _contractTerms
     ) public {
-        if (
-            _principal != 0 &&
-            _duration != 0 &&
-            _termsExpiry >= Constants._SECONDS_PER_24_MINUTES_RATIO_SCALED_ &&
-            (block.timestamp + uint256(_duration) + uint256(_gracePeriod)) <=
-            type(uint32).max
-        ) {
-            vm.expectEmit(true, true, true, true);
-            emit TransferSingle(
-                _loanContractAddress,
-                address(0),
-                _lender,
-                (_debtId * 2),
-                uint256(_principal)
-            );
+        LoanContractHarness _loanContractHarness = new LoanContractHarness();
 
-            // Loan proposal submitted
-            vm.expectEmit(true, true, true, true);
-            emit LoanContractInitialized(
-                _collateralAddress,
-                collateralId,
-                _debtId
+        // Lender royalties revert check
+        if (_contractTerms.lenderRoyalties > 100) {
+            console.log("expect lender royalties revert");
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    ILoanContract.InvalidLoanParameter.selector,
+                    StandardErrors._LENDER_ROYALTIES_ERROR_ID_
+                )
             );
         }
-
-        if (_termsExpiry < Constants._SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
+        // Time expiry revert check
+        else if (
+            _contractTerms.termsExpiry <
+            Constants._SECONDS_PER_24_MINUTES_RATIO_SCALED_
+        ) {
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILoanContract.InvalidLoanParameter.selector,
                     StandardErrors._TIME_EXPIRY_ERROR_ID_
                 )
             );
-        } else if (_principal == 0) {
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    ILoanContract.InvalidLoanParameter.selector,
-                    StandardErrors._PRINCIPAL_ERROR_ID_
-                )
-            );
-        } else if (
-            _duration == 0 ||
-            (block.timestamp + uint256(_duration) + uint256(_gracePeriod)) >
+        }
+        // Duration revert check
+        else if (
+            _contractTerms.duration == 0 ||
+            (block.timestamp +
+                uint256(_contractTerms.duration) +
+                uint256(_contractTerms.gracePeriod)) >
             type(uint32).max
         ) {
             vm.expectRevert(
@@ -87,6 +59,63 @@ abstract contract LoanContractSubmitFunctions is
                     StandardErrors._DURATION_ERROR_ID_
                 )
             );
+        }
+        // Principal revert check
+        else if (_contractTerms.principal == 0) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    ILoanContract.InvalidLoanParameter.selector,
+                    StandardErrors._PRINCIPAL_ERROR_ID_
+                )
+            );
+        }
+        // FIR interval revert check
+        else if (_contractTerms.firInterval > 15) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    ILoanContract.InvalidLoanParameter.selector,
+                    StandardErrors._FIR_INTERVAL_ERROR_ID_
+                )
+            );
+        }
+        // Fixed interest rate revert check
+        else {
+            try
+                Interest.compoundWithTopoff(
+                    _contractTerms.principal,
+                    _contractTerms.fixedInterestRate,
+                    _loanContractHarness.exposed__getTotalFirIntervals(
+                        _contractTerms.firInterval,
+                        _contractTerms.duration
+                    )
+                )
+            returns (uint256) {
+                // No errors expected
+
+                // Collateral transfer submitted
+                vm.expectEmit(true, true, true, true, address(demoToken));
+                emit Transfer(
+                    borrower,
+                    address(loanCollateralVault),
+                    collateralId
+                );
+                // Loan proposal submitted
+                vm.expectEmit(true, true, true, true, address(loanContract));
+                emit LoanContractInitialized(
+                    address(demoToken),
+                    collateralId,
+                    _debtId
+                );
+            } catch (bytes memory err) {
+                console.logBytes(err);
+
+                vm.expectRevert(
+                    abi.encodeWithSelector(
+                        ILoanContract.InvalidLoanParameter.selector,
+                        StandardErrors._FIXED_INTEREST_RATE_ERROR_ID_
+                    )
+                );
+            }
         }
     }
 
@@ -118,42 +147,35 @@ abstract contract LoanContractSubmitFunctions is
     }
 
     function verifyLoanAgreementTerms(
-        address _borrower,
-        address _loanContractAddress,
         uint256 _debtId,
-        TestTermsStruct memory _termsStruct
+        uint256 _loanState,
+        ContractTerms memory _contractTerms
     ) public {
-        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-
         // Verify loan agreement terms for this debt ID
         assertEq(
-            _loanContract.loanState(_debtId),
-            _termsStruct.loanState,
+            loanContract.loanState(_debtId),
+            _loanState,
             "Invalid loan state"
         );
         assertEq(
-            _loanContract.firInterval(_debtId),
-            _termsStruct.firInterval,
+            loanContract.firInterval(_debtId),
+            _contractTerms.firInterval,
             "Invalid fir interval"
         );
         assertEq(
-            _loanContract.fixedInterestRate(_debtId),
-            _termsStruct.fixedInterestRate,
+            loanContract.fixedInterestRate(_debtId),
+            _contractTerms.fixedInterestRate,
             "Invalid fixed interest rate"
         );
 
-        _loanContract.loanStart(_debtId);
-        _loanContract.loanClose(_debtId);
+        loanContract.loanStart(_debtId);
+        loanContract.loanClose(_debtId);
         // assertEq(
-        //     _loanContract.loanClose(_debtId) - _loanContract.loanStart(_debtId),
-        //     _termsStruct.duration,
+        //     loanContract.loanClose(_debtId) - loanContract.loanStart(_debtId),
+        //     _contractTerms.duration,
         //     "Invalid duration"
         // );
-        assertEq(
-            _loanContract.borrower(_debtId),
-            _borrower,
-            "Invalid borrower"
-        );
+        assertEq(loanContract.borrower(_debtId), borrower, "Invalid borrower");
     }
 
     function verifyLoanParticipants(
@@ -171,20 +193,14 @@ abstract contract LoanContractSubmitFunctions is
         );
     }
 
-    function verifyTokenBalances(
-        address _borrower,
-        address _lender,
-        address _anzaTokenAddress,
-        uint256 _debtId,
-        uint128 _principal
-    ) public {
+    function verifyTokenBalances(uint256 _debtId, uint128 _principal) public {
         // Verify token balances
         uint256 borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
         uint256 lenderTokenId = Indexer.getLenderTokenId(_debtId);
 
         address[] memory accounts = new address[](2);
-        accounts[0] = _lender;
-        accounts[1] = _borrower;
+        accounts[0] = lender;
+        accounts[1] = borrower;
 
         uint256[] memory ids = new uint256[](2);
         ids[0] = lenderTokenId;
@@ -194,51 +210,18 @@ abstract contract LoanContractSubmitFunctions is
         balances[0] = uint256(_principal);
         balances[1] = 1;
 
-        assertEq(
-            IERC1155(_anzaTokenAddress).balanceOfBatch(accounts, ids),
-            balances
-        );
-    }
-}
-
-contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
-    uint256 thing = 0x10;
-
-    function setUp() public virtual override {
-        super.setUp();
+        assertEq(anzaToken.balanceOfBatch(accounts, ids), balances);
     }
 
-    function testBasicLenderSubmitProposal() public {
-        uint256 _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 0);
-
-        initLoanContractExpectations(
-            address(loanContract),
-            lender,
-            address(demoToken),
-            _debtId,
-            _PRINCIPAL_,
-            _DURATION_,
-            _GRACE_PERIOD_,
-            _TERMS_EXPIRY_
-        );
-
-        // Submit proposal
-        vm.deal(lender, _PRINCIPAL_);
-        vm.startPrank(lender);
-        (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                contractTerms,
-                address(demoToken),
-                collateralId,
-                signature
-            )
-        );
-        require(success);
-        vm.stopPrank();
-
-        if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
+    function verifyPostContractInit(
+        uint256 _debtId,
+        ContractTerms memory _contractTerms
+    ) public {
+        // Conclude test if initLoanContract reverted
+        if (
+            loanContract.totalDebts() == 0 ||
+            (loanContract.totalDebts() - 1) != _debtId
+        ) {
             return;
         }
 
@@ -257,18 +240,9 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
 
         // Verify loan agreement terms for this debt ID
         verifyLoanAgreementTerms(
-            borrower,
-            address(loanContract),
             _debtId,
-            TestTermsStruct({
-                loanState: States._ACTIVE_GRACE_STATE_,
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                principal: 0,
-                gracePeriod: 0,
-                duration: _DURATION_,
-                termsExpiry: 0
-            })
+            States._ACTIVE_GRACE_STATE_,
+            _contractTerms
         );
 
         // Verify loan participants
@@ -280,16 +254,10 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
         );
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
+        assertEq(loanContract.debtBalanceOf(_debtId), _contractTerms.principal);
 
         // Verify token balances
-        verifyTokenBalances(
-            borrower,
-            lender,
-            address(anzaToken),
-            _debtId,
-            _PRINCIPAL_
-        );
+        verifyTokenBalances(_debtId, _contractTerms.principal);
 
         // Minted lender NFT should have debt token URI
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
@@ -300,650 +268,358 @@ contract LoanContractTestSubmit is LoanContractSubmitFunctions, LoanSigned {
     }
 }
 
-contract LoanContractFuzzSubmit is
-    ILoanContractEvents,
-    LoanContractDeployer,
-    LoanContractSubmitFunctions
-{
+contract LoanContractSubmitTest is LoanContractSubmitFunctions {
     function setUp() public virtual override {
         super.setUp();
     }
 
-    function testAnyFixedInterestRateLenderSubmitProposal(
+    function testBasicLenderSubmitProposal() public {
+        console.logBytes32(keccak256("lender royalties"));
+
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
+
+        ContractTerms memory _contractTerms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            principal: _PRINCIPAL_,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _DURATION_,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
+
+        initLoanContractExpectations(_debtId, _contractTerms);
+
+        createLoanContract(collateralId, _collateralNonce, _contractTerms);
+
+        verifyPostContractInit(_debtId, _contractTerms);
+    }
+}
+
+contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function testAnyLenderRoyaltiesSubmitProposal(
+        uint8 _lenderRoyalties
+    ) public {
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
+
+        ContractTerms memory _terms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            principal: _PRINCIPAL_,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _DURATION_,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _lenderRoyalties
+        });
+
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        initLoanContractExpectations(_debtId, _terms);
+
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
+            address(demoToken),
+            collateralId,
+            _signature
+        );
+
+        verifyPostContractInit(_debtId, _terms);
+    }
+
+    function testAnyTermsExpirySubmitProposal(uint32 _termsExpiry) public {
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
+
+        ContractTerms memory _terms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            principal: _PRINCIPAL_,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _DURATION_,
+            termsExpiry: _termsExpiry,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        initLoanContractExpectations(_debtId, _terms);
+
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
+            address(demoToken),
+            collateralId,
+            _signature
+        );
+
+        verifyPostContractInit(_debtId, _terms);
+    }
+
+    function testAnyDurationSubmitProposal(uint32 _duration) public {
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
+
+        ContractTerms memory _terms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            principal: _PRINCIPAL_,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _duration,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        initLoanContractExpectations(_debtId, _terms);
+
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
+            address(demoToken),
+            collateralId,
+            _signature
+        );
+
+        verifyPostContractInit(_debtId, _terms);
+    }
+
+    function testAnyGracePeriodSubmitProposal(uint32 _gracePeriod) public {
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
+
+        ContractTerms memory _terms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            principal: _GRACE_PERIOD_,
+            gracePeriod: _gracePeriod,
+            duration: _DURATION_,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        initLoanContractExpectations(_debtId, _terms);
+
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
+            address(demoToken),
+            collateralId,
+            _signature
+        );
+
+        verifyPostContractInit(_debtId, _terms);
+    }
+
+    function testAnyPrincipalSubmitProposal(uint128 _principal) public {
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0);
+
+        ContractTerms memory _terms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            principal: _principal,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _DURATION_,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
+
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        initLoanContractExpectations(_debtId, _terms);
+
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
+            address(demoToken),
+            collateralId,
+            _signature
+        );
+
+        verifyPostContractInit(_debtId, _terms);
+    }
+
+    function testAnyFixedInterestRateSubmitProposal(
         uint8 _fixedInterestRate
     ) public {
-        bytes32 _contractTerms;
-
-        assembly {
-            mstore(0x20, _FIR_INTERVAL_)
-            mstore(0x1f, _fixedInterestRate)
-            mstore(0x1d, _PRINCIPAL_)
-            mstore(0x0d, _GRACE_PERIOD_)
-            mstore(0x09, _DURATION_)
-            mstore(0x05, _TERMS_EXPIRY_)
-            mstore(0x01, _LENDER_ROYALTIES_)
-
-            _contractTerms := mload(0x20)
-        }
-
-        // Create message for signing
-        bytes32 message = Signing.prefixed(
-            keccak256(
-                abi.encode(
-                    _contractTerms,
-                    address(demoToken),
-                    collateralId,
-                    collateralNonce
-                )
-            )
-        );
-
-        // Sign borrower's terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        bytes memory _signature = abi.encodePacked(r, s, v);
-
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        // Submit proposal
-        initLoanContractExpectations(
-            address(loanContract),
-            lender,
+        ContractTerms memory _terms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _fixedInterestRate,
+            principal: _PRINCIPAL_,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _DURATION_,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
-            _debtId,
-            _PRINCIPAL_,
-            _DURATION_,
-            _GRACE_PERIOD_,
-            _TERMS_EXPIRY_
+            collateralId
         );
 
-        vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
-        vm.startPrank(lender);
-
-        (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                _contractTerms,
-                address(demoToken),
-                collateralId,
-                _signature
-            )
-        );
-        require(success);
-        vm.stopPrank();
-
-        // Conclude test if initLoanContract reverted
-        if (
-            loanContract.totalDebts() == 0 ||
-            (loanContract.totalDebts() - 1) != _debtId
-        ) {
-            return;
-        }
-
-        // Verify balance of borrower token is zero
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
-
-        // Mint replica token
-        vm.deal(borrower, 100 ether);
-        vm.startPrank(borrower);
-        loanContract.mintReplica(_debtId);
-        vm.stopPrank();
-
-        // Verify debt ID for collateral
-        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
-
-        // Verify loan agreement terms for this debt ID
-        verifyLoanAgreementTerms(
-            borrower,
-            address(loanContract),
-            _debtId,
-            TestTermsStruct({
-                loanState: States._ACTIVE_GRACE_STATE_,
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _fixedInterestRate,
-                principal: 0,
-                gracePeriod: 0,
-                duration: _DURATION_,
-                termsExpiry: 0
-            })
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
         );
 
-        // Verify loan participants
-        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-        assertEq(
-            anzaToken.ownerOf(_lenderTokenId),
-            lender,
-            "Invalid lender token ID"
+        initLoanContractExpectations(_debtId, _terms);
+
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
+            address(demoToken),
+            collateralId,
+            _signature
         );
 
-        // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
-
-        // Verify token balances
-        verifyTokenBalances(
-            borrower,
-            lender,
-            address(anzaToken),
-            _debtId,
-            _PRINCIPAL_
-        );
-
-        // Minted lender NFT should have debt token URI
-        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
-
-        // Verify debtId is updated at end
-        _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 1);
+        verifyPostContractInit(_debtId, _terms);
     }
 
-    function testAnyPrincipalLenderSubmitProposal(uint128 _principal) public {
-        bytes32 _contractTerms;
-
-        assembly {
-            mstore(0x20, _FIR_INTERVAL_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1d, _principal)
-            mstore(0x0d, _GRACE_PERIOD_)
-            mstore(0x09, _DURATION_)
-            mstore(0x05, _TERMS_EXPIRY_)
-            mstore(0x01, _LENDER_ROYALTIES_)
-
-            _contractTerms := mload(0x20)
-        }
-
-        // Create message for signing
-        bytes32 message = Signing.prefixed(
-            keccak256(
-                abi.encode(
-                    _contractTerms,
-                    address(demoToken),
-                    collateralId,
-                    collateralNonce
-                )
-            )
-        );
-
-        // Sign borrower's terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        bytes memory _signature = abi.encodePacked(r, s, v);
-
+    function testAnyFirIntervalSubmitProposal(uint8 _firInterval) public {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        initLoanContractExpectations(
-            address(loanContract),
-            lender,
+        ContractTerms memory _terms = ContractTerms({
+            firInterval: _firInterval,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            principal: _PRINCIPAL_,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _DURATION_,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
-            _debtId,
-            _principal,
-            _DURATION_,
-            _GRACE_PERIOD_,
-            _TERMS_EXPIRY_
+            collateralId
         );
 
-        // Submit proposal
-        vm.deal(lender, uint256(_principal) + 1 ether);
-        vm.startPrank(lender);
-
-        (bool success, ) = address(loanContract).call{value: _principal}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                _contractTerms,
-                address(demoToken),
-                collateralId,
-                _signature
-            )
-        );
-        require(success);
-        vm.stopPrank();
-
-        // Conclude test if initLoanContract reverted
-        if (
-            loanContract.totalDebts() == 0 ||
-            (loanContract.totalDebts() - 1) != _debtId
-        ) {
-            return;
-        }
-
-        // Verify balance of borrower token is zero
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
-
-        // Mint replica token
-        vm.deal(borrower, 100 ether);
-        vm.startPrank(borrower);
-        loanContract.mintReplica(_debtId);
-        vm.stopPrank();
-
-        // Verify debt ID for collateral
-        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
-
-        // Verify loan agreement terms for this debt ID
-        verifyLoanAgreementTerms(
-            borrower,
-            address(loanContract),
-            _debtId,
-            TestTermsStruct({
-                loanState: States._ACTIVE_GRACE_STATE_,
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                principal: 0,
-                gracePeriod: 0,
-                duration: _DURATION_,
-                termsExpiry: 0
-            })
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
         );
 
-        // Verify loan participants
-        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-        assertEq(
-            anzaToken.ownerOf(_lenderTokenId),
-            lender,
-            "Invalid lender token ID"
+        initLoanContractExpectations(_debtId, _terms);
+
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
+            address(demoToken),
+            collateralId,
+            _signature
         );
 
-        // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(_debtId), _principal);
-
-        // Verify token balances
-        verifyTokenBalances(
-            borrower,
-            lender,
-            address(anzaToken),
-            _debtId,
-            _principal
-        );
-
-        // Minted lender NFT should have debt token URI
-        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
-
-        // Verify debtId is updated at end
-        _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 1);
+        verifyPostContractInit(_debtId, _terms);
     }
 
-    function testAnyGracePeriodLenderSubmitProposal(
-        uint32 _gracePeriod
+    function testAnyContractTermsSubmitProposal(
+        ContractTerms memory _terms
     ) public {
-        bytes32 _contractTerms;
-
-        assembly {
-            mstore(0x20, _FIR_INTERVAL_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1d, _PRINCIPAL_)
-            mstore(0x0d, _gracePeriod)
-            mstore(0x09, _DURATION_)
-            mstore(0x05, _TERMS_EXPIRY_)
-            mstore(0x01, _LENDER_ROYALTIES_)
-
-            _contractTerms := mload(0x20)
-        }
-
-        // Create message for signing
-        bytes32 message = Signing.prefixed(
-            keccak256(
-                abi.encode(
-                    _contractTerms,
-                    address(demoToken),
-                    collateralId,
-                    collateralNonce
-                )
-            )
-        );
-
-        // Sign borrower's terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        bytes memory _signature = abi.encodePacked(r, s, v);
-
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        initLoanContractExpectations(
-            address(loanContract),
-            lender,
+        bytes32 _contractTerms = createContractTerms(_terms);
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
-            _debtId,
-            _PRINCIPAL_,
-            _DURATION_,
-            _gracePeriod,
-            _TERMS_EXPIRY_
+            collateralId
         );
 
-        // Submit proposal
-        vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
-        vm.startPrank(lender);
-
-        (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                _contractTerms,
-                address(demoToken),
-                collateralId,
-                _signature
-            )
-        );
-        require(success);
-        vm.stopPrank();
-
-        // Conclude test if initLoanContract reverted
-        if (
-            loanContract.totalDebts() == 0 ||
-            (loanContract.totalDebts() - 1) != _debtId
-        ) {
-            return;
-        }
-
-        // Verify balance of borrower token is zero
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
-
-        // Mint replica token
-        vm.deal(borrower, 100 ether);
-        vm.startPrank(borrower);
-        loanContract.mintReplica(_debtId);
-        vm.stopPrank();
-
-        // Verify debt ID for collateral
-        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-        assertEq(
-            anzaToken.ownerOf(_lenderTokenId),
-            lender,
-            "Invalid lender token ID"
+        bytes memory _signature = createContractSignature(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
         );
 
-        // Verify loan agreement terms for this debt ID
-        verifyLoanAgreementTerms(
-            borrower,
-            address(loanContract),
-            _debtId,
-            TestTermsStruct({
-                loanState: States._ACTIVE_GRACE_STATE_,
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                principal: 0,
-                gracePeriod: 0,
-                duration: _DURATION_,
-                termsExpiry: 0
-            })
-        );
+        initLoanContractExpectations(_debtId, _terms);
 
-        // Verify loan participants
-        verifyLoanParticipants(address(anzaToken), lender, _debtId);
-
-        // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
-
-        // Verify token balances
-        verifyTokenBalances(
-            borrower,
-            lender,
-            address(anzaToken),
-            _debtId,
-            _PRINCIPAL_
-        );
-
-        // Minted lender NFT should have debt token URI
-        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
-
-        // Verify debtId is updated at end
-        _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 1);
-    }
-
-    function testAnyDurationLenderSubmitProposal(uint32 _duration) public {
-        bound(_duration, 0, type(uint32).max);
-
-        bytes32 _contractTerms;
-
-        assembly {
-            mstore(0x20, _FIR_INTERVAL_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1d, _PRINCIPAL_)
-            mstore(0x0d, _GRACE_PERIOD_)
-            mstore(0x09, _duration)
-            mstore(0x05, _TERMS_EXPIRY_)
-            mstore(0x01, _LENDER_ROYALTIES_)
-
-            _contractTerms := mload(0x20)
-        }
-
-        // Create message for signing
-        bytes32 message = Signing.prefixed(
-            keccak256(
-                abi.encode(
-                    _contractTerms,
-                    address(demoToken),
-                    collateralId,
-                    collateralNonce
-                )
-            )
-        );
-
-        // Sign borrower's terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        bytes memory _signature = abi.encodePacked(r, s, v);
-
-        uint256 _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 0);
-
-        initLoanContractExpectations(
-            address(loanContract),
-            lender,
+        initLoanContract(
+            _contractTerms,
+            uint256(_terms.principal),
             address(demoToken),
-            _debtId,
-            _PRINCIPAL_,
-            _duration,
-            _GRACE_PERIOD_,
-            _TERMS_EXPIRY_
+            collateralId,
+            _signature
         );
 
-        // Submit proposal
-        vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
-        vm.startPrank(lender);
-
-        (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                _contractTerms,
-                address(demoToken),
-                collateralId,
-                _signature
-            )
-        );
-        require(success);
-        vm.stopPrank();
-
-        // Conclude test if initLoanContract reverted
-        if (
-            loanContract.totalDebts() == 0 ||
-            (loanContract.totalDebts() - 1) != _debtId
-        ) {
-            return;
-        }
-
-        // Verify balance of borrower token is zero
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
-
-        // Mint replica token
-        vm.deal(borrower, 100 ether);
-        vm.startPrank(borrower);
-        loanContract.mintReplica(_debtId);
-        vm.stopPrank();
-
-        // Verify debt ID for collateral
-        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
-
-        // Verify loan agreement terms for this debt ID
-        verifyLoanAgreementTerms(
-            borrower,
-            address(loanContract),
-            _debtId,
-            TestTermsStruct({
-                loanState: States._ACTIVE_GRACE_STATE_,
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                principal: 0,
-                gracePeriod: 0,
-                duration: _duration,
-                termsExpiry: 0
-            })
-        );
-
-        // // Verify loan participants
-        // uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-        // assertEq(
-        //     anzaToken.ownerOf(_lenderTokenId),
-        //     lender,
-        //     "Invalid lender token ID"
-        // );
-
-        // // Verify total debt balance
-        // assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
-
-        // // Verify token balances
-        // verifyTokenBalances(
-        //     borrower,
-        //     lender,
-        //     address(anzaToken),
-        //     _debtId,
-        //     _PRINCIPAL_
-        // );
-
-        // // Minted lender NFT should have debt token URI
-        // assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
-
-        // // Verify debtId is updated at end
-        // _debtId = loanContract.totalDebts();
-        // assertEq(_debtId, 1);
-    }
-
-    function testAnyTermsExpiryLenderSubmitProposal(
-        uint32 _termsExpiry
-    ) public {
-        bytes32 _contractTerms;
-
-        assembly {
-            mstore(0x20, _FIR_INTERVAL_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1d, _PRINCIPAL_)
-            mstore(0x0d, _GRACE_PERIOD_)
-            mstore(0x09, _DURATION_)
-            mstore(0x05, _termsExpiry)
-            mstore(0x01, _LENDER_ROYALTIES_)
-
-            _contractTerms := mload(0x20)
-        }
-
-        // Create message for signing
-        bytes32 message = Signing.prefixed(
-            keccak256(
-                abi.encode(
-                    _contractTerms,
-                    address(demoToken),
-                    collateralId,
-                    collateralNonce
-                )
-            )
-        );
-
-        // Sign borrower's terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-        bytes memory _signature = abi.encodePacked(r, s, v);
-
-        uint256 _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 0);
-
-        initLoanContractExpectations(
-            address(loanContract),
-            lender,
-            address(demoToken),
-            _debtId,
-            _PRINCIPAL_,
-            _DURATION_,
-            _GRACE_PERIOD_,
-            _termsExpiry
-        );
-
-        // Submit proposal
-        vm.deal(lender, uint256(_PRINCIPAL_) + 1 ether);
-        vm.startPrank(lender);
-
-        (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                _contractTerms,
-                address(demoToken),
-                collateralId,
-                _signature
-            )
-        );
-        require(success);
-        vm.stopPrank();
-
-        // Conclude test if initLoanContract reverted
-        if (
-            loanContract.totalDebts() == 0 ||
-            (loanContract.totalDebts() - 1) != _debtId
-        ) {
-            return;
-        }
-
-        // Verify balance of borrower token is zero
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
-
-        // Mint replica token
-        vm.deal(borrower, 100 ether);
-        vm.startPrank(borrower);
-        loanContract.mintReplica(_debtId);
-        vm.stopPrank();
-
-        // Verify debt ID for collateral
-        verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
-
-        // Verify loan agreement terms for this debt ID
-        verifyLoanAgreementTerms(
-            borrower,
-            address(loanContract),
-            _debtId,
-            TestTermsStruct({
-                loanState: States._ACTIVE_GRACE_STATE_,
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                principal: 0,
-                gracePeriod: 0,
-                duration: _DURATION_,
-                termsExpiry: 0
-            })
-        );
-
-        // Verify loan participants
-        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-        assertEq(
-            anzaToken.ownerOf(_lenderTokenId),
-            lender,
-            "Invalid lender token ID"
-        );
-
-        // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
-
-        // Verify token balances
-        verifyTokenBalances(
-            borrower,
-            lender,
-            address(anzaToken),
-            _debtId,
-            _PRINCIPAL_
-        );
-
-        // Minted lender NFT should have debt token URI
-        assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
-
-        // Verify debtId is updated at end
-        _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 1);
+        verifyPostContractInit(_debtId, _terms);
     }
 }

@@ -12,6 +12,7 @@ library LibOfficerRoles {
     bytes32 public constant _TREASURER_ = keccak256("TREASURER");
     bytes32 public constant _COLLECTOR_ = keccak256("COLLECTOR");
     bytes32 public constant _DEBT_STOREFRONT_ = keccak256("DEBT_STOREFRONT");
+    bytes32 public constant _CLOSED_BIN_ = keccak256("CLOSED_BIN");
 }
 
 library LibLoanContractSigning {

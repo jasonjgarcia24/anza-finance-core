@@ -108,8 +108,6 @@ interface ILoanContract {
 
     function updateLoanState(uint256 _debtId) external;
 
-    function updateBorrower(uint256 _debtId, address _newBorrower) external;
-
     function verifyLoanActive(uint256 _debtId) external view;
 
     function checkLoanActive(uint256 _debtId) external view returns (bool);

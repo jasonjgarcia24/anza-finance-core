@@ -16,6 +16,8 @@ import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.s
 import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
 import "../contracts/libraries/LibLoanContractConstants.sol";
 
+error TryCatchErr(bytes err);
+
 abstract contract Utils {
     /* ------------------------------------------------ *
      *                  Loan Terms                      *
@@ -404,6 +406,21 @@ contract LoanContractHarness is LoanContract {
     function exposed__TIME_EXPIRY_ERROR_ID_() public pure returns (bytes4) {
         return _TIME_EXPIRY_ERROR_ID_;
     }
+
+    function exposed__LENDER_ROYALTIES_ERROR_ID_()
+        public
+        pure
+        returns (bytes4)
+    {
+        return _LENDER_ROYALTIES_ERROR_ID_;
+    }
+
+    function exposed__getTotalFirIntervals(
+        uint256 _firInterval,
+        uint256 _seconds
+    ) public pure returns (uint256) {
+        return _getTotalFirIntervals(_firInterval, _seconds);
+    }
 }
 
 abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
@@ -487,6 +504,8 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         vm.startPrank(borrower);
         demoToken = new DemoToken();
         demoToken.approve(address(loanContract), collateralId);
+        demoToken.setApprovalForAll(address(loanContract), true);
+
         vm.stopPrank();
     }
 
@@ -506,7 +525,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
             _contractTerms := mload(0x20)
         }
-        console.logBytes32(_contractTerms);
     }
 
     function createContractTerms(
@@ -557,17 +575,16 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     function initLoanContract(
         bytes32 _contractTerms,
+        uint256 _principal,
         address _collateralAddress,
         uint256 _collateralId,
         bytes memory _signature
     ) public virtual returns (bool) {
-        vm.startPrank(borrower);
-        demoToken.approve(address(loanContract), _collateralId);
-        vm.stopPrank();
-
         // Create loan contract
+        vm.deal(lender, _principal + (1 ether));
         vm.startPrank(lender);
-        (bool _success, ) = address(loanContract).call{value: _PRINCIPAL_}(
+
+        (bool _success, ) = address(loanContract).call{value: _principal}(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
                 _contractTerms,
@@ -576,7 +593,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 _signature
             )
         );
-        require(_success);
         vm.stopPrank();
 
         return _success;
@@ -597,7 +613,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 _signature
             )
         );
-        require(_success);
         vm.stopPrank();
 
         return _success;
@@ -610,6 +625,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes memory _signature
     ) public virtual returns (bool) {
         // Create loan contract
+        vm.deal(lender, _principal + (1 ether));
         vm.startPrank(lender);
         (bool _success, ) = address(loanContract).call{value: _principal}(
             abi.encodeWithSignature(
@@ -619,7 +635,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 _signature
             )
         );
-        require(_success);
         vm.stopPrank();
 
         return _success;
@@ -644,6 +659,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         return
             initLoanContract(
                 _contractTerms,
+                _PRINCIPAL_,
                 address(demoToken),
                 _collateralId,
                 _signature
@@ -654,12 +670,20 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _collateralId,
         ContractTerms memory _terms
     ) public virtual returns (bool) {
-        bytes32 _contractTerms = createContractTerms(_terms);
-
         uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
-            _collateralId
+            collateralId
         );
+
+        return createLoanContract(_collateralId, _collateralNonce, _terms);
+    }
+
+    function createLoanContract(
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        ContractTerms memory _terms
+    ) public virtual returns (bool) {
+        bytes32 _contractTerms = createContractTerms(_terms);
 
         bytes memory _signature = createContractSignature(
             _collateralId,
@@ -670,6 +694,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         return
             initLoanContract(
                 _contractTerms,
+                uint256(_terms.principal),
                 address(demoToken),
                 _collateralId,
                 _signature
