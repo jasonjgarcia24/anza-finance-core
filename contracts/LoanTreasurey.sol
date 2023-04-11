@@ -2,83 +2,30 @@
 pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
+
+import "./domain/LoanContractFIRIntervals.sol";
+import "./domain/LoanContractStates.sol";
+
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanContract.sol";
+import "./interfaces/ILoanCodec.sol";
+import "./interfaces/ILoanManager.sol";
 import "./interfaces/ILoanCollateralVault.sol";
-import "./token/interfaces/IAnzaToken.sol";
+import "./interfaces/IAnzaToken.sol";
 import {LibOfficerRoles as Roles, LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 
 contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     using Address for address payable;
 
     /* ------------------------------------------------ *
-     *                Contract Constants                *
-     * ------------------------------------------------ */
-    uint256 private constant _SECONDS_PER_YEAR_RATIO_SCALED_ =
-        (365 * 24 * 60 * 60) * 100;
-
-    /* ------------------------------------------------ *
-     *                  Loan States                     *
-     * ------------------------------------------------ */
-    uint8 private constant _UNDEFINED_STATE_ = 0;
-    uint8 private constant _NONLEVERAGED_STATE_ = 1;
-    uint8 private constant _UNSPONSORED_STATE_ = 2;
-    uint8 private constant _SPONSORED_STATE_ = 3;
-    uint8 private constant _FUNDED_STATE_ = 4;
-    uint8 private constant _ACTIVE_GRACE_STATE_ = 5;
-    uint8 private constant _ACTIVE_STATE_ = 6;
-    uint8 private constant _DEFAULT_STATE_ = 7;
-    uint8 private constant _COLLECTION_STATE_ = 8;
-    uint8 private constant _AUCTION_STATE_ = 9;
-    uint8 private constant _AWARDED_STATE_ = 10;
-    uint8 private constant _PAID_PENDING_STATE_ = 11;
-    uint8 private constant _CLOSE_STATE_ = 12;
-    uint8 private constant _PAID_STATE_ = 13;
-
-    /* ------------------------------------------------ *
-     *       Fixed Interest Rate (FIR) Intervals        *
-     * ------------------------------------------------ */
-    //  Need to validate duration > FIR interval
-    uint8 internal constant _SECONDLY_ = 0;
-    uint8 internal constant _MINUTELY_ = 1;
-    uint8 internal constant _HOURLY_ = 2;
-    uint8 internal constant _DAILY_ = 3;
-    uint8 internal constant _WEEKLY_ = 4;
-    uint8 internal constant _2_WEEKLY_ = 5;
-    uint8 internal constant _4_WEEKLY_ = 6;
-    uint8 internal constant _6_WEEKLY_ = 7;
-    uint8 internal constant _8_WEEKLY_ = 8;
-    uint8 internal constant _MONTHLY_ = 9;
-    uint8 internal constant _2_MONTHLY_ = 10;
-    uint8 internal constant _3_MONTHLY_ = 11;
-    uint8 internal constant _4_MONTHLY_ = 12;
-    uint8 internal constant _6_MONTHLY_ = 13;
-    uint8 internal constant _360_DAILY_ = 14;
-    uint8 internal constant _ANNUALLY_ = 15;
-
-    /* ------------------------------------------------ *
-     *               FIR Interval Multipliers           *
-     * ------------------------------------------------ */
-    uint256 internal constant _SECONDLY_MULTIPLIER_ = 1;
-    uint256 internal constant _MINUTELY_MULTIPLIER_ = 60;
-    uint256 internal constant _HOURLY_MULTIPLIER_ = 60 * 60;
-    uint256 internal constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
-    uint256 internal constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
-    uint256 internal constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
-    uint256 internal constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
-    uint256 internal constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
-    uint256 internal constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
-    uint256 internal constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
-    uint256 internal constant _365_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 365;
-
-    /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
     ILoanContract private immutable __loanContract;
+    ILoanCodec private immutable __loanCodec;
+    ILoanManager private immutable __loanManager;
     ILoanCollateralVault private immutable __loanCollateralVault;
     IAnzaToken private immutable __anzaToken;
     uint256 public poolBalance;
@@ -95,6 +42,8 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         address _anzaToken
     ) {
         __loanContract = ILoanContract(_loanContract);
+        __loanCodec = ILoanCodec(_loanContract);
+        __loanManager = ILoanManager(_loanContract);
         __loanCollateralVault = ILoanCollateralVault(_loanCollateralVault);
         __anzaToken = IAnzaToken(_anzaToken);
 
@@ -107,19 +56,19 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
     modifier debtUpdater(uint256 _debtId) {
         updateDebt(_debtId);
-        if (!__loanContract.checkLoanExpired(_debtId)) {
+        if (!__loanManager.checkLoanExpired(_debtId)) {
             _;
-            __loanContract.updateLoanState(_debtId);
+            __loanManager.updateLoanState(_debtId);
         }
     }
 
     modifier onlyActiveLoan(uint256 _debtId) {
-        __loanContract.verifyLoanActive(_debtId);
+        __loanManager.verifyLoanActive(_debtId);
         _;
     }
 
     function loanContract() external view returns (address) {
-        return address(__loanContract);
+        return address(__loanManager);
     }
 
     function loanCollateralVault() external view returns (address) {
@@ -253,14 +202,14 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     // TODO: Need to revisit to ensure accuracy at larger total debt values
     // (e.g. 10000 * 10**18).
     function updateDebt(uint256 _debtId) public {
-        uint256 _prevCheck = __loanContract.loanLastChecked(_debtId);
+        uint256 _prevCheck = __loanCodec.loanLastChecked(_debtId);
 
         // Find time intervals passed
-        __loanContract.updateLoanState(_debtId);
+        __loanManager.updateLoanState(_debtId);
 
-        uint256 _firIntervals = __loanContract.totalFirIntervals(
+        uint256 _firIntervals = __loanCodec.totalFirIntervals(
             _debtId,
-            __loanContract.loanLastChecked(_debtId) - _prevCheck
+            __loanCodec.loanLastChecked(_debtId) - _prevCheck
         );
 
         // Update debt
@@ -269,7 +218,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
             uint256 _updatedDebt = Interest.compoundWithTopoff(
                 _totalDebt,
-                __loanContract.fixedInterestRate(_debtId),
+                __loanCodec.fixedInterestRate(_debtId),
                 _firIntervals
             );
 
@@ -300,7 +249,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         }
 
         // Conditionally burn replica
-        if (!__loanContract.checkLoanActive(_debtId)) {
+        if (!__loanManager.checkLoanActive(_debtId)) {
             __anzaToken.burnBorrowerToken(_debtId);
         }
     }

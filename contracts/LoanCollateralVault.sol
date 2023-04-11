@@ -3,8 +3,9 @@ pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
 import "./interfaces/ILoanCollateralVault.sol";
+import "./interfaces/ILoanCodec.sol";
 import "./interfaces/ILoanContract.sol";
-import "./token/interfaces/IAnzaToken.sol";
+import "./interfaces/IAnzaToken.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -88,13 +89,11 @@ contract LoanCollateralVault is
         uint256 _collateralId,
         uint256 _debtId
     ) public returns (bool) {
-        ILoanContract _loanContract = ILoanContract(__loanContract);
-
         return
-            _loanContract.debtIds(
+            ILoanContract(__loanContract).debtIds(
                 _collateralAddress,
                 _collateralId,
-                _loanContract.activeLoanCount(_debtId)
+                ILoanCodec(__loanContract).activeLoanCount(_debtId)
             ) ==
             _debtId &&
             __collaterals[_debtId].collateralAddress == address(0);
@@ -114,11 +113,10 @@ contract LoanCollateralVault is
         address _to,
         uint256 _debtId
     ) public view returns (bool) {
-        ILoanContract _loanContract = ILoanContract(__loanContract);
-
         return
             __collaterals[_debtId].vault &&
-            _loanContract.loanState(_debtId) == States._PAID_STATE_ &&
+            ILoanCodec(__loanContract).loanState(_debtId) ==
+            States._PAID_STATE_ &&
             IAnzaToken(anzaToken).checkBorrowerOf(_to, _debtId);
     }
 

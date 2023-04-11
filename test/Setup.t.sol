@@ -24,6 +24,8 @@ abstract contract Utils {
      * ------------------------------------------------ */
     uint8 public constant _FIR_INTERVAL_ = 14;
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
+    uint8 public constant _IS_DIRECT_ = 0x01; // true
+    uint8 public constant _COMMITAL_ = 25; // 0.25
     uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _GRACE_PERIOD_ = 60 * 60 * 24 * 7; // 604800 (1 week)
     uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2; // 62208000 (2 years)
@@ -85,335 +87,343 @@ abstract contract Utils {
 contract LoanContractHarness is LoanContract {
     constructor() LoanContract(address(0)) {}
 
-    /* ------------------------------------------------ *
-     *                Contract Constants                *
-     * ------------------------------------------------ */
-    function exposed__SECONDS_PER_24_MINUTES_RATIO_SCALED_()
-        public
-        pure
-        returns (uint256)
-    {
-        return _SECONDS_PER_24_MINUTES_RATIO_SCALED_;
-    }
-
-    function exposed__UINT32_MAX_() public pure returns (uint256) {
-        return _UINT32_MAX_;
-    }
-
-    /* ------------------------------------------------ *
-     *                  Loan States                     *
-     * ------------------------------------------------ */
-    function exposed__UNDEFINED_STATE_() public pure returns (uint8) {
-        return _UNDEFINED_STATE_;
-    }
-
-    function exposed__NONLEVERAGED_STATE_() public pure returns (uint8) {
-        return _NONLEVERAGED_STATE_;
-    }
-
-    function exposed__UNSPONSORED_STATE_() public pure returns (uint8) {
-        return _UNSPONSORED_STATE_;
-    }
-
-    function exposed__SPONSORED_STATE_() public pure returns (uint8) {
-        return _SPONSORED_STATE_;
-    }
-
-    function exposed__FUNDED_STATE_() public pure returns (uint8) {
-        return _FUNDED_STATE_;
-    }
-
-    function exposed__ACTIVE_GRACE_STATE_() public pure returns (uint8) {
-        return _ACTIVE_GRACE_STATE_;
-    }
-
-    function exposed__ACTIVE_STATE_() public pure returns (uint8) {
-        return _ACTIVE_STATE_;
-    }
-
-    function exposed__DEFAULT_STATE_() public pure returns (uint8) {
-        return _DEFAULT_STATE_;
-    }
-
-    function exposed__COLLECTION_STATE_() public pure returns (uint8) {
-        return _COLLECTION_STATE_;
-    }
-
-    function exposed__AUCTION_STATE_() public pure returns (uint8) {
-        return _AUCTION_STATE_;
-    }
-
-    function exposed__AWARDED_STATE_() public pure returns (uint8) {
-        return _AWARDED_STATE_;
-    }
-
-    function exposed__PAID_PENDING_STATE_() public pure returns (uint8) {
-        return _PAID_PENDING_STATE_;
-    }
-
-    function exposed__CLOSE_STATE_() public pure returns (uint8) {
-        return _CLOSE_STATE_;
-    }
-
-    function exposed__PAID_STATE_() public pure returns (uint8) {
-        return _PAID_STATE_;
-    }
-
-    function exposed__CLOSE_DEFAULT_STATE_() public pure returns (uint8) {
-        return _CLOSE_DEFAULT_STATE_;
-    }
-
-    /* ------------------------------------------------ *
-     *       Fixed Interest Rate (FIR) Intervals        *
-     * ------------------------------------------------ */
-    function exposed__SECONDLY_() public pure returns (uint8) {
-        return _SECONDLY_;
-    }
-
-    function exposed__MINUTELY_() public pure returns (uint8) {
-        return _MINUTELY_;
-    }
-
-    function exposed__HOURLY_() public pure returns (uint8) {
-        return _HOURLY_;
-    }
-
-    function exposed__DAILY_() public pure returns (uint8) {
-        return _DAILY_;
-    }
-
-    function exposed__WEEKLY_() public pure returns (uint8) {
-        return _WEEKLY_;
-    }
-
-    function exposed__2_WEEKLY_() public pure returns (uint8) {
-        return _2_WEEKLY_;
-    }
-
-    function exposed__4_WEEKLY_() public pure returns (uint8) {
-        return _4_WEEKLY_;
-    }
-
-    function exposed__6_WEEKLY_() public pure returns (uint8) {
-        return _6_WEEKLY_;
-    }
-
-    function exposed__8_WEEKLY_() public pure returns (uint8) {
-        return _8_WEEKLY_;
-    }
-
-    function exposed__MONTHLY_() public pure returns (uint8) {
-        return _MONTHLY_;
-    }
-
-    function exposed__2_MONTHLY_() public pure returns (uint8) {
-        return _2_MONTHLY_;
-    }
-
-    function exposed__3_MONTHLY_() public pure returns (uint8) {
-        return _3_MONTHLY_;
-    }
-
-    function exposed__4_MONTHLY_() public pure returns (uint8) {
-        return _4_MONTHLY_;
-    }
-
-    function exposed__6_MONTHLY_() public pure returns (uint8) {
-        return _6_MONTHLY_;
-    }
-
-    function exposed__360_DAILY_() public pure returns (uint8) {
-        return _360_DAILY_;
-    }
-
-    function exposed__ANNUALLY_() public pure returns (uint8) {
-        return _ANNUALLY_;
-    }
-
-    /* ------------------------------------------------ *
-     *               FIR Interval Multipliers           *
-     * ------------------------------------------------ */
-    function exposed__SECONDLY_MULTIPLIER_() public pure returns (uint256) {
-        return _SECONDLY_MULTIPLIER_;
-    }
-
-    function exposed__MINUTELY_MULTIPLIER_() public pure returns (uint256) {
-        return _MINUTELY_MULTIPLIER_;
-    }
-
-    function exposed__HOURLY_MULTIPLIER_() public pure returns (uint256) {
-        return _HOURLY_MULTIPLIER_;
-    }
-
-    function exposed__DAILY_MULTIPLIER_() public pure returns (uint256) {
-        return _DAILY_MULTIPLIER_;
-    }
-
-    function exposed__WEEKLY_MULTIPLIER_() public pure returns (uint256) {
-        return _WEEKLY_MULTIPLIER_;
-    }
-
-    function exposed__2_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
-        return _2_WEEKLY_MULTIPLIER_;
-    }
-
-    function exposed__4_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
-        return _4_WEEKLY_MULTIPLIER_;
-    }
-
-    function exposed__6_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
-        return _6_WEEKLY_MULTIPLIER_;
-    }
-
-    function exposed__8_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
-        return _8_WEEKLY_MULTIPLIER_;
-    }
-
-    function exposed__360_DAILY_MULTIPLIER_() public pure returns (uint256) {
-        return _360_DAILY_MULTIPLIER_;
-    }
-
-    /* ------------------------------------------------ *
-     *           Packed Debt Term Mappings              *
-     * ------------------------------------------------ */
-    function exposed__LOAN_STATE_MASK_() public pure returns (uint256) {
-        return _LOAN_STATE_MASK_;
-    }
-
-    function exposed__LOAN_STATE_MAP_() public pure returns (uint256) {
-        return _LOAN_STATE_MAP_;
-    }
-
-    function exposed__FIR_INTERVAL_MASK_() public pure returns (uint256) {
-        return _FIR_INTERVAL_MASK_;
-    }
-
-    function exposed__FIR_INTERVAL_MAP_() public pure returns (uint256) {
-        return _FIR_INTERVAL_MAP_;
-    }
-
-    function exposed__FIR_MASK_() public pure returns (uint256) {
-        return _FIR_MASK_;
-    }
-
-    function exposed__FIR_MAP_() public pure returns (uint256) {
-        return _FIR_MAP_;
-    }
-
-    function exposed__LOAN_START_MASK_() public pure returns (uint256) {
-        return _LOAN_START_MASK_;
-    }
-
-    function exposed__LOAN_START_MAP_() public pure returns (uint256) {
-        return _LOAN_START_MAP_;
-    }
-
-    function exposed__LOAN_DURATION_MASK_() public pure returns (uint256) {
-        return _LOAN_DURATION_MASK_;
-    }
-
-    function exposed__LOAN_DURATION_MAP_() public pure returns (uint256) {
-        return _LOAN_DURATION_MAP_;
-    }
-
-    function exposed__BORROWER_MASK_() public pure returns (uint256) {
-        return _BORROWER_MASK_;
-    }
-
-    function exposed__BORROWER_MAP_() public pure returns (uint256) {
-        return _BORROWER_MAP_;
-    }
-
-    function exposed__LENDER_ROYALTIES_MASK_() public pure returns (uint256) {
-        return _LENDER_ROYALTIES_MASK_;
-    }
-
-    function exposed__LENDER_ROYALTIES_MAP_() public pure returns (uint256) {
-        return _LENDER_ROYALTIES_MAP_;
-    }
-
-    function exposed__LOAN_COUNT_MASK_() public pure returns (uint256) {
-        return _LOAN_COUNT_MASK_;
-    }
-
-    function exposed__LOAN_COUNT_MAP_() public pure returns (uint256) {
-        return _LOAN_COUNT_MAP_;
-    }
-
-    function exposed__LOAN_STATE_POS_() public pure returns (uint8) {
-        return _LOAN_STATE_POS_;
-    }
-
-    function exposed__FIR_INTERVAL_POS_() public pure returns (uint8) {
-        return _FIR_INTERVAL_POS_;
-    }
-
-    function exposed__FIR_POS_() public pure returns (uint8) {
-        return _FIR_POS_;
-    }
-
-    function exposed__LOAN_START_POS_() public pure returns (uint8) {
-        return _LOAN_START_POS_;
-    }
-
-    function exposed__LOAN_DURATION_POS_() public pure returns (uint8) {
-        return _LOAN_DURATION_POS_;
-    }
-
-    function exposed__BORROWER_POS_() public pure returns (uint8) {
-        return _BORROWER_POS_;
-    }
-
-    function exposed__LENDER_ROYALTIES_POS_() public pure returns (uint8) {
-        return _LENDER_ROYALTIES_POS_;
-    }
-
-    function exposed__LOAN_COUNT_POS_() public pure returns (uint8) {
-        return _LOAN_COUNT_POS_;
-    }
-
-    /* ------------------------------------------------ *
-     *           Loan Term Standard Errors              *
-     * ------------------------------------------------ */
-    function exposed__LOAN_STATE_ERROR_ID_() public pure returns (bytes4) {
-        return _LOAN_STATE_ERROR_ID_;
-    }
-
-    function exposed__FIR_INTERVAL_ERROR_ID_() public pure returns (bytes4) {
-        return _FIR_INTERVAL_ERROR_ID_;
-    }
-
-    function exposed__DURATION_ERROR_ID_() public pure returns (bytes4) {
-        return _DURATION_ERROR_ID_;
-    }
-
-    function exposed__PRINCIPAL_ERROR_ID_() public pure returns (bytes4) {
-        return _PRINCIPAL_ERROR_ID_;
-    }
-
-    function exposed__FIXED_INTEREST_RATE_ERROR_ID_()
-        public
-        pure
-        returns (bytes4)
-    {
-        return _FIXED_INTEREST_RATE_ERROR_ID_;
-    }
-
-    function exposed__GRACE_PERIOD_ERROR_ID_() public pure returns (bytes4) {
-        return _GRACE_PERIOD_ERROR_ID_;
-    }
-
-    function exposed__TIME_EXPIRY_ERROR_ID_() public pure returns (bytes4) {
-        return _TIME_EXPIRY_ERROR_ID_;
-    }
-
-    function exposed__LENDER_ROYALTIES_ERROR_ID_()
-        public
-        pure
-        returns (bytes4)
-    {
-        return _LENDER_ROYALTIES_ERROR_ID_;
-    }
+    // /* ------------------------------------------------ *
+    //  *                Contract Constants                *
+    //  * ------------------------------------------------ */
+    // function exposed__SECONDS_PER_24_MINUTES_RATIO_SCALED_()
+    //     public
+    //     pure
+    //     returns (uint256)
+    // {
+    //     return _SECONDS_PER_24_MINUTES_RATIO_SCALED_;
+    // }
+
+    // function exposed__UINT32_MAX_() public pure returns (uint256) {
+    //     return _UINT32_MAX_;
+    // }
+
+    // /* ------------------------------------------------ *
+    //  *                  Loan States                     *
+    //  * ------------------------------------------------ */
+    // function exposed__UNDEFINED_STATE_() public pure returns (uint8) {
+    //     return _UNDEFINED_STATE_;
+    // }
+
+    // function exposed__NONLEVERAGED_STATE_() public pure returns (uint8) {
+    //     return _NONLEVERAGED_STATE_;
+    // }
+
+    // function exposed__UNSPONSORED_STATE_() public pure returns (uint8) {
+    //     return _UNSPONSORED_STATE_;
+    // }
+
+    // function exposed__SPONSORED_STATE_() public pure returns (uint8) {
+    //     return _SPONSORED_STATE_;
+    // }
+
+    // function exposed__FUNDED_STATE_() public pure returns (uint8) {
+    //     return _FUNDED_STATE_;
+    // }
+
+    // function exposed__ACTIVE_GRACE_STATE_() public pure returns (uint8) {
+    //     return _ACTIVE_GRACE_STATE_;
+    // }
+
+    // function exposed__ACTIVE_STATE_() public pure returns (uint8) {
+    //     return _ACTIVE_STATE_;
+    // }
+
+    // function exposed__DEFAULT_STATE_() public pure returns (uint8) {
+    //     return _DEFAULT_STATE_;
+    // }
+
+    // function exposed__COLLECTION_STATE_() public pure returns (uint8) {
+    //     return _COLLECTION_STATE_;
+    // }
+
+    // function exposed__AUCTION_STATE_() public pure returns (uint8) {
+    //     return _AUCTION_STATE_;
+    // }
+
+    // function exposed__AWARDED_STATE_() public pure returns (uint8) {
+    //     return _AWARDED_STATE_;
+    // }
+
+    // function exposed__PAID_PENDING_STATE_() public pure returns (uint8) {
+    //     return _PAID_PENDING_STATE_;
+    // }
+
+    // function exposed__CLOSE_STATE_() public pure returns (uint8) {
+    //     return _CLOSE_STATE_;
+    // }
+
+    // function exposed__PAID_STATE_() public pure returns (uint8) {
+    //     return _PAID_STATE_;
+    // }
+
+    // function exposed__CLOSE_DEFAULT_STATE_() public pure returns (uint8) {
+    //     return _CLOSE_DEFAULT_STATE_;
+    // }
+
+    // /* ------------------------------------------------ *
+    //  *       Fixed Interest Rate (FIR) Intervals        *
+    //  * ------------------------------------------------ */
+    // function exposed__SECONDLY_() public pure returns (uint8) {
+    //     return _SECONDLY_;
+    // }
+
+    // function exposed__MINUTELY_() public pure returns (uint8) {
+    //     return _MINUTELY_;
+    // }
+
+    // function exposed__HOURLY_() public pure returns (uint8) {
+    //     return _HOURLY_;
+    // }
+
+    // function exposed__DAILY_() public pure returns (uint8) {
+    //     return _DAILY_;
+    // }
+
+    // function exposed__WEEKLY_() public pure returns (uint8) {
+    //     return _WEEKLY_;
+    // }
+
+    // function exposed__2_WEEKLY_() public pure returns (uint8) {
+    //     return _2_WEEKLY_;
+    // }
+
+    // function exposed__4_WEEKLY_() public pure returns (uint8) {
+    //     return _4_WEEKLY_;
+    // }
+
+    // function exposed__6_WEEKLY_() public pure returns (uint8) {
+    //     return _6_WEEKLY_;
+    // }
+
+    // function exposed__8_WEEKLY_() public pure returns (uint8) {
+    //     return _8_WEEKLY_;
+    // }
+
+    // function exposed__MONTHLY_() public pure returns (uint8) {
+    //     return _MONTHLY_;
+    // }
+
+    // function exposed__2_MONTHLY_() public pure returns (uint8) {
+    //     return _2_MONTHLY_;
+    // }
+
+    // function exposed__3_MONTHLY_() public pure returns (uint8) {
+    //     return _3_MONTHLY_;
+    // }
+
+    // function exposed__4_MONTHLY_() public pure returns (uint8) {
+    //     return _4_MONTHLY_;
+    // }
+
+    // function exposed__6_MONTHLY_() public pure returns (uint8) {
+    //     return _6_MONTHLY_;
+    // }
+
+    // function exposed__360_DAILY_() public pure returns (uint8) {
+    //     return _360_DAILY_;
+    // }
+
+    // function exposed__ANNUALLY_() public pure returns (uint8) {
+    //     return _ANNUALLY_;
+    // }
+
+    // /* ------------------------------------------------ *
+    //  *               FIR Interval Multipliers           *
+    //  * ------------------------------------------------ */
+    // function exposed__SECONDLY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _SECONDLY_MULTIPLIER_;
+    // }
+
+    // function exposed__MINUTELY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _MINUTELY_MULTIPLIER_;
+    // }
+
+    // function exposed__HOURLY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _HOURLY_MULTIPLIER_;
+    // }
+
+    // function exposed__DAILY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _DAILY_MULTIPLIER_;
+    // }
+
+    // function exposed__WEEKLY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _WEEKLY_MULTIPLIER_;
+    // }
+
+    // function exposed__2_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _2_WEEKLY_MULTIPLIER_;
+    // }
+
+    // function exposed__4_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _4_WEEKLY_MULTIPLIER_;
+    // }
+
+    // function exposed__6_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _6_WEEKLY_MULTIPLIER_;
+    // }
+
+    // function exposed__8_WEEKLY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _8_WEEKLY_MULTIPLIER_;
+    // }
+
+    // function exposed__360_DAILY_MULTIPLIER_() public pure returns (uint256) {
+    //     return _360_DAILY_MULTIPLIER_;
+    // }
+
+    // /* ------------------------------------------------ *
+    //  *           Packed Debt Term Mappings              *
+    //  * ------------------------------------------------ */
+    // function exposed__LOAN_STATE_MASK_() public pure returns (uint256) {
+    //     return _LOAN_STATE_MASK_;
+    // }
+
+    // function exposed__LOAN_STATE_MAP_() public pure returns (uint256) {
+    //     return _LOAN_STATE_MAP_;
+    // }
+
+    // function exposed__FIR_INTERVAL_MASK_() public pure returns (uint256) {
+    //     return _FIR_INTERVAL_MASK_;
+    // }
+
+    // function exposed__FIR_INTERVAL_MAP_() public pure returns (uint256) {
+    //     return _FIR_INTERVAL_MAP_;
+    // }
+
+    // function exposed__FIR_MASK_() public pure returns (uint256) {
+    //     return _FIR_MASK_;
+    // }
+
+    // function exposed__FIR_MAP_() public pure returns (uint256) {
+    //     return _FIR_MAP_;
+    // }
+
+    // function exposed__LOAN_START_MASK_() public pure returns (uint256) {
+    //     return _LOAN_START_MASK_;
+    // }
+
+    // function exposed__LOAN_START_MAP_() public pure returns (uint256) {
+    //     return _LOAN_START_MAP_;
+    // }
+
+    // function exposed__LOAN_DURATION_MASK_() public pure returns (uint256) {
+    //     return _LOAN_DURATION_MASK_;
+    // }
+
+    // function exposed__LOAN_DURATION_MAP_() public pure returns (uint256) {
+    //     return _LOAN_DURATION_MAP_;
+    // }
+
+    // function exposed__IS_DIRECT_MASK_() public pure returns (uint256) {
+    //     return _IS_DIRECT_MASK_;
+    // }
+
+    // function exposed__IS_DIRECT_MAP_() public pure returns (uint256) {
+    //     return _IS_DIRECT_MAP_;
+    // }
+
+    // function exposed__COMMITAL_MASK_() public pure returns (uint256) {
+    //     return _COMMITAL_MASK_;
+    // }
+
+    // function exposed__COMMITAL_MAP_() public pure returns (uint256) {
+    //     return _COMMITAL_MAP_;
+    // }
+
+    // function exposed__LENDER_ROYALTIES_MASK_() public pure returns (uint256) {
+    //     return _LENDER_ROYALTIES_MASK_;
+    // }
+
+    // function exposed__LENDER_ROYALTIES_MAP_() public pure returns (uint256) {
+    //     return _LENDER_ROYALTIES_MAP_;
+    // }
+
+    // function exposed__LOAN_COUNT_MASK_() public pure returns (uint256) {
+    //     return _LOAN_COUNT_MASK_;
+    // }
+
+    // function exposed__LOAN_COUNT_MAP_() public pure returns (uint256) {
+    //     return _LOAN_COUNT_MAP_;
+    // }
+
+    // function exposed__LOAN_STATE_POS_() public pure returns (uint8) {
+    //     return _LOAN_STATE_POS_;
+    // }
+
+    // function exposed__FIR_INTERVAL_POS_() public pure returns (uint8) {
+    //     return _FIR_INTERVAL_POS_;
+    // }
+
+    // function exposed__FIR_POS_() public pure returns (uint8) {
+    //     return _FIR_POS_;
+    // }
+
+    // function exposed__LOAN_START_POS_() public pure returns (uint8) {
+    //     return _LOAN_START_POS_;
+    // }
+
+    // function exposed__LOAN_DURATION_POS_() public pure returns (uint8) {
+    //     return _LOAN_DURATION_POS_;
+    // }
+
+    // function exposed__BORROWER_POS_() public pure returns (uint8) {
+    //     return _BORROWER_POS_;
+    // }
+
+    // function exposed__LENDER_ROYALTIES_POS_() public pure returns (uint8) {
+    //     return _LENDER_ROYALTIES_POS_;
+    // }
+
+    // function exposed__LOAN_COUNT_POS_() public pure returns (uint8) {
+    //     return _LOAN_COUNT_POS_;
+    // }
+
+    // /* ------------------------------------------------ *
+    //  *           Loan Term Standard Errors              *
+    //  * ------------------------------------------------ */
+    // function exposed__LOAN_STATE_ERROR_ID_() public pure returns (bytes4) {
+    //     return _LOAN_STATE_ERROR_ID_;
+    // }
+
+    // function exposed__FIR_INTERVAL_ERROR_ID_() public pure returns (bytes4) {
+    //     return _FIR_INTERVAL_ERROR_ID_;
+    // }
+
+    // function exposed__DURATION_ERROR_ID_() public pure returns (bytes4) {
+    //     return _DURATION_ERROR_ID_;
+    // }
+
+    // function exposed__PRINCIPAL_ERROR_ID_() public pure returns (bytes4) {
+    //     return _PRINCIPAL_ERROR_ID_;
+    // }
+
+    // function exposed__FIXED_INTEREST_RATE_ERROR_ID_()
+    //     public
+    //     pure
+    //     returns (bytes4)
+    // {
+    //     return _FIXED_INTEREST_RATE_ERROR_ID_;
+    // }
+
+    // function exposed__GRACE_PERIOD_ERROR_ID_() public pure returns (bytes4) {
+    //     return _GRACE_PERIOD_ERROR_ID_;
+    // }
+
+    // function exposed__TIME_EXPIRY_ERROR_ID_() public pure returns (bytes4) {
+    //     return _TIME_EXPIRY_ERROR_ID_;
+    // }
+
+    // function exposed__LENDER_ROYALTIES_ERROR_ID_()
+    //     public
+    //     pure
+    //     returns (bytes4)
+    // {
+    //     return _LENDER_ROYALTIES_ERROR_ID_;
+    // }
 
     function exposed__getTotalFirIntervals(
         uint256 _firInterval,
@@ -447,6 +457,8 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     struct ContractTerms {
         uint8 firInterval;
         uint8 fixedInterestRate;
+        uint8 isDirect;
+        uint8 commital;
         uint128 principal;
         uint32 gracePeriod;
         uint32 duration;
@@ -532,6 +544,8 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     ) public pure virtual returns (bytes32 _contractTerms) {
         uint8 _firInterval = _terms.firInterval;
         uint8 _fixedInterestRate = _terms.fixedInterestRate;
+        uint8 _isDirect = _terms.isDirect;
+        uint8 _commital = _terms.commital;
         uint128 _principal = _terms.principal;
         uint32 _gracePeriod = _terms.gracePeriod;
         uint32 _duration = _terms.duration;
@@ -541,6 +555,15 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         assembly {
             mstore(0x20, _firInterval)
             mstore(0x1f, _fixedInterestRate)
+
+            switch eq(_isDirect, 0x01)
+            case true {
+                mstore(0x1e, add(0x65, _commital))
+            }
+            case false {
+                mstore(0x1e, _commital)
+            }
+
             mstore(0x1d, _principal)
             mstore(0x0d, _gracePeriod)
             mstore(0x09, _duration)
@@ -706,6 +729,8 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             ContractTerms({
                 firInterval: _ALT_FIR_INTERVAL_,
                 fixedInterestRate: _ALT_FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _ALT_PRINCIPAL_,
                 gracePeriod: _ALT_GRACE_PERIOD_,
                 duration: _ALT_DURATION_,

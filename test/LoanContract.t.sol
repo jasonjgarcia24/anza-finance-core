@@ -8,13 +8,14 @@ import {LoanContract} from "../contracts/LoanContract.sol";
 import {LoanCollateralVault} from "../contracts/LoanCollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
 import {ILoanContract} from "../contracts/interfaces/ILoanContract.sol";
+import {ILoanCodec} from "../contracts/interfaces/ILoanCodec.sol";
 import {ILoanTreasurey} from "../contracts/interfaces/ILoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractTerms as Terms} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractConstants, LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers, LibLoanContractPackMappings, LibLoanContractStandardErrors} from "../contracts/libraries/LibLoanContractConstants.sol";
-import {Utils, Setup, LoanContractHarness} from "./Setup.t.sol";
+import {Utils, Setup} from "./Setup.t.sol";
 
 abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
     function setUp() public virtual override {
@@ -61,392 +62,6 @@ abstract contract LoanContractSubmitted is LoanSigned {
 
 contract LoanContractConstantsTest is Test {
     function setUp() public virtual {}
-
-    function testLoanContractConstants() public {
-        LoanContractHarness _loanContractHarness = new LoanContractHarness();
-
-        assertEq(
-            _loanContractHarness
-                .exposed__SECONDS_PER_24_MINUTES_RATIO_SCALED_(),
-            LibLoanContractConstants._SECONDS_PER_24_MINUTES_RATIO_SCALED_,
-            "_SECONDS_PER_24_MINUTES_RATIO_SCALED_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__UINT32_MAX_(),
-            LibLoanContractConstants._UINT32_MAX_,
-            "_UINT32_MAX_"
-        );
-
-        assertEq(
-            _loanContractHarness.exposed__UNDEFINED_STATE_(),
-            LibLoanContractStates._UNDEFINED_STATE_,
-            "_UNDEFINED_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__NONLEVERAGED_STATE_(),
-            LibLoanContractStates._NONLEVERAGED_STATE_,
-            "_NONLEVERAGED_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__UNSPONSORED_STATE_(),
-            LibLoanContractStates._UNSPONSORED_STATE_,
-            "_UNSPONSORED_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__SPONSORED_STATE_(),
-            LibLoanContractStates._SPONSORED_STATE_,
-            "_SPONSORED_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FUNDED_STATE_(),
-            LibLoanContractStates._FUNDED_STATE_,
-            "_FUNDED_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__ACTIVE_GRACE_STATE_(),
-            LibLoanContractStates._ACTIVE_GRACE_STATE_,
-            "_ACTIVE_GRACE_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__ACTIVE_STATE_(),
-            LibLoanContractStates._ACTIVE_STATE_,
-            "_ACTIVE_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__DEFAULT_STATE_(),
-            LibLoanContractStates._DEFAULT_STATE_,
-            "_DEFAULT_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__COLLECTION_STATE_(),
-            LibLoanContractStates._COLLECTION_STATE_,
-            "_COLLECTION_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__AUCTION_STATE_(),
-            LibLoanContractStates._AUCTION_STATE_,
-            "_AUCTION_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__AWARDED_STATE_(),
-            LibLoanContractStates._AWARDED_STATE_,
-            "_AWARDED_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__PAID_PENDING_STATE_(),
-            LibLoanContractStates._PAID_PENDING_STATE_,
-            "_PAID_PENDING_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__CLOSE_STATE_(),
-            LibLoanContractStates._CLOSE_STATE_,
-            "_CLOSE_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__PAID_STATE_(),
-            LibLoanContractStates._PAID_STATE_,
-            "_PAID_STATE_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__CLOSE_DEFAULT_STATE_(),
-            LibLoanContractStates._CLOSE_DEFAULT_STATE_,
-            "_CLOSE_DEFAULT_STATE_"
-        );
-
-        assertEq(
-            _loanContractHarness.exposed__SECONDLY_(),
-            LibLoanContractFIRIntervals._SECONDLY_,
-            "_SECONDLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__MINUTELY_(),
-            LibLoanContractFIRIntervals._MINUTELY_,
-            "_MINUTELY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__HOURLY_(),
-            LibLoanContractFIRIntervals._HOURLY_,
-            "_HOURLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__DAILY_(),
-            LibLoanContractFIRIntervals._DAILY_,
-            "_DAILY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__WEEKLY_(),
-            LibLoanContractFIRIntervals._WEEKLY_,
-            "_WEEKLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__2_WEEKLY_(),
-            LibLoanContractFIRIntervals._2_WEEKLY_,
-            "_2_WEEKLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__4_WEEKLY_(),
-            LibLoanContractFIRIntervals._4_WEEKLY_,
-            "_4_WEEKLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__6_WEEKLY_(),
-            LibLoanContractFIRIntervals._6_WEEKLY_,
-            "_6_WEEKLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__8_WEEKLY_(),
-            LibLoanContractFIRIntervals._8_WEEKLY_,
-            "_8_WEEKLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__MONTHLY_(),
-            LibLoanContractFIRIntervals._MONTHLY_,
-            "_MONTHLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__2_MONTHLY_(),
-            LibLoanContractFIRIntervals._2_MONTHLY_,
-            "_2_MONTHLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__3_MONTHLY_(),
-            LibLoanContractFIRIntervals._3_MONTHLY_,
-            "_3_MONTHLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__4_MONTHLY_(),
-            LibLoanContractFIRIntervals._4_MONTHLY_,
-            "_4_MONTHLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__6_MONTHLY_(),
-            LibLoanContractFIRIntervals._6_MONTHLY_,
-            "_6_MONTHLY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__360_DAILY_(),
-            LibLoanContractFIRIntervals._360_DAILY_,
-            "_360_DAILY_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__ANNUALLY_(),
-            LibLoanContractFIRIntervals._ANNUALLY_,
-            "_ANNUALLY_"
-        );
-
-        assertEq(
-            _loanContractHarness.exposed__SECONDLY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._SECONDLY_MULTIPLIER_,
-            "_SECONDLY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__MINUTELY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._MINUTELY_MULTIPLIER_,
-            "_MINUTELY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__HOURLY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._HOURLY_MULTIPLIER_,
-            "_HOURLY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__DAILY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._DAILY_MULTIPLIER_,
-            "_DAILY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__WEEKLY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._WEEKLY_MULTIPLIER_,
-            "_WEEKLY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__2_WEEKLY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._2_WEEKLY_MULTIPLIER_,
-            "_2_WEEKLY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__4_WEEKLY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._4_WEEKLY_MULTIPLIER_,
-            "_4_WEEKLY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__6_WEEKLY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._6_WEEKLY_MULTIPLIER_,
-            "_6_WEEKLY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__8_WEEKLY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._8_WEEKLY_MULTIPLIER_,
-            "_8_WEEKLY_MULTIPLIER_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__360_DAILY_MULTIPLIER_(),
-            LibLoanContractFIRIntervalMultipliers._360_DAILY_MULTIPLIER_,
-            "_360_DAILY_MULTIPLIER_"
-        );
-
-        assertEq(
-            _loanContractHarness.exposed__LOAN_STATE_MASK_(),
-            LibLoanContractPackMappings._LOAN_STATE_MASK_,
-            "_LOAN_STATE_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_STATE_MAP_(),
-            LibLoanContractPackMappings._LOAN_STATE_MAP_,
-            "_LOAN_STATE_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIR_INTERVAL_MASK_(),
-            LibLoanContractPackMappings._FIR_INTERVAL_MASK_,
-            "_FIR_INTERVAL_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIR_INTERVAL_MAP_(),
-            LibLoanContractPackMappings._FIR_INTERVAL_MAP_,
-            "_FIR_INTERVAL_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIR_MASK_(),
-            LibLoanContractPackMappings._FIR_MASK_,
-            "_FIR_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIR_MAP_(),
-            LibLoanContractPackMappings._FIR_MAP_,
-            "_FIR_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_START_MASK_(),
-            LibLoanContractPackMappings._LOAN_START_MASK_,
-            "_LOAN_START_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_START_MAP_(),
-            LibLoanContractPackMappings._LOAN_START_MAP_,
-            "_LOAN_START_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_DURATION_MASK_(),
-            LibLoanContractPackMappings._LOAN_DURATION_MASK_,
-            "_LOAN_DURATION_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_DURATION_MAP_(),
-            LibLoanContractPackMappings._LOAN_DURATION_MAP_,
-            "_LOAN_DURATION_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__BORROWER_MASK_(),
-            LibLoanContractPackMappings._BORROWER_MASK_,
-            "_BORROWER_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__BORROWER_MAP_(),
-            LibLoanContractPackMappings._BORROWER_MAP_,
-            "_BORROWER_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LENDER_ROYALTIES_MASK_(),
-            LibLoanContractPackMappings._LENDER_ROYALTIES_MASK_,
-            "_LENDER_ROYALTIES_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LENDER_ROYALTIES_MAP_(),
-            LibLoanContractPackMappings._LENDER_ROYALTIES_MAP_,
-            "_LENDER_ROYALTIES_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_COUNT_MASK_(),
-            LibLoanContractPackMappings._LOAN_COUNT_MASK_,
-            "_LOAN_COUNT_MASK_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_COUNT_MAP_(),
-            LibLoanContractPackMappings._LOAN_COUNT_MAP_,
-            "_LOAN_COUNT_MAP_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_STATE_POS_(),
-            LibLoanContractPackMappings._LOAN_STATE_POS_,
-            "_LOAN_STATE_POS_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIR_INTERVAL_POS_(),
-            LibLoanContractPackMappings._FIR_INTERVAL_POS_,
-            "_FIR_INTERVAL_POS_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIR_POS_(),
-            LibLoanContractPackMappings._FIR_POS_,
-            "_FIR_POS_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_START_POS_(),
-            LibLoanContractPackMappings._LOAN_START_POS_,
-            "_LOAN_START_POS_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_DURATION_POS_(),
-            LibLoanContractPackMappings._LOAN_DURATION_POS_,
-            "_LOAN_DURATION_POS_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__BORROWER_POS_(),
-            LibLoanContractPackMappings._BORROWER_POS_,
-            "_BORROWER_POS_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LENDER_ROYALTIES_POS_(),
-            LibLoanContractPackMappings._LENDER_ROYALTIES_POS_,
-            "_LENDER_ROYALTIES_POS_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LOAN_COUNT_POS_(),
-            LibLoanContractPackMappings._LOAN_COUNT_POS_,
-            "_LOAN_COUNT_POS_"
-        );
-
-        assertEq(
-            _loanContractHarness.exposed__LOAN_STATE_ERROR_ID_(),
-            LibLoanContractStandardErrors._LOAN_STATE_ERROR_ID_,
-            "_LOAN_STATE_ERROR_ID_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIR_INTERVAL_ERROR_ID_(),
-            LibLoanContractStandardErrors._FIR_INTERVAL_ERROR_ID_,
-            "_FIR_INTERVAL_ERROR_ID_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__DURATION_ERROR_ID_(),
-            LibLoanContractStandardErrors._DURATION_ERROR_ID_,
-            "_DURATION_ERROR_ID_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__PRINCIPAL_ERROR_ID_(),
-            LibLoanContractStandardErrors._PRINCIPAL_ERROR_ID_,
-            "_PRINCIPAL_ERROR_ID_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__FIXED_INTEREST_RATE_ERROR_ID_(),
-            LibLoanContractStandardErrors._FIXED_INTEREST_RATE_ERROR_ID_,
-            "_FIXED_INTEREST_RATE_ERROR_ID_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__GRACE_PERIOD_ERROR_ID_(),
-            LibLoanContractStandardErrors._GRACE_PERIOD_ERROR_ID_,
-            "_GRACE_PERIOD_ERROR_ID_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__TIME_EXPIRY_ERROR_ID_(),
-            LibLoanContractStandardErrors._TIME_EXPIRY_ERROR_ID_,
-            "_TIME_EXPIRY_ERROR_ID_"
-        );
-        assertEq(
-            _loanContractHarness.exposed__LENDER_ROYALTIES_ERROR_ID_(),
-            LibLoanContractStandardErrors._LENDER_ROYALTIES_ERROR_ID_,
-            "_LENDER_ROYALTIES_ERROR_ID_"
-        );
-    }
 }
 
 contract LoanContractSetterUnitTest is LoanContractDeployer {
@@ -626,7 +241,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.deal(treasurer, 1 ether);
         vm.startPrank(address(loanTreasurer));
         vm.expectRevert(
-            abi.encodeWithSelector(ILoanContract.InactiveLoanState.selector)
+            abi.encodeWithSelector(ILoanCodec.InactiveLoanState.selector)
         );
         loanContract.updateLoanState(_debtId);
         vm.stopPrank();
@@ -1275,6 +890,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._SECONDLY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1299,6 +916,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._MINUTELY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1331,6 +950,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._HOURLY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1363,6 +984,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._DAILY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1395,6 +1018,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._WEEKLY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1427,6 +1052,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._2_WEEKLY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1459,6 +1086,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._4_WEEKLY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1491,6 +1120,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._6_WEEKLY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1523,6 +1154,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._8_WEEKLY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1555,6 +1188,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: LibLoanContractFIRIntervals._360_DAILY_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1585,7 +1220,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
 
         vm.expectRevert(
-            abi.encodeWithSelector(ILoanContract.InactiveLoanState.selector)
+            abi.encodeWithSelector(ILoanCodec.InactiveLoanState.selector)
         );
         loanContract.verifyLoanActive(_debtId);
 
@@ -1600,6 +1235,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_ / 2,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1619,6 +1256,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_ / 2,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1630,7 +1269,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_debtId);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ILoanContract.InactiveLoanState.selector)
+            abi.encodeWithSelector(ILoanCodec.InactiveLoanState.selector)
         );
         loanContract.verifyLoanActive(_refDebtId);
     }
@@ -1659,6 +1298,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_ / 2,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,
@@ -1686,6 +1327,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isDirect: _IS_DIRECT_,
+                commital: _COMMITAL_,
                 principal: _PRINCIPAL_ / 2,
                 gracePeriod: _GRACE_PERIOD_,
                 duration: _DURATION_,

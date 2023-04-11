@@ -3,7 +3,7 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "./token/interfaces/IAnzaToken.sol";
+import "./interfaces/IAnzaToken.sol";
 import "./interfaces/IAnzaDebtStorefront.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanTreasurey.sol";
