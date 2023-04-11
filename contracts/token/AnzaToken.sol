@@ -3,7 +3,8 @@ pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
 import "./AnzaERC1155URIStorage.sol";
-import "./interfaces/IAnzaToken.sol";
+import "../interfaces/IAnzaToken.sol";
+import "../interfaces/ILoanCollateralVault.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import {LibOfficerRoles as Roles} from "../libraries/LibLoanContract.sol";
 

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import {IAnzaToken} from "../../contracts/token/interfaces/IAnzaToken.sol";
+import {IAnzaToken} from "../../contracts/interfaces/IAnzaToken.sol";
 import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
 import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
 import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
+import {ILoanCodec} from "../../contracts/interfaces/ILoanCodec.sol";
+import {ILoanManager} from "../../contracts/interfaces/ILoanManager.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {Setup, LoanContractHarness} from "../Setup.t.sol";
@@ -26,7 +28,7 @@ abstract contract LoanContractSubmitFunctions is
         if (_contractTerms.lenderRoyalties > 100) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanContract.InvalidLoanParameter.selector,
+                    ILoanManager.InvalidLoanParameter.selector,
                     StandardErrors._LENDER_ROYALTIES_ERROR_ID_
                 )
             );
@@ -38,7 +40,7 @@ abstract contract LoanContractSubmitFunctions is
         ) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanContract.InvalidLoanParameter.selector,
+                    ILoanManager.InvalidLoanParameter.selector,
                     StandardErrors._TIME_EXPIRY_ERROR_ID_
                 )
             );
@@ -53,7 +55,7 @@ abstract contract LoanContractSubmitFunctions is
         ) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanContract.InvalidLoanParameter.selector,
+                    ILoanManager.InvalidLoanParameter.selector,
                     StandardErrors._DURATION_ERROR_ID_
                 )
             );
@@ -62,7 +64,7 @@ abstract contract LoanContractSubmitFunctions is
         else if (_contractTerms.principal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanContract.InvalidLoanParameter.selector,
+                    ILoanManager.InvalidLoanParameter.selector,
                     StandardErrors._PRINCIPAL_ERROR_ID_
                 )
             );
@@ -71,7 +73,7 @@ abstract contract LoanContractSubmitFunctions is
         else if (_contractTerms.firInterval > 15) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanContract.InvalidLoanParameter.selector,
+                    ILoanManager.InvalidLoanParameter.selector,
                     StandardErrors._FIR_INTERVAL_ERROR_ID_
                 )
             );
@@ -109,7 +111,7 @@ abstract contract LoanContractSubmitFunctions is
 
                 vm.expectRevert(
                     abi.encodeWithSelector(
-                        ILoanContract.InvalidLoanParameter.selector,
+                        ILoanManager.InvalidLoanParameter.selector,
                         StandardErrors._FIXED_INTEREST_RATE_ERROR_ID_
                     )
                 );
@@ -274,6 +276,8 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
         ContractTerms memory _contractTerms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
@@ -308,6 +312,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
@@ -348,6 +354,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
@@ -388,6 +396,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _duration,
@@ -428,6 +438,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _GRACE_PERIOD_,
             gracePeriod: _gracePeriod,
             duration: _DURATION_,
@@ -468,6 +480,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _principal,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
@@ -510,6 +524,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _fixedInterestRate,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
@@ -550,6 +566,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _firInterval,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isDirect: _IS_DIRECT_,
+            commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
