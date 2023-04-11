@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 interface ILoanCodec {
     error InactiveLoanState();
+    error InvalidLoanParameter(bytes4 parameter);
 
     function getDebtTerms(uint256 _debtId) external view returns (bytes32);
 
