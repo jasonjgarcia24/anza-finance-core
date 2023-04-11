@@ -6,7 +6,6 @@ import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
 import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
 import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
 import {ILoanCodec} from "../../contracts/interfaces/ILoanCodec.sol";
-import {ILoanManager} from "../../contracts/interfaces/ILoanManager.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {Setup, LoanContractHarness} from "../Setup.t.sol";
@@ -28,7 +27,7 @@ abstract contract LoanContractSubmitFunctions is
         if (_contractTerms.lenderRoyalties > 100) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanManager.InvalidLoanParameter.selector,
+                    ILoanCodec.InvalidLoanParameter.selector,
                     StandardErrors._LENDER_ROYALTIES_ERROR_ID_
                 )
             );
@@ -40,7 +39,7 @@ abstract contract LoanContractSubmitFunctions is
         ) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanManager.InvalidLoanParameter.selector,
+                    ILoanCodec.InvalidLoanParameter.selector,
                     StandardErrors._TIME_EXPIRY_ERROR_ID_
                 )
             );
@@ -55,7 +54,7 @@ abstract contract LoanContractSubmitFunctions is
         ) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanManager.InvalidLoanParameter.selector,
+                    ILoanCodec.InvalidLoanParameter.selector,
                     StandardErrors._DURATION_ERROR_ID_
                 )
             );
@@ -64,7 +63,7 @@ abstract contract LoanContractSubmitFunctions is
         else if (_contractTerms.principal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanManager.InvalidLoanParameter.selector,
+                    ILoanCodec.InvalidLoanParameter.selector,
                     StandardErrors._PRINCIPAL_ERROR_ID_
                 )
             );
@@ -73,7 +72,7 @@ abstract contract LoanContractSubmitFunctions is
         else if (_contractTerms.firInterval > 15) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanManager.InvalidLoanParameter.selector,
+                    ILoanCodec.InvalidLoanParameter.selector,
                     StandardErrors._FIR_INTERVAL_ERROR_ID_
                 )
             );
@@ -111,7 +110,7 @@ abstract contract LoanContractSubmitFunctions is
 
                 vm.expectRevert(
                     abi.encodeWithSelector(
-                        ILoanManager.InvalidLoanParameter.selector,
+                        ILoanCodec.InvalidLoanParameter.selector,
                         StandardErrors._FIXED_INTEREST_RATE_ERROR_ID_
                     )
                 );

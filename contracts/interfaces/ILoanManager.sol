@@ -5,8 +5,6 @@ import "./IAnzaToken.sol";
 import "./ILoanTreasurey.sol";
 
 interface ILoanManager {
-    error InvalidLoanParameter(bytes4 parameter);
-
     function loanTreasurer() external returns (address);
 
     function anzaToken() external returns (address);

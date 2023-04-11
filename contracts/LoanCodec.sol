@@ -3,11 +3,14 @@ pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
 
+import "./domain/LoanContractErrorCodes.sol";
 import "./domain/LoanContractFIRIntervals.sol";
+import "./domain/LoanContractNumbers.sol";
 import "./domain/LoanContractTermMaps.sol";
 import "./domain/LoanContractStates.sol";
 
 import "./interfaces/ILoanCodec.sol";
+import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 
 abstract contract LoanCodec is ILoanCodec {
     event LoanStateChanged(
@@ -184,6 +187,94 @@ abstract contract LoanCodec is ILoanCodec {
         _seconds = _seconds <= _duration ? _seconds : _duration;
 
         return _getTotalFirIntervals(_firInterval, _seconds);
+    }
+
+    function _validateLoanTerms(
+        bytes32 _contractTerms,
+        uint32 _loanStart,
+        uint256 _amount
+    ) internal pure {
+        uint8 _lenderRoyalties;
+        uint32 _termsExpiry;
+        uint32 _duration;
+        uint32 _gracePeriod;
+        uint128 _principal;
+        uint8 _fixedInterestRate;
+        uint8 _firInterval;
+
+        assembly {
+            // Get packed lender royalties
+            mstore(0x1f, _contractTerms)
+            _lenderRoyalties := mload(0)
+
+            // Get packed terms expiry
+            mstore(0x1b, _contractTerms)
+            _termsExpiry := mload(0)
+
+            // Get packed duration
+            mstore(0x17, _contractTerms)
+            _duration := mload(0)
+
+            // Get packed grace period
+            mstore(0x13, _contractTerms)
+            _gracePeriod := mload(0)
+
+            // Get packed principal
+            mstore(0x03, _contractTerms)
+            _principal := mload(0)
+
+            // Get fixed interest rate
+            mstore(0x01, _contractTerms)
+            _fixedInterestRate := mload(0)
+
+            // Get fir interval
+            mstore(0x00, _contractTerms)
+            _firInterval := mload(0)
+        }
+
+        unchecked {
+            // Check lender royalties
+            if (_lenderRoyalties > 100) {
+                revert InvalidLoanParameter(_LENDER_ROYALTIES_ERROR_ID_);
+            }
+
+            // Check terms expiry
+            if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
+                revert InvalidLoanParameter(_TIME_EXPIRY_ERROR_ID_);
+            }
+
+            // Check duration and grace period
+            if (
+                uint256(_duration) == 0 ||
+                (uint256(_loanStart) +
+                    uint256(_duration) +
+                    uint256(_gracePeriod)) >
+                type(uint32).max
+            ) {
+                revert InvalidLoanParameter(_DURATION_ERROR_ID_);
+            }
+
+            // Check principal
+            if (_principal == 0 || _principal != _amount)
+                revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+
+            // No fixed interest rate check necessary
+
+            // Check FIR interval
+            if (_firInterval > 15)
+                revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
+
+            // Check max compounded debt
+            try
+                Interest.compoundWithTopoff(
+                    _principal,
+                    _fixedInterestRate,
+                    _getTotalFirIntervals(_firInterval, _duration)
+                )
+            returns (uint256) {} catch {
+                revert InvalidLoanParameter(_FIXED_INTEREST_RATE_ERROR_ID_);
+            }
+        }
     }
 
     function _getTotalFirIntervals(
