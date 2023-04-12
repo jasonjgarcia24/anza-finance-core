@@ -26,7 +26,9 @@ contract LoanContract is
         bytes4 _interfaceId
     ) public view override(AccessControl) returns (bool) {
         return
-            _interfaceId == type(ILoanContract).interfaceId ||
+            _interfaceId == 0xb7c3c5ea || // ILoanContract
+            _interfaceId == 0x4a23979d || // ILoanManager
+            _interfaceId == 0xf83e032d || // ILoanCodec
             AccessControl.supportsInterface(_interfaceId);
     }
 

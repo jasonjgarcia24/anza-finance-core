@@ -906,13 +906,20 @@
     "CLOSED": 13
   },
   "DEFAULT_TEST_VALUES": {
-    "PRINCIPAL": 100000000000000,
+    "FIR_INTERVAL": 14,
     "FIXED_INTEREST_RATE": 10,
-    "DURATION": 360
+    "IS_DIRECT": "N",
+    "COMMITAL": 25,
+    "PRINCIPAL": 100000000000000,
+    "GRACE_PERIOD": 86400,
+    "DURATION": 1209600,
+    "TERMS_EXPIRY": 86400,
+    "LENDER_ROYALTIES": 0.10
   },
   "CHAINID_TO_NETWORK": {
     "1": "ETH Mainnet",
     "5": "Goerli",
+    "11155111": "Sepolia",
     "31337": "LocalHost"
   },
   "IPFS": {

@@ -36,7 +36,7 @@ export const connectWallet = async () => {
         const { ethereum } = window;
 
         if (!!ethereum) {
-            const accounts = await ethereum.request({ method: 'eth_requestAccounts'});
+            const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
 
             ethereum.on('accountsChanged', async (_) => {
                 await checkIfWalletIsConnected();

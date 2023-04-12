@@ -2,6 +2,9 @@
 pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
+
+import "./domain/LoanContractRoles.sol";
+
 import "./interfaces/ILoanCollateralVault.sol";
 import "./interfaces/ILoanCodec.sol";
 import "./interfaces/ILoanContract.sol";
@@ -9,7 +12,6 @@ import "./interfaces/IAnzaToken.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import {LibOfficerRoles as Roles} from "./libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "./libraries/LibLoanContractConstants.sol";
 
 contract LoanCollateralVault is
@@ -23,11 +25,11 @@ contract LoanCollateralVault is
     mapping(uint256 => Collateral) private __collaterals;
 
     constructor(address _anzaToken) {
-        _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
-        _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
-        _setRoleAdmin(Roles._TREASURER_, Roles._ADMIN_);
+        _setRoleAdmin(_ADMIN_, _ADMIN_);
+        _setRoleAdmin(LOAN_CONTRACT, _ADMIN_);
+        _setRoleAdmin(_TREASURER_, _ADMIN_);
 
-        _grantRole(Roles._ADMIN_, msg.sender);
+        _grantRole(_ADMIN_, msg.sender);
 
         anzaToken = _anzaToken;
     }
@@ -57,9 +59,7 @@ contract LoanCollateralVault is
         return __collaterals[_debtId];
     }
 
-    function setLoanContract(
-        address _loanContract
-    ) external onlyRole(Roles._ADMIN_) {
+    function setLoanContract(address _loanContract) external onlyRole(_ADMIN_) {
         __loanContract = _loanContract;
     }
 
@@ -67,7 +67,7 @@ contract LoanCollateralVault is
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId
-    ) external onlyRole(Roles._LOAN_CONTRACT_) {
+    ) external onlyRole(LOAN_CONTRACT) {
         _deposit(false, msg.sender, _collateralAddress, _collateralId, _debtId);
     }
 
@@ -125,7 +125,7 @@ contract LoanCollateralVault is
         uint256 _debtId
     )
         external
-        onlyRole(Roles._TREASURER_)
+        onlyRole(_TREASURER_)
         onlyWithdrawalAllowed(_to, _debtId)
         returns (bool)
     {

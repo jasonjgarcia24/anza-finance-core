@@ -2,8 +2,11 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+
+import "../../contracts/domain/LoanContractRoles.sol";
+
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {LibOfficerRoles as Roles, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
 import {Test, LoanContractDeployer, LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractTestDeployment is LoanContractDeployer {
@@ -15,38 +18,36 @@ contract LoanContractTestDeployment is LoanContractDeployer {
 
 contract LoanContractTestAccessControl is LoanContractDeployer {
     function testHasRole() public {
-        assertTrue(loanContract.hasRole(Roles._ADMIN_, admin));
-        assertTrue(
-            loanContract.hasRole(Roles._TREASURER_, address(loanTreasurer))
-        );
-        assertTrue(loanContract.hasRole(Roles._COLLECTOR_, collector));
+        assertTrue(loanContract.hasRole(_ADMIN_, admin));
+        assertTrue(loanContract.hasRole(_TREASURER_, address(loanTreasurer)));
+        assertTrue(loanContract.hasRole(_COLLECTOR_, collector));
     }
 
     function testDoesNotHaveRole() public {
-        assertFalse(loanContract.hasRole(Roles._ADMIN_, treasurer));
-        assertFalse(loanContract.hasRole(Roles._ADMIN_, collector));
+        assertFalse(loanContract.hasRole(_ADMIN_, treasurer));
+        assertFalse(loanContract.hasRole(_ADMIN_, collector));
 
-        assertFalse(loanContract.hasRole(Roles._TREASURER_, admin));
-        assertFalse(loanContract.hasRole(Roles._TREASURER_, collector));
+        assertFalse(loanContract.hasRole(_TREASURER_, admin));
+        assertFalse(loanContract.hasRole(_TREASURER_, collector));
 
-        assertFalse(loanContract.hasRole(Roles._COLLECTOR_, admin));
-        assertFalse(loanContract.hasRole(Roles._COLLECTOR_, treasurer));
+        assertFalse(loanContract.hasRole(_COLLECTOR_, admin));
+        assertFalse(loanContract.hasRole(_COLLECTOR_, treasurer));
     }
 
     function testGrantRole() public {
         vm.startPrank(admin);
 
         vm.expectEmit(true, true, true, true);
-        emit RoleGranted(Roles._ADMIN_, alt_account, admin);
-        loanContract.grantRole(Roles._ADMIN_, alt_account);
+        emit RoleGranted(_ADMIN_, alt_account, admin);
+        loanContract.grantRole(_ADMIN_, alt_account);
 
         vm.expectEmit(true, true, true, true);
-        emit RoleGranted(Roles._TREASURER_, alt_account, admin);
-        loanContract.grantRole(Roles._TREASURER_, alt_account);
+        emit RoleGranted(_TREASURER_, alt_account, admin);
+        loanContract.grantRole(_TREASURER_, alt_account);
 
         vm.expectEmit(true, true, true, true);
-        emit RoleGranted(Roles._COLLECTOR_, alt_account, admin);
-        loanContract.grantRole(Roles._COLLECTOR_, alt_account);
+        emit RoleGranted(_COLLECTOR_, alt_account, admin);
+        loanContract.grantRole(_COLLECTOR_, alt_account);
 
         vm.stopPrank();
     }
@@ -54,38 +55,38 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
     function testCannotGrantRole() public {
         // Fail call from treasurer
         vm.startPrank(treasurer);
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, treasurer));
-        loanContract.grantRole(Roles._ADMIN_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, treasurer));
+        loanContract.grantRole(_ADMIN_, alt_account);
 
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, treasurer));
-        loanContract.grantRole(Roles._TREASURER_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, treasurer));
+        loanContract.grantRole(_TREASURER_, alt_account);
 
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, treasurer));
-        loanContract.grantRole(Roles._COLLECTOR_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, treasurer));
+        loanContract.grantRole(_COLLECTOR_, alt_account);
         vm.stopPrank();
 
         // Fail call from collector
         vm.startPrank(collector);
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, collector));
-        loanContract.grantRole(Roles._ADMIN_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, collector));
+        loanContract.grantRole(_ADMIN_, alt_account);
 
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, collector));
-        loanContract.grantRole(Roles._TREASURER_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, collector));
+        loanContract.grantRole(_TREASURER_, alt_account);
 
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, collector));
-        loanContract.grantRole(Roles._COLLECTOR_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, collector));
+        loanContract.grantRole(_COLLECTOR_, alt_account);
         vm.stopPrank();
 
         // Fail call from alt_account
         vm.startPrank(alt_account);
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, alt_account));
-        loanContract.grantRole(Roles._ADMIN_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, alt_account));
+        loanContract.grantRole(_ADMIN_, alt_account);
 
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, alt_account));
-        loanContract.grantRole(Roles._TREASURER_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, alt_account));
+        loanContract.grantRole(_TREASURER_, alt_account);
 
-        vm.expectRevert(__getCheckRoleFailMsg(Roles._ADMIN_, alt_account));
-        loanContract.grantRole(Roles._COLLECTOR_, alt_account);
+        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, alt_account));
+        loanContract.grantRole(_COLLECTOR_, alt_account);
         vm.stopPrank();
     }
 

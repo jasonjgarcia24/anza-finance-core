@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "hardhat/console.sol";
 
 import "./domain/LoanContractFIRIntervals.sol";
+import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -15,7 +16,7 @@ import "./interfaces/ILoanCodec.sol";
 import "./interfaces/ILoanManager.sol";
 import "./interfaces/ILoanCollateralVault.sol";
 import "./interfaces/IAnzaToken.sol";
-import {LibOfficerRoles as Roles, LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
+import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 
 contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     using Address for address payable;
@@ -47,11 +48,11 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         __loanCollateralVault = ILoanCollateralVault(_loanCollateralVault);
         __anzaToken = IAnzaToken(_anzaToken);
 
-        _setRoleAdmin(Roles._ADMIN_, Roles._ADMIN_);
-        _setRoleAdmin(Roles._LOAN_CONTRACT_, Roles._ADMIN_);
-        _setRoleAdmin(Roles._DEBT_STOREFRONT_, Roles._ADMIN_);
-        _grantRole(Roles._ADMIN_, msg.sender);
-        _grantRole(Roles._LOAN_CONTRACT_, _loanContract);
+        _setRoleAdmin(_ADMIN_, _ADMIN_);
+        _setRoleAdmin(LOAN_CONTRACT, _ADMIN_);
+        _setRoleAdmin(DEBT_STOREFRONT, _ADMIN_);
+        _grantRole(_ADMIN_, msg.sender);
+        _grantRole(LOAN_CONTRACT, _loanContract);
     }
 
     modifier debtUpdater(uint256 _debtId) {
@@ -85,7 +86,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
 
     function depositFunds(
         address _account
-    ) external payable onlyRole(Roles._LOAN_CONTRACT_) nonReentrant {
+    ) external payable onlyRole(LOAN_CONTRACT) nonReentrant {
         withdrawableBalance[_account] += msg.value;
 
         emit Deposited(type(uint256).max, _account, msg.value);
@@ -173,7 +174,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     )
         external
         payable
-        onlyRole(Roles._DEBT_STOREFRONT_)
+        onlyRole(DEBT_STOREFRONT)
         onlyActiveLoan(_debtId)
         debtUpdater(_debtId)
         returns (bool _results)

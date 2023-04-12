@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "../contracts/domain/LoanContractRoles.sol";
+
 import {ILoanCollateralVault} from "../contracts/interfaces/ILoanCollateralVault.sol";
 import {ILoanCollateralVaultEvents} from "./interfaces/ILoanCollateralVaultEvents.t.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 import {console, LoanContractSubmitted} from "./LoanContract.t.sol";
 
 contract LoanCollateralVaultUnitTest is
@@ -32,21 +33,15 @@ contract LoanCollateralVaultUnitTest is
      * to the following accounts:
      *  - _ADMIN_: admin
      *  - _TREASURER_: loanTreasurer
-     *  - _LOAN_CONTRACT_: loanContract
+     *  - LOAN_CONTRACT: loanContract
      */
     function testHasRole() public {
-        assertTrue(loanCollateralVault.hasRole(Roles._ADMIN_, admin));
+        assertTrue(loanCollateralVault.hasRole(_ADMIN_, admin));
         assertTrue(
-            loanCollateralVault.hasRole(
-                Roles._TREASURER_,
-                address(loanTreasurer)
-            )
+            loanCollateralVault.hasRole(_TREASURER_, address(loanTreasurer))
         );
         assertTrue(
-            loanCollateralVault.hasRole(
-                Roles._LOAN_CONTRACT_,
-                address(loanContract)
-            )
+            loanCollateralVault.hasRole(LOAN_CONTRACT, address(loanContract))
         );
     }
 
@@ -74,21 +69,14 @@ contract LoanCollateralVaultUnitTest is
 
         // DENY :: Try admin
         vm.startPrank(admin);
-        vm.expectRevert(
-            bytes(getAccessControlFailMsg(Roles._TREASURER_, admin))
-        );
+        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, admin)));
         loanCollateralVault.withdraw(admin, _debtId);
         vm.stopPrank();
 
         // DENY :: Try loan contract
         vm.startPrank(address(loanContract));
         vm.expectRevert(
-            bytes(
-                getAccessControlFailMsg(
-                    Roles._TREASURER_,
-                    address(loanContract)
-                )
-            )
+            bytes(getAccessControlFailMsg(_TREASURER_, address(loanContract)))
         );
         loanCollateralVault.withdraw(address(loanContract), _debtId);
         vm.stopPrank();
@@ -98,7 +86,7 @@ contract LoanCollateralVaultUnitTest is
         vm.expectRevert(
             bytes(
                 getAccessControlFailMsg(
-                    Roles._TREASURER_,
+                    _TREASURER_,
                     address(loanCollateralVault)
                 )
             )
@@ -117,9 +105,7 @@ contract LoanCollateralVaultUnitTest is
     function testFuzzWithdrawDenied(address _sender) public {
         uint256 _debtId = loanContract.totalDebts() - 1;
 
-        vm.expectRevert(
-            bytes(getAccessControlFailMsg(Roles._TREASURER_, _sender))
-        );
+        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, _sender)));
 
         vm.startPrank(_sender);
         loanCollateralVault.withdraw(borrower, _debtId);
@@ -139,9 +125,7 @@ contract LoanCollateralVaultUnitTest is
         vm.stopPrank();
 
         vm.startPrank(admin);
-        vm.expectRevert(
-            bytes(getAccessControlFailMsg(Roles._LOAN_CONTRACT_, admin))
-        );
+        vm.expectRevert(bytes(getAccessControlFailMsg(LOAN_CONTRACT, admin)));
         demoToken.safeTransferFrom(
             borrower,
             address(loanCollateralVault),
@@ -159,7 +143,7 @@ contract LoanCollateralVaultUnitTest is
         vm.expectRevert(
             bytes(
                 getAccessControlFailMsg(
-                    Roles._LOAN_CONTRACT_,
+                    LOAN_CONTRACT,
                     address(loanCollateralVault)
                 )
             )
@@ -180,10 +164,7 @@ contract LoanCollateralVaultUnitTest is
         vm.startPrank(address(loanTreasurer));
         vm.expectRevert(
             bytes(
-                getAccessControlFailMsg(
-                    Roles._LOAN_CONTRACT_,
-                    address(loanTreasurer)
-                )
+                getAccessControlFailMsg(LOAN_CONTRACT, address(loanTreasurer))
             )
         );
         demoToken.safeTransferFrom(
@@ -229,9 +210,7 @@ contract LoanCollateralVaultUnitTest is
         vm.stopPrank();
 
         vm.startPrank(_sender);
-        vm.expectRevert(
-            bytes(getAccessControlFailMsg(Roles._LOAN_CONTRACT_, _sender))
-        );
+        vm.expectRevert(bytes(getAccessControlFailMsg(LOAN_CONTRACT, _sender)));
         demoToken.safeTransferFrom(
             borrower,
             address(loanCollateralVault),
