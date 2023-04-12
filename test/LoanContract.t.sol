@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "../contracts/domain/LoanContractRoles.sol";
+
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
@@ -12,7 +14,6 @@ import {ILoanCodec} from "../contracts/interfaces/ILoanCodec.sol";
 import {ILoanTreasurey} from "../contracts/interfaces/ILoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
-import {LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractTerms as Terms} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractConstants, LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers, LibLoanContractPackMappings, LibLoanContractStandardErrors} from "../contracts/libraries/LibLoanContractConstants.sol";
 import {Utils, Setup} from "./Setup.t.sol";
@@ -113,7 +114,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.deal(_account, 1 ether);
         vm.startPrank(_account);
         vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(Roles._ADMIN_, _account))
+            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
         );
         loanContract.setLoanTreasurer(address(loanTreasurer));
         vm.stopPrank();
@@ -162,7 +163,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.deal(_account, 1 ether);
         vm.startPrank(_account);
         vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(Roles._ADMIN_, _account))
+            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
         );
         loanContract.setAnzaToken(address(anzaToken));
         vm.stopPrank();
@@ -199,7 +200,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.deal(_account, 1 ether);
         vm.startPrank(_account);
         vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(Roles._ADMIN_, _account))
+            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
         );
         loanContract.setMaxRefinances(15);
         vm.stopPrank();
@@ -231,9 +232,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
 
         // Expect to fail for access control
         vm.startPrank(admin);
-        vm.expectRevert(
-            bytes(getAccessControlFailMsg(Roles._TREASURER_, admin))
-        );
+        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, admin)));
         loanContract.updateLoanState(_debtId);
         vm.stopPrank();
 

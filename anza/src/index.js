@@ -14,9 +14,9 @@ root.render(
       <Routes>
         <Route path='/' element={<App />}>
           <Route path='borrowing' element={<Borrowing />} />
-          <Route path='lending' element={<Lending />} />
+          {/* <Route path='lending' element={<Lending />} />
           <Route path='borrowerLoans' element={<BorrowerLoans />} />
-          <Route path='sponsoredLoans' element={<LenderLoans />} />
+          <Route path='sponsoredLoans' element={<LenderLoans />} /> */}
           <Route
             path='*'
             element={

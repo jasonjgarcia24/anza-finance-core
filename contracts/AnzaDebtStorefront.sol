@@ -8,7 +8,7 @@ import "./interfaces/IAnzaDebtStorefront.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ILoanCollateralVault.sol";
-import {LibOfficerRoles as Roles, LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
+import {LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
 
 contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
     /* ------------------------------------------------ *

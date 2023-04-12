@@ -26,28 +26,26 @@ contract LoanManager is ILoanManager, LoanCodec, LoanAccessController {
 
     function setLoanTreasurer(
         address _loanTreasurer
-    ) external onlyRole(Roles._ADMIN_) {
+    ) external onlyRole(_ADMIN_) {
         __loanTreasurer = ILoanTreasurey(_loanTreasurer);
     }
 
     function setAnzaToken(
         address _anzaTokenAddress
-    ) external onlyRole(Roles._ADMIN_) {
+    ) external onlyRole(_ADMIN_) {
         _anzaToken = IAnzaToken(_anzaTokenAddress);
     }
 
     function setMaxRefinances(
         uint256 _maxRefinances
-    ) external onlyRole(Roles._ADMIN_) {
+    ) external onlyRole(_ADMIN_) {
         maxRefinances = _maxRefinances <= 255 ? _maxRefinances : 2008;
     }
 
     /*
      * @dev Updates loan state.
      */
-    function updateLoanState(
-        uint256 _debtId
-    ) external onlyRole(Roles._TREASURER_) {
+    function updateLoanState(uint256 _debtId) external onlyRole(_TREASURER_) {
         if (!checkLoanActive(_debtId)) {
             console.log("Inactive loan: %s", _debtId);
             revert InactiveLoanState();

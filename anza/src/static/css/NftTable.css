@@ -5,4 +5,10 @@ a {
 .table-available-nfts,
 .table-lending-nfts {
     margin: 0 auto;
+    width: 100%;
+    /* background-color: orange; */
+}
+
+.loan-term-text {
+    width: 80%;
 }

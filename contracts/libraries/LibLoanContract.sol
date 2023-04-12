@@ -4,16 +4,16 @@ pragma solidity ^0.8.7;
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 import {LibLoanContractPackMappings as PackMappings} from "./LibLoanContractConstants.sol";
 
-library LibOfficerRoles {
-    bytes32 public constant _ADMIN_ = keccak256("ADMIN");
-    bytes32 public constant _FACTORY_ = keccak256("FACTORY");
-    bytes32 public constant _LOAN_CONTRACT_ = keccak256("LOAN_CONTRACT");
-    bytes32 public constant _OWNER_ = keccak256("OWNER");
-    bytes32 public constant _TREASURER_ = keccak256("TREASURER");
-    bytes32 public constant _COLLECTOR_ = keccak256("COLLECTOR");
-    bytes32 public constant _DEBT_STOREFRONT_ = keccak256("DEBT_STOREFRONT");
-    bytes32 public constant _CLOSED_BIN_ = keccak256("CLOSED_BIN");
-}
+// library LibOfficerRoles {
+//     bytes32 public constant _ADMIN_ = keccak256("ADMIN");
+//     bytes32 public constant _FACTORY_ = keccak256("FACTORY");
+//     bytes32 public constant LOAN_CONTRACT = keccak256("LOAN_CONTRACT");
+//     bytes32 public constant _OWNER_ = keccak256("OWNER");
+//     bytes32 public constant _TREASURER_ = keccak256("TREASURER");
+//     bytes32 public constant _COLLECTOR_ = keccak256("COLLECTOR");
+//     bytes32 public constant DEBT_STOREFRONT = keccak256("DEBT_STOREFRONT");
+//     bytes32 public constant CLOSED_BIN = keccak256("CLOSED_BIN");
+// }
 
 library LibLoanContractSigning {
     struct ContractTerms {

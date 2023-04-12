@@ -11,13 +11,11 @@ import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress, getLinkedSubAddress } from '../../utils/addressUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 
-import { 
+import {
     clientReadBorrowerSignedTokensLeveraged as readBorrowerSignedTokensLeveraged
 } from '../../db/clientReadTokensLeveraged';
 
-import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json';
-import abi_LoanContractFactory from '../../artifacts/contracts/social/LoanContractFactory.sol/LoanContractFactory.json';
-import abi_LoanContract from '../../artifacts/contracts/social/interfaces/ILoanContract.sol/ILoanContract.json';
+import abi_LoanContract from '../../artifacts/ILoanContract.sol/ILoanContract.json';
 
 export default function BorrowingPage() {
     const [isPageLoad, setIsPageLoad] = useState(true);
@@ -68,7 +66,7 @@ export default function BorrowingPage() {
             const { ethereum } = window;
 
             if (!!ethereum) {
-                const accounts = await ethereum.request({ method: 'eth_requestAccounts'});
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
                 setCurrentAccount(accounts[0]);
 
                 ethereum.on('accountsChanged', async (_) => {
@@ -87,7 +85,7 @@ export default function BorrowingPage() {
     const callback__SubmitPayment = async (loanContractAddress) => {
         console.log(loanContractAddress);
     }
-    
+
     /* ---------------------------------------  *
      *        PAGE MODIFIED FUNCTIONS           *
      * ---------------------------------------  */
@@ -117,7 +115,7 @@ export default function BorrowingPage() {
         // Update state variables
         chainId = !!chainId ? chainId : null;
         account = !!account ? account : null;
-        setCurrentChainId (chainId);
+        setCurrentChainId(chainId);
         setCurrentAccount(account);
 
         // set wallet event listeners
@@ -135,16 +133,16 @@ export default function BorrowingPage() {
      *           FRONTEND RENDERING             *
      * ---------------------------------------  */
     const renderNftTable = async (account, chainId) => {
-        if (!account) { return [null, { address: null, id: null}]; }
+        if (!account) { return [null, { address: null, id: null }]; }
 
         const loanContracts = await readBorrowerSignedTokensLeveraged(account);
         if (!loanContracts.length) { return; }
 
         const { ethereum } = window;
         const provider = new ethers.providers.Web3Provider(ethereum);
-        const signer = provider.getSigner(account);    
+        const signer = provider.getSigner(account);
         const loanElements = [];
-        
+
         loanElements.push(
             await Promise.all(
                 Object.keys(loanContracts).map(async (i) => {
@@ -161,7 +159,7 @@ export default function BorrowingPage() {
                             <td key={`borrower-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-borrower-${i}`}>{getLinkedSubAddress(loanContracts[i].borrowerAddress, chainId)}</td>
                             <td key={`lender-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-lender-${i}`}>{getLinkedSubAddress(loanContracts[i].lenderAddress, chainId)}</td>
                             <td key={`address-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-address-${i}`}>{getLinkedSubAddress(loanContracts[i].tokenContractAddress, chainId)}</td>
-                            <td key={`tokenId-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`}  id={`id-tokenId-${i}`}>{loanContracts[i].tokenId}</td>
+                            <td key={`tokenId-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-tokenId-${i}`}>{loanContracts[i].tokenId}</td>
                             <td key={`loanContract-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-loanContract-${i}`}>{getLinkedSubAddress(loanContracts[i].ownerAddress, chainId)}</td>
                             <td key={`principal-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-principal-${i}`}>{`${ethers.utils.formatEther(loanContracts[i].principal)} ETH`}</td>
                             <td key={`fixedInterestRate-${loanContracts[i].tokenContractAddress}-${loanContracts[i].tokenId}`} id={`id-fixedInterestRate-${i}`}>{loanContracts[i].fixedInterestRate}</td>
@@ -187,8 +185,8 @@ export default function BorrowingPage() {
                 })
             )
         );
-        
-        const leveragedNftsTable = (    
+
+        const leveragedNftsTable = (
             <form className='form-table form-table-lending-nfts' name='form-table-lending-nfts'>
                 <table className='table-lending-nfts'>
                     <thead><tr>
@@ -220,10 +218,10 @@ export default function BorrowingPage() {
         <main style={{ padding: '1rem 0' }}>
             <div className='buttongroup buttongroup-header'>
                 <div className='button button-network'>{getNetworkName(currentChainId)}</div>
-            {!!currentAccount
-                ? (<div className='button button-ethereum button-connected'>{getSubAddress(currentAccount)}</div>)
-                : (<div className='button button-ethereum button-connect-wallet' onClick={callback__ConnectWallet}>Connect Wallet</div>)
-            }
+                {!!currentAccount
+                    ? (<div className='button button-ethereum button-connected'>{getSubAddress(currentAccount)}</div>)
+                    : (<div className='button button-ethereum button-connect-wallet' onClick={callback__ConnectWallet}>Connect Wallet</div>)
+                }
             </div>
             <div className='container container-table container-table-available-nfts'>
                 <h2>Active Loans</h2>

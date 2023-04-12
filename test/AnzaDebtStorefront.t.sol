@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "../contracts/domain/LoanContractRoles.sol";
+
 import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
 import {console, LoanContractSubmitted} from "./LoanContract.t.sol";
 import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
-import {LibLoanContractSigning as Signing, LibOfficerRoles as Roles} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractStates as States} from "../contracts/libraries/LibLoanContractConstants.sol";
 
 contract AnzaDebtStorefrontUnitTest is
@@ -22,10 +24,7 @@ contract AnzaDebtStorefrontUnitTest is
         );
 
         vm.startPrank(admin);
-        loanTreasurer.grantRole(
-            Roles._DEBT_STOREFRONT_,
-            address(anzaDebtStorefront)
-        );
+        loanTreasurer.grantRole(DEBT_STOREFRONT, address(anzaDebtStorefront));
         vm.stopPrank();
     }
 
