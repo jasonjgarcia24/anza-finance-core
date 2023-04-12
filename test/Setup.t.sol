@@ -151,19 +151,19 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         );
 
         // Set LoanContract access control roles
-        loanContract.grantRole(_TREASURER_, address(loanTreasurer));
-        loanContract.grantRole(_COLLECTOR_, collector);
+        loanContract.grantRole(TREASURER, address(loanTreasurer));
+        loanContract.grantRole(COLLECTOR, collector);
 
         // Set LoanCollateralVault access control roles
         loanCollateralVault.setLoanContract(address(loanContract));
 
         loanCollateralVault.grantRole(LOAN_CONTRACT, address(loanContract));
 
-        loanCollateralVault.grantRole(_TREASURER_, address(loanTreasurer));
+        loanCollateralVault.grantRole(TREASURER, address(loanTreasurer));
 
         // Set AnzaToken access control roles
         anzaToken.grantRole(LOAN_CONTRACT, address(loanContract));
-        anzaToken.grantRole(_TREASURER_, address(loanTreasurer));
+        anzaToken.grantRole(TREASURER, address(loanTreasurer));
 
         // Set AnzaToken address
         loanContract.setLoanTreasurer(address(loanTreasurer));

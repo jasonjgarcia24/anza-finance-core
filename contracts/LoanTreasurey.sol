@@ -48,10 +48,10 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         __loanCollateralVault = ILoanCollateralVault(_loanCollateralVault);
         __anzaToken = IAnzaToken(_anzaToken);
 
-        _setRoleAdmin(_ADMIN_, _ADMIN_);
-        _setRoleAdmin(LOAN_CONTRACT, _ADMIN_);
-        _setRoleAdmin(DEBT_STOREFRONT, _ADMIN_);
-        _grantRole(_ADMIN_, msg.sender);
+        _setRoleAdmin(ADMIN, ADMIN);
+        _setRoleAdmin(LOAN_CONTRACT, ADMIN);
+        _setRoleAdmin(DEBT_STOREFRONT, ADMIN);
+        _grantRole(ADMIN, msg.sender);
         _grantRole(LOAN_CONTRACT, _loanContract);
     }
 

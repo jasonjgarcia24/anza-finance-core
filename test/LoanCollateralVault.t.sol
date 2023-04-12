@@ -31,14 +31,14 @@ contract LoanCollateralVaultUnitTest is
     /*
      * @note LoanCollateralVault should have the following roles assigned
      * to the following accounts:
-     *  - _ADMIN_: admin
-     *  - _TREASURER_: loanTreasurer
+     *  - ADMIN: admin
+     *  - TREASURER: loanTreasurer
      *  - LOAN_CONTRACT: loanContract
      */
     function testHasRole() public {
-        assertTrue(loanCollateralVault.hasRole(_ADMIN_, admin));
+        assertTrue(loanCollateralVault.hasRole(ADMIN, admin));
         assertTrue(
-            loanCollateralVault.hasRole(_TREASURER_, address(loanTreasurer))
+            loanCollateralVault.hasRole(TREASURER, address(loanTreasurer))
         );
         assertTrue(
             loanCollateralVault.hasRole(LOAN_CONTRACT, address(loanContract))
@@ -69,14 +69,14 @@ contract LoanCollateralVaultUnitTest is
 
         // DENY :: Try admin
         vm.startPrank(admin);
-        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, admin)));
+        vm.expectRevert(bytes(getAccessControlFailMsg(TREASURER, admin)));
         loanCollateralVault.withdraw(admin, _debtId);
         vm.stopPrank();
 
         // DENY :: Try loan contract
         vm.startPrank(address(loanContract));
         vm.expectRevert(
-            bytes(getAccessControlFailMsg(_TREASURER_, address(loanContract)))
+            bytes(getAccessControlFailMsg(TREASURER, address(loanContract)))
         );
         loanCollateralVault.withdraw(address(loanContract), _debtId);
         vm.stopPrank();
@@ -85,10 +85,7 @@ contract LoanCollateralVaultUnitTest is
         vm.startPrank(address(loanCollateralVault));
         vm.expectRevert(
             bytes(
-                getAccessControlFailMsg(
-                    _TREASURER_,
-                    address(loanCollateralVault)
-                )
+                getAccessControlFailMsg(TREASURER, address(loanCollateralVault))
             )
         );
         loanCollateralVault.withdraw(address(loanCollateralVault), _debtId);
@@ -105,7 +102,7 @@ contract LoanCollateralVaultUnitTest is
     function testFuzzWithdrawDenied(address _sender) public {
         uint256 _debtId = loanContract.totalDebts() - 1;
 
-        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, _sender)));
+        vm.expectRevert(bytes(getAccessControlFailMsg(TREASURER, _sender)));
 
         vm.startPrank(_sender);
         loanCollateralVault.withdraw(borrower, _debtId);
