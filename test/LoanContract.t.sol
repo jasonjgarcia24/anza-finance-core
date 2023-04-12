@@ -113,9 +113,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Disallow
         vm.deal(_account, 1 ether);
         vm.startPrank(_account);
-        vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
-        );
+        vm.expectRevert(bytes(Utils.getAccessControlFailMsg(ADMIN, _account)));
         loanContract.setLoanTreasurer(address(loanTreasurer));
         vm.stopPrank();
 
@@ -162,9 +160,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Disallow
         vm.deal(_account, 1 ether);
         vm.startPrank(_account);
-        vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
-        );
+        vm.expectRevert(bytes(Utils.getAccessControlFailMsg(ADMIN, _account)));
         loanContract.setAnzaToken(address(anzaToken));
         vm.stopPrank();
 
@@ -199,9 +195,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Disallow
         vm.deal(_account, 1 ether);
         vm.startPrank(_account);
-        vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
-        );
+        vm.expectRevert(bytes(Utils.getAccessControlFailMsg(ADMIN, _account)));
         loanContract.setMaxRefinances(15);
         vm.stopPrank();
 
@@ -232,7 +226,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
 
         // Expect to fail for access control
         vm.startPrank(admin);
-        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, admin)));
+        vm.expectRevert(bytes(getAccessControlFailMsg(TREASURER, admin)));
         loanContract.updateLoanState(_debtId);
         vm.stopPrank();
 

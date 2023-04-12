@@ -25,11 +25,11 @@ contract LoanCollateralVault is
     mapping(uint256 => Collateral) private __collaterals;
 
     constructor(address _anzaToken) {
-        _setRoleAdmin(_ADMIN_, _ADMIN_);
-        _setRoleAdmin(LOAN_CONTRACT, _ADMIN_);
-        _setRoleAdmin(_TREASURER_, _ADMIN_);
+        _setRoleAdmin(ADMIN, ADMIN);
+        _setRoleAdmin(LOAN_CONTRACT, ADMIN);
+        _setRoleAdmin(TREASURER, ADMIN);
 
-        _grantRole(_ADMIN_, msg.sender);
+        _grantRole(ADMIN, msg.sender);
 
         anzaToken = _anzaToken;
     }
@@ -59,7 +59,7 @@ contract LoanCollateralVault is
         return __collaterals[_debtId];
     }
 
-    function setLoanContract(address _loanContract) external onlyRole(_ADMIN_) {
+    function setLoanContract(address _loanContract) external onlyRole(ADMIN) {
         __loanContract = _loanContract;
     }
 
@@ -125,7 +125,7 @@ contract LoanCollateralVault is
         uint256 _debtId
     )
         external
-        onlyRole(_TREASURER_)
+        onlyRole(TREASURER)
         onlyWithdrawalAllowed(_to, _debtId)
         returns (bool)
     {
