@@ -110,26 +110,27 @@ contract LoanContract is
             abi.encodePacked(totalDebts)
         );
 
-        // // Transfer funds to borrower's account in treasurey
-        // (bool _success, ) = _loanTreasurer.call{value: _principal}(
-        //     abi.encodeWithSignature("depositFunds(address)", _borrower)
-        // );
-        // if (!_success) revert FailedFundsTransfer();
+        // Transfer funds to borrower's account in treasurey
+        (bool _success, ) = _loanTreasurer.call{value: _principal}(
+            abi.encodeWithSignature("depositFunds(address)", _borrower)
+        );
+        if (!_success) revert FailedFundsTransfer();
 
-        // // Mint debt ALC debt tokens for lender
-        // _anzaToken.mint(
-        //     msg.sender,
-        //     totalDebts * 2,
-        //     _principal,
-        //     _collateralToken.tokenURI(_collateralId),
-        //     abi.encodePacked(_borrower, totalDebts)
-        // );
+        // Mint debt ALC debt tokens for lender
+        _anzaToken.mint(
+            msg.sender,
+            totalDebts * 2,
+            _principal,
+            _collateralToken.tokenURI(_collateralId),
+            abi.encodePacked(_borrower, totalDebts)
+        );
 
         // Emit initialization event
         emit LoanContractInitialized(
             _collateralAddress,
             _collateralId,
-            totalDebts
+            totalDebts,
+            _principal
         );
 
         // Setup for next debt ID
@@ -235,7 +236,8 @@ contract LoanContract is
         emit LoanContractInitialized(
             _collateral.collateralAddress,
             _collateral.collateralId,
-            totalDebts
+            totalDebts,
+            _principal
         );
 
         // Setup for next debt ID

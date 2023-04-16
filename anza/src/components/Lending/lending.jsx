@@ -188,7 +188,7 @@ export default function LendingPage() {
         //     { gasLimit: 10000000 }
         //     // { value: response["principal"], gasLimit: 1000000 }
         // );
-        console.log(response["principal"]);
+        console.log(`Lending principal: ${response["principal"]}`);
 
         const tx = await LoanContract.connect(signer)[
             "initLoanContract(bytes32,address,uint256,bytes)"
@@ -200,8 +200,13 @@ export default function LendingPage() {
             { value: response["principal"], gasLimit: 1000000 }
         );
 
-        const receipt = await tx.wait();
-        console.log(receipt);
+        try {
+            const receipt = await tx.wait();
+            console.log(receipt);
+        } catch (err) {
+            console.log(err.message);
+            console.log(err.code)
+        }
 
         // const [_collateralAddress, _collateralId, _debtId] = await listenerLoanContractInit(tx, LoanContract);
 

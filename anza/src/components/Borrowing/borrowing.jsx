@@ -163,7 +163,7 @@ export default function BorrowingPage() {
 
         // Collect loan terms and signature for loan initialization
         const contractTerms = getContractTerms(currentToken.address, currentToken.id);
-        console.log(contractTerms);
+        console.log(`Borrower principal: ${contractTerms["principal"]}`);
         const { packedContractTerms, collateralNonce, signedMessage } = await getSignedMessage(
             signer,
             currentChainId,
