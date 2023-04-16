@@ -1,10 +1,9 @@
 require('dotenv').config();
 const config = require('./config');
-const cors = require('cors');
-const mysql = require('mysql');
-const express = require('express');
-// const fileUpload = require('express-fileupload');
+const mysql = require('mysql2');
 const bodyParser = require('body-parser');
+const cors = require('cors');
+const express = require('express');
 const app = express();
 
 const { dbCreatePortfolio: createPortfolio } = require('./crud/portfolio/dbCreatePortfolio');
@@ -16,11 +15,27 @@ const { dbUpdateLeveraged: updateLeveraged } = require('./crud/leveraged/dbUpdat
 const { dbReadJoin: readJoin } = require('./crud/join/dbReadJoin');
 const { dbCreateDebt: createDebt } = require('./crud/debt/dbCreateDebt');
 
+const {
+    dbSelectProposedLoanTerms: selectProposedLoanTerms,
+    dbSelectAtProposedLoanTerms: selectAtProposedLoanTerms,
+    dbSelectAvailableLoanTerms: selectAvailableLoanTerms,
+    dbSelectApprovedLoanTerms: selectApprovedLoanTerms
+} = require('./crud/debt/server_selectLoanTerms');
+const { dbInsertProposedLoanTerms: insertLoanTerms } = require('./crud/debt/server_insertProposedLoanTerms');
+
 const db = mysql.createPool({
     host: config.DATABASE.HOST,
+    port: config.DATABASE.PORT,
     user: config.DATABASE.USER,
-    password: process.env.DB_PASSWORD,
-    database: 'nft'
+    password: process.env.ANZA_DB_PASSWORD,
+    database: config.DATABASE.DATABASE
+});
+
+// test the connection
+db.getConnection((err, connection) => {
+    if (err) throw err;
+    console.log('Connected to MySQL Server!');
+    connection.release();
 });
 
 app.use(cors());
@@ -38,6 +53,11 @@ readPortfolio(app, db);
 updatePortfolio(app, db);
 
 // nft.debt CRUD
+selectProposedLoanTerms(app, db);
+selectAtProposedLoanTerms(app, db);
+selectAvailableLoanTerms(app, db);
+selectApprovedLoanTerms(app, db);
+insertLoanTerms(app, db);
 createDebt(app, db);
 
 // nft.leveraged and nft.portfolio RUD

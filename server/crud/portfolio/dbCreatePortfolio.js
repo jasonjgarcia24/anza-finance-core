@@ -5,17 +5,17 @@ const dbCreatePortfolio = (app, db) => {
         const portfolioVals = req.body.portfolioVals;
 
         query = `INSERT INTO nft.portfolio (
-            primaryKey,
-            ownerAddress, 
-            tokenContractAddress, 
-            tokenId
-        ) VALUES`;
+                primaryKey,
+                ownerAddress, 
+                tokenContractAddress, 
+                tokenId
+            ) VALUES`;
 
         queryUpdate = ` ON DUPLICATE KEY UPDATE
-            primaryKey=VALUES(primaryKey),
-            ownerAddress=VALUES(ownerAddress),
-            tokenContractAddress=VALUES(tokenContractAddress),
-            tokenId=VALUES(tokenId)`;
+                primaryKey=VALUES(primaryKey),
+                ownerAddress=VALUES(ownerAddress),
+                tokenContractAddress=VALUES(tokenContractAddress),
+                tokenId=VALUES(tokenId)`;
 
         portfolioVals.forEach((_) => { query += '(?),'; });
         query = query.replace(/(^,)|(,$)/g, "") + `${queryUpdate};`;

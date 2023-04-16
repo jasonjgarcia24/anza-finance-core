@@ -9,12 +9,12 @@ const dbCreateDebt = (app, db) => {
         const quantity = req.body.quantity;
 
         query = `INSERT INTO nft.debt(
-            primaryKey,
-            cid,
-            debtTokenContractAddress,
-            debtTokenId,
-            quantity
-        ) VALUES (?, ?, ?, ?, ?);`;
+                primaryKey,
+                cid,
+                debtTokenContractAddress,
+                debtTokenId,
+                quantity
+            ) VALUES (?, ?, ?, ?, ?);`;
 
         db.query(
             query,

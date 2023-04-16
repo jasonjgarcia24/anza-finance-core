@@ -8,8 +8,8 @@ const dbUpdateLeveraged = (app, db) => {
         console.log(primaryKey)
 
         query = `UPDATE nft.leveraged
-            SET lenderAddress=?, lenderSigned=?
-            WHERE primaryKey=?;`
+                SET lenderAddress=?, lenderSigned=?
+                WHERE primaryKey=?;`
 
         db.query(
             query,

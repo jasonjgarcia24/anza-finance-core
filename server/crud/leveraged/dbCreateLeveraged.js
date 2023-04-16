@@ -15,32 +15,32 @@ const dbCreateLeveraged = (app, db) => {
         const lenderSigned = req.body.lenderSigned;
 
         query = `INSERT INTO nft.leveraged(
-            primaryKey,
-            ownerAddress,
-            borrowerAddress,
-            tokenContractAddress,
-            tokenId,
-            lenderAddress,
-            principal,
-            fixedInterestRate,
-            duration,
-            borrowerSigned,
-            lenderSigned
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+                primaryKey,
+                ownerAddress,
+                borrowerAddress,
+                tokenContractAddress,
+                tokenId,
+                lenderAddress,
+                principal,
+                fixedInterestRate,
+                duration,
+                borrowerSigned,
+                lenderSigned
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
 
         db.query(
             query,
             [
                 primaryKey,
-                ownerAddress, 
-                borrowerAddress, 
-                tokenContractAddress, 
-                tokenId, 
-                lenderAddress, 
-                principal, 
-                fixedInterestRate, 
-                duration, 
-                borrowerSigned, 
+                ownerAddress,
+                borrowerAddress,
+                tokenContractAddress,
+                tokenId,
+                lenderAddress,
+                principal,
+                fixedInterestRate,
+                duration,
+                borrowerSigned,
                 lenderSigned
             ],
             (err, _) => { console.log(err); }

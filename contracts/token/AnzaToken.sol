@@ -7,7 +7,7 @@ import "../domain/LoanContractRoles.sol";
 
 import "./AnzaERC1155URIStorage.sol";
 import "../interfaces/IAnzaToken.sol";
-import "../interfaces/ILoanCollateralVault.sol";
+import "../interfaces/ICollateralVault.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
@@ -25,12 +25,12 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     mapping(uint256 => uint256) private _totalSupply;
 
     constructor() {
-        _setRoleAdmin(ADMIN, ADMIN);
-        _setRoleAdmin(LOAN_CONTRACT, ADMIN);
-        _setRoleAdmin(TREASURER, ADMIN);
-        _setRoleAdmin(DEBT_STOREFRONT, ADMIN);
+        _setRoleAdmin(_ADMIN_, _ADMIN_);
+        _setRoleAdmin(_LOAN_CONTRACT_, _ADMIN_);
+        _setRoleAdmin(_TREASURER_, _ADMIN_);
+        _setRoleAdmin(_DEBT_STOREFRONT_, _ADMIN_);
 
-        _grantRole(ADMIN, msg.sender);
+        _grantRole(_ADMIN_, msg.sender);
     }
 
     function supportsInterface(
@@ -97,7 +97,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         address _to,
         uint256 _debtId,
         bytes memory _data
-    ) external onlyRole(TREASURER) {
+    ) external onlyRole(_TREASURER_) {
         uint256 _id = borrowerTokenId(_debtId);
 
         if (exists(_id)) {
@@ -110,7 +110,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     function mint(
         uint256 _debtId,
         uint256 _amount
-    ) external onlyRole(TREASURER) {
+    ) external onlyRole(_TREASURER_) {
         // Mint ALC debt tokens
         _mint(lenderOf(_debtId), lenderTokenId(_debtId), _amount, "");
     }
@@ -121,7 +121,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         uint256 _amount,
         string calldata _collateralURI,
         bytes memory _data
-    ) external onlyRole(LOAN_CONTRACT) {
+    ) external onlyRole(_LOAN_CONTRACT_) {
         bytes32 _tokenAdminRole = keccak256(_data);
 
         /* Lender Token */
@@ -165,7 +165,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         _burnBatch(account, ids, values);
     }
 
-    function burnBorrowerToken(uint256 _debtId) external onlyRole(TREASURER) {
+    function burnBorrowerToken(uint256 _debtId) external onlyRole(_TREASURER_) {
         uint256 _borrowerToken = borrowerTokenId(_debtId);
 
         if (!exists(_borrowerToken)) return;
@@ -180,7 +180,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         // This token is recallable by the Anza treasurer
         // account
         return
-            hasRole(TREASURER, _operator) ||
+            hasRole(_TREASURER_, _operator) ||
             super.isApprovedForAll(_account, _operator);
     }
 
@@ -260,7 +260,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         // Only allow treasurer to grant/revoke access control.
         // This is necessary to allow a single account to recall
         // the collateral upon full repayment.
-        _setRoleAdmin(_newTokenAdminRole, TREASURER);
+        _setRoleAdmin(_newTokenAdminRole, _TREASURER_);
 
         // Grant the borrower's address token admin access control.
         _grantRole(_newTokenAdminRole, _newBorrower);

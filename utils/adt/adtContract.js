@@ -27,7 +27,7 @@ const mintAnzaDebtToken = async (
 
     const [, debtTokenAddress, debtTokenId,] = await listenerDebtTokenIssued(tx, LoanTreasurey);
     [debtTokenURI,] = await listenerURI(tx, AnzaDebtToken);
-    
+
     return [debtTokenAddress, debtTokenId.toString(), debtTokenURI];
 }
 

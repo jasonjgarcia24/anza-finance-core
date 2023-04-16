@@ -1,268 +1,272 @@
-// import '../../static/css/LendingPage.css';
-// import '../../static/css/NftTable.css';
-// import React, { useEffect, useState } from 'react';
-// import { ethers } from 'ethers';
+import '../../static/css/LendingPage.css';
+import '../../static/css/NftTable.css';
+import React, { useEffect, useState } from 'react';
+import { ethers } from 'ethers';
+import config from '../../config.json';
 
-// import { listenerDeposited } from '../../utils/events/listenersAContractTreasurer';
+import { NftTable } from '../Common/common';
 
-// import { setPageTitle } from '../../utils/titleUtils';
-// import { getSubAddress, getLinkedSubAddress, getSubCid } from '../../utils/addressUtils';
-// import { getNetworkName } from '../../utils/networkUtils';
-// import {
-//     checkIfWalletIsConnected as checkConnection,
-//     connectWallet
-// } from '../../utils/window/ethereumConnect';
+import { listenerDeposited } from '../../utils/events/listenersAContractTreasurer';
+import { listenerLoanContractInit } from '../../utils/events/listenersLoanContractFactory';
 
-// import { 
-//     clientCreateTokensPortfolio as createTokensPortfolio
-//  } from '../../db/clientCreateTokensPortfolio';
-//  import {
-//     clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus
-//  } from '../../db/clientUpdateTokensPortfolio';
-//  import {
-//     clientUpdateLeveragedLenderSigned as updateLeveragedLenderSigned
-//  } from '../../db/clientUpdateTokensLeveraged';
-//  import {
-//     clientReadNonSponsoredTokensLeveragedContract as readNonSponsoredTokensLeveragedContract
-//  } from '../../db/clientReadTokensLeveraged';
+import { setPageTitle } from '../../utils/titleUtils';
+import { getSubAddress, getLinkedSubAddress, getSubCid } from '../../utils/addressUtils';
+import { getNetworkName } from '../../utils/networkUtils';
+import { getOwnedTokens } from '../../utils/blockchainIndexingUtils';
+import {
+    checkIfWalletIsConnected as checkConnection,
+    connectWallet
+} from '../../utils/window/ethereumConnect';
 
-//  import {
-//     clientReadNonSponsoredTokensJoin as readNonSponsoredTokensJoin
-//  } from '../../db/clientReadJoin';
+import { selectAvailableLoanTerms, selectApprovedLoanTerms } from '../../db/client_selectLoanTerms';
+import {
+    clientCreateTokensPortfolio as createTokensPortfolio
+} from '../../db/clientCreateTokensPortfolio';
+import {
+    clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus
+} from '../../db/clientUpdateTokensPortfolio';
+import {
+    clientUpdateLeveragedLenderSigned as updateLeveragedLenderSigned
+} from '../../db/clientUpdateTokensLeveraged';
+import {
+    clientReadNonSponsoredTokensLeveragedContract as readNonSponsoredTokensLeveragedContract
+} from '../../db/clientReadTokensLeveraged';
 
-// import { clientReadLeveragedTokensPortfolio as readLeveragedTokensPortfolio } from '../../db/clientReadTokensPortfolio';
-// import { updateTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
+import {
+    clientReadNonSponsoredTokensJoin as readNonSponsoredTokensJoin
+} from '../../db/clientReadJoin';
 
-// import abi_ERC721 from '../../artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json';
-// import abi_LoanContract from '../../artifacts/contracts/social/LoanContract.sol/LoanContract.json';
+import { clientReadLeveragedTokensPortfolio as readLeveragedTokensPortfolio } from '../../db/clientReadTokensPortfolio';
+import { updateTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
 
-// export default function LendingPage() {
-//     const [isPageLoad, setIsPageLoad] = useState(true);
-//     const [newContract, setNewContract] = useState('');
-//     const [currentAccount, setCurrentAccount] = useState(null);
-//     const [currentChainId, setCurrentChainId] = useState(null);
-//     const [currentLeveragedNftsTable, setCurrentLeveragedNftsTable] = useState(null);
-//     const [currentToken, setCurrentToken] = useState({ address: null, id: null });
+import abi_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
+import abi_ERC721 from '../../artifacts/ERC721.sol/ERC721.json';
 
-//     useEffect(() => {
-//         console.log('Page loading...');
-//         if (!!isPageLoad) pageLoadSequence();
-//         // eslint-disable-next-line
-//     }, []);
+export default function LendingPage() {
+    const [isPageLoad, setIsPageLoad] = useState(true);
+    const [newContract, setNewContract] = useState('');
+    const [currentAccount, setCurrentAccount] = useState(null);
+    const [currentChainId, setCurrentChainId] = useState(null);
+    const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState(null);
+    const [currentToken, setCurrentToken] = useState({ address: null, id: null });
 
-//     useEffect(() => {
-//         if (!!currentToken.address) tokenSelectionChangeSequence();
-//     }, [currentToken]);
+    useEffect(() => {
+        console.log('Page loading...');
+        if (!!isPageLoad) pageLoadSequence();
+        // eslint-disable-next-line
+    }, []);
 
-//     useEffect(() => {
-//         if (!!newContract) newContractSponsoredSequence();
-//     }, [newContract])
+    useEffect(() => {
+        if (!!currentToken.address) tokenSelectionChangeSequence();
+    }, [currentToken]);
 
-//     /* ---------------------------------------  *
-//      *       EVENT SEQUENCE FUNCTIONS           *
-//      * ---------------------------------------  */
-//     const pageLoadSequence = async () => {
-//         /**
-//          * Sequence when page is loaded.
-//          */
+    useEffect(() => {
+        if (!!newContract) newContractSponsoredSequence();
+    }, [newContract])
 
-//         // Set page title
-//         setPageTitle('Lending');
+    /* ---------------------------------------  *
+     *       EVENT SEQUENCE FUNCTIONS           *
+     * ---------------------------------------  */
+    const pageLoadSequence = async () => {
+        /**
+         * Sequence when page is loaded.
+         */
 
-//         // Set account and network
-//         const { account, chainId } = await checkIfWalletIsConnected();
-//         console.log(`Account: ${account}`);
-//         console.log(`Network: ${chainId}`);
+        // Set page title
+        setPageTitle('Lending');
 
-//         // Render table of potential NFTs
-//         const [leveragedNftsTable, token] = await renderNftTable(account, chainId);
-//         setCurrentToken({ address: token.address, id: token.id });
-//         setCurrentLeveragedNftsTable(leveragedNftsTable);
+        // Set account and network
+        const { account, chainId } = await checkIfWalletIsConnected();
+        console.log(`Account: ${account}`);
+        console.log(`Network: ${chainId}`);
 
-//         setIsPageLoad(false);
-//     }
+        // Update nft.available table
+        const ownedNfts = await getOwnedTokens(chainId, account);
+        const loanProposals = await getLoanProposals(ownedNfts)
 
-//     const tokenSelectionChangeSequence = async () => {
-//         // Update current selection
-//         // console.log(`Token change seq: ${currentToken.address}-${currentToken.id}`);
-//     }
+        // Render table of potential NFTs
+        const [proposedLoansTable, token] = await NftTable({
+            account: account,
+            nfts: loanProposals,
+            type: "sponsor",
+            useDefaultTerms: false,
+            disabledOverriden: true,
+        });
 
-//     const newContractSponsoredSequence = async () => {
-//         console.log('new contract created!');
+        token !== null && setCurrentToken({ address: token.address, id: token.id });
+        proposedLoansTable !== null && setCurrentLoanProposalsTable(proposedLoansTable);
 
-//         await updatePortfolioLeveragedStatus(newContract, 'Y');
+        setIsPageLoad(false);
+    }
 
-//         // Render table of potential NFTs
-//         const [leveragedNftsTable, _] = await renderNftTable(currentAccount);
-//         setCurrentLeveragedNftsTable(leveragedNftsTable);
+    const tokenSelectionChangeSequence = async () => {
+        // Update current selection
+        // console.log(`Token change seq: ${currentToken.address}-${currentToken.id}`);
+    }
 
-//         window.location.reload();
+    const newContractSponsoredSequence = async () => {
+        // console.log('new contract created!');
 
-//         setNewContract('');
-//     }
+        // await updatePortfolioLeveragedStatus(newContract, 'Y');
 
-//     /* ---------------------------------------  *
-//      *           FRONTEND CALLBACKS             *
-//      * ---------------------------------------  */
-//     const callback__ConnectWallet = async () => {
-//         /**
-//          * Connect ethereum wallet callback
-//          */
-//         const account = await connectWallet();
-//         setCurrentAccount(account);
-//     }
+        // // Render table of potential NFTs
+        // const [leveragedNftsTable, _] = await renderNftTable(currentAccount);
+        // setCurrentLoanProposalsTable(leveragedNftsTable);
 
-//     const callback__SponsorLoanContract = async () => {
-//         // Get signer
-//         const { ethereum } = window;
-//         const provider = new ethers.providers.Web3Provider(ethereum);
-//         const signer = provider.getSigner(currentAccount);
+        // window.location.reload();
 
-//         // const element = document.getElementsByName(`${currentAccount}-tokens`);
-//         const { 
-//             ownerAddress: loanContractAddress,
-//             principal
-//         } = await readNonSponsoredTokensLeveragedContract(currentToken.address, currentToken.id);
+        // setNewContract('');
+    }
 
-//         // Get contract
-//         const LoanContract = new ethers.Contract(
-//             loanContractAddress,
-//             abi_LoanContract.abi,
-//             provider
-//         );
+    /* ---------------------------------------  *
+     *           FRONTEND CALLBACKS             *
+     * ---------------------------------------  */
+    const callback__ConnectWallet = async () => {
+        /**
+         * Connect ethereum wallet callback
+         */
+        const account = await connectWallet();
+        setCurrentAccount(account);
+    }
 
-//         // Set lender
-//         const tx = await LoanContract.connect(signer).setLender({ value: principal});
-//         await tx.wait();
+    const callback__SponsorLoanContract = async () => {
+        const { ethereum } = window;
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner(currentAccount);
 
-//         const [payee, weiAmount] = await listenerDeposited(tx, LoanContract);
-//         console.log('SPONSORED!')
+        // Get approved terms
+        const elements = document.getElementsByClassName(`radio-sponsor`);
+        const selectedProposal = Object.values(elements).filter((element) => element.checked)[0].value;
 
-//         const primaryKey = `${currentToken.address}_${currentToken.id}`;
-//         updateLeveragedLenderSigned(primaryKey, currentAccount, 'Y');
+        let terms = {
+            "is_fixed": undefined,
+            "principal": undefined,
+            "fixed_interest_rate": undefined,
+            "fir_interval": undefined,
+            "grace_period": undefined,
+            "duration": undefined,
+            "commital": undefined,
+            "terms_expiry": undefined,
+            "lender_royalties": undefined
+        };
 
-//         setNewContract(primaryKey);
-//     }
+        const [collateralAddress, collateralId, , index] = selectedProposal.split("-");
 
-//     const callback__SetContractParams = async ({ target }) => {
-//         const [tokenAddress, tokenId] = target.value.split('-');
-//         if (currentToken.address === tokenAddress && currentToken.id === tokenId) {
-//             // Do nothing
-//             return;
-//         }
+        Object.keys(terms).map((type) => {
+            terms[type] = document.getElementsByName(`${type}-${collateralAddress}-${collateralId}-${index}`)[0].value;
+            terms[type] = (type !== "principal") ? terms[type] : ethers.utils.parseEther(terms[type]).toString();
+            terms[type] = (type !== "is_fixed") ? terms[type] : (terms[type] === "Y") ? 1 : 0;
+        });
 
-//         setCurrentToken({ address: tokenAddress, id: tokenId });
-//     }
-    
-//     /* ---------------------------------------  *
-//      *        PAGE MODIFIED FUNCTIONS           *
-//      * ---------------------------------------  */
-//     const checkIfWalletIsConnected = async () => {
-//         /**
-//          * Connect wallet state change function.
-//          */
-//         const { account, chainId } = await checkConnection();
-//         setCurrentChainId (chainId);
-//         setCurrentAccount(account);
+        terms["collateral"] = `${collateralAddress}_${collateralId}`
 
-//         // set wallet event listeners
-//         const { ethereum } = window;
-//         ethereum.on('accountsChanged', () => window.location.reload());
-//         ethereum.on('chainChanged', () => window.location.reload());
+        const response = (await selectApprovedLoanTerms(
+            terms["collateral"],
+            terms["is_fixed"],
+            terms["principal"],
+            terms["fixed_interest_rate"],
+            terms["fir_interval"],
+            terms["grace_period"],
+            terms["duration"],
+            terms["commital"],
+            terms["terms_expiry"],
+            terms["lender_royalties"]
+        ))[0];
 
-//         return { account, chainId };
-//     }
+        console.log(response);
 
-//     /* ---------------------------------------  *
-//      *       DATABASE MODIFIER FUNCTIONS        *
-//      * ---------------------------------------  */
+        // Set LoanContractFactory to operator
+        const LoanContract = new ethers.Contract(
+            config[currentChainId].LoanContract,
+            abi_LoanContract.abi,
+            signer
+        );
 
-//     /* ---------------------------------------  *
-//      *           FRONTEND RENDERING             *
-//      * ---------------------------------------  */
-//     const renderNftTable = async (account, chainId) => {
-//         if (!account) { return [null, { address: null, id: null}]; }
+        // const tx = await LoanContract.connect(signer)[
+        //     "initLoanContract()"
+        // ](
+        //     { gasLimit: 10000000 }
+        //     // { value: response["principal"], gasLimit: 1000000 }
+        // );
+        console.log(response["principal"]);
 
-//         // const tokens = config.DEMO_TOKENS[account.toLowerCase()];
-//         const tokens = await readNonSponsoredTokensJoin(account);
-//         if (!tokens.length) { return [null, { address: null, id: null}]; }
+        const tx = await LoanContract.connect(signer)[
+            "initLoanContract(bytes32,address,uint256,bytes)"
+        ](
+            response["packed_contract_terms"],
+            collateralAddress,
+            collateralId,
+            response["signed_message"],
+            { value: response["principal"], gasLimit: 1000000 }
+        );
 
-//         const tokenElements = [];
-        
-//         tokenElements.push(
-//             Object.keys(tokens).map((i) => {
-//                 return (
-//                     <tr key={`tr-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}>
-//                         <td key={`td-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-radio-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}><input
-//                             type="radio"
-//                             key={`radio-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
-//                             name={`${account}-tokens`}
-//                             value={`${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}
-//                             defaultChecked={i==='0'}
-//                             onClick={callback__SetContractParams}
-//                         /></td>
-//                         <td key={`borrower-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-borrower-${i}`}>{getLinkedSubAddress(tokens[i].borrowerAddress, chainId)}</td>
-//                         <td key={`address-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-address-${i}`}>{getLinkedSubAddress(tokens[i].tokenContractAddress, chainId)}</td>
-//                         <td key={`tokenId-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`}  id={`id-tokenId-${i}`}>{tokens[i].tokenId}</td>
-//                         <td key={`loanContract-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-loanContract-${i}`}>{getLinkedSubAddress(tokens[i].ownerAddress, chainId)}</td>
-//                         <td key={`principal-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-principal-${i}`}>{`${ethers.utils.formatEther(tokens[i].principal)} ETH`}</td>
-//                         <td key={`fixedInterestRate-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-fixedInterestRate-${i}`}>{tokens[i].fixedInterestRate}</td>
-//                         <td key={`duration-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-duration-${i}`}>{tokens[i].duration}</td>
-//                         <td key={`debtCid-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtCid-${i}`}><a href={tokens[i].cid} target="_blank">{tokens[i].cid && getSubCid(tokens[i].cid) || "-"}</a></td>
-//                         <td key={`debtContract-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtContract-${i}`}>{tokens[i].cid && getLinkedSubAddress(tokens[i].debtTokenContractAddress, chainId) || "-"}</td>
-//                         <td key={`debtTokenId-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtTokenId-${i}`}>{tokens[i].cid && tokens[i].debtTokenId || "-"}</td>
-//                         <td key={`debtQuantity-${tokens[i].tokenContractAddress}-${tokens[i].tokenId}`} id={`id-debtQuantity-${i}`}>{tokens[i].cid && tokens[i].quantity + " ADT" || "-"}</td>
-//                     </tr>
-//                 )
-//             })
-//         );
-        
-//         const leveragedNftsTable = (    
-//             <form className='form-table form-table-lending-nfts' name='form-table-lending-nfts'>
-//                 <table className='table-lending-nfts'>
-//                     <thead><tr>
-//                         <th></th>
-//                         <th><label>Borrower</label></th>
-//                         <th><label>Token Contract</label></th>
-//                         <th><label>Token ID</label></th>
-//                         <th><label>Loan Contract</label></th>
-//                         <th><label>Principal</label></th>
-//                         <th><label>Interest Rate</label></th>
-//                         <th><label>Duration</label></th>
-//                         <th><label>Debt Ref</label></th>
-//                         <th><label>Debt Contract</label></th>
-//                         <th><label>Debt Token ID</label></th>
-//                         <th><label>Debt Quantity</label></th>
-//                     </tr></thead>
-//                     <tbody>
-//                         {tokenElements}
-//                     </tbody>
-//                 </table>
-//             </form>
-//         );
+        const receipt = await tx.wait();
+        console.log(receipt);
 
-//         return [leveragedNftsTable, { address: tokens[0].tokenContractAddress, id: tokens[0].tokenId }];
-//     }
+        // const [_collateralAddress, _collateralId, _debtId] = await listenerLoanContractInit(tx, LoanContract);
 
-//     /* ---------------------------------------  *
-//      *         BORROWERPAGE.JSX RETURN           *
-//      * ---------------------------------------  */
-//     return (
-//         <main style={{ padding: '1rem 0' }}>
-//             <div className='buttongroup buttongroup-header'>
-//                 <div className='button button-network'>{getNetworkName(currentChainId)}</div>
-//             {!!currentAccount
-//                 ? (<div className='button button-ethereum button-connected'>{getSubAddress(currentAccount)}</div>)
-//                 : (<div className='button button-ethereum button-connect-wallet' onClick={callback__ConnectWallet}>Connect Wallet</div>)
-//             }
-//             </div>
-//             <div className='container container-table container-table-available-nfts'>
-//                 <h2>Available for Sponsor</h2>
-//                 <div className='buttongroup buttongroup-body'>
-//                     <div className='button button-body' onClick={callback__SponsorLoanContract}>Sponsor Loan</div>
-//                 </div>
-//                 {currentLeveragedNftsTable}
-//             </div>
-//         </main>
-//     );
-// }
+        // console.log(`collateralAddress: ${_collateralAddress}`);
+        // console.log(`collateralId: ${_collateralId}`);
+        // console.log(`debtId: ${_debtId}`);
+
+        // setNewContract(primaryKey);
+    }
+
+    /* ---------------------------------------  *
+     *        PAGE MODIFIED FUNCTIONS           *
+     * ---------------------------------------  */
+    const checkIfWalletIsConnected = async () => {
+        /**
+         * Connect wallet state change function.
+         */
+        const { account, chainId } = await checkConnection();
+        setCurrentChainId(chainId);
+        setCurrentAccount(account);
+
+        // set wallet event listeners
+        const { ethereum } = window;
+        ethereum.on('accountsChanged', () => window.location.reload());
+        ethereum.on('chainChanged', () => window.location.reload());
+
+        return { account, chainId };
+    }
+
+    /* ---------------------------------------  *
+     *           DATABASE FUNCTIONS             *
+     * ---------------------------------------  */
+    const getLoanProposals = async (ownedNfts) => {
+        const collateral = [];
+
+        Object.keys(ownedNfts).map((i) => {
+            collateral.push(
+                `${ownedNfts[i].contract.address.toLowerCase()}_${ownedNfts[i].tokenId}`
+            )
+        });
+
+        const data = await selectAvailableLoanTerms(collateral);
+
+        return data;
+    }
+
+    /* ---------------------------------------  *
+     *         BORROWERPAGE.JSX RETURN           *
+     * ---------------------------------------  */
+    return (
+        <main style={{ padding: '1rem 0' }}>
+            <div className='buttongroup buttongroup-header'>
+                <div className='button button-network'>{getNetworkName(currentChainId)}</div>
+                {!!currentAccount
+                    ? (<div className='button button-ethereum button-connected'>{getSubAddress(currentAccount)}</div>)
+                    : (<div className='button button-ethereum button-connect-wallet' onClick={callback__ConnectWallet}>Connect Wallet</div>)
+                }
+            </div>
+            <div className='container container-table container-table-available-nfts'>
+                <h2>Available for Sponsor</h2>
+                <div className='buttongroup buttongroup-body'>
+                    <div className='button button-body' onClick={callback__SponsorLoanContract}>Sponsor Loan</div>
+                </div>
+                {currentLoanProposalsTable}
+            </div>
+        </main>
+    );
+}

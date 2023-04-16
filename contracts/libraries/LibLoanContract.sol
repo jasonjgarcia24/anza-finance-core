@@ -1,24 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "../abdk-libraries-solidity/ABDKMath64x64.sol";
-import {LibLoanContractPackMappings as PackMappings} from "./LibLoanContractConstants.sol";
+import "../domain/LoanContractFIRIntervals.sol";
+import "../domain/LoanContractTermMaps.sol";
 
-// library LibOfficerRoles {
-//     bytes32 public constant ADMIN = keccak256("ADMIN");
-//     bytes32 public constant FACTORY = keccak256("FACTORY");
-//     bytes32 public constant LOAN_CONTRACT = keccak256("LOAN_CONTRACT");
-//     bytes32 public constant OWNER = keccak256("OWNER");
-//     bytes32 public constant TREASURER = keccak256("TREASURER");
-//     bytes32 public constant COLLECTOR = keccak256("COLLECTOR");
-//     bytes32 public constant DEBT_STOREFRONT = keccak256("DEBT_STOREFRONT");
-//     bytes32 public constant CLOSED_BIN = keccak256("CLOSED_BIN");
-// }
+import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 
 library LibLoanContractSigning {
     struct ContractTerms {
-        uint8 firInterval;
+        uint256 firInterval;
         uint8 fixedInterestRate;
+        uint8 isFixed;
+        uint8 commital;
         uint128 principal;
         uint32 gracePeriod;
         uint32 duration;
@@ -27,20 +20,29 @@ library LibLoanContractSigning {
     }
 
     function createContractTerms(
-        ContractTerms memory _terms
+        uint8 _firInterval,
+        uint8 _fixedInterestRate,
+        uint8 _isFixed,
+        uint8 _commital,
+        // uint128 _principal,
+        uint32 _gracePeriod,
+        uint32 _duration,
+        uint32 _termsExpiry,
+        uint8 _lenderRoyalties
     ) public pure returns (bytes32 _contractTerms) {
-        uint8 _firInterval = _terms.firInterval;
-        uint8 _fixedInterestRate = _terms.fixedInterestRate;
-        uint128 _principal = _terms.principal;
-        uint32 _gracePeriod = _terms.gracePeriod;
-        uint32 _duration = _terms.duration;
-        uint32 _termsExpiry = _terms.termsExpiry;
-        uint8 _lenderRoyalties = _terms.lenderRoyalties;
-
         assembly {
             mstore(0x20, _firInterval)
             mstore(0x1f, _fixedInterestRate)
-            mstore(0x1d, _principal)
+
+            switch eq(_isFixed, 0x01)
+            case true {
+                mstore(0x1e, add(0x65, _commital))
+            }
+            case false {
+                mstore(0x1e, _commital)
+            }
+
+            // mstore(0x1d, _principal)
             mstore(0x0d, _gracePeriod)
             mstore(0x09, _duration)
             mstore(0x05, _termsExpiry)
@@ -51,6 +53,7 @@ library LibLoanContractSigning {
     }
 
     function recoverSigner(
+        uint256 _principal,
         bytes32 _contractTerms,
         address _collateralAddress,
         uint256 _collateralId,
@@ -60,6 +63,7 @@ library LibLoanContractSigning {
         bytes32 _message = prefixed(
             keccak256(
                 abi.encode(
+                    _principal,
                     _contractTerms,
                     _collateralAddress,
                     _collateralId,
@@ -71,6 +75,25 @@ library LibLoanContractSigning {
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
         return ecrecover(_message, v, r, s);
+    }
+
+    function hashMessage(
+        uint256 _principal,
+        bytes32 _contractTerms,
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _collateralNonce
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    _principal,
+                    _contractTerms,
+                    _collateralAddress,
+                    _collateralId,
+                    _collateralNonce
+                )
+            );
     }
 
     function prefixed(bytes32 _hash) public pure returns (bytes32) {
@@ -105,7 +128,7 @@ library LibLoanContractTerms {
     function loanState(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanState) {
-        uint256 _loanStateMap = PackMappings._LOAN_STATE_MAP_;
+        uint256 _loanStateMap = _LOAN_STATE_MAP_;
         uint8 __loanState;
 
         assembly {
@@ -120,8 +143,8 @@ library LibLoanContractTerms {
     function firInterval(
         bytes32 _contractTerms
     ) public pure returns (uint256 _firInterval) {
-        uint256 _firIntervalPos = PackMappings._FIR_INTERVAL_POS_;
-        uint256 _firIntervalMap = PackMappings._FIR_INTERVAL_MAP_;
+        uint256 _firIntervalPos = _FIR_INTERVAL_POS_;
+        uint256 _firIntervalMap = _FIR_INTERVAL_MAP_;
         uint8 __firInterval;
 
         assembly {
@@ -139,8 +162,8 @@ library LibLoanContractTerms {
     function fixedInterestRate(
         bytes32 _contractTerms
     ) public pure returns (uint256 _fixedInterestRate) {
-        uint256 _firPos = PackMappings._FIR_POS_;
-        uint256 _firMap = PackMappings._FIR_MAP_;
+        uint256 _firPos = _FIR_POS_;
+        uint256 _firMap = _FIR_MAP_;
         bytes32 __fixedInterestRate;
 
         assembly {
@@ -161,8 +184,8 @@ library LibLoanContractTerms {
     function loanStart(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanStart) {
-        uint256 _loanStartPos = PackMappings._LOAN_START_POS_;
-        uint256 _loanStartMap = PackMappings._LOAN_START_MAP_;
+        uint256 _loanStartPos = _LOAN_START_POS_;
+        uint256 _loanStartMap = _LOAN_START_MAP_;
         uint32 __loanStart;
 
         assembly {
@@ -180,8 +203,8 @@ library LibLoanContractTerms {
     function loanDuration(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanDuration) {
-        uint256 _loanDurationPos = PackMappings._LOAN_DURATION_POS_;
-        uint256 _loanDurationMap = PackMappings._LOAN_DURATION_MAP_;
+        uint256 _loanDurationPos = _LOAN_DURATION_POS_;
+        uint256 _loanDurationMap = _LOAN_DURATION_MAP_;
         uint32 __loanDuration;
 
         assembly {
@@ -199,10 +222,10 @@ library LibLoanContractTerms {
     function loanClose(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanClose) {
-        uint256 _loanStartPos = PackMappings._LOAN_START_POS_;
-        uint256 _loanStartMap = PackMappings._LOAN_START_MAP_;
-        uint256 _loanDurationPos = PackMappings._LOAN_DURATION_POS_;
-        uint256 _loanDurationMap = PackMappings._LOAN_DURATION_MAP_;
+        uint256 _loanStartPos = _LOAN_START_POS_;
+        uint256 _loanStartMap = _LOAN_START_MAP_;
+        uint256 _loanDurationPos = _LOAN_DURATION_POS_;
+        uint256 _loanDurationMap = _LOAN_DURATION_MAP_;
         uint32 __loanClose;
 
         assembly {
@@ -220,8 +243,8 @@ library LibLoanContractTerms {
     function lenderRoyalties(
         bytes32 _contractTerms
     ) public pure returns (uint256 _lenderRoyalties) {
-        uint256 _lenderRoyaltiesPos = PackMappings._LENDER_ROYALTIES_POS_;
-        uint256 _lenderRoyaltiesMap = PackMappings._LENDER_ROYALTIES_MAP_;
+        uint256 _lenderRoyaltiesPos = _LENDER_ROYALTIES_POS_;
+        uint256 _lenderRoyaltiesMap = _LENDER_ROYALTIES_MAP_;
 
         assembly {
             _lenderRoyalties := shr(
@@ -234,8 +257,8 @@ library LibLoanContractTerms {
     function activeLoanCount(
         bytes32 _contractTerms
     ) public pure returns (uint256 _activeLoanCount) {
-        uint256 _loanCountPos = PackMappings._LOAN_COUNT_POS_;
-        uint256 _loanCountMap = PackMappings._LOAN_COUNT_MAP_;
+        uint256 _loanCountPos = _LOAN_COUNT_POS_;
+        uint256 _loanCountMap = _LOAN_COUNT_MAP_;
         uint8 __activeLoanCount;
 
         assembly {

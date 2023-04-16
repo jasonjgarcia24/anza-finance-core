@@ -7,86 +7,44 @@ import "./domain/LoanContractFIRIntervals.sol";
 import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/ILoanTreasurey.sol";
-import "./interfaces/ILoanContract.sol";
-import "./interfaces/ILoanCodec.sol";
-import "./interfaces/ILoanManager.sol";
-import "./interfaces/ILoanCollateralVault.sol";
-import "./interfaces/IAnzaToken.sol";
+import "./access/TreasureyAccessController.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
+contract LoanTreasurey is
+    ILoanTreasurey,
+    TreasureyAccessController,
+    ReentrancyGuard
+{
     using Address for address payable;
 
-    /* ------------------------------------------------ *
-     *              Priviledged Accounts                *
-     * ------------------------------------------------ */
-    ILoanContract private immutable __loanContract;
-    ILoanCodec private immutable __loanCodec;
-    ILoanManager private immutable __loanManager;
-    ILoanCollateralVault private immutable __loanCollateralVault;
-    IAnzaToken private immutable __anzaToken;
     uint256 public poolBalance;
-
-    /* ------------------------------------------------ *
-     *                    Databases                     *
-     * ------------------------------------------------ */
-    // Mapping from participant to withdrawable balance
     mapping(address => uint256) public withdrawableBalance;
 
-    constructor(
-        address _loanContract,
-        address _loanCollateralVault,
-        address _anzaToken
-    ) {
-        __loanContract = ILoanContract(_loanContract);
-        __loanCodec = ILoanCodec(_loanContract);
-        __loanManager = ILoanManager(_loanContract);
-        __loanCollateralVault = ILoanCollateralVault(_loanCollateralVault);
-        __anzaToken = IAnzaToken(_anzaToken);
-
-        _setRoleAdmin(ADMIN, ADMIN);
-        _setRoleAdmin(LOAN_CONTRACT, ADMIN);
-        _setRoleAdmin(DEBT_STOREFRONT, ADMIN);
-        _grantRole(ADMIN, msg.sender);
-        _grantRole(LOAN_CONTRACT, _loanContract);
-    }
+    constructor() TreasureyAccessController() {}
 
     modifier debtUpdater(uint256 _debtId) {
         updateDebt(_debtId);
-        if (!__loanManager.checkLoanExpired(_debtId)) {
+        if (!_loanManager.checkLoanExpired(_debtId)) {
             _;
-            __loanManager.updateLoanState(_debtId);
+            _loanManager.updateLoanState(_debtId);
         }
     }
 
     modifier onlyActiveLoan(uint256 _debtId) {
-        __loanManager.verifyLoanActive(_debtId);
+        _loanManager.verifyLoanActive(_debtId);
         _;
     }
 
-    function loanContract() external view returns (address) {
-        return address(__loanManager);
-    }
-
-    function loanCollateralVault() external view returns (address) {
-        return address(__loanCollateralVault);
-    }
-
-    function anzaToken() external view returns (address) {
-        return address(__anzaToken);
-    }
-
     function getDebtBalanceOf(uint256 _debtId) external view returns (uint256) {
-        return __anzaToken.totalSupply(_debtId * 2);
+        return _anzaToken.totalSupply(_debtId * 2);
     }
 
     function depositFunds(
         address _account
-    ) external payable onlyRole(LOAN_CONTRACT) nonReentrant {
+    ) external payable onlyRole(_LOAN_CONTRACT_) nonReentrant {
         withdrawableBalance[_account] += msg.value;
 
         emit Deposited(type(uint256).max, _account, msg.value);
@@ -117,7 +75,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         // Therefore, no need to check here.
         if (_payment == 0) revert InvalidFundsTransfer();
 
-        if (!__anzaToken.checkBorrowerOf(_borrower, _debtId))
+        if (!_anzaToken.checkBorrowerOf(_borrower, _debtId))
             revert InvalidParticipant();
 
         _depositPayment(_borrower, _debtId, _payment);
@@ -147,7 +105,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     }
 
     function withdrawCollateral(uint256 _debtId) external returns (bool) {
-        return __loanCollateralVault.withdraw(msg.sender, _debtId);
+        return _loanCollateralVault.withdraw(msg.sender, _debtId);
     }
 
     /*
@@ -174,19 +132,19 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     )
         external
         payable
-        onlyRole(DEBT_STOREFRONT)
+        onlyRole(_DEBT_STOREFRONT_)
         onlyActiveLoan(_debtId)
         debtUpdater(_debtId)
         returns (bool _results)
     {
-        uint256 _balance = __loanContract.debtBalanceOf(_debtId);
+        uint256 _balance = _loanContract.debtBalanceOf(_debtId);
         uint256 _payment = msg.value;
 
         // Transfer collateral
         if (_payment >= _balance) {
             _depositPayment(_purchaser, _debtId, _balance);
 
-            __loanCollateralVault.withdraw(_purchaser, _debtId);
+            _loanCollateralVault.withdraw(_purchaser, _debtId);
 
             withdrawableBalance[_borrower] += _payment - _balance;
         }
@@ -194,7 +152,7 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         else {
             _depositPayment(_purchaser, _debtId, _payment);
 
-            __anzaToken.anzaTransferFrom(_borrower, _purchaser, _debtId, "");
+            _anzaToken.anzaTransferFrom(_borrower, _purchaser, _debtId, "");
         }
 
         _results = true;
@@ -203,27 +161,27 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
     // TODO: Need to revisit to ensure accuracy at larger total debt values
     // (e.g. 10000 * 10**18).
     function updateDebt(uint256 _debtId) public {
-        uint256 _prevCheck = __loanCodec.loanLastChecked(_debtId);
+        uint256 _prevCheck = _loanCodec.loanLastChecked(_debtId);
 
         // Find time intervals passed
-        __loanManager.updateLoanState(_debtId);
+        _loanManager.updateLoanState(_debtId);
 
-        uint256 _firIntervals = __loanCodec.totalFirIntervals(
+        uint256 _firIntervals = _loanCodec.totalFirIntervals(
             _debtId,
-            __loanCodec.loanLastChecked(_debtId) - _prevCheck
+            _loanCodec.loanLastChecked(_debtId) - _prevCheck
         );
 
         // Update debt
         if (_firIntervals > 0) {
-            uint256 _totalDebt = __anzaToken.totalSupply(_debtId * 2);
+            uint256 _totalDebt = _anzaToken.totalSupply(_debtId * 2);
 
             uint256 _updatedDebt = Interest.compoundWithTopoff(
                 _totalDebt,
-                __loanCodec.fixedInterestRate(_debtId),
+                _loanCodec.fixedInterestRate(_debtId),
                 _firIntervals
             );
 
-            __anzaToken.mint(_debtId, _updatedDebt - _totalDebt);
+            _anzaToken.mint(_debtId, _updatedDebt - _totalDebt);
         }
     }
 
@@ -232,26 +190,26 @@ contract LoanTreasurey is ILoanTreasurey, AccessControl, ReentrancyGuard {
         uint256 _debtId,
         uint256 _payment
     ) internal {
-        address _lender = __anzaToken.lenderOf(_debtId);
-        uint256 _balance = __anzaToken.balanceOf(_lender, _debtId * 2);
+        address _lender = _anzaToken.lenderOf(_debtId);
+        uint256 _balance = _anzaToken.balanceOf(_lender, _debtId * 2);
 
         // Update lender's withdrawable balance
         if (_balance > _payment) {
             withdrawableBalance[_lender] += _payment;
 
             // Burn ALC debt token
-            __anzaToken.burn(_lender, _debtId * 2, _payment);
+            _anzaToken.burn(_lender, _debtId * 2, _payment);
         } else {
             withdrawableBalance[_lender] += _balance;
             withdrawableBalance[_payer] += _payment - _balance;
 
             // Burn ALC debt token
-            __anzaToken.burn(_lender, _debtId * 2, _balance);
+            _anzaToken.burn(_lender, _debtId * 2, _balance);
         }
 
         // Conditionally burn replica
-        if (!__loanManager.checkLoanActive(_debtId)) {
-            __anzaToken.burnBorrowerToken(_debtId);
+        if (!_loanManager.checkLoanActive(_debtId)) {
+            _anzaToken.burnBorrowerToken(_debtId);
         }
     }
 }

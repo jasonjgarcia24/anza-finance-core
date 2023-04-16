@@ -3,7 +3,7 @@ pragma solidity ^0.8.7;
 
 import "../contracts/domain/LoanContractRoles.sol";
 
-import {ILoanCollateralVault} from "../contracts/interfaces/ILoanCollateralVault.sol";
+import {ICollateralVault} from "../contracts/interfaces/ICollateralVault.sol";
 import {ILoanCollateralVaultEvents} from "./interfaces/ILoanCollateralVaultEvents.t.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -18,42 +18,42 @@ contract LoanCollateralVaultUnitTest is
     }
 
     /*
-     * @note LoanCollateralVault should be the current owner
+     * @note CollateralVault should be the current owner
      * of the collateralized token.
      */
     function testCollateral() public {
         assertEq(
             IERC721(demoToken).ownerOf(collateralId),
-            address(loanCollateralVault)
+            address(collateralVault)
         );
     }
 
     /*
-     * @note LoanCollateralVault should have the following roles assigned
+     * @note CollateralVault should have the following roles assigned
      * to the following accounts:
-     *  - ADMIN: admin
-     *  - TREASURER: loanTreasurer
-     *  - LOAN_CONTRACT: loanContract
+     *  - _ADMIN_: admin
+     *  - _TREASURER_: loanTreasurer
+     *  - _LOAN_CONTRACT_: loanContract
      */
     function testHasRole() public {
-        assertTrue(loanCollateralVault.hasRole(ADMIN, admin));
+        assertTrue(collateralVault.hasRole(_ADMIN_, admin));
         assertTrue(
-            loanCollateralVault.hasRole(TREASURER, address(loanTreasurer))
+            collateralVault.hasRole(_TREASURER_, address(loanTreasurer))
         );
         assertTrue(
-            loanCollateralVault.hasRole(LOAN_CONTRACT, address(loanContract))
+            collateralVault.hasRole(_LOAN_CONTRACT_, address(loanContract))
         );
     }
 
     /*
-     * @note The LoanCollateralVAult::getCollateral() should return
-     * a ILoanCollateralVault.Collateral struct with the collateralized
+     * @note The CollateralVault::getCollateral() should return
+     * a ICollateralVault.Collateral struct with the collateralized
      * token's address and ID.
      */
     function testGetCollateralAt() public {
         uint256 _debtId = loanContract.totalDebts() - 1;
 
-        ILoanCollateralVault.Collateral memory _collateral = loanCollateralVault
+        ICollateralVault.Collateral memory _collateral = collateralVault
             .getCollateral(_debtId);
 
         assertEq(_collateral.collateralAddress, address(demoToken));
@@ -61,7 +61,7 @@ contract LoanCollateralVaultUnitTest is
     }
 
     /*
-     * @note LoanCollateralVault::withdraw() should only be callable
+     * @note CollateralVault::withdraw() should only be callable
      * from the LoanTreasurey contract.
      */
     function testWithdraw() public {
@@ -69,48 +69,48 @@ contract LoanCollateralVaultUnitTest is
 
         // DENY :: Try admin
         vm.startPrank(admin);
-        vm.expectRevert(bytes(getAccessControlFailMsg(TREASURER, admin)));
-        loanCollateralVault.withdraw(admin, _debtId);
+        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, admin)));
+        collateralVault.withdraw(admin, _debtId);
         vm.stopPrank();
 
         // DENY :: Try loan contract
         vm.startPrank(address(loanContract));
         vm.expectRevert(
-            bytes(getAccessControlFailMsg(TREASURER, address(loanContract)))
+            bytes(getAccessControlFailMsg(_TREASURER_, address(loanContract)))
         );
-        loanCollateralVault.withdraw(address(loanContract), _debtId);
+        collateralVault.withdraw(address(loanContract), _debtId);
         vm.stopPrank();
 
         // DENY :: Try loan collateral vault
-        vm.startPrank(address(loanCollateralVault));
+        vm.startPrank(address(collateralVault));
         vm.expectRevert(
             bytes(
-                getAccessControlFailMsg(TREASURER, address(loanCollateralVault))
+                getAccessControlFailMsg(_TREASURER_, address(collateralVault))
             )
         );
-        loanCollateralVault.withdraw(address(loanCollateralVault), _debtId);
+        collateralVault.withdraw(address(collateralVault), _debtId);
         vm.stopPrank();
 
         // SUCCEED :: Try loan treasurer
         vm.startPrank(address(loanTreasurer));
         vm.expectEmit(true, true, true, true);
         emit WithdrawnCollateral(borrower, address(demoToken), collateralId);
-        loanCollateralVault.withdraw(borrower, _debtId);
+        collateralVault.withdraw(borrower, _debtId);
         vm.stopPrank();
     }
 
     function testFuzzWithdrawDenied(address _sender) public {
         uint256 _debtId = loanContract.totalDebts() - 1;
 
-        vm.expectRevert(bytes(getAccessControlFailMsg(TREASURER, _sender)));
+        vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, _sender)));
 
         vm.startPrank(_sender);
-        loanCollateralVault.withdraw(borrower, _debtId);
+        collateralVault.withdraw(borrower, _debtId);
         vm.stopPrank();
     }
 
     /*
-     * @note LoanCollateralVault::onERC721Received() should only allow
+     * @note CollateralVault::onERC721Received() should only allow
      * ERC721 deposits from the LoanContract.
      */
     function testDeposit() public {
@@ -122,10 +122,10 @@ contract LoanCollateralVaultUnitTest is
         vm.stopPrank();
 
         vm.startPrank(admin);
-        vm.expectRevert(bytes(getAccessControlFailMsg(LOAN_CONTRACT, admin)));
+        vm.expectRevert(bytes(getAccessControlFailMsg(_LOAN_CONTRACT_, admin)));
         demoToken.safeTransferFrom(
             borrower,
-            address(loanCollateralVault),
+            address(collateralVault),
             _testCollateralId,
             ""
         );
@@ -133,21 +133,21 @@ contract LoanCollateralVaultUnitTest is
 
         // DENY :: Try loan collateral vault
         vm.startPrank(borrower);
-        demoToken.approve(address(loanCollateralVault), _testCollateralId);
+        demoToken.approve(address(collateralVault), _testCollateralId);
         vm.stopPrank();
 
-        vm.startPrank(address(loanCollateralVault));
+        vm.startPrank(address(collateralVault));
         vm.expectRevert(
             bytes(
                 getAccessControlFailMsg(
-                    LOAN_CONTRACT,
-                    address(loanCollateralVault)
+                    _LOAN_CONTRACT_,
+                    address(collateralVault)
                 )
             )
         );
         demoToken.safeTransferFrom(
             borrower,
-            address(loanCollateralVault),
+            address(collateralVault),
             _testCollateralId,
             ""
         );
@@ -161,12 +161,12 @@ contract LoanCollateralVaultUnitTest is
         vm.startPrank(address(loanTreasurer));
         vm.expectRevert(
             bytes(
-                getAccessControlFailMsg(LOAN_CONTRACT, address(loanTreasurer))
+                getAccessControlFailMsg(_LOAN_CONTRACT_, address(loanTreasurer))
             )
         );
         demoToken.safeTransferFrom(
             borrower,
-            address(loanCollateralVault),
+            address(collateralVault),
             _testCollateralId,
             ""
         );
@@ -186,14 +186,14 @@ contract LoanCollateralVaultUnitTest is
         );
         demoToken.safeTransferFrom(
             borrower,
-            address(loanCollateralVault),
+            address(collateralVault),
             _testCollateralId,
             ""
         );
         vm.stopPrank();
 
         assertEq(
-            loanCollateralVault.totalCollateral(),
+            collateralVault.totalCollateral(),
             loanContract.totalDebts() + 1
         );
     }
@@ -207,10 +207,12 @@ contract LoanCollateralVaultUnitTest is
         vm.stopPrank();
 
         vm.startPrank(_sender);
-        vm.expectRevert(bytes(getAccessControlFailMsg(LOAN_CONTRACT, _sender)));
+        vm.expectRevert(
+            bytes(getAccessControlFailMsg(_LOAN_CONTRACT_, _sender))
+        );
         demoToken.safeTransferFrom(
             borrower,
-            address(loanCollateralVault),
+            address(collateralVault),
             _testCollateralId,
             abi.encodePacked(address(demoToken))
         );

@@ -24,7 +24,7 @@ contract AnzaDebtStorefrontUnitTest is
         );
 
         vm.startPrank(admin);
-        loanTreasurer.grantRole(DEBT_STOREFRONT, address(anzaDebtStorefront));
+        loanTreasurer.grantRole(_DEBT_STOREFRONT_, address(anzaDebtStorefront));
         vm.stopPrank();
     }
 

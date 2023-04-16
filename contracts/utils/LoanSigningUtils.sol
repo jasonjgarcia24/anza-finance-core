@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "hardhat/console.sol";
+
 abstract contract LoanSigningUtils {
     function _recoverSigner(
+        uint256 _principal,
         bytes32 _contractTerms,
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _collateralNonce,
         bytes memory _signature
-    ) internal pure returns (address) {
+    ) internal view returns (address) {
         bytes32 _message = __prefixed(
             keccak256(
                 abi.encode(
+                    _principal,
                     _contractTerms,
                     _collateralAddress,
                     _collateralId,
@@ -19,6 +23,9 @@ abstract contract LoanSigningUtils {
                 )
             )
         );
+        console.logBytes32(_contractTerms);
+        console.logBytes(_signature);
+        console.logBytes32(_message);
 
         (uint8 v, bytes32 r, bytes32 s) = __splitSignature(_signature);
 

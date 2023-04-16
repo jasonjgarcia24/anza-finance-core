@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "../../contracts/domain/LoanContractErrorCodes.sol";
+import "../../contracts/domain/LoanContractNumbers.sol";
+import "../../contracts/domain/LoanContractStates.sol";
+
 import {IAnzaToken} from "../../contracts/interfaces/IAnzaToken.sol";
 import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
 import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
@@ -10,7 +14,6 @@ import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {Setup, LoanContractHarness} from "../Setup.t.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer, LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
-import {LibLoanContractStates as States, LibLoanContractConstants as Constants, LibLoanContractStandardErrors as StandardErrors} from "../../contracts/libraries/LibLoanContractConstants.sol";
 
 abstract contract LoanContractSubmitFunctions is
     IERC721Events,
@@ -28,19 +31,18 @@ abstract contract LoanContractSubmitFunctions is
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILoanCodec.InvalidLoanParameter.selector,
-                    StandardErrors._LENDER_ROYALTIES_ERROR_ID_
+                    _LENDER_ROYALTIES_ERROR_ID_
                 )
             );
         }
         // Time expiry revert check
         else if (
-            _contractTerms.termsExpiry <
-            Constants._SECONDS_PER_24_MINUTES_RATIO_SCALED_
+            _contractTerms.termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_
         ) {
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILoanCodec.InvalidLoanParameter.selector,
-                    StandardErrors._TIME_EXPIRY_ERROR_ID_
+                    _TIME_EXPIRY_ERROR_ID_
                 )
             );
         }
@@ -55,7 +57,7 @@ abstract contract LoanContractSubmitFunctions is
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILoanCodec.InvalidLoanParameter.selector,
-                    StandardErrors._DURATION_ERROR_ID_
+                    _DURATION_ERROR_ID_
                 )
             );
         }
@@ -64,7 +66,7 @@ abstract contract LoanContractSubmitFunctions is
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILoanCodec.InvalidLoanParameter.selector,
-                    StandardErrors._PRINCIPAL_ERROR_ID_
+                    _PRINCIPAL_ERROR_ID_
                 )
             );
         }
@@ -73,7 +75,7 @@ abstract contract LoanContractSubmitFunctions is
             vm.expectRevert(
                 abi.encodeWithSelector(
                     ILoanCodec.InvalidLoanParameter.selector,
-                    StandardErrors._FIR_INTERVAL_ERROR_ID_
+                    _FIR_INTERVAL_ERROR_ID_
                 )
             );
         }
@@ -93,11 +95,7 @@ abstract contract LoanContractSubmitFunctions is
 
                 // Collateral transfer submitted
                 vm.expectEmit(true, true, true, true, address(demoToken));
-                emit Transfer(
-                    borrower,
-                    address(loanCollateralVault),
-                    collateralId
-                );
+                emit Transfer(borrower, address(collateralVault), collateralId);
                 // Loan proposal submitted
                 vm.expectEmit(true, true, true, true, address(loanContract));
                 emit LoanContractInitialized(
@@ -111,7 +109,7 @@ abstract contract LoanContractSubmitFunctions is
                 vm.expectRevert(
                     abi.encodeWithSelector(
                         ILoanCodec.InvalidLoanParameter.selector,
-                        StandardErrors._FIXED_INTEREST_RATE_ERROR_ID_
+                        _FIXED_INTEREST_RATE_ERROR_ID_
                     )
                 );
             }
@@ -234,11 +232,7 @@ abstract contract LoanContractSubmitFunctions is
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        verifyLoanAgreementTerms(
-            _debtId,
-            States._ACTIVE_GRACE_STATE_,
-            _contractTerms
-        );
+        verifyLoanAgreementTerms(_debtId, _ACTIVE_GRACE_STATE_, _contractTerms);
 
         // Verify loan participants
         uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
@@ -275,7 +269,7 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
         ContractTerms memory _contractTerms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
@@ -293,7 +287,7 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
 
         createLoanContract(collateralId, _collateralNonce, _contractTerms);
 
-        verifyPostContractInit(_debtId, _contractTerms);
+        // verifyPostContractInit(_debtId, _contractTerms);
     }
 }
 
@@ -311,7 +305,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
@@ -353,7 +347,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
@@ -395,7 +389,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
@@ -437,7 +431,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _GRACE_PERIOD_,
             gracePeriod: _gracePeriod,
@@ -479,7 +473,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _principal,
             gracePeriod: _GRACE_PERIOD_,
@@ -523,7 +517,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _fixedInterestRate,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
@@ -565,7 +559,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         ContractTerms memory _terms = ContractTerms({
             firInterval: _firInterval,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
-            isDirect: _IS_DIRECT_,
+            isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,

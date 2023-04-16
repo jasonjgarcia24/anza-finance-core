@@ -5,7 +5,7 @@ import "./LoanManager.sol";
 import "./utils/TypeUtils.sol";
 import "./utils/LoanSigningUtils.sol";
 import "./interfaces/ILoanContract.sol";
-import "./interfaces/ILoanCollateralVault.sol";
+import "./interfaces/ICollateralVault.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 contract LoanContract is
@@ -20,7 +20,7 @@ contract LoanContract is
     // Mapping from collateral to debt ID
     mapping(address => mapping(uint256 => uint256[])) public debtIds;
 
-    constructor(address _collateralVault) LoanManager(_collateralVault) {}
+    constructor() LoanManager() {}
 
     function supportsInterface(
         bytes4 _interfaceId
@@ -63,8 +63,8 @@ contract LoanContract is
      * Input _contractTerms:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
-     *  > 008 - [12..19]   `isDirect` and `commital`
-     *  > 128 - [20..147]  `principal`
+     *  > 008 - [12..19]   `isFixed` and `commital`
+     *  > 008 - [20..27]   `loanCurrency`
      *  > 032 - [148..179] `gracePeriod`
      *  > 032 - [180..211] `duration`
      *  > 032 - [212..243] `termsExpiry`
@@ -79,22 +79,22 @@ contract LoanContract is
         // Validate loan terms
         uint32 _now = _toUint32(block.timestamp);
         uint256 _principal = msg.value;
-
         _validateLoanTerms(_contractTerms, _now, _principal);
 
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
-
         if (
-            _borrower !=
-            _recoverSigner(
-                _contractTerms,
-                _collateralAddress,
-                _collateralId,
-                getCollateralNonce(_collateralAddress, _collateralId),
-                _borrowerSignature
-            )
+            (_borrower !=
+                _recoverSigner(
+                    _principal,
+                    _contractTerms,
+                    _collateralAddress,
+                    _collateralId,
+                    getCollateralNonce(_collateralAddress, _collateralId),
+                    _borrowerSignature
+                ) ||
+                (_borrower == msg.sender))
         ) revert InvalidParticipant();
 
         // Add debt to database
@@ -105,25 +105,25 @@ contract LoanContract is
         // the loan collateral vault to the debt ID.
         _collateralToken.safeTransferFrom(
             _borrower,
-            collateralVault,
+            _collateralVault,
             _collateralId,
             abi.encodePacked(totalDebts)
         );
 
-        // Transfer funds to borrower's account in treasurey
-        (bool _success, ) = loanTreasurer().call{value: _principal}(
-            abi.encodeWithSignature("depositFunds(address)", _borrower)
-        );
-        if (!_success) revert FailedFundsTransfer();
+        // // Transfer funds to borrower's account in treasurey
+        // (bool _success, ) = _loanTreasurer.call{value: _principal}(
+        //     abi.encodeWithSignature("depositFunds(address)", _borrower)
+        // );
+        // if (!_success) revert FailedFundsTransfer();
 
-        // Mint debt ALC debt tokens for lender
-        _anzaToken.mint(
-            msg.sender,
-            totalDebts * 2,
-            _principal,
-            _collateralToken.tokenURI(_collateralId),
-            abi.encodePacked(_borrower, totalDebts)
-        );
+        // // Mint debt ALC debt tokens for lender
+        // _anzaToken.mint(
+        //     msg.sender,
+        //     totalDebts * 2,
+        //     _principal,
+        //     _collateralToken.tokenURI(_collateralId),
+        //     abi.encodePacked(_borrower, totalDebts)
+        // );
 
         // Emit initialization event
         emit LoanContractInitialized(
@@ -161,13 +161,14 @@ contract LoanContract is
         _validateLoanTerms(_contractTerms, _now, _principal);
 
         // Verify borrower participation
-        ILoanCollateralVault _loanCollateralVault = ILoanCollateralVault(
-            collateralVault
+        ICollateralVault _loanCollateralVault = ICollateralVault(
+            _collateralVault
         );
-        ILoanCollateralVault.Collateral
-            memory _collateral = _loanCollateralVault.getCollateral(_debtId);
+        ICollateralVault.Collateral memory _collateral = _loanCollateralVault
+            .getCollateral(_debtId);
 
         address _borrower = _recoverSigner(
+            _principal,
             _contractTerms,
             _collateral.collateralAddress,
             _collateral.collateralId,
@@ -181,8 +182,10 @@ contract LoanContract is
         // During initial loan submission (i.e. activeLoanIndex 0), in the
         // AnzaToken contract, the borrower is given admin role specific to
         // the debt ID. This is then used for borrower verification.
-        if (!_anzaToken.checkBorrowerOf(_borrower, _debtId))
-            revert InvalidParticipant();
+        if (
+            !_anzaToken.checkBorrowerOf(_borrower, _debtId) ||
+            (_borrower == msg.sender)
+        ) revert InvalidParticipant();
 
         // Add debt to database
         uint256[] storage _debtIds = debtIds[_collateral.collateralAddress][
@@ -206,7 +209,7 @@ contract LoanContract is
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
         uint256 _balance = debtBalanceOf(_debtId);
-        (bool _success, ) = loanTreasurer().call{
+        (bool _success, ) = _loanTreasurer.call{
             value: _principal >= _balance ? _balance : _principal
         }(
             abi.encodeWithSignature(

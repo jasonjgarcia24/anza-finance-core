@@ -32,10 +32,7 @@ contract LoanCollateralTreasureyUnitTest is
      */
     function testTreasureyStateVars() public {
         assertEq(loanTreasurer.loanContract(), address(loanContract));
-        assertEq(
-            loanTreasurer.loanCollateralVault(),
-            address(loanCollateralVault)
-        );
+        assertEq(loanTreasurer.collateralVault(), address(collateralVault));
         assertEq(loanTreasurer.anzaToken(), address(anzaToken));
         assertEq(loanTreasurer.poolBalance(), 0);
     }
@@ -71,7 +68,7 @@ contract LoanCollateralTreasureyUnitTest is
         vm.deal(admin, 1 ether);
         vm.deal(address(loanContract), 1 ether);
         vm.deal(address(loanTreasurer), 1 ether);
-        vm.deal(address(loanCollateralVault), 1 ether);
+        vm.deal(address(collateralVault), 1 ether);
         vm.deal(borrower, 1 ether);
 
         uint256 _debtId = loanContract.totalDebts() - 1;
@@ -115,7 +112,7 @@ contract LoanCollateralTreasureyUnitTest is
         assertEq(_lenderBalance, loanTreasurer.withdrawableBalance(lender));
 
         // DENY :: Try loan collateral vault
-        vm.startPrank(address(loanCollateralVault));
+        vm.startPrank(address(collateralVault));
         (success, ) = address(loanTreasurer).call{value: 1 wei}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
@@ -242,7 +239,7 @@ contract LoanCollateralTreasureyUnitTest is
         uint256 _payment = _PRINCIPAL_;
         payLoan(_debtId, _payment);
 
-        assertEq(demoToken.ownerOf(collateralId), address(loanCollateralVault));
+        assertEq(demoToken.ownerOf(collateralId), address(collateralVault));
 
         // Withdraw
         vm.startPrank(borrower);
