@@ -1,184 +1,184 @@
-const dbReadLeveraged = (app, db) => {      
+const dbReadLeveraged = (app, db) => {
     let query;
 
     // Account
     app.get('/api/select/leveraged/:accountAddress', (req, res) => {
         const accountAddress = req.params.accountAddress;
-    
+
         query = `SELECT 
-            ownerAddress,
-            tokenContractAddress,
-            tokenId
-            FROM nft.leveraged
-            WHERE borrowerAddress='${accountAddress}'`;
+                ownerAddress,
+                tokenContractAddress,
+                tokenId
+                FROM nft.leveraged
+                WHERE borrowerAddress='${accountAddress}'`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // All - Account
     app.get('/api/select/leveraged/all/borrower/:accountAddress', (req, res) => {
         const accountAddress = req.params.accountAddress;
         console.log(accountAddress)
-    
+
         query = `SELECT 
-            *
-            FROM nft.leveraged 
-            WHERE borrowerAddress='${accountAddress}' AND
-            (borrowerSigned='N' OR lenderSigned='N');`;
+                *
+                FROM nft.leveraged 
+                WHERE borrowerAddress='${accountAddress}' AND
+                (borrowerSigned='N' OR lenderSigned='N');`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // All - Borrower - Unsigned
     app.get('/api/select/leveraged/all/borrower/unsigned/:lenderAddress/:borrowerAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;
         const borrowerAddress = req.params.borrowerAddress;
-    
+
         query = `SELECT 
-            *
-            FROM nft.leveraged 
-            WHERE lenderAddress='${lenderAddress}' 
-            AND borrowerAddress!='${borrowerAddress}'
-            AND (borrowerSigned='N' OR lenderSigned='N');`;
+                *
+                FROM nft.leveraged 
+                WHERE lenderAddress='${lenderAddress}' 
+                AND borrowerAddress!='${borrowerAddress}'
+                AND (borrowerSigned='N' OR lenderSigned='N');`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // All - Borrower - Signed
     app.get('/api/select/leveraged/all/borrower/signed/:borrowerAddress', (req, res) => {
         const borrowerAddress = req.params.borrowerAddress;
-    
+
         query = `SELECT 
-            *
-            FROM nft.leveraged 
-            WHERE borrowerAddress='${borrowerAddress}' 
-            AND (borrowerSigned='Y' AND lenderSigned='Y');`;
+                *
+                FROM nft.leveraged 
+                WHERE borrowerAddress='${borrowerAddress}' 
+                AND (borrowerSigned='Y' AND lenderSigned='Y');`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // All - Borrower
     app.get('/api/select/leveraged/all/:borrowerAddress', (req, res) => {
         const borrowerAddress = req.params.borrowerAddress;
-    
+
         query = `SELECT 
-            *
-            FROM nft.leveraged 
-            WHERE borrowerAddress='${borrowerAddress}';`;
+                *
+                FROM nft.leveraged 
+                WHERE borrowerAddress='${borrowerAddress}';`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // All - Lender - Unsigned
     app.get('/api/select/leveraged/all/lender/unsigned/:lenderAddress/:borrowerAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;
         const borrowerAddress = req.params.borrowerAddress;
-    
+
         query = `SELECT 
-            *
-            FROM nft.leveraged 
-            WHERE lenderAddress='${lenderAddress}' 
-            AND borrowerAddress!='${borrowerAddress}'
-            AND (borrowerSigned='N' OR lenderSigned='N');`;
+                *
+                FROM nft.leveraged 
+                WHERE lenderAddress='${lenderAddress}' 
+                AND borrowerAddress!='${borrowerAddress}'
+                AND (borrowerSigned='N' OR lenderSigned='N');`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // All - Lender - Signed
     app.get('/api/select/leveraged/all/lender/signed/:lenderAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;
-    
+
         query = `SELECT 
-            *
-            FROM nft.leveraged 
-            WHERE lenderAddress='${lenderAddress}' 
-            AND (borrowerSigned='Y' AND lenderSigned='Y');`;
+                *
+                FROM nft.leveraged 
+                WHERE lenderAddress='${lenderAddress}' 
+                AND (borrowerSigned='Y' AND lenderSigned='Y');`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // All - Lender
     app.get('/api/select/leveraged/all/:lenderAddress', (req, res) => {
         const lenderAddress = req.params.lenderAddress;
-    
+
         query = `SELECT 
-            *
-            FROM nft.leveraged 
-            WHERE lenderAddress='${lenderAddress}';`;
+                *
+                FROM nft.leveraged 
+                WHERE lenderAddress='${lenderAddress}';`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // LoanContract - Principal - No Sponsor
     app.get('/api/select/leveraged/loancontract/:tokenContractAddress/:tokenId', (req, res) => {
         const primaryKey = `${req.params.tokenContractAddress}_${req.params.tokenId}`;
-    
+
         query = `SELECT 
-            ownerAddress,
-            principal
-            FROM nft.leveraged 
-            WHERE primaryKey='${primaryKey}'
-            AND (borrowerSigned='N' OR lenderSigned='N');`;
+                ownerAddress,
+                principal
+                FROM nft.leveraged 
+                WHERE primaryKey='${primaryKey}'
+                AND (borrowerSigned='N' OR lenderSigned='N');`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // Preview - Account
     app.get('/api/select/leveraged/preview/:accountAddress', (req, res) => {
         const accountAddress = req.params.accountAddress;
-    
+
         query = `SELECT 
-            ownerAddress,
-            tokenContractAddress,
-            tokenId 
-            FROM nft.leveraged 
-            WHERE borrowerAddress='${accountAddress}' AND
-            (borrowerSigned='N' OR lenderSigned='N');`;
+                ownerAddress,
+                tokenContractAddress,
+                tokenId 
+                FROM nft.leveraged 
+                WHERE borrowerAddress='${accountAddress}' AND
+                (borrowerSigned='N' OR lenderSigned='N');`;
 
         db.query(
             query,
             (_, result) => { res.send(result); }
         );
     });
-    
+
     // Preview - Unsigned - Account
     app.get('/api/select/leveraged/preview/unsigned/:accountAddress', (req, res) => {
         const accountAddress = req.params.accountAddress;
-    
+
         query = `SELECT 
-            ownerAddress,
-            tokenContractAddress,
-            tokenId
-            FROM nft.leveraged 
-            WHERE borrowerAddress='${accountAddress}' AND
-            (borrowerSigned='N' OR lenderSigned='N');`;
+                ownerAddress,
+                tokenContractAddress,
+                tokenId
+                FROM nft.leveraged 
+                WHERE borrowerAddress='${accountAddress}' AND
+                (borrowerSigned='N' OR lenderSigned='N');`;
 
         db.query(
             query,

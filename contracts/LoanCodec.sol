@@ -192,13 +192,13 @@ abstract contract LoanCodec is ILoanCodec {
     function _validateLoanTerms(
         bytes32 _contractTerms,
         uint32 _loanStart,
-        uint256 _amount
+        uint256 _principal
     ) internal pure {
         uint8 _lenderRoyalties;
         uint32 _termsExpiry;
         uint32 _duration;
         uint32 _gracePeriod;
-        uint128 _principal;
+        // uint128 _principal;
         uint8 _fixedInterestRate;
         uint8 _firInterval;
 
@@ -219,9 +219,9 @@ abstract contract LoanCodec is ILoanCodec {
             mstore(0x13, _contractTerms)
             _gracePeriod := mload(0)
 
-            // Get packed principal
-            mstore(0x03, _contractTerms)
-            _principal := mload(0)
+            // // Get packed principal
+            // mstore(0x03, _contractTerms)
+            // _principal := mload(0)
 
             // Get fixed interest rate
             mstore(0x01, _contractTerms)
@@ -255,7 +255,7 @@ abstract contract LoanCodec is ILoanCodec {
             }
 
             // Check principal
-            if (_principal == 0 || _principal != _amount)
+            if (_principal == 0)
                 revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
 
             // No fixed interest rate check necessary
@@ -408,8 +408,8 @@ abstract contract LoanCodec is ILoanCodec {
                 mstore(
                     0x20,
                     xor(
-                        and(_IS_DIRECT_MASK_, mload(0x20)),
-                        and(_IS_DIRECT_MAP_, shl(_IS_DIRECT_POS_, 0x01))
+                        and(_IS_FIXED_MASK_, mload(0x20)),
+                        and(_IS_FIXED_MAP_, shl(_IS_FIXED_POS_, 0x01))
                     )
                 )
 
@@ -430,8 +430,8 @@ abstract contract LoanCodec is ILoanCodec {
                 mstore(
                     0x20,
                     xor(
-                        and(_IS_DIRECT_MASK_, mload(0x20)),
-                        and(_IS_DIRECT_MAP_, shl(_IS_DIRECT_POS_, 0x00))
+                        and(_IS_FIXED_MASK_, mload(0x20)),
+                        and(_IS_FIXED_MAP_, shl(_IS_FIXED_POS_, 0x00))
                     )
                 )
 
@@ -485,10 +485,6 @@ abstract contract LoanCodec is ILoanCodec {
             )
             _loanAgreement := mload(0x20)
         }
-        console.logBytes32(
-            0x00192750003b5380000093a80000000000000000000003b53800643e16260ae5
-        );
-        console.logBytes32(_loanAgreement);
 
         __packedDebtTerms[_debtId] = _loanAgreement;
     }

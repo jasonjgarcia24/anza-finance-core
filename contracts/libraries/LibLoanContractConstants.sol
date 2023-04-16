@@ -1,116 +1,116 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-library LibLoanContractConstants {
-    uint256 public constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;
-    uint256 public constant _UINT32_MAX_ = 4294967295;
-}
+import "../domain/LoanContractErrorCodes.sol";
+import "../domain/LoanContractFIRIntervals.sol";
+import "../domain/LoanContractNumbers.sol";
+import "../domain/LoanContractTermMaps.sol";
+import "../domain/LoanContractRoles.sol";
+import "../domain/LoanContractStates.sol";
 
-library LibLoanContractStates {
-    uint8 public constant _UNDEFINED_STATE_ = 0;
-    uint8 public constant _NONLEVERAGED_STATE_ = 1;
-    uint8 public constant _UNSPONSORED_STATE_ = 2;
-    uint8 public constant _SPONSORED_STATE_ = 3;
-    uint8 public constant _FUNDED_STATE_ = 4;
-    uint8 public constant _ACTIVE_GRACE_STATE_ = 5;
-    uint8 public constant _ACTIVE_STATE_ = 6;
-    uint8 public constant _DEFAULT_STATE_ = 7;
-    uint8 public constant _COLLECTION_STATE_ = 8;
-    uint8 public constant _AUCTION_STATE_ = 9;
-    uint8 public constant _AWARDED_STATE_ = 10;
-    uint8 public constant _PAID_PENDING_STATE_ = 11;
-    uint8 public constant _CLOSE_STATE_ = 12;
-    uint8 public constant _PAID_STATE_ = 13;
-    uint8 public constant _CLOSE_DEFAULT_STATE_ = 14;
+library LibLoanContractStandardErrors {
+    bytes4 public constant LOAN_STATE_ERROR_ID = _LOAN_STATE_ERROR_ID_;
+    bytes4 public constant FIR_INTERVAL_ERROR_ID = _FIR_INTERVAL_ERROR_ID_;
+    bytes4 public constant DURATION_ERROR_ID = _DURATION_ERROR_ID_;
+    bytes4 public constant PRINCIPAL_ERROR_ID = _PRINCIPAL_ERROR_ID_;
+    bytes4 public constant FIXED_INTEREST_RATE_ERROR_ID =
+        _FIXED_INTEREST_RATE_ERROR_ID_;
+    bytes4 public constant GRACE_PERIOD_ERROR_ID = _GRACE_PERIOD_ERROR_ID_;
+    bytes4 public constant TIME_EXPIRY_ERROR_ID = _TIME_EXPIRY_ERROR_ID_;
+    bytes4 public constant LENDER_ROYALTIES_ERROR_ID =
+        _LENDER_ROYALTIES_ERROR_ID_;
 }
 
 library LibLoanContractFIRIntervals {
-    uint8 public constant _SECONDLY_ = 0;
-    uint8 public constant _MINUTELY_ = 1;
-    uint8 public constant _HOURLY_ = 2;
-    uint8 public constant _DAILY_ = 3;
-    uint8 public constant _WEEKLY_ = 4;
-    uint8 public constant _2_WEEKLY_ = 5;
-    uint8 public constant _4_WEEKLY_ = 6;
-    uint8 public constant _6_WEEKLY_ = 7;
-    uint8 public constant _8_WEEKLY_ = 8;
-    uint8 public constant _MONTHLY_ = 9;
-    uint8 public constant _2_MONTHLY_ = 10;
-    uint8 public constant _3_MONTHLY_ = 11;
-    uint8 public constant _4_MONTHLY_ = 12;
-    uint8 public constant _6_MONTHLY_ = 13;
-    uint8 public constant _360_DAILY_ = 14;
-    uint8 public constant _ANNUALLY_ = 15;
+    uint8 public constant SECONDLY = _SECONDLY_;
+    uint8 public constant MINUTELY = _MINUTELY_;
+    uint8 public constant HOURLY = _HOURLY_;
+    uint8 public constant DAILY = _DAILY_;
+    uint8 public constant WEEKLY = _WEEKLY_;
+    uint8 public constant _2_WEEKLY = _2_WEEKLY_;
+    uint8 public constant _4_WEEKLY = _4_WEEKLY_;
+    uint8 public constant _6_WEEKLY = _6_WEEKLY_;
+    uint8 public constant _8_WEEKLY = _8_WEEKLY_;
+    uint8 public constant MONTHLY = _MONTHLY_;
+    uint8 public constant _2_MONTHLY = _2_MONTHLY_;
+    uint8 public constant _3_MONTHLY = _3_MONTHLY_;
+    uint8 public constant _4_MONTHLY = _4_MONTHLY_;
+    uint8 public constant _6_MONTHLY = _6_MONTHLY_;
+    uint8 public constant _360_DAILY = _360_DAILY_;
+    uint8 public constant ANNUALLY = _ANNUALLY_;
 }
 
 library LibLoanContractFIRIntervalMultipliers {
-    uint256 public constant _SECONDLY_MULTIPLIER_ = 1;
-    uint256 public constant _MINUTELY_MULTIPLIER_ = 60;
-    uint256 public constant _HOURLY_MULTIPLIER_ = 60 * 60;
-    uint256 public constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;
-    uint256 public constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;
-    uint256 public constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;
-    uint256 public constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;
-    uint256 public constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;
-    uint256 public constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;
-    uint256 public constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;
+    uint256 public constant SECONDLY_MULTIPLIER = _SECONDLY_MULTIPLIER_;
+    uint256 public constant MINUTELY_MULTIPLIER = _MINUTELY_MULTIPLIER_;
+    uint256 public constant HOURLY_MULTIPLIER = _HOURLY_MULTIPLIER_;
+    uint256 public constant DAILY_MULTIPLIER = _DAILY_MULTIPLIER_;
+    uint256 public constant WEEKLY_MULTIPLIER = _WEEKLY_MULTIPLIER_;
+    uint256 public constant _2_WEEKLY_MULTIPLIER = _2_WEEKLY_MULTIPLIER_;
+    uint256 public constant _4_WEEKLY_MULTIPLIER = _4_WEEKLY_MULTIPLIER_;
+    uint256 public constant _6_WEEKLY_MULTIPLIER = _6_WEEKLY_MULTIPLIER_;
+    uint256 public constant _8_WEEKLY_MULTIPLIER = _8_WEEKLY_MULTIPLIER_;
+    uint256 public constant _360_DAILY_MULTIPLIER = _360_DAILY_MULTIPLIER_;
 }
 
-library LibLoanContractPackMappings {
-    uint256 public constant _LOAN_STATE_MASK_ =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0;
-    uint256 public constant _LOAN_STATE_MAP_ =
-        0x000000000000000000000000000000000000000000000000000000000000000F;
-    uint256 public constant _FIR_INTERVAL_MASK_ =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0F;
-    uint256 public constant _FIR_INTERVAL_MAP_ =
-        0x00000000000000000000000000000000000000000000000000000000000000F0;
-    uint256 public constant _FIR_MASK_ =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FF;
-    uint256 public constant _FIR_MAP_ =
-        0x000000000000000000000000000000000000000000000000000000000000FF00;
-    uint256 public constant _LOAN_START_MASK_ =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFF;
-    uint256 public constant _LOAN_START_MAP_ =
-        0x0000000000000000000000000000000000000000000000000000FFFFFFFF0000;
-    uint256 public constant _LOAN_DURATION_MASK_ =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFF;
-    uint256 public constant _LOAN_DURATION_MAP_ =
-        0x00000000000000000000000000000000000000000000FFFFFFFF000000000000;
-    uint256 public constant _IS_DIRECT_MASK_ =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0FFFFFFFFFFFFFFFFFFFF;
-    uint256 public constant _IS_DIRECT_MAP_ =
-        0x0000000000000000000000000000000000000000000F00000000000000000000;
-    uint256 public constant _COMMITAL_MASK_ =
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFFFFFFFFFFF;
-    uint256 public constant _COMMITAL_MAP_ =
-        0x00000000000000000000000000000000000000000FF000000000000000000000;
-    uint256 public constant _LENDER_ROYALTIES_MASK_ =
-        0xFF00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-    uint256 public constant _LENDER_ROYALTIES_MAP_ =
-        0x00FF000000000000000000000000000000000000000000000000000000000000;
-    uint256 public constant _LOAN_COUNT_MASK_ =
-        0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-    uint256 public constant _LOAN_COUNT_MAP_ =
-        0xFF00000000000000000000000000000000000000000000000000000000000000;
-
-    uint8 public constant _LOAN_STATE_POS_ = 0;
-    uint8 public constant _FIR_INTERVAL_POS_ = 4;
-    uint8 public constant _FIR_POS_ = 8;
-    uint8 public constant _LOAN_START_POS_ = 16;
-    uint8 public constant _LOAN_DURATION_POS_ = 48;
-    uint8 public constant _BORROWER_POS_ = 80;
-    uint8 public constant _LENDER_ROYALTIES_POS_ = 240;
-    uint8 public constant _LOAN_COUNT_POS_ = 248;
+library LibLoanContractNumbers {
+    uint256 public constant SECONDS_PER_24_MINUTES_RATIO_SCALED =
+        _SECONDS_PER_24_MINUTES_RATIO_SCALED_;
+    uint256 public constant UINT32_MAX = _UINT32_MAX_;
 }
 
-library LibLoanContractStandardErrors {
-    bytes4 public constant _LOAN_STATE_ERROR_ID_ = 0xdacce9d3;
-    bytes4 public constant _FIR_INTERVAL_ERROR_ID_ = 0xa13e8948;
-    bytes4 public constant _DURATION_ERROR_ID_ = 0xfcbf8511;
-    bytes4 public constant _PRINCIPAL_ERROR_ID_ = 0x6a901435;
-    bytes4 public constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;
-    bytes4 public constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;
-    bytes4 public constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;
-    bytes4 public constant _LENDER_ROYALTIES_ERROR_ID_ = 0xecc752dd;
+library LibLoanContractTermMaps {
+    uint256 public constant LOAN_STATE_MASK = _LOAN_STATE_MASK_;
+    uint256 public constant LOAN_STATE_MAP = _LOAN_STATE_MAP_;
+    uint256 public constant FIR_INTERVAL_MASK = _FIR_INTERVAL_MASK_;
+    uint256 public constant FIR_INTERVAL_MAP = _FIR_INTERVAL_MAP_;
+    uint256 public constant FIR_MASK = _FIR_MASK_;
+    uint256 public constant FIR_MAP = _FIR_MAP_;
+    uint256 public constant LOAN_START_MASK = _LOAN_START_MASK_;
+    uint256 public constant LOAN_START_MAP = _LOAN_START_MAP_;
+    uint256 public constant LOAN_DURATION_MASK = _LOAN_DURATION_MASK_;
+    uint256 public constant LOAN_DURATION_MAP = _LOAN_DURATION_MAP_;
+    uint256 public constant IS_FIXED_MASK = _IS_FIXED_MASK_;
+    uint256 public constant IS_FIXED_MAP = _IS_FIXED_MAP_;
+    uint256 public constant COMMITAL_MASK = _COMMITAL_MASK_;
+    uint256 public constant COMMITAL_MAP = _COMMITAL_MAP_;
+    uint256 public constant LENDER_ROYALTIES_MASK = _LENDER_ROYALTIES_MASK_;
+    uint256 public constant LENDER_ROYALTIES_MAP = _LENDER_ROYALTIES_MAP_;
+    uint256 public constant LOAN_COUNT_MASK = _LOAN_COUNT_MASK_;
+    uint256 public constant LOAN_COUNT_MAP = _LOAN_COUNT_MAP_;
+
+    uint8 public constant LOAN_STATE_POS = _LOAN_STATE_POS_;
+    uint8 public constant FIR_INTERVAL_POS = _FIR_INTERVAL_POS_;
+    uint8 public constant FIR_POS = _FIR_POS_;
+    uint8 public constant LOAN_START_POS = _LOAN_START_POS_;
+    uint8 public constant LOAN_DURATION_POS = _LOAN_DURATION_POS_;
+    uint8 public constant BORROWER_POS = _BORROWER_POS_;
+    uint8 public constant LENDER_ROYALTIES_POS = _LENDER_ROYALTIES_POS_;
+    uint8 public constant LOAN_COUNT_POS = _LOAN_COUNT_POS_;
+}
+
+library LibLoanContractRoles {
+    bytes32 public constant ADMIN = _ADMIN_;
+    bytes32 public constant LOAN_CONTRACT = _LOAN_CONTRACT_;
+    bytes32 public constant TREASURER = _TREASURER_;
+    bytes32 public constant COLLECTOR = _COLLECTOR_;
+    bytes32 public constant DEBT_STOREFRONT = _DEBT_STOREFRONT_;
+}
+
+library LibLoanContractStates {
+    uint8 public constant UNDEFINED_STATE = _UNDEFINED_STATE_;
+    uint8 public constant NONLEVERAGED_STATE = _NONLEVERAGED_STATE_;
+    uint8 public constant UNSPONSORED_STATE = _UNSPONSORED_STATE_;
+    uint8 public constant SPONSORED_STATE = _SPONSORED_STATE_;
+    uint8 public constant FUNDED_STATE = _FUNDED_STATE_;
+    uint8 public constant ACTIVE_GRACE_STATE = _ACTIVE_GRACE_STATE_;
+    uint8 public constant ACTIVE_STATE = _ACTIVE_STATE_;
+    uint8 public constant DEFAULT_STATE = _DEFAULT_STATE_;
+    uint8 public constant COLLECTION_STATE = _COLLECTION_STATE_;
+    uint8 public constant AUCTION_STATE = _AUCTION_STATE_;
+    uint8 public constant AWARDED_STATE = _AWARDED_STATE_;
+    uint8 public constant PAID_PENDING_STATE = _PAID_PENDING_STATE_;
+    uint8 public constant CLOSE_STATE = _CLOSE_STATE_;
+    uint8 public constant PAID_STATE = _PAID_STATE_;
+    uint8 public constant CLOSE_DEFAULT_STATE = _CLOSE_DEFAULT_STATE_;
 }

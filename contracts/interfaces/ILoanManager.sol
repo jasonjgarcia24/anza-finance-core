@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./IAnzaToken.sol";
-import "./ILoanTreasurey.sol";
-
 interface ILoanManager {
-    function loanTreasurer() external returns (address);
+    event LoanTermsRevoked(
+        address indexed borrower,
+        bytes32 indexed hashedTerms
+    );
 
-    function anzaToken() external returns (address);
+    event LoanTermsReinstated(
+        address indexed borrower,
+        bytes32 indexed hashedTerms
+    );
 
     function maxRefinances() external returns (uint256);
-
-    function setLoanTreasurer(address _loanTreasurer) external;
-
-    function setAnzaToken(address _anzaToken) external;
 
     function setMaxRefinances(uint256 _maxRefinances) external;
 

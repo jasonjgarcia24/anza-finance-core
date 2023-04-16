@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "./interfaces/IAnzaToken.sol";
 import "./interfaces/IAnzaDebtStorefront.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ILoanTreasurey.sol";
-import "./interfaces/ILoanCollateralVault.sol";
+import "./interfaces/ICollateralVault.sol";
 import {LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-contract AnzaDebtStorefront is ReentrancyGuard, IAnzaDebtStorefront {
+contract AnzaDebtStorefront is IAnzaDebtStorefront, ReentrancyGuard {
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */

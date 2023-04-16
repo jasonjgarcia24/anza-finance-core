@@ -44,13 +44,13 @@ const dbReadPortfolio = (app, db) => {
         const leveragedStatus = req.params.leveragedStatus;
 
         query = `SELECT 
-            ownerAddress,
-            tokenContractAddress,
-            tokenId,
-            leveraged
-            FROM nft.portfolio 
-            WHERE ownerAddress='${ownerAddress}' 
-            AND leveraged='${leveragedStatus}'`;
+                ownerAddress,
+                tokenContractAddress,
+                tokenId,
+                leveraged
+                FROM nft.portfolio 
+                WHERE ownerAddress='${ownerAddress}' 
+                AND leveraged='${leveragedStatus}'`;
 
         db.query(
             query,

@@ -1,45 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "./LoanCodec.sol";
-import "./access/LoanAccessController.sol";
 import "./interfaces/ILoanManager.sol";
+import "./LoanCodec.sol";
+import "./access/ManagerAccessController.sol";
 
-contract LoanManager is ILoanManager, LoanCodec, LoanAccessController {
+contract LoanManager is ILoanManager, LoanCodec, ManagerAccessController {
     // Max number of loan refinances (default is unlimited)
     uint256 public maxRefinances = 2008;
 
-    ILoanTreasurey private __loanTreasurer;
-    IAnzaToken internal _anzaToken;
+    mapping(address => mapping(bytes32 => bool)) private __revokedTerms;
 
-    constructor(
-        address _collateralVault
-    ) LoanAccessController(_collateralVault) {}
+    constructor() ManagerAccessController() {}
 
-    function loanTreasurer() public view returns (address) {
-        return address(__loanTreasurer);
-    }
-
-    function anzaToken() external view returns (address) {
-        return address(_anzaToken);
-    }
-
-    function setLoanTreasurer(address _loanTreasurer) external onlyRole(ADMIN) {
-        __loanTreasurer = ILoanTreasurey(_loanTreasurer);
-    }
-
-    function setAnzaToken(address _anzaTokenAddress) external onlyRole(ADMIN) {
-        _anzaToken = IAnzaToken(_anzaTokenAddress);
-    }
-
-    function setMaxRefinances(uint256 _maxRefinances) external onlyRole(ADMIN) {
+    function setMaxRefinances(
+        uint256 _maxRefinances
+    ) external onlyRole(_ADMIN_) {
         maxRefinances = _maxRefinances <= 255 ? _maxRefinances : 2008;
     }
 
     /*
      * @dev Updates loan state.
      */
-    function updateLoanState(uint256 _debtId) external onlyRole(TREASURER) {
+    function updateLoanState(uint256 _debtId) external onlyRole(_TREASURER_) {
         if (!checkLoanActive(_debtId)) {
             console.log("Inactive loan: %s", _debtId);
             revert InactiveLoanState();
@@ -73,6 +56,13 @@ contract LoanManager is ILoanManager, LoanCodec, LoanAccessController {
         if (!checkLoanActive(_debtId)) revert InactiveLoanState();
     }
 
+    function checkTermsRevoked(
+        address _borrower,
+        bytes32 _hashedTerms
+    ) public returns (bool) {
+        return __revokedTerms[_borrower][_hashedTerms];
+    }
+
     function checkLoanActive(uint256 _debtId) public view returns (bool) {
         return
             loanState(_debtId) >= _ACTIVE_GRACE_STATE_ &&
@@ -89,6 +79,18 @@ contract LoanManager is ILoanManager, LoanCodec, LoanAccessController {
         return
             _anzaToken.totalSupply(_debtId * 2) > 0 &&
             loanClose(_debtId) <= block.timestamp;
+    }
+
+    function revokeTerms(bytes32 _hashedTerms) public {
+        __revokedTerms[msg.sender][_hashedTerms] = true;
+
+        emit LoanTermsRevoked(msg.sender, _hashedTerms);
+    }
+
+    function reinstateTerms(bytes32 _hashedTerms) public {
+        __revokedTerms[msg.sender][_hashedTerms] = false;
+
+        emit LoanTermsReinstated(msg.sender, _hashedTerms);
     }
 
     function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {

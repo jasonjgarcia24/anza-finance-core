@@ -9,14 +9,13 @@ import "../contracts/domain/LoanContractRoles.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
-import {ILoanCollateralVault} from "../contracts/interfaces/ILoanCollateralVault.sol";
+import {ICollateralVault} from "../contracts/interfaces/ICollateralVault.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
-import {LoanCollateralVault} from "../contracts/LoanCollateralVault.sol";
+import {CollateralVault} from "../contracts/CollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
-import "../contracts/libraries/LibLoanContractConstants.sol";
 
 error TryCatchErr(bytes err);
 
@@ -25,14 +24,14 @@ abstract contract Utils {
      *                  Loan Terms                      *
      * ------------------------------------------------ */
     uint8 public constant _FIR_INTERVAL_ = 14;
-    uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.05
-    uint8 public constant _IS_DIRECT_ = 0x01; // true
+    uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.10
+    uint8 public constant _IS_FIXED_ = 0x00; // false
     uint8 public constant _COMMITAL_ = 25; // 0.25
-    uint128 public constant _PRINCIPAL_ = 10; // ETH // 226854911280625642308916404954512140970
-    uint32 public constant _GRACE_PERIOD_ = 60 * 60 * 24 * 7; // 604800 (1 week)
-    uint32 public constant _DURATION_ = 60 * 60 * 24 * 360 * 2; // 62208000 (2 years)
-    uint32 public constant _TERMS_EXPIRY_ = 60 * 60 * 24 * 7 * 2; // 1209600 (2 weeks)
-    uint8 public constant _LENDER_ROYALTIES_ = 25; // 0.25
+    uint128 public constant _PRINCIPAL_ = 10000000000000000000; // WEI
+    uint32 public constant _GRACE_PERIOD_ = 86400;
+    uint32 public constant _DURATION_ = 1209600;
+    uint32 public constant _TERMS_EXPIRY_ = 86400;
+    uint8 public constant _LENDER_ROYALTIES_ = 10;
     // To calc max price of loan with compounding interest:
     // principal = 10
     // fixedInterestRate = 5
@@ -57,7 +56,7 @@ abstract contract Utils {
      * ------------------------------------------------ */
     string public constant _BASE_URI_ = "https://www.a_base_uri.com/";
     string public baseURI = "https://www.demo_token_metadata_uri.com/";
-    uint256 public constant collateralId = 3;
+    uint256 public constant collateralId = 5;
 
     function getTokenURI(uint256 _tokenId) public pure returns (string memory) {
         return
@@ -87,7 +86,7 @@ abstract contract Utils {
 }
 
 contract LoanContractHarness is LoanContract {
-    constructor() LoanContract(address(0)) {}
+    constructor() LoanContract() {}
 
     function exposed__getTotalFirIntervals(
         uint256 _firInterval,
@@ -98,17 +97,17 @@ contract LoanContractHarness is LoanContract {
 }
 
 abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
-    address public admin = vm.envAddress("DEAD_ACCOUNT_KEY_1");
+    address public borrower = vm.envAddress("DEAD_ACCOUNT_KEY_0");
     address public treasurer = vm.envAddress("DEAD_ACCOUNT_KEY_2");
     address public collector = vm.envAddress("DEAD_ACCOUNT_KEY_3");
-    address public borrower = vm.envAddress("DEAD_ACCOUNT_KEY_4");
+    address public admin = vm.envAddress("DEAD_ACCOUNT_KEY_4");
     address public lender = vm.envAddress("DEAD_ACCOUNT_KEY_5");
     address public alt_account = vm.envAddress("DEAD_ACCOUNT_KEY_9");
 
-    uint256 public borrowerPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_4");
+    uint256 public borrowerPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_0");
     uint256 public lenderPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_5");
 
-    LoanCollateralVault public loanCollateralVault;
+    CollateralVault public collateralVault;
     LoanContract public loanContract;
     LoanTreasurey public loanTreasurer;
     AnzaToken public anzaToken;
@@ -121,7 +120,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     struct ContractTerms {
         uint8 firInterval;
         uint8 fixedInterestRate;
-        uint8 isDirect;
+        uint8 isFixed;
         uint8 commital;
         uint128 principal;
         uint32 gracePeriod;
@@ -137,42 +136,38 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         // Deploy AnzaToken
         anzaToken = new AnzaToken();
 
-        // Deploy LoanCollateralVault
-        loanCollateralVault = new LoanCollateralVault(address(anzaToken));
-
         // Deploy LoanContract
-        loanContract = new LoanContract(address(loanCollateralVault));
+        loanContract = new LoanContract();
 
         // Deploy LoanTreasurey
-        loanTreasurer = new LoanTreasurey(
-            address(loanContract),
-            address(loanCollateralVault),
-            address(anzaToken)
-        );
+        loanTreasurer = new LoanTreasurey();
 
-        // Set LoanContract access control roles
-        loanContract.grantRole(TREASURER, address(loanTreasurer));
-        loanContract.grantRole(COLLECTOR, collector);
-
-        // Set LoanCollateralVault access control roles
-        loanCollateralVault.setLoanContract(address(loanContract));
-
-        loanCollateralVault.grantRole(LOAN_CONTRACT, address(loanContract));
-
-        loanCollateralVault.grantRole(TREASURER, address(loanTreasurer));
+        // Deploy CollateralVault
+        collateralVault = new CollateralVault(address(anzaToken));
 
         // Set AnzaToken access control roles
-        anzaToken.grantRole(LOAN_CONTRACT, address(loanContract));
-        anzaToken.grantRole(TREASURER, address(loanTreasurer));
+        anzaToken.grantRole(_LOAN_CONTRACT_, address(loanContract));
+        anzaToken.grantRole(_TREASURER_, address(loanTreasurer));
 
-        // Set AnzaToken address
-        loanContract.setLoanTreasurer(address(loanTreasurer));
+        // Set LoanContract access control roles
         loanContract.setAnzaToken(address(anzaToken));
+        loanContract.setLoanTreasurer(address(loanTreasurer));
+        loanContract.setCollateralVault(address(collateralVault));
+
+        // Set LoanTreasurey access control roles
+        loanTreasurer.setAnzaToken(address(anzaToken));
+        loanTreasurer.setLoanContract(address(loanContract));
+        loanTreasurer.setCollateralVault(address(collateralVault));
+
+        // Set CollateralVault access control roles
+        collateralVault.setLoanContract(address(loanContract));
+        collateralVault.grantRole(_TREASURER_, address(loanTreasurer));
 
         vm.stopPrank();
 
         vm.startPrank(borrower);
-        demoToken = new DemoToken();
+        // demoToken = new DemoToken();
+        demoToken = DemoToken(0x3aAde2dCD2Df6a8cAc689EE797591b2913658659);
         demoToken.approve(address(loanContract), collateralId);
         demoToken.setApprovalForAll(address(loanContract), true);
 
@@ -202,7 +197,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     ) public pure virtual returns (bytes32 _contractTerms) {
         uint8 _firInterval = _terms.firInterval;
         uint8 _fixedInterestRate = _terms.fixedInterestRate;
-        uint8 _isDirect = _terms.isDirect;
+        uint8 _isDirect = _terms.isFixed;
         uint8 _commital = _terms.commital;
         uint128 _principal = _terms.principal;
         uint32 _gracePeriod = _terms.gracePeriod;
@@ -256,31 +251,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     function initLoanContract(
         bytes32 _contractTerms,
-        uint256 _principal,
-        address _collateralAddress,
-        uint256 _collateralId,
-        bytes memory _signature
-    ) public virtual returns (bool) {
-        // Create loan contract
-        vm.deal(lender, _principal + (1 ether));
-        vm.startPrank(lender);
-
-        (bool _success, ) = address(loanContract).call{value: _principal}(
-            abi.encodeWithSignature(
-                "initLoanContract(bytes32,address,uint256,bytes)",
-                _contractTerms,
-                _collateralAddress,
-                _collateralId,
-                _signature
-            )
-        );
-        vm.stopPrank();
-
-        return _success;
-    }
-
-    function initLoanContract(
-        bytes32 _contractTerms,
         uint256 _debtId,
         bytes memory _signature
     ) public virtual returns (bool) {
@@ -313,6 +283,31 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 "initLoanContract(bytes32,uint256,bytes)",
                 _contractTerms,
                 _debtId,
+                _signature
+            )
+        );
+        vm.stopPrank();
+
+        return _success;
+    }
+
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _principal,
+        address _collateralAddress,
+        uint256 _collateralId,
+        bytes memory _signature
+    ) public virtual returns (bool) {
+        // Create loan contract
+        vm.deal(lender, _principal + (1 ether));
+        vm.startPrank(lender);
+
+        (bool _success, ) = address(loanContract).call{value: _principal}(
+            abi.encodeWithSignature(
+                "initLoanContract(bytes32,address,uint256,bytes)",
+                _contractTerms,
+                _collateralAddress,
+                _collateralId,
                 _signature
             )
         );
@@ -387,7 +382,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             ContractTerms({
                 firInterval: _ALT_FIR_INTERVAL_,
                 fixedInterestRate: _ALT_FIXED_INTEREST_RATE_,
-                isDirect: _IS_DIRECT_,
+                isFixed: _IS_FIXED_,
                 commital: _COMMITAL_,
                 principal: _ALT_PRINCIPAL_,
                 gracePeriod: _ALT_GRACE_PERIOD_,
@@ -397,9 +392,9 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             })
         );
 
-        ILoanCollateralVault.Collateral
-            memory _collateral = ILoanCollateralVault(loanCollateralVault)
-                .getCollateral(_debtId);
+        ICollateralVault.Collateral memory _collateral = ICollateralVault(
+            collateralVault
+        ).getCollateral(_debtId);
 
         uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
@@ -427,9 +422,9 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     ) public virtual returns (bool) {
         bytes32 _contractTerms = createContractTerms(_terms);
 
-        ILoanCollateralVault.Collateral
-            memory _collateral = ILoanCollateralVault(loanCollateralVault)
-                .getCollateral(_debtId);
+        ICollateralVault.Collateral memory _collateral = ICollateralVault(
+            collateralVault
+        ).getCollateral(_debtId);
 
         uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
