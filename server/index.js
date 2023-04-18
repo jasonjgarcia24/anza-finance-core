@@ -6,22 +6,18 @@ const cors = require('cors');
 const express = require('express');
 const app = express();
 
-const { dbCreatePortfolio: createPortfolio } = require('./crud/portfolio/dbCreatePortfolio');
-const { dbReadPortfolio: readPortfolio } = require('./crud/portfolio/dbReadPortfolio');
-const { dbUpdatePortfolio: updatePortfolio } = require('./crud/portfolio/dbUpdatePortfolio');
-const { dbCreateLeveraged: createLeveraged } = require('./crud/leveraged/dbCreateLeveraged');
-const { dbReadLeveraged: readLeveraged } = require('./crud/leveraged/dbReadLeveraged');
-const { dbUpdateLeveraged: updateLeveraged } = require('./crud/leveraged/dbUpdateLeveraged');
-const { dbReadJoin: readJoin } = require('./crud/join/dbReadJoin');
-const { dbCreateDebt: createDebt } = require('./crud/debt/dbCreateDebt');
-
 const {
-    dbSelectProposedLoanTerms: selectProposedLoanTerms,
-    dbSelectAtProposedLoanTerms: selectAtProposedLoanTerms,
-    dbSelectAvailableLoanTerms: selectAvailableLoanTerms,
-    dbSelectApprovedLoanTerms: selectApprovedLoanTerms
-} = require('./crud/debt/server_selectLoanTerms');
-const { dbInsertProposedLoanTerms: insertLoanTerms } = require('./crud/debt/server_insertProposedLoanTerms');
+    dbSelectProposedLendingTerms,
+    dbSelectAtProposedLendingTerms,
+    dbSelectAvailableLendingTerms,
+    dbSelectApprovedLendingTerms
+} = require('./crud/debt/server_selectLendingTerms');
+const { dbInsertProposedLendingTerms } = require('./crud/debt/server_insertLendingTerms');
+const { dbInsertConfirmedLoans } = require('./crud/debt/server_insertConfirmedLoans');
+const {
+    dbUpdateApprovedLendingTerms,
+    dbUpdateUnallowedCollateralLendingTerms
+} = require('./crud/debt/server_updateLendingTerms');
 
 const db = mysql.createPool({
     host: config.DATABASE.HOST,
@@ -42,26 +38,19 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// nft.leveraged CRUD
-createLeveraged(app, db);
-readLeveraged(app, db);
-updateLeveraged(app, db);
+// Create
+dbInsertProposedLendingTerms(app, db);
+dbInsertConfirmedLoans(app, db);
 
-// nft.portfolio CRUD
-createPortfolio(app, db);
-readPortfolio(app, db);
-updatePortfolio(app, db);
+// Read
+dbSelectProposedLendingTerms(app, db);
+dbSelectAtProposedLendingTerms(app, db);
+dbSelectAvailableLendingTerms(app, db);
+dbSelectApprovedLendingTerms(app, db);
 
-// nft.debt CRUD
-selectProposedLoanTerms(app, db);
-selectAtProposedLoanTerms(app, db);
-selectAvailableLoanTerms(app, db);
-selectApprovedLoanTerms(app, db);
-insertLoanTerms(app, db);
-createDebt(app, db);
-
-// nft.leveraged and nft.portfolio RUD
-readJoin(app, db);
+// Update
+dbUpdateApprovedLendingTerms(app, db);
+dbUpdateUnallowedCollateralLendingTerms(app, db);
 
 app.listen(config.SERVER.PORT, () => {
     console.log(`Running on port ${config.SERVER.PORT}`);

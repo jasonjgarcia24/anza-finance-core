@@ -5,35 +5,22 @@ import { ethers } from 'ethers';
 import config from '../../config.json';
 
 import { NftTable } from '../Common/common';
-
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
+import { getLendingTermsPrimaryKey } from '../../utils/databaseUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 import { getSignedMessage, getContractTerms } from '../../utils/signingUtils';
 import { getOwnedTokens } from '../../utils/blockchainIndexingUtils';
 import { checkIfWalletIsConnected as checkConnection, connectWallet } from '../../utils/window/ethereumConnect';
-
-import { setAnzaDebtTokenMetadata, postAnzaDebtTokenIPFS } from '../../utils/adt/adtIPFS';
-import { mintAnzaDebtToken } from '../../utils/adt/adtContract';
-
-import { clientCreateTokensPortfolio as createTokensPortfolio } from '../../db/clientCreateTokensPortfolio';
-import { clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus } from '../../db/clientUpdateTokensPortfolio';
-import { clientReadBorrowerNotSignedJoin as readBorrowerNotSignedJoin } from '../../db/clientReadJoin';
-
-import { createTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
-import { createTokensDebt } from '../../db/clientCreateTokensDebt';
-import { insertProposedLoanTerms } from '../../db/client_insertProposedLoanTerms';
-import { selectProposedLoanTerms } from '../../db/client_selectLoanTerms';
-
+import { insertProposedLoanTerms } from '../../db/client_insertLendingTerms';
+import { selectProposedLoanTerms } from '../../db/client_selectLendingTerms';
 import abi_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
-import abi_LibLoanContractSigning from '../../artifacts/LibLoanContract.sol/LibLoanContractSigning.json';
 import abi_ERC721 from '../../artifacts/IERC721.sol/IERC721.json';
-import { toUtf8Bytes } from 'ethers/lib/utils';
 
 
 export default function BorrowingPage() {
     const [isPageLoad, setIsPageLoad] = useState(true);
-    const [newContract, setNewContract] = useState('');
+    const [newLoanProposal, setNewLoanProposal] = useState('');
     const [currentAccount, setCurrentAccount] = useState(null);
     const [currentChainId, setCurrentChainId] = useState(null);
     const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState(null);
@@ -51,8 +38,8 @@ export default function BorrowingPage() {
     }, [currentToken]);
 
     useEffect(() => {
-        if (!!newContract) newContractCreatedSequence();
-    }, [newContract]);
+        if (!!newLoanProposal) window.location.reload();
+    }, [newLoanProposal]);
 
     /* ---------------------------------------  *
      *       EVENT SEQUENCE FUNCTIONS           *
@@ -106,23 +93,47 @@ export default function BorrowingPage() {
         // Update terms enable/disable
         const terms = document.getElementsByClassName("loan-term-text");
 
+
         [...terms].forEach((term) => {
-            term.disabled = `terms-${currentToken.address}-${currentToken.id}` != term.name;
+            const [termType, , ,] = term.id.split('-');
+            term.disabled = `${termType}-${currentToken.address}-${currentToken.id}-terms` != term.id;
         });
     }
 
-    const newContractCreatedSequence = async () => {
-        // console.log('new contract created!');
+    const newLoanProposalSequence = async () => {
+        console.log('New contract created!');
 
-        // await updatePortfolioLeveragedStatus(newContract, 'Y');
+        // Update nft.available table
+        const ownedNfts = await updateNftPortfolio(currentAccount, currentChainId);
+        const loanProposals = await getLoanProposals(ownedNfts)
+        console.log(ownedNfts);
+        console.log(loanProposals);
 
-        // // Render table of potential NFTs
-        // const [availableNftsTable, _] = await renderNftTable(currentAccount);
-        // setCurrentAvailableNftsTable(availableNftsTable);
+        // Render table of potential NFTs
+        const [proposedLoansTable, _] = await NftTable({
+            account: currentAccount,
+            nfts: loanProposals,
+            type: "proposal",
+            useDefaultTerms: false,
+            disabledOverriden: true,
+        });
 
-        // window.location.reload();
+        const [availableNftsTable, token] = await NftTable({
+            account: currentAccount,
+            nfts: ownedNfts,
+            type: "terms",
+            useDefaultTerms: true,
+            disabledOverriden: false,
+            callbackRadioButton: callback__SetProposalParams,
+            callbackSelect: callback__SetFixedLoanParams
+        });
 
-        // setNewContract('');
+        setCurrentToken({ address: token.address.toLowerCase(), id: token.id });
+        setCurrentLoanProposalsTable(proposedLoansTable);
+        setCurrentAvailableNftsTable(availableNftsTable);
+
+        // Clear newLoanProposal
+        setNewLoanProposal('');
     }
 
     /* ---------------------------------------  *
@@ -163,7 +174,7 @@ export default function BorrowingPage() {
 
         // Collect loan terms and signature for loan initialization
         const contractTerms = getContractTerms(currentToken.address, currentToken.id);
-        console.log(`Borrower principal: ${contractTerms["principal"]}`);
+
         const { packedContractTerms, collateralNonce, signedMessage } = await getSignedMessage(
             signer,
             currentChainId,
@@ -172,7 +183,7 @@ export default function BorrowingPage() {
             currentToken.id
         );
 
-        // Update loan proposal database
+        // Insert loan proposal into database
         const response = await insertProposedLoanTerms(
             signedMessage,
             packedContractTerms,
@@ -184,100 +195,16 @@ export default function BorrowingPage() {
 
         if (response.status === 200) {
             console.log("Loan proposal successfully saved to Anza database!");
-            await pageLoadSequence();
         } else if (response.data.error.code === "ER_DUP_ENTRY") {
             console.error(`Duplicate loan proposal failure!\n${response.data.error.sql}`);
+            return;
         } else {
             console.error(`Default loan proposal error.\n${response.data.error.sql}`);
+            return;
         }
-    }
 
-    const callback__InitLoanContract = async () => {
-        // const tx = await LoanContract.connect(signer)[
-        //     "initLoanContract(bytes32,address,uint256,bytes)"
-        // ](
-        //     packedContractTerms,
-        //     currentToken.address,
-        //     currentToken.id,
-        //     signedMessage,
-        //     { value: ethers.utils.parseEther(contractTerms["principal"].toString()), gasLimit: 1000000 }
-        // );
-        // await tx.wait();
-        // console.log(tx);
-
-        // const [collateralAddress, collateralId, debtId] = await listenerLoanContractInit(tx, LoanContract);
-
-        // console.log(`collateralAddress: ${collateralAddress}`);
-        // console.log(`collateralId: ${collateralId}`);
-        // console.log(`debtId: ${debtId}`);
-
-        // const replicaSelectElement = document.getElementsByClassName(`replica-${currentToken.address}-${currentToken.id}`)[0];
-        // const replicaSelect = replicaSelectElement.options[replicaSelectElement.options.selectedIndex].text === 'Y';
-
-        // // Set IPFS debt metadata object for AnzaDebtToken
-        // const debtObj = await setAnzaDebtTokenMetadata(currentAccount);
-
-        // // Create new LoanContract
-        // tx = await LoanContractFactory.createLoanContract(
-        //     config.LoanContract,
-        //     currentToken.address,
-        //     ethers.BigNumber.from(currentToken.id),
-        //     ethers.utils.parseEther(principal),
-        //     fixedInterestRate,
-        //     duration
-        // );
-        // await tx.wait();
-
-        // const [cloneAddress, tokenContractAddress, tokenId] = await listenerLoanContractCreated(tx, LoanContractFactory);
-
-        // // Update databases
-        // const primaryKey = `${tokenContractAddress}_${tokenId.toString()}`;
-
-        // createTokensLeveraged(
-        //     primaryKey,
-        //     cloneAddress,
-        //     currentAccount,
-        //     tokenContractAddress,
-        //     tokenId.toString(),
-        //     ethers.constants.AddressZero,
-        //     ethers.utils.parseEther(principal).toString(),
-        //     fixedInterestRate,
-        //     duration,
-        //     'Y',
-        //     'N'
-        // );
-
-        // if (replicaSelect) {
-        //     // Set IPFS LoanContract metadata object for AnzaDebtToken
-        //     const loanContractObj = {
-        //         loanContractAddress: cloneAddress,
-        //         borrowerAddress: currentAccount,
-        //         collateralTokenAddress: currentToken.address,
-        //         collateralTokenId: currentToken.id,
-        //         lenderAddress: ethers.constants.AddressZero,
-        //         principal: principal,
-        //         fixedInterestRate: fixedInterestRate,
-        //         duration: duration
-        //     }
-
-        //     // Post AnzaDebtToken to IPFS
-        //     let debtTokenAddress, debtTokenId, debtTokenURI;
-        //     debtTokenURI = await postAnzaDebtTokenIPFS(debtObj, loanContractObj);
-
-        //     // Mint AnzaDebtToken with IPFS URI
-        //     [debtTokenAddress, debtTokenId, debtTokenURI] = await mintAnzaDebtToken(currentAccount, cloneAddress, debtTokenURI);
-        //     console.log(debtTokenURI);
-
-        //     createTokensDebt(
-        //         primaryKey,
-        //         debtTokenURI,
-        //         debtTokenAddress,
-        //         debtTokenId,
-        //         principal
-        //     );
-        // }
-
-        // setNewContract(primaryKey);
+        // Update frontend
+        setNewLoanProposal(signedMessage);
     }
 
     const callback__SetFixedLoanParams = async ({ target }) => {
@@ -305,6 +232,7 @@ export default function BorrowingPage() {
 
     const callback__SetProposalParams = async ({ target }) => {
         const [tokenAddress, tokenId] = target.value.split('-');
+        console.log(target.value);
         if (currentToken.address === tokenAddress && currentToken.id === tokenId) {
             // Do nothing
             return;
@@ -343,7 +271,10 @@ export default function BorrowingPage() {
         // Format tokens owned for database update
         const portfolioVals = [];
         Object.keys(ownedNfts).map((i) => {
-            let primaryKey = `${ownedNfts[i].contract.address}_${ownedNfts[i].tokenId.toString()}`;
+            let primaryKey = getLendingTermsPrimaryKey(
+                ownedNfts[i].contract.address,
+                ownedNfts[i].tokenId
+            );
 
             portfolioVals.push([
                 primaryKey,
@@ -366,11 +297,15 @@ export default function BorrowingPage() {
 
         Object.keys(ownedNfts).map((i) => {
             collateral.push(
-                `${ownedNfts[i].contract.address.toLowerCase()}_${ownedNfts[i].tokenId}`
+                getLendingTermsPrimaryKey(
+                    ownedNfts[i].contract.address,
+                    ownedNfts[i].tokenId
+                )
             )
         });
 
         const data = await selectProposedLoanTerms(collateral);
+        console.log(data);
 
         return data;
     }

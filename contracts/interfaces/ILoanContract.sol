@@ -11,7 +11,7 @@ interface ILoanContract {
         address indexed collateralAddress,
         uint256 indexed collateralId,
         uint256 indexed debtId,
-        uint256 principal
+        uint256 activeLoanIndex
     );
 
     event PaymentSubmitted(

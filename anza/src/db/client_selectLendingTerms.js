@@ -16,7 +16,6 @@ export const selectProposedLoanTerms = async (collateral) => {
 // 0.0.1 :: Selects a specific proposed loan.
 export const selectAtProposedLoanTerms = async (collateral) => {
     const _collateral = "'" + collateral + "'";
-    console.log(_collateral);
 
     const domain = `http://${config.SERVER.HOST}:${config.SERVER.PORT}`;
     const endpoints = `/api/select/at_proposed/lending_terms/${_collateral}`;

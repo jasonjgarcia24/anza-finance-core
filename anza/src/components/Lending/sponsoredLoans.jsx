@@ -5,7 +5,7 @@
 // import axios from 'axios';
 // import config from '../../config.json';
 
-// import { listenerLoanContractCreated } from '../../utils/events/listenersLoanContractFactory';
+// import { listenerLoanContractInit } from '../../utils/events/listenersLoanContract';
 
 // import { setPageTitle } from '../../utils/titleUtils';
 // import { getSubAddress, getLinkedSubAddress } from '../../utils/addressUtils';

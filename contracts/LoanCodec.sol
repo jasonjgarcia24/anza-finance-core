@@ -198,7 +198,6 @@ abstract contract LoanCodec is ILoanCodec {
         uint32 _termsExpiry;
         uint32 _duration;
         uint32 _gracePeriod;
-        // uint128 _principal;
         uint8 _fixedInterestRate;
         uint8 _firInterval;
 
@@ -218,10 +217,6 @@ abstract contract LoanCodec is ILoanCodec {
             // Get packed grace period
             mstore(0x13, _contractTerms)
             _gracePeriod := mload(0)
-
-            // // Get packed principal
-            // mstore(0x03, _contractTerms)
-            // _principal := mload(0)
 
             // Get fixed interest rate
             mstore(0x01, _contractTerms)

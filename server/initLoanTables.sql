@@ -1,5 +1,19 @@
 -- Active: 1681265439276@@127.0.0.1@3306@anza_loans
 
+DROP Table lending_terms;
+
+DROP Table confirmed_loans;
+
+CREATE TABLE
+    confirmed_loans (
+        debt_id VARCHAR(78) NOT NULL UNIQUE PRIMARY KEY,
+        borrower CHAR(42) NOT NULL,
+        lender CHAR(42) NOT NULL,
+        active_loan_index VARCHAR(78) NOT NULL,
+        loan_start_time VARCHAR(20) NOT NULL,
+        loan_end_time VARCHAR(20) NOT NULL
+    );
+
 CREATE TABLE
     lending_terms (
         signed_message CHAR(132) NOT NULL UNIQUE PRIMARY KEY,
@@ -15,6 +29,7 @@ CREATE TABLE
         commital VARCHAR(3) NOT NULL,
         terms_expiry VARCHAR(10) NOT NULL,
         lender_royalties VARCHAR(3) NOT NULL,
-        debt_id VARCHAR(78) NULL UNIQUE,
+        allowed BOOLEAN NOT NULL DEFAULT true,
+        debt_id VARCHAR(78) UNIQUE,
         FOREIGN KEY (debt_id) REFERENCES confirmed_loans (debt_id)
     );

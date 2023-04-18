@@ -5,42 +5,24 @@ import { ethers } from 'ethers';
 import config from '../../config.json';
 
 import { NftTable } from '../Common/common';
-
-import { listenerDeposited } from '../../utils/events/listenersAContractTreasurer';
-import { listenerLoanContractInit } from '../../utils/events/listenersLoanContractFactory';
-
+import { listenerLoanContractInit } from '../../utils/events/listenersLoanContract';
 import { setPageTitle } from '../../utils/titleUtils';
-import { getSubAddress, getLinkedSubAddress, getSubCid } from '../../utils/addressUtils';
+import { getSubAddress } from '../../utils/addressUtils';
+import { getLendingTermsPrimaryKey } from '../../utils/databaseUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 import { getOwnedTokens } from '../../utils/blockchainIndexingUtils';
 import {
     checkIfWalletIsConnected as checkConnection,
     connectWallet
 } from '../../utils/window/ethereumConnect';
-
-import { selectAvailableLoanTerms, selectApprovedLoanTerms } from '../../db/client_selectLoanTerms';
+import { selectAvailableLoanTerms, selectApprovedLoanTerms } from '../../db/client_selectLendingTerms';
+import { insertConfirmedLoans } from '../../db/client_insertConfirmedLoans';
 import {
-    clientCreateTokensPortfolio as createTokensPortfolio
-} from '../../db/clientCreateTokensPortfolio';
-import {
-    clientUpdatePortfolioLeveragedStatus as updatePortfolioLeveragedStatus
-} from '../../db/clientUpdateTokensPortfolio';
-import {
-    clientUpdateLeveragedLenderSigned as updateLeveragedLenderSigned
-} from '../../db/clientUpdateTokensLeveraged';
-import {
-    clientReadNonSponsoredTokensLeveragedContract as readNonSponsoredTokensLeveragedContract
-} from '../../db/clientReadTokensLeveraged';
-
-import {
-    clientReadNonSponsoredTokensJoin as readNonSponsoredTokensJoin
-} from '../../db/clientReadJoin';
-
-import { clientReadLeveragedTokensPortfolio as readLeveragedTokensPortfolio } from '../../db/clientReadTokensPortfolio';
-import { updateTokensLeveraged } from '../../db/clientCreateTokensLeveraged';
-
-import abi_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
-import abi_ERC721 from '../../artifacts/ERC721.sol/ERC721.json';
+    updateApprovedLendingTerms,
+    updateUnallowedCollateralLendingTerms
+} from '../../db/client_updateLendingTerms';
+import artifact_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
+import artifact_LibLoanContractSigning from '../../artifacts/LibLoanContract.sol/LibLoanContractSigning.json';
 
 export default function LendingPage() {
     const [isPageLoad, setIsPageLoad] = useState(true);
@@ -158,9 +140,10 @@ export default function LendingPage() {
             terms[type] = (type !== "is_fixed") ? terms[type] : (terms[type] === "Y") ? 1 : 0;
         });
 
-        terms["collateral"] = `${collateralAddress}_${collateralId}`
+        terms["collateral"] = getLendingTermsPrimaryKey(collateralAddress, collateralId);
 
-        const response = (await selectApprovedLoanTerms(
+        // Get selected approved loan terms
+        let response = (await selectApprovedLoanTerms(
             terms["collateral"],
             terms["is_fixed"],
             terms["principal"],
@@ -173,46 +156,71 @@ export default function LendingPage() {
             terms["lender_royalties"]
         ))[0];
 
-        console.log(response);
-
-        // Set LoanContractFactory to operator
+        // Get LoanContract instance
         const LoanContract = new ethers.Contract(
             config[currentChainId].LoanContract,
-            abi_LoanContract.abi,
+            artifact_LoanContract.abi,
             signer
         );
 
-        // const tx = await LoanContract.connect(signer)[
-        //     "initLoanContract()"
-        // ](
-        //     { gasLimit: 10000000 }
-        //     // { value: response["principal"], gasLimit: 1000000 }
-        // );
-        console.log(`Lending principal: ${response["principal"]}`);
+        // Store nonce for finding borrower later
+        const collateralNonce = await LoanContract.getCollateralNonce(collateralAddress, collateralId);
 
-        const tx = await LoanContract.connect(signer)[
-            "initLoanContract(bytes32,address,uint256,bytes)"
-        ](
-            response["packed_contract_terms"],
-            collateralAddress,
-            collateralId,
-            response["signed_message"],
-            { value: response["principal"], gasLimit: 1000000 }
-        );
-
+        // Initialize loan contract
+        let tx;
         try {
-            const receipt = await tx.wait();
-            console.log(receipt);
+            tx = await LoanContract.connect(signer)[
+                "initLoanContract(bytes32,address,uint256,bytes)"
+            ](
+                response["packed_contract_terms"],
+                collateralAddress,
+                collateralId,
+                response["signed_message"],
+                { value: response["principal"], gasLimit: 1000000 }
+            );
         } catch (err) {
-            console.log(err.message);
-            console.log(err.code)
+            console.error(err.message);
+            return;
         }
 
-        // const [_collateralAddress, _collateralId, _debtId] = await listenerLoanContractInit(tx, LoanContract);
+        // Capture LoanContractInit event
+        const [
+            _collateralAddress,
+            _collateralId,
+            _debtId,
+            _activeLoanIndex
+        ] = await listenerLoanContractInit(tx, LoanContract);
 
-        // console.log(`collateralAddress: ${_collateralAddress}`);
-        // console.log(`collateralId: ${_collateralId}`);
-        // console.log(`debtId: ${_debtId}`);
+        // Get borrower
+        const LibLoanContractSigning = new ethers.Contract(
+            config[currentChainId].LibLoanContractSigning,
+            artifact_LibLoanContractSigning.abi,
+            provider
+        );
+
+        const _borrower = await LibLoanContractSigning.recoverSigner(
+            response["principal"],
+            response["packed_contract_terms"],
+            _collateralAddress,
+            _collateralId,
+            collateralNonce,
+            response["signed_message"]
+        );
+        const _lender = await signer.getAddress();
+        const _loanStartTime = await LoanContract.loanStart(_debtId);
+        const _loanCloseTime = await LoanContract.loanClose(_debtId);
+
+        // Set confirmed loan into database
+        await setApprovedLoan(
+            response["signed_message"],
+            _debtId,
+            getLendingTermsPrimaryKey(_collateralAddress, _collateralId),
+            _borrower,
+            _lender,
+            _activeLoanIndex,
+            _loanStartTime,
+            _loanCloseTime
+        );
 
         // setNewContract(primaryKey);
     }
@@ -244,13 +252,64 @@ export default function LendingPage() {
 
         Object.keys(ownedNfts).map((i) => {
             collateral.push(
-                `${ownedNfts[i].contract.address.toLowerCase()}_${ownedNfts[i].tokenId}`
+                getLendingTermsPrimaryKey(
+                    ownedNfts[i].contract.address,
+                    ownedNfts[i].tokenId
+                )
             )
         });
 
         const data = await selectAvailableLoanTerms(collateral);
 
         return data;
+    }
+
+    const setApprovedLoan = async (
+        signedMessage,
+        debtId,
+        collateral,
+        borrower,
+        lender,
+        activeLoanIndex,
+        loanStartTime,
+        loanCloseTime
+    ) => {
+        // Update confirmed loans with debt ID
+        let response = await insertConfirmedLoans(
+            debtId.toString(),
+            borrower,
+            lender,
+            activeLoanIndex,
+            loanStartTime,
+            loanCloseTime
+        );
+
+        if (response.status === 200) {
+            console.log("Confirmed loans successfully updated at Anza database!");
+            await pageLoadSequence();
+        } else {
+            console.error(`Default confirmed loans error.\n${response.data.error.sql}`);
+        }
+
+        // Update loan proposal database with debt ID
+        response = await updateApprovedLendingTerms(signedMessage, debtId);
+
+        if (response.status === 200) {
+            console.log("Loan proposal successfully updated at Anza database!");
+            await pageLoadSequence();
+        } else {
+            console.error(`Default loan proposal error.\n${response.data.error.sql}`);
+        }
+
+        // Clean-up all loans proposals with same collateral
+        response = await updateUnallowedCollateralLendingTerms(collateral);
+
+        if (response.status === 200) {
+            console.log("Loan proposals successfully updated at Anza database!");
+            await pageLoadSequence();
+        } else {
+            console.error(`Default loan proposal error.\n${response.data.error.sql}`);
+        }
     }
 
     /* ---------------------------------------  *

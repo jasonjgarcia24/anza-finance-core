@@ -40,9 +40,6 @@ export const getSignedMessage = async (
         tokenId
     );
 
-    console.log(contractTerms["principal"].toString());
-    console.log(typeof contractTerms["principal"]);
-
     const hashedMessage = await LoanSigningLib.hashMessage(
         contractTerms["principal"].toString(),
         packedContractTerms,

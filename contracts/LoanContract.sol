@@ -130,7 +130,7 @@ contract LoanContract is
             _collateralAddress,
             _collateralId,
             totalDebts,
-            _principal
+            0
         );
 
         // Setup for next debt ID
@@ -193,11 +193,11 @@ contract LoanContract is
             _collateral.collateralId
         ];
 
-        __setLoanAgreement(
-            _now,
-            activeLoanCount(_debtIds[_debtIds.length - 1]) + 1,
-            _contractTerms
-        );
+        uint256 _activeLoanIndex = activeLoanCount(
+            _debtIds[_debtIds.length - 1]
+        ) + 1;
+
+        __setLoanAgreement(_now, _activeLoanIndex, _contractTerms);
         _debtIds.push(totalDebts);
 
         // Store collateral-debtId mapping in vault
@@ -237,7 +237,7 @@ contract LoanContract is
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _principal
+            _activeLoanIndex
         );
 
         // Setup for next debt ID

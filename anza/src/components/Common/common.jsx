@@ -20,9 +20,11 @@ export const NftTable = async (nftTableObj) => {
         tokenElements.push(
             Object.keys(nfts).map((i) => {
                 if (['proposal', 'sponsor'].includes(type)) {
-                    nfts[i]["contract"] = {};
-                    [nfts[i]["contract"]["address"], nfts[i]["tokenId"]] = nfts[i]["collateral"].split("_");
+                    nfts[i].contract = {};
+                    [nfts[i].contract.address, nfts[i].tokenId] = nfts[i].collateral.split("_");
                 }
+
+                nfts[i].tokenId = parseInt(nfts[i].tokenId, 10).toString();
 
                 return (
                     <tr key={`tr-${nfts[i].contract.address}-${nfts[i].tokenId}-${i}`}>
@@ -68,7 +70,6 @@ export const NftTable = async (nftTableObj) => {
                         {/* LENDING TERMS */}
                         {renderLenderTerms(
                             {
-                                account: account,
                                 nft: nfts[i],
                                 type: type,
                                 index: i,
@@ -114,12 +115,11 @@ export const NftTable = async (nftTableObj) => {
     }
 
     const renderLenderTerms = ({
-        account = null,
         nft = {},
         type = "",
         index = 0,
         useDefaultTerms = false,
-        disabled = false
+        disabled = false,
     }) => {
         const termObj = {
             "principal": config.DEFAULT_TEST_VALUES.PRINCIPAL,
@@ -133,6 +133,9 @@ export const NftTable = async (nftTableObj) => {
         }
 
         return Object.keys(termObj).map((term) => {
+            if (!useDefaultTerms && term === "principal") {
+                console.log(`${term}: ${useDefaultTerms ? termObj[term] : term !== "principal" ? nft[term] : ethers.utils.formatEther(nft[term])}`);
+            }
             return (
                 < td key={`td-${term}-${nft.contract.address}-${nft.tokenId}_${index}`
                 } id={`id-text-${nft.contract.address}-${nft.tokenId}`}>

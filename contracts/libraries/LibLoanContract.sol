@@ -24,7 +24,6 @@ library LibLoanContractSigning {
         uint8 _fixedInterestRate,
         uint8 _isFixed,
         uint8 _commital,
-        // uint128 _principal,
         uint32 _gracePeriod,
         uint32 _duration,
         uint32 _termsExpiry,
@@ -42,7 +41,6 @@ library LibLoanContractSigning {
                 mstore(0x1e, _commital)
             }
 
-            // mstore(0x1d, _principal)
             mstore(0x0d, _gracePeriod)
             mstore(0x09, _duration)
             mstore(0x05, _termsExpiry)

@@ -34,7 +34,7 @@ export const getOwnedTokens = async (chainId, account) => {
             ownedNfts = (await DemoToken.getOwnedTokens(account)).map(tkn => (
                 {
                     contract: { address: DemoToken.address.toLowerCase() },
-                    tokenId: parseInt((ethers.utils.formatEther(tkn) * 10 ** 18).toString())
+                    tokenId: (ethers.utils.formatEther(tkn) * 10 ** 18).toString()
                 }
             ));
     }
