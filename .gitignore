@@ -6,6 +6,7 @@ typechain-types
 
 #Hardhat files
 cache
+cache_hardhat
 artifacts
 
 # misc
@@ -30,6 +31,8 @@ out/
 
 # Docs
 docs/
+lib
+bin
 
 # Dotenv file
 .env
