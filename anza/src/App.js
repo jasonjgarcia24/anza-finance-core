@@ -10,6 +10,7 @@ const App = () => {
           <Link className='link' to="/about">About</Link> | {" "}
           <Link className='link' to="/borrowing">Borrowing</Link> | {" "}
           <Link className='link' to="/lending">Lending</Link> | {" "}
+          <Link className='link' to="/my_loans">My Loans</Link><br /><br />
           <Link className='link' to="/marketplace">Marketplace</Link>
         </nav>
       </div>

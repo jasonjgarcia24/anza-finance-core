@@ -62,19 +62,19 @@ export default function BorrowingPage() {
         const loanProposals = await getLoanProposals(ownedNfts)
 
         // Render table of potential NFTs
-        const [proposedLoansTable,] = await NftTable({
+        const [openLoans, token] = await NftTable({
             account: account,
             nfts: loanProposals,
-            type: "proposal",
+            type: "open",
             useDefaultTerms: false,
             disabledOverriden: true,
         });
 
         // Render table of owned NFTs
-        const [availableNftsTable, token] = await NftTable({
+        const [committedLons,] = await NftTable({
             account: account,
             nfts: ownedNfts,
-            type: "terms",
+            type: "committed",
             useDefaultTerms: true,
             disabledOverriden: false,
             callbackRadioButton: callback__SetProposalParams,
@@ -82,8 +82,8 @@ export default function BorrowingPage() {
         });
 
         token !== null && setCurrentToken({ address: token.address.toLowerCase(), id: token.id });
-        setCurrentLoanProposalsTable(proposedLoansTable);
-        setCurrentAvailableNftsTable(availableNftsTable);
+        setCurrentLoanProposalsTable(openLoans);
+        setCurrentAvailableNftsTable(committedLons);
 
         setIsPageLoad(false);
     }
@@ -275,7 +275,7 @@ export default function BorrowingPage() {
      *         BORROWERPAGE.JSX RETURN           *
      * ---------------------------------------  */
     return (
-        <main className="main-container-nft-table">
+        <main style={{ padding: '1rem 0' }}>
             <div className='buttongroup buttongroup-header'>
                 <div className='button button-network'>{getNetworkName(currentChainId)}</div>
                 {!!currentAccount
@@ -284,12 +284,12 @@ export default function BorrowingPage() {
                 }
             </div>
             {!!currentLoanProposalsTable && <div className='container container-table container-table-available-nfts'>
-                <h2>Loan Proposals</h2>
+                <h2>Open Loans</h2>
                 {currentLoanProposalsTable}
             </div>
             }
             <div className='container container-table container-table-available-nfts'>
-                <h2>Available Collateral</h2>
+                <h2>Committed Loans</h2>
                 <div className='buttongroup buttongroup-body'>
                     <div className='button button-body' onClick={callback__ProposeLoanTerms}>Propose Loan</div>
                 </div>

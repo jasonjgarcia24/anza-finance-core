@@ -70,7 +70,7 @@ export default function LendingPage() {
         const sponsoredProposals = await selectSponsoredConfirmedLoans(account);
 
         // Render table of sponsored loans
-        const [sponsoredLoansTable, _] = await NftTable({
+        const [sponsoredLoansTable,] = await NftTable({
             account: account,
             nfts: sponsoredProposals,
             type: "confirmed",

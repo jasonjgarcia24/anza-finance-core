@@ -20,7 +20,7 @@ export const NftTable = async (nftTableObj) => {
         tokenElements.push(
             Object.keys(nfts).map((i) => {
                 // If loading from database
-                if (['proposal', 'sponsor', 'confirmed'].includes(type)) {
+                if (['proposal', 'sponsor', 'confirmed', 'committed', 'open'].includes(type)) {
                     nfts[i].contract = {};
                     [nfts[i].contract.address, nfts[i].tokenId] = nfts[i].collateral.split("_");
                 }
@@ -87,7 +87,7 @@ export const NftTable = async (nftTableObj) => {
             <form className='form-table form-table-available-nfts'>
                 <table className='table-available-nfts'>
                     <thead><tr>
-                        {!['proposal', 'confirmed'].includes(type) && <th></th>}
+                        {!['proposal', 'confirmed', 'committed'].includes(type) && <th></th>}
                         <th><label>Contract</label></th>
                         <th><label>Token ID</label></th>
                         <th><label>Fixed Loan</label></th>

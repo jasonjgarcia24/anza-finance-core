@@ -1,7 +1,7 @@
 import axios from 'axios';
 import config from '../config.json';
 
-// 1.0.0 :: Update the loans proposal as approved.
+// 2.0.0 :: Update the loans proposal as approved.
 export const updateApprovedLendingTerms = async (signedMessage, debtId) => {
 	let response;
 
@@ -17,7 +17,7 @@ export const updateApprovedLendingTerms = async (signedMessage, debtId) => {
 	return response;
 };
 
-// 1.1.0 :: Update the loan proposals with matching collateral to unallowed.
+// 2.0.1 :: Update the loan proposals with matching collateral to unallowed.
 export const updateUnallowedCollateralLendingTerms = async (collateral) => {
 	let response;
 
