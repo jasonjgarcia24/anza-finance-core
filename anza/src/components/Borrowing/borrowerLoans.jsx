@@ -1,5 +1,5 @@
-import '../../static/css/BorrowingPage.css';
-import '../../static/css/NftTable.css';
+// import '../../static/css/BorrowingPage.css';
+// import '../../static/css/NftTable.css';
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import axios from 'axios';

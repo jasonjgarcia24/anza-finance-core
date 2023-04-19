@@ -7,13 +7,22 @@ const express = require('express');
 const app = express();
 
 const {
+    dbInsertProposedLendingTerms
+} = require('./crud/debt/server_insertLendingTerms');
+const {
+    dbInsertConfirmedLoans
+} = require('./crud/debt/server_insertConfirmedLoans');
+
+const {
     dbSelectProposedLendingTerms,
     dbSelectAtProposedLendingTerms,
     dbSelectAvailableLendingTerms,
     dbSelectApprovedLendingTerms
 } = require('./crud/debt/server_selectLendingTerms');
-const { dbInsertProposedLendingTerms } = require('./crud/debt/server_insertLendingTerms');
-const { dbInsertConfirmedLoans } = require('./crud/debt/server_insertConfirmedLoans');
+const {
+    dbSelectSponsoredConfirmedLoans
+} = require('./crud/debt/server_selectConfirmedLoans');
+
 const {
     dbUpdateApprovedLendingTerms,
     dbUpdateUnallowedCollateralLendingTerms
@@ -47,6 +56,7 @@ dbSelectProposedLendingTerms(app, db);
 dbSelectAtProposedLendingTerms(app, db);
 dbSelectAvailableLendingTerms(app, db);
 dbSelectApprovedLendingTerms(app, db);
+dbSelectSponsoredConfirmedLoans(app, db);
 
 // Update
 dbUpdateApprovedLendingTerms(app, db);

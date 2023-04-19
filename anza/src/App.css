@@ -1,23 +1,70 @@
 html {
-  font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #5C2324;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-image: linear-gradient(to bottom right, #5C2324 20%, #C69191);
+  height: 100%;
+}
+
+body {
+  background-repeat: no-repeat;
+  font-family: 'Courier New', Courier, monospace;
+  color: #FFF;
+  text-shadow: 1px 1px #000;
 }
 
 h1 {
-  margin: 20px auto 0 auto;
+  margin: auto 0;
+  color: whitesmoke;
+  border-radius: 8px;
+  padding: 10px;
+  text-shadow: 0px 8px 4px rgba(0, 0, 0, 0.25);
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  color: #f1bfbf;
 }
 
 nav {
   padding: 8px 0;
   margin: 0 auto;
-  border-bottom: solid 1px;
   padding-bottom: 1rem;
-  /* background-color: red; */
+}
+
+table {
+  border-collapse: collapse;
+  margin: 20px auto;
+  box-shadow: 0px 8px 4px rgba(0, 0, 0, 0.25);
+}
+
+th,
+td {
+  padding: auto;
+  text-align: center;
+}
+
+th {
+  color: #FFF;
+  background-color: #C69191;
+}
+
+td {
+  background-color: #36454f;
+}
+
+input[type="text"] {
+  text-align: center;
+  margin: 3px 0;
+  padding: 2px 0 2px 2px;
 }
 
 .link {
   padding: 0;
   margin: 0 auto;
-  /* background-color: orange; */
+  color: whitesmoke;
 }
 
 .App {
@@ -54,7 +101,16 @@ nav {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
+}
+
+.main-div {
+  background-color: #282c34;
+  margin: 16px 10px;
+  padding: 10px;
+  box-shadow: -2px -2px 2px rgba(92, 61, 61, 0.7),
+    1px 1px 1px rgba(0, 0, 0, 0.3);
 }

@@ -1,4 +1,4 @@
-import '../../static/css/BorrowingPage.css';
+import '../../static/css/LoansPage.css';
 import '../../static/css/NftTable.css';
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
@@ -60,8 +60,6 @@ export default function BorrowingPage() {
         // Update nft.available table
         const ownedNfts = await updateNftPortfolio(account, chainId);
         const loanProposals = await getLoanProposals(ownedNfts)
-        console.log(ownedNfts);
-        console.log(loanProposals);
 
         // Render table of potential NFTs
         const [proposedLoansTable, _] = await NftTable({
@@ -72,6 +70,7 @@ export default function BorrowingPage() {
             disabledOverriden: true,
         });
 
+        // Render table of owned NFTs
         const [availableNftsTable, token] = await NftTable({
             account: account,
             nfts: ownedNfts,
@@ -82,7 +81,7 @@ export default function BorrowingPage() {
             callbackSelect: callback__SetFixedLoanParams
         });
 
-        setCurrentToken({ address: token.address.toLowerCase(), id: token.id });
+        token !== null && setCurrentToken({ address: token.address.toLowerCase(), id: token.id });
         setCurrentLoanProposalsTable(proposedLoansTable);
         setCurrentAvailableNftsTable(availableNftsTable);
 
@@ -98,42 +97,6 @@ export default function BorrowingPage() {
             const [termType, , ,] = term.id.split('-');
             term.disabled = `${termType}-${currentToken.address}-${currentToken.id}-terms` != term.id;
         });
-    }
-
-    const newLoanProposalSequence = async () => {
-        console.log('New contract created!');
-
-        // Update nft.available table
-        const ownedNfts = await updateNftPortfolio(currentAccount, currentChainId);
-        const loanProposals = await getLoanProposals(ownedNfts)
-        console.log(ownedNfts);
-        console.log(loanProposals);
-
-        // Render table of potential NFTs
-        const [proposedLoansTable, _] = await NftTable({
-            account: currentAccount,
-            nfts: loanProposals,
-            type: "proposal",
-            useDefaultTerms: false,
-            disabledOverriden: true,
-        });
-
-        const [availableNftsTable, token] = await NftTable({
-            account: currentAccount,
-            nfts: ownedNfts,
-            type: "terms",
-            useDefaultTerms: true,
-            disabledOverriden: false,
-            callbackRadioButton: callback__SetProposalParams,
-            callbackSelect: callback__SetFixedLoanParams
-        });
-
-        setCurrentToken({ address: token.address.toLowerCase(), id: token.id });
-        setCurrentLoanProposalsTable(proposedLoansTable);
-        setCurrentAvailableNftsTable(availableNftsTable);
-
-        // Clear newLoanProposal
-        setNewLoanProposal('');
     }
 
     /* ---------------------------------------  *
@@ -232,7 +195,6 @@ export default function BorrowingPage() {
 
     const callback__SetProposalParams = async ({ target }) => {
         const [tokenAddress, tokenId] = target.value.split('-');
-        console.log(target.value);
         if (currentToken.address === tokenAddress && currentToken.id === tokenId) {
             // Do nothing
             return;
@@ -305,7 +267,6 @@ export default function BorrowingPage() {
         });
 
         const data = await selectProposedLoanTerms(collateral);
-        console.log(data);
 
         return data;
     }
