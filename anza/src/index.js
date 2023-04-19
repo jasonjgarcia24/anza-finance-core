@@ -4,6 +4,7 @@ import App from './App';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Borrowing from './components/Borrowing/borrowing';
 import Lending from './components/Lending/lending';
+import MyLoans from './components/MyLoans/myLoans';
 import Marketplace from './components/Marketplace/marketplace';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -14,6 +15,7 @@ root.render(
         <Route path='/' element={<App />}>
           <Route path='borrowing' element={<Borrowing />} />
           <Route path='lending' element={<Lending />} />
+          <Route path='my_loans' element={<MyLoans />} />
           <Route path='marketplace' element={<Marketplace />} />
           <Route
             path='*'

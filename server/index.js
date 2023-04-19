@@ -20,6 +20,7 @@ const {
     dbSelectApprovedLendingTerms
 } = require('./crud/debt/server_selectLendingTerms');
 const {
+    dbSelectConfirmedLoans,
     dbSelectSponsoredConfirmedLoans
 } = require('./crud/debt/server_selectConfirmedLoans');
 
@@ -56,6 +57,7 @@ dbSelectProposedLendingTerms(app, db);
 dbSelectAtProposedLendingTerms(app, db);
 dbSelectAvailableLendingTerms(app, db);
 dbSelectApprovedLendingTerms(app, db);
+dbSelectConfirmedLoans(app, db);
 dbSelectSponsoredConfirmedLoans(app, db);
 
 // Update

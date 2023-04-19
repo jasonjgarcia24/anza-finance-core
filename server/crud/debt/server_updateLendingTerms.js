@@ -1,6 +1,6 @@
 const { dbQueryPost, dbQueryGet } = require('../common/queryTemplates');
 
-// 1.0.0 :: Update the loans proposal as approved.
+// 2.0.0 :: Update the loans proposal as approved.
 const dbUpdateApprovedLendingTerms = (app, db) => {
     app.post('/api/update/approve/lending_terms', async (req, res) => {
         const signedMessage = "'" + req.body.signedMessage + "'";
@@ -22,7 +22,7 @@ const dbUpdateApprovedLendingTerms = (app, db) => {
 }
 
 
-// 1.1.0 :: Update the loan proposals with matching collateral to unallowed.
+// 2.0.1 :: Update the loan proposals with matching collateral to unallowed.
 const dbUpdateUnallowedCollateralLendingTerms = (app, db) => {
     app.post('/api/update/collateral_unallowed/lending_terms', async (req, res) => {
         const collateral = "'" + req.body.collateral + "'";

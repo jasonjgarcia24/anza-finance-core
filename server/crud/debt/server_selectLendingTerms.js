@@ -1,6 +1,6 @@
 const { dbQueryGet } = require('../common/queryTemplates');
 
-// 0.0.0 :: Selects the borrower's proposed loans.
+// 1.0.0 :: Selects the borrower's proposed loans.
 const dbSelectProposedLendingTerms = (app, db) => {
     app.get('/api/select/proposed/lending_terms/:collateral', async (req, res) => {
         const collateral = req.params.collateral;
@@ -17,7 +17,7 @@ const dbSelectProposedLendingTerms = (app, db) => {
     });
 }
 
-// 0.0.1 :: Selects a specific proposed loan.
+// 1.0.1 :: Selects a specific proposed loan.
 const dbSelectAtProposedLendingTerms = (app, db) => {
     app.get('/api/select/at_proposed/lending_terms/:collateral', async (req, res) => {
         const collateral = req.params.collateral;
@@ -34,7 +34,7 @@ const dbSelectAtProposedLendingTerms = (app, db) => {
     });
 }
 
-// 0.1.0 :: Selects the lender's available loans for sponsorship.
+// 1.0.2 :: Selects the lender's available loans for sponsorship.
 const dbSelectAvailableLendingTerms = (app, db) => {
     app.get('/api/select/available/lending_terms/:collateral', async (req, res) => {
         const collateral = req.params.collateral;
@@ -52,7 +52,7 @@ const dbSelectAvailableLendingTerms = (app, db) => {
     });
 }
 
-// 0.1.1 :: Selects the lender's approved loan for sponsorship.
+// 1.0.3 :: Selects the lender's approved loan for sponsorship.
 const dbSelectApprovedLendingTerms = (app, db) => {
     app.get('/api/select/approved/lending_terms/' +
         ':collateral/' +

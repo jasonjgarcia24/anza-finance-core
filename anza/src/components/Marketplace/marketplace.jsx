@@ -16,7 +16,7 @@ import {
     connectWallet
 } from '../../utils/window/ethereumConnect';
 import { selectAvailableLoanTerms, selectApprovedLoanTerms } from '../../db/client_selectLendingTerms';
-import { selectSponsoredConfirmedLoans } from '../../db/client_selectConfirmedLoans';
+import { selectConfirmedLoans } from '../../db/client_selectConfirmedLoans';
 import { insertConfirmedLoans } from '../../db/client_insertConfirmedLoans';
 import {
     updateApprovedLendingTerms,
@@ -67,13 +67,13 @@ export default function LendingPage() {
         // Update nft.available table
         const ownedNfts = await getOwnedTokens(chainId, account);
         const loanProposals = await getLoanProposals(ownedNfts)
-        const sponsoredProposals = await selectSponsoredConfirmedLoans(account);
+        const confirmedLoans = await selectConfirmedLoans();
 
         // Render table of sponsored loans
         const [sponsoredLoansTable, _] = await NftTable({
             account: account,
-            nfts: sponsoredProposals,
-            type: "confirmed",
+            nfts: confirmedLoans,
+            type: "sponsor",
             useDefaultTerms: false,
             disabledOverriden: true,
         });

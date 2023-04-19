@@ -1,6 +1,7 @@
 import axios from 'axios';
 import config from '../config.json';
 
+// 0.0.0 :: Inserts the borrower's newly proposed loans.
 export const insertProposedLoanTerms = async (
   signedMessage,
   packedContractTerms,

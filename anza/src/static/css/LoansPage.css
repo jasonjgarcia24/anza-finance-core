@@ -1,6 +1,11 @@
 h2 {
-  margin: 20px auto 10px auto;
-  padding: 4px 10px;
+  margin: 0 auto 10px auto;
+  padding: 17px 10px 5px 10px;
+}
+
+
+.container-table-available-nfts {
+  margin: 10px 0;
 }
 
 .buttongroup {

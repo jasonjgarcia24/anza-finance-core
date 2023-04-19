@@ -1,6 +1,7 @@
 import axios from 'axios';
 import config from '../config.json';
 
+// 0.1.0 :: Inserts the lender's newly confirmed sponsored loan.
 export const insertConfirmedLoans = async (
   debtId,
   borrower,

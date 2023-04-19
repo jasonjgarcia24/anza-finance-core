@@ -1,7 +1,7 @@
 import axios from 'axios';
 import config from '../config.json';
 
-// 0.0.0 :: Selects the borrower's proposed loans.
+// 1.0.0 :: Selects the borrower's proposed loans.
 export const selectProposedLoanTerms = async (collateral) => {
     const _collateral = "'" + collateral.join("','") + "'";
 
@@ -13,7 +13,7 @@ export const selectProposedLoanTerms = async (collateral) => {
     return data;
 };
 
-// 0.0.1 :: Selects a specific proposed loan.
+// 1.0.1 :: Selects a specific proposed loan.
 export const selectAtProposedLoanTerms = async (collateral) => {
     const _collateral = "'" + collateral + "'";
 
@@ -26,7 +26,7 @@ export const selectAtProposedLoanTerms = async (collateral) => {
     return data;
 };
 
-// 0.1.0 :: Selects the lender's available loans for sponsorship.
+// 1.0.2 :: Selects the lender's available loans for sponsorship.
 export const selectAvailableLoanTerms = async (ownedNfts) => {
     const _ownedNfts = "'" + ownedNfts.join("','") + "'";
 
@@ -38,7 +38,7 @@ export const selectAvailableLoanTerms = async (ownedNfts) => {
     return data;
 };
 
-// 0.1.1 :: Selects the lender's approved loan for sponsorship.
+// 1.0.3 :: Selects the lender's approved loan for sponsorship.
 export const selectApprovedLoanTerms = async (
     collateral,
     isFixed,

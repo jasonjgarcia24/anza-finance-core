@@ -1,6 +1,6 @@
 const { dbQueryPost } = require('../common/queryTemplates');
 
-// 1.0.0 :: Inserts the borrower's proposed loans.
+// 0.0.0 :: Inserts the borrower's newly proposed loans.
 const dbInsertProposedLendingTerms = (app, db) => {
     app.post('/api/insert/lending_terms', (req, res) => {
         const signedMessage = req.body.signedMessage;

@@ -1,6 +1,6 @@
 const { dbQueryPost } = require('../common/queryTemplates');
 
-// 1.0.0 :: Inserts the borrower's proposed loans.
+// 0.1.0 :: Inserts the lender's newly confirmed sponsored loan.
 const dbInsertConfirmedLoans = (app, db) => {
     app.post('/api/insert/confirmed_loans', (req, res) => {
         const debtId = req.body.debtId;
