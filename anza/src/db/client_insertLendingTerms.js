@@ -11,13 +11,16 @@ export const insertProposedLoanTerms = async (
 ) => {
   let response;
 
+  console.log(typeof collateralId);
+  console.log(`${collateralAddress.toLowerCase()}_${collateralId.padStart(78, "0")}`);
+
   try {
     response = await axios.post(
       `http://${config.SERVER.HOST}:${config.SERVER.PORT}/api/insert/lending_terms`,
       {
         signedMessage: signedMessage,
         packedContractTerms: packedContractTerms,
-        collateral: `${collateralAddress.toLowerCase()}_${collateralId}`,
+        collateral: `${collateralAddress.toLowerCase()}_${collateralId.padStart(78, "0")}`,
         collateralNonce: collateralNonce.toString(),
         isFixed: contractTerms["is_fixed"].toString(),
         principal: contractTerms["principal"].toString(),

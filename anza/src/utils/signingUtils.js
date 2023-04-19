@@ -5,7 +5,13 @@ import abi_LoanContract from '../artifacts/LoanContract.sol/LoanContract.json';
 import abi_LibLoanContractSigning from '../artifacts/LibLoanContract.sol/LibLoanContractSigning.json';
 
 
-export const getSignedMessage = async (signer, chainId, contractTerms, tokenAddress, tokenId) => {
+export const getSignedMessage = async (
+    signer,
+    chainId,
+    contractTerms,
+    tokenAddress,
+    tokenId
+) => {
     const LoanContract = new ethers.Contract(
         config[chainId].LoanContract,
         abi_LoanContract.abi,
@@ -34,10 +40,8 @@ export const getSignedMessage = async (signer, chainId, contractTerms, tokenAddr
         tokenId
     );
 
-    console.log(ethers.utils.parseEther(contractTerms["principal"].toString(), "ether"));
-
     const hashedMessage = await LoanSigningLib.hashMessage(
-        ethers.utils.parseEther(contractTerms["principal"].toString(), "ether"),
+        contractTerms["principal"].toString(),
         packedContractTerms,
         tokenAddress,
         tokenId,

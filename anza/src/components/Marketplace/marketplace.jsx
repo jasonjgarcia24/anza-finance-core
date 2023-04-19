@@ -57,7 +57,7 @@ export default function LendingPage() {
          */
 
         // Set page title
-        setPageTitle('Lending');
+        setPageTitle('Debt Marketplace');
 
         // Set account and network
         const { account, chainId } = await checkIfWalletIsConnected();

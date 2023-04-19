@@ -19,15 +19,18 @@ export const NftTable = async (nftTableObj) => {
         const tokenElements = [];
         tokenElements.push(
             Object.keys(nfts).map((i) => {
-                if (['proposal', 'sponsor'].includes(type)) {
-                    nfts[i]["contract"] = {};
-                    [nfts[i]["contract"]["address"], nfts[i]["tokenId"]] = nfts[i]["collateral"].split("_");
+                // If loading from database
+                if (['proposal', 'sponsor', 'confirmed'].includes(type)) {
+                    nfts[i].contract = {};
+                    [nfts[i].contract.address, nfts[i].tokenId] = nfts[i].collateral.split("_");
                 }
+
+                nfts[i].tokenId = parseInt(nfts[i].tokenId, 10).toString();
 
                 return (
                     <tr key={`tr-${nfts[i].contract.address}-${nfts[i].tokenId}-${i}`}>
                         {/* RADIO BUTTON */}
-                        {!['proposal'].includes(type) && <td key={`td-radio-${nfts[i].contract.address}-${nfts[i].tokenId}`} id={`id-radio-${nfts[i].contract.address}-${nfts[i].tokenId}`}>
+                        {!['proposal', 'confirmed'].includes(type) && <td key={`td-radio-${nfts[i].contract.address}-${nfts[i].tokenId}`} id={`id-radio-${nfts[i].contract.address}-${nfts[i].tokenId}`}>
                             <input
                                 type='radio'
                                 key={`radio-${nfts[i].contract.address}-${nfts[i].tokenId}-${i}`}
@@ -68,7 +71,6 @@ export const NftTable = async (nftTableObj) => {
                         {/* LENDING TERMS */}
                         {renderLenderTerms(
                             {
-                                account: account,
                                 nft: nfts[i],
                                 type: type,
                                 index: i,
@@ -85,7 +87,7 @@ export const NftTable = async (nftTableObj) => {
             <form className='form-table form-table-available-nfts'>
                 <table className='table-available-nfts'>
                     <thead><tr>
-                        {!['proposal'].includes(type) && <th></th>}
+                        {!['proposal', 'confirmed'].includes(type) && <th></th>}
                         <th><label>Contract</label></th>
                         <th><label>Token ID</label></th>
                         <th><label>Fixed Loan</label></th>
@@ -110,16 +112,24 @@ export const NftTable = async (nftTableObj) => {
                 availableNftsTable,
                 { address: nfts[0].contract.address, id: nfts[0].tokenId }
             ]
-            : [null, null];
+            : [<div>{getEmptyString(type)}</div>, null];
+    }
+
+    const getEmptyString = (type) => {
+        return {
+            proposal: "🌵 You do not have any loan proposals yet 🌵",
+            terms: "🪹 No available collateral 🪹",
+            confirmed: "🙈 You do not have any sponsored loans yet 🙈",
+            sponsor: "🌵 No loan proposals available for sponsorship 🌵"
+        }[type]
     }
 
     const renderLenderTerms = ({
-        account = null,
         nft = {},
         type = "",
         index = 0,
         useDefaultTerms = false,
-        disabled = false
+        disabled = false,
     }) => {
         const termObj = {
             "principal": config.DEFAULT_TEST_VALUES.PRINCIPAL,

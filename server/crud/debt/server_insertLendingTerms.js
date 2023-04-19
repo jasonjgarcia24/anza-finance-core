@@ -1,7 +1,7 @@
 const { dbQueryPost } = require('../common/queryTemplates');
 
 // 1.0.0 :: Inserts the borrower's proposed loans.
-const dbInsertProposedLoanTerms = (app, db) => {
+const dbInsertProposedLendingTerms = (app, db) => {
     app.post('/api/insert/lending_terms', (req, res) => {
         const signedMessage = req.body.signedMessage;
         const packedContractTerms = req.body.packedContractTerms;
@@ -58,4 +58,4 @@ const dbInsertProposedLoanTerms = (app, db) => {
     });
 }
 
-module.exports = { dbInsertProposedLoanTerms };
+module.exports = { dbInsertProposedLendingTerms };

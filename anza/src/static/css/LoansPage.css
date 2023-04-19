@@ -1,0 +1,78 @@
+h2 {
+  margin: 20px auto 10px auto;
+  padding: 4px 10px;
+}
+
+.buttongroup {
+  margin: 10px 25px;
+  padding: 10px 20px;
+  color: whitesmoke;
+}
+
+.buttongroup-header {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.buttongroup-body {
+  position: relative;
+  margin: 0 auto;
+  padding: 0px 50px 10px 50px;
+}
+
+.button {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  border: none;
+  background-color: #F9A825;
+  color: #FFF;
+  font-size: 18px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.button:hover {
+  background-color: #f17777;
+}
+
+.button-network {
+  background: none;
+  color: whitesmoke;
+  padding-bottom: 0px;
+  letter-spacing: 0.7px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: default;
+  border: none;
+  box-shadow: none;
+}
+
+.button-network:hover {
+  background: none;
+}
+
+.button-connected:hover {
+  cursor: not-allowed;
+}
+
+.button-connect-wallet:active,
+.button-body:active {
+  transform: scale(0.98);
+  box-shadow: 3px 2px 22px 1px rgba(0, 0, 0, 0.24);
+}
+
+.container-table {
+  margin-bottom: 10px;
+  padding: 0px 5px 10px 5px;
+  color: white;
+  letter-spacing: 0.7px;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: -1px -1px 1px rgba(92, 61, 61, 0.7),
+    1px 1px 1px rgba(0, 0, 0, 0.3);
+}

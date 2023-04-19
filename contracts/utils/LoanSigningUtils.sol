@@ -23,9 +23,6 @@ abstract contract LoanSigningUtils {
                 )
             )
         );
-        console.logBytes32(_contractTerms);
-        console.logBytes(_signature);
-        console.logBytes32(_message);
 
         (uint8 v, bytes32 r, bytes32 s) = __splitSignature(_signature);
 

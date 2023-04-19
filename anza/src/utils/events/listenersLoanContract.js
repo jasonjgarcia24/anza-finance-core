@@ -1,18 +1,16 @@
 const eventHandler = require("./eventsHandler");
 
-const listenerLoanActivated = async (tx, contract, first=true) => {
-    const event = await eventHandler(tx, contract, 'LoanActivated', first);
+const listenerLoanContractInit = async (tx, contract, first = true) => {
+    const event = await eventHandler(tx, contract, 'LoanContractInitialized', first);
 
-    const loanContract = event.args['loanContract'];
-    const borrower = event.args['borrower'];
-    const lender = event.args['lender'];
-    const tokenContract = event.args['tokenContract'];
-    const tokenId = event.args['tokenId'];
-    const state = event.args['state'];
+    const collateralAddress = event.args['collateralAddress'];
+    const collateralId = event.args['collateralId'];
+    const debtId = event.args['debtId'];
+    const activeLoanIndex = event.args['activeLoanIndex'];
 
-    return [loanContract, borrower, lender, tokenContract, tokenId, state];
-}
+    return [collateralAddress, collateralId, debtId, activeLoanIndex];
+};
 
 module.exports = {
-    listenerLoanActivated
+    listenerLoanContractInit
 };
