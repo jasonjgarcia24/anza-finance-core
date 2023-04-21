@@ -6,9 +6,10 @@ const artifact_AnzaToken = require('../anza/src/artifacts/AnzaToken.sol/AnzaToke
 const artifact_LoanContract = require('../anza/src/artifacts/LoanContract.sol/LoanContract.json');
 const artifact_LoanTreasurey = require('../anza/src/artifacts/LoanTreasurey.sol/LoanTreasurey.json');
 const artifact_LoanCollateralVault = require('../anza/src/artifacts/CollateralVault.sol/CollateralVault.json');
-const artifact_LibLoanContractInterest = require('../anza/src/artifacts/LibLoanContract.sol/LibLoanContractInterest.json');
-const artifact_LibLoanContractSigning = require('../anza/src/artifacts/LibLoanContract.sol/LibLoanContractSigning.json');
 const artifact_LibLoanContractRoles = require('../anza/src/artifacts/LibLoanContractConstants.sol/LibLoanContractRoles.json');
+const artifact_LibLoanContractSigning = require('../anza/src/artifacts/LibLoanContract.sol/LibLoanContractSigning.json');
+const artifact_LibLoanContractTerms = require('../anza/src/artifacts/LibLoanContract.sol/LibLoanContractTerms.json');
+const artifact_LibLoanContractInterest = require('../anza/src/artifacts/LibLoanContract.sol/LibLoanContractInterest.json');
 const artifact_DemoToken = require("../anza/src/artifacts/DemoToken.sol/DemoToken.json");
 
 
@@ -46,16 +47,6 @@ async function deploy() {
     await LibLoanContractRoles.deployed();
     console.log(`\n\tLibLoanContractRoles successfully deployed to ${LibLoanContractRoles.address}`);
 
-    // Deploy LibLoanContractInterest
-    const libLoanContractInterest = new ethers.ContractFactory(
-        artifact_LibLoanContractInterest.abi,
-        artifact_LibLoanContractInterest.bytecode,
-        signer
-    );
-    const LibLoanContractInterest = await libLoanContractInterest.deploy();
-    await LibLoanContractInterest.deployed();
-    console.log(`\tLibLoanContractInterest successfully deployed to ${LibLoanContractInterest.address}`);
-
     // Deploy LibLoanContractSigning
     const libLoanContractSigning = new ethers.ContractFactory(
         artifact_LibLoanContractSigning.abi,
@@ -66,6 +57,25 @@ async function deploy() {
     await LibLoanContractSigning.deployed();
     console.log(`\tLibLoanContractSigning successfully deployed to ${LibLoanContractSigning.address}`);
 
+    // Deploy LibLoanContractTerms
+    const libLoanContractTerms = new ethers.ContractFactory(
+        artifact_LibLoanContractTerms.abi,
+        artifact_LibLoanContractTerms.bytecode,
+        signer
+    );
+    const LibLoanContractTerms = await libLoanContractTerms.deploy();
+    await LibLoanContractTerms.deployed();
+    console.log(`\tLibLoanContractTerms successfully deployed to ${LibLoanContractTerms.address}`);
+
+    // Deploy LibLoanContractInterest
+    const libLoanContractInterest = new ethers.ContractFactory(
+        artifact_LibLoanContractInterest.abi,
+        artifact_LibLoanContractInterest.bytecode,
+        signer
+    );
+    const LibLoanContractInterest = await libLoanContractInterest.deploy();
+    await LibLoanContractInterest.deployed();
+    console.log(`\tLibLoanContractInterest successfully deployed to ${LibLoanContractInterest.address}`);
 
     // Deploy AnzaToken
     const anzaToken = new ethers.ContractFactory(

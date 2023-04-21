@@ -41,3 +41,13 @@ export const getOwnedTokens = async (chainId, account) => {
 
     return ownedNfts;
 }
+
+export const getChainTimeNow = async () => {
+    const { ethereum } = window;
+    const provider = new ethers.providers.Web3Provider(ethereum);
+
+    const block_number = await provider.getBlockNumber();
+    const block = await provider.getBlock(block_number);
+
+    return block.timestamp;
+}

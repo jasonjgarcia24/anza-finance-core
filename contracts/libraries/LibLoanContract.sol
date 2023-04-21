@@ -126,11 +126,10 @@ library LibLoanContractTerms {
     function loanState(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanState) {
-        uint256 _loanStateMap = _LOAN_STATE_MAP_;
         uint8 __loanState;
 
         assembly {
-            __loanState := and(_contractTerms, _loanStateMap)
+            __loanState := and(_contractTerms, _LOAN_STATE_MAP_)
         }
 
         unchecked {
@@ -141,14 +140,12 @@ library LibLoanContractTerms {
     function firInterval(
         bytes32 _contractTerms
     ) public pure returns (uint256 _firInterval) {
-        uint256 _firIntervalPos = _FIR_INTERVAL_POS_;
-        uint256 _firIntervalMap = _FIR_INTERVAL_MAP_;
         uint8 __firInterval;
 
         assembly {
             __firInterval := shr(
-                _firIntervalPos,
-                and(_contractTerms, _firIntervalMap)
+                _FIR_INTERVAL_POS_,
+                and(_contractTerms, _FIR_INTERVAL_MAP_)
             )
         }
 
@@ -160,12 +157,13 @@ library LibLoanContractTerms {
     function fixedInterestRate(
         bytes32 _contractTerms
     ) public pure returns (uint256 _fixedInterestRate) {
-        uint256 _firPos = _FIR_POS_;
-        uint256 _firMap = _FIR_MAP_;
         bytes32 __fixedInterestRate;
 
         assembly {
-            __fixedInterestRate := shr(_firPos, and(_contractTerms, _firMap))
+            __fixedInterestRate := shr(
+                _FIR_POS_,
+                and(_contractTerms, _FIR_MAP_)
+            )
         }
 
         unchecked {
@@ -182,14 +180,12 @@ library LibLoanContractTerms {
     function loanStart(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanStart) {
-        uint256 _loanStartPos = _LOAN_START_POS_;
-        uint256 _loanStartMap = _LOAN_START_MAP_;
         uint32 __loanStart;
 
         assembly {
             __loanStart := shr(
-                _loanStartPos,
-                and(_contractTerms, _loanStartMap)
+                _LOAN_START_POS_,
+                and(_contractTerms, _LOAN_START_MAP_)
             )
         }
 
@@ -201,14 +197,12 @@ library LibLoanContractTerms {
     function loanDuration(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanDuration) {
-        uint256 _loanDurationPos = _LOAN_DURATION_POS_;
-        uint256 _loanDurationMap = _LOAN_DURATION_MAP_;
         uint32 __loanDuration;
 
         assembly {
             __loanDuration := shr(
-                _loanDurationPos,
-                and(_contractTerms, _loanDurationMap)
+                _LOAN_DURATION_POS_,
+                and(_contractTerms, _LOAN_DURATION_MAP_)
             )
         }
 
@@ -217,19 +211,66 @@ library LibLoanContractTerms {
         }
     }
 
+    function loanCommital(
+        bytes32 _contractTerms
+    ) public pure returns (uint256 _loanCommital) {
+        uint32 __loanCommital;
+
+        assembly {
+            __loanCommital := shr(
+                _COMMITAL_POS_,
+                and(_contractTerms, _COMMITAL_MAP_)
+            )
+        }
+
+        unchecked {
+            _loanCommital = __loanCommital;
+        }
+    }
+
+    function loanCommitalTime(
+        bytes32 _contractTerms
+    ) public pure returns (uint256) {
+        int128 _loanStart = ABDKMath64x64.fromUInt(loanStart(_contractTerms));
+        int128 _loanDuration = ABDKMath64x64.fromUInt(
+            loanDuration(_contractTerms)
+        );
+        int128 _ratio = ABDKMath64x64.divu(loanCommital(_contractTerms), 100);
+        int128 _commitalPeriod = ABDKMath64x64.mul(_loanDuration, _ratio);
+        int128 _commitalTime = ABDKMath64x64.add(_loanStart, _commitalPeriod);
+
+        return ABDKMath64x64.toUInt(_commitalTime);
+    }
+
+    function isFixed(
+        bytes32 _contractTerms
+    ) public pure returns (uint256 _isFixed) {
+        uint32 __isFixed;
+
+        assembly {
+            __isFixed := shr(
+                _IS_FIXED_POS_,
+                and(_contractTerms, _IS_FIXED_MAP_)
+            )
+        }
+
+        unchecked {
+            _isFixed = __isFixed;
+        }
+    }
+
     function loanClose(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanClose) {
-        uint256 _loanStartPos = _LOAN_START_POS_;
-        uint256 _loanStartMap = _LOAN_START_MAP_;
-        uint256 _loanDurationPos = _LOAN_DURATION_POS_;
-        uint256 _loanDurationMap = _LOAN_DURATION_MAP_;
         uint32 __loanClose;
 
         assembly {
             __loanClose := add(
-                shr(_loanStartPos, and(_contractTerms, _loanStartMap)),
-                shr(_loanDurationPos, and(_contractTerms, _loanDurationMap))
+                shr(_LOAN_START_POS_, and(_contractTerms, _LOAN_START_MAP_)),
+                shr(
+                    _LOAN_DURATION_POS_,
+                    and(_contractTerms, _LOAN_DURATION_MAP_)
+                )
             )
         }
 
@@ -241,13 +282,10 @@ library LibLoanContractTerms {
     function lenderRoyalties(
         bytes32 _contractTerms
     ) public pure returns (uint256 _lenderRoyalties) {
-        uint256 _lenderRoyaltiesPos = _LENDER_ROYALTIES_POS_;
-        uint256 _lenderRoyaltiesMap = _LENDER_ROYALTIES_MAP_;
-
         assembly {
             _lenderRoyalties := shr(
-                _lenderRoyaltiesPos,
-                and(_contractTerms, _lenderRoyaltiesMap)
+                _LENDER_ROYALTIES_POS_,
+                and(_contractTerms, _LENDER_ROYALTIES_MAP_)
             )
         }
     }
@@ -255,14 +293,12 @@ library LibLoanContractTerms {
     function activeLoanCount(
         bytes32 _contractTerms
     ) public pure returns (uint256 _activeLoanCount) {
-        uint256 _loanCountPos = _LOAN_COUNT_POS_;
-        uint256 _loanCountMap = _LOAN_COUNT_MAP_;
         uint8 __activeLoanCount;
 
         assembly {
             __activeLoanCount := shr(
-                _loanCountPos,
-                and(_contractTerms, _loanCountMap)
+                _LOAN_COUNT_POS_,
+                and(_contractTerms, _LOAN_COUNT_MAP_)
             )
         }
 

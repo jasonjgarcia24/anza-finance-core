@@ -13,9 +13,15 @@ interface ILoanCodec {
 
     function fixedInterestRate(uint256 _debtId) external view returns (uint256);
 
+    function isFixed(uint256 _debtId) external view returns (uint256);
+
     function loanLastChecked(uint256 _debtId) external view returns (uint256);
 
     function loanStart(uint256 _debtId) external view returns (uint256);
+
+    function loanDuration(uint256 _debtId) external view returns (uint256);
+
+    function loanCommital(uint256 _debtId) external view returns (uint256);
 
     function loanClose(uint256 _debtId) external view returns (uint256);
 

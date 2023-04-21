@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import config from '../../config.json';
 
-import { NftTable } from '../Common/common';
+import { NftTable, setName } from '../Common/common';
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
 import { getLendingTermsPrimaryKey } from '../../utils/databaseUtils';
@@ -23,8 +23,8 @@ export default function BorrowingPage() {
     const [newLoanProposal, setNewLoanProposal] = useState('');
     const [currentAccount, setCurrentAccount] = useState(null);
     const [currentChainId, setCurrentChainId] = useState(null);
-    const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState(null);
-    const [currentAvailableNftsTable, setCurrentAvailableNftsTable] = useState(null);
+    const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState([null, null]);
+    const [currentAvailableNftsTable, setCurrentAvailableNftsTable] = useState([null, null]);
     const [currentToken, setCurrentToken] = useState({ address: null, id: null });
     const [accountNfts, setAccountNfts] = useState({});
 
@@ -62,7 +62,7 @@ export default function BorrowingPage() {
         const loanProposals = await getLoanProposals(ownedNfts)
 
         // Render table of potential NFTs
-        const [proposedLoansTable,] = await NftTable({
+        const proposedLoans = await NftTable({
             account: account,
             nfts: loanProposals,
             type: "proposal",
@@ -71,7 +71,7 @@ export default function BorrowingPage() {
         });
 
         // Render table of owned NFTs
-        const [availableNftsTable, token] = await NftTable({
+        const availableNfts = await NftTable({
             account: account,
             nfts: ownedNfts,
             type: "terms",
@@ -81,16 +81,20 @@ export default function BorrowingPage() {
             callbackSelect: callback__SetFixedLoanParams
         });
 
-        token !== null && setCurrentToken({ address: token.address.toLowerCase(), id: token.id });
-        setCurrentLoanProposalsTable(proposedLoansTable);
-        setCurrentAvailableNftsTable(availableNftsTable);
+        availableNfts[1] !== null && setCurrentToken({
+            address: availableNfts[1].address.toLowerCase(),
+            id: availableNfts[1].id
+        });
+
+        setCurrentLoanProposalsTable(proposedLoans);
+        setCurrentAvailableNftsTable(availableNfts);
 
         setIsPageLoad(false);
     }
 
     const tokenSelectionChangeSequence = async () => {
         // Update terms enable/disable
-        const terms = document.getElementsByClassName("loan-term-text");
+        const terms = document.getElementsByClassName("loan-term");
 
 
         [...terms].forEach((term) => {
@@ -173,12 +177,12 @@ export default function BorrowingPage() {
     const callback__SetFixedLoanParams = async ({ target }) => {
         const isDisabled = target.value === "Y";
 
-        const [, tokenAddress, tokenId] = target.id.split('-');
-
-        const firInterval = document.getElementsByClassName(`firInterval-${tokenAddress}-${tokenId}`)[0];
-        const gracePeriod = document.getElementsByClassName(`gracePeriod-${tokenAddress}-${tokenId}`)[0];
-        const commital = document.getElementsByClassName(`commital-${tokenAddress}-${tokenId}`)[0];
-        const lenderRoyalties = document.getElementsByClassName(`lenderRoyalties-${tokenAddress}-${tokenId}`)[0];
+        const [, tokenAddress, tokenId, , index] = target.name.split('-');
+        const rowObj = { contract: { address: tokenAddress }, tokenId: tokenId, tableType: "terms", index: index };
+        const firInterval = document.getElementsByName(setName("fir_interval", rowObj))[0];
+        const gracePeriod = document.getElementsByName(setName("grace_period", rowObj))[0];
+        const commital = document.getElementsByName(setName("commital", rowObj))[0];
+        const lenderRoyalties = document.getElementsByName(setName("lender_royalties", rowObj))[0];
 
         firInterval.disabled = isDisabled;
         gracePeriod.disabled = isDisabled;
@@ -195,6 +199,7 @@ export default function BorrowingPage() {
 
     const callback__SetProposalParams = async ({ target }) => {
         const [tokenAddress, tokenId] = target.value.split('-');
+        console.log(target.value);
         if (currentToken.address === tokenAddress && currentToken.id === tokenId) {
             // Do nothing
             return;
@@ -249,9 +254,6 @@ export default function BorrowingPage() {
         setAccountNfts(ownedNfts);
 
         return ownedNfts
-
-        // // Update portfolio database
-        // await createTokensPortfolio(portfolioVals);
     }
 
     const getLoanProposals = async (ownedNfts) => {
@@ -272,7 +274,7 @@ export default function BorrowingPage() {
     }
 
     /* ---------------------------------------  *
-     *         BORROWERPAGE.JSX RETURN           *
+     *        BORROWERPAGE.JSX RETURN           *
      * ---------------------------------------  */
     return (
         <main className="main-container-nft-table">
@@ -283,17 +285,17 @@ export default function BorrowingPage() {
                     : (<div className='button button-ethereum button-connect-wallet' onClick={callback__ConnectWallet}>Connect Wallet</div>)
                 }
             </div>
-            {!!currentLoanProposalsTable && <div className='container container-table container-table-available-nfts'>
+            <div className='container container-table container-table-proposed-nfts'>
                 <h2>Loan Proposals</h2>
-                {currentLoanProposalsTable}
+                {currentLoanProposalsTable[0]}
             </div>
-            }
             <div className='container container-table container-table-available-nfts'>
                 <h2>Available Collateral</h2>
-                <div className='buttongroup buttongroup-body'>
+                {!!currentAvailableNftsTable[1] && <div className='buttongroup buttongroup-body'>
                     <div className='button button-body' onClick={callback__ProposeLoanTerms}>Propose Loan</div>
                 </div>
-                {currentAvailableNftsTable}
+                }
+                {currentAvailableNftsTable[0]}
             </div>
         </main>
     );

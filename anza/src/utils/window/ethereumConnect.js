@@ -10,7 +10,7 @@ export const checkIfWalletIsConnected = async () => {
         console.log('Make sure you have MetaMask!');
         return;
     } else {
-        console.log('Wallet connected :)');
+        console.log('💲Wallet connected💲');
     }
 
     // Get network
