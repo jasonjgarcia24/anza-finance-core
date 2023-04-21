@@ -86,6 +86,22 @@ abstract contract LoanCodec is ILoanCodec {
         }
     }
 
+    function isFixed(uint256 _debtId) public view returns (uint256 _isFixed) {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        uint32 __isFixed;
+
+        assembly {
+            __isFixed := shr(
+                _IS_FIXED_POS_,
+                and(_contractTerms, _IS_FIXED_MAP_)
+            )
+        }
+
+        unchecked {
+            _isFixed = __isFixed;
+        }
+    }
+
     function loanLastChecked(uint256 _debtId) external view returns (uint256) {
         return loanStart(_debtId);
     }
@@ -123,6 +139,24 @@ abstract contract LoanCodec is ILoanCodec {
 
         unchecked {
             _loanDuration = __loanDuration;
+        }
+    }
+
+    function loanCommital(
+        uint256 _debtId
+    ) public view returns (uint256 _loanCommital) {
+        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        uint32 __loanCommital;
+
+        assembly {
+            __loanCommital := shr(
+                _COMMITAL_POS_,
+                and(_contractTerms, _COMMITAL_MAP_)
+            )
+        }
+
+        unchecked {
+            _loanCommital = __loanCommital;
         }
     }
 
@@ -267,7 +301,8 @@ abstract contract LoanCodec is ILoanCodec {
                     _getTotalFirIntervals(_firInterval, _duration)
                 )
             returns (uint256) {} catch {
-                revert InvalidLoanParameter(_FIXED_INTEREST_RATE_ERROR_ID_);
+                if (_firInterval != 0)
+                    revert InvalidLoanParameter(_FIXED_INTEREST_RATE_ERROR_ID_);
             }
         }
     }
@@ -334,8 +369,10 @@ abstract contract LoanCodec is ILoanCodec {
             let _fixedInterestRate := mload(0)
 
             // Get packed is direct and commital
+            // Need to mask other packed terms for gt
+            // comparison below.
             mstore(0x02, _contractTerms)
-            let _isDirect_Commital := mload(0)
+            let _isDirect_Commital := and(mload(0), 0xFF)
 
             // Get packed grace period
             mstore(0x13, _contractTerms)
@@ -397,6 +434,18 @@ abstract contract LoanCodec is ILoanCodec {
                 )
             )
 
+            // Pack loan duration time (uint32)
+            mstore(
+                0x20,
+                xor(
+                    and(_LOAN_DURATION_MASK_, mload(0x20)),
+                    and(
+                        _LOAN_DURATION_MAP_,
+                        shl(_LOAN_DURATION_POS_, _duration)
+                    )
+                )
+            )
+
             switch gt(_isDirect_Commital, 0x64)
             case true {
                 // Pack is direct (uint4) - true
@@ -443,18 +492,6 @@ abstract contract LoanCodec is ILoanCodec {
                 )
             }
 
-            // Pack loan duration time (uint32)
-            mstore(
-                0x20,
-                xor(
-                    and(_LOAN_DURATION_MASK_, mload(0x20)),
-                    and(
-                        _LOAN_DURATION_MAP_,
-                        shl(_LOAN_DURATION_POS_, _duration)
-                    )
-                )
-            )
-
             // Pack lender royalties (uint8)
             mstore(
                 0x20,
@@ -478,7 +515,8 @@ abstract contract LoanCodec is ILoanCodec {
                     )
                 )
             )
-            _loanAgreement := mload(0x20)
+
+            _loanAgreement := and(_CLEANUP_MASK_, mload(0x20))
         }
 
         __packedDebtTerms[_debtId] = _loanAgreement;

@@ -11,7 +11,7 @@ abstract contract LoanSigningUtils {
         uint256 _collateralId,
         uint256 _collateralNonce,
         bytes memory _signature
-    ) internal view returns (address) {
+    ) internal pure returns (address) {
         bytes32 _message = __prefixed(
             keccak256(
                 abi.encode(

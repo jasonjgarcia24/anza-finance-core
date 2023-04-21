@@ -59,7 +59,7 @@ contract LoanManager is ILoanManager, LoanCodec, ManagerAccessController {
     function checkTermsRevoked(
         address _borrower,
         bytes32 _hashedTerms
-    ) public returns (bool) {
+    ) public view returns (bool) {
         return __revokedTerms[_borrower][_hashedTerms];
     }
 

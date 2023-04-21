@@ -2,7 +2,10 @@ html {
   background-color: #5C2324;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-image: linear-gradient(to bottom right, #5C2324 20%, #C69191);
-  height: 100%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  height: 100vh;
+  background-attachment: fixed;
 }
 
 body {

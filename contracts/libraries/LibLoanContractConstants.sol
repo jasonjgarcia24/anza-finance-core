@@ -84,7 +84,6 @@ library LibLoanContractTermMaps {
     uint8 public constant FIR_POS = _FIR_POS_;
     uint8 public constant LOAN_START_POS = _LOAN_START_POS_;
     uint8 public constant LOAN_DURATION_POS = _LOAN_DURATION_POS_;
-    uint8 public constant BORROWER_POS = _BORROWER_POS_;
     uint8 public constant LENDER_ROYALTIES_POS = _LENDER_ROYALTIES_POS_;
     uint8 public constant LOAN_COUNT_POS = _LOAN_COUNT_POS_;
 }

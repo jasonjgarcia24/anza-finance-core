@@ -8,6 +8,7 @@ const dbInsertConfirmedLoans = (app, db) => {
         const lender = req.body.lender;
         const activeLoanIndex = req.body.activeLoanIndex;
         const loanStartTime = req.body.loanStartTime;
+        const loanCommitTime = req.body.loanCommitTime;
         const loanEndTime = req.body.loanEndTime;
 
         let query = `INSERT INTO anza_loans.confirmed_loans(
@@ -16,8 +17,9 @@ const dbInsertConfirmedLoans = (app, db) => {
             lender,
             active_loan_index,
             loan_start_time,
+            loan_commit_time,
             loan_end_time
-        ) VALUES (?, ?, ?, ?, ?, ?);`;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);`;
 
         dbQueryPost(
             db,
@@ -29,6 +31,7 @@ const dbInsertConfirmedLoans = (app, db) => {
                 lender,
                 activeLoanIndex,
                 loanStartTime,
+                loanCommitTime,
                 loanEndTime
             ]
         );

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import config from '../../config.json';
 
-import { NftTable } from '../Common/common';
+import { NftTable, LoanTable, setName } from '../Common/common';
 import { listenerLoanContractInit } from '../../utils/events/listenersLoanContract';
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
@@ -24,14 +24,15 @@ import {
 } from '../../db/client_updateLendingTerms';
 import artifact_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
 import artifact_LibLoanContractSigning from '../../artifacts/LibLoanContract.sol/LibLoanContractSigning.json';
+import artifact_LibLoanContractTerms from '../../artifacts/LibLoanContract.sol/LibLoanContractTerms.json';
 
 export default function LendingPage() {
     const [isPageLoad, setIsPageLoad] = useState(true);
     const [newSponsoredLoan, setNewSponsoredLoan] = useState('');
     const [currentAccount, setCurrentAccount] = useState(null);
     const [currentChainId, setCurrentChainId] = useState(null);
-    const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState(null);
-    const [sponsoredConfirmedLoans, setSponsoredConfirmedLoansTable] = useState(null);
+    const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState([null, null]);
+    const [sponsoredConfirmedLoans, setSponsoredConfirmedLoansTable] = useState([null, null]);
     const [currentToken, setCurrentToken] = useState({ address: null, id: null });
 
     useEffect(() => {
@@ -66,11 +67,12 @@ export default function LendingPage() {
 
         // Update nft.available table
         const ownedNfts = await getOwnedTokens(chainId, account);
-        const loanProposals = await getLoanProposals(ownedNfts)
         const sponsoredProposals = await selectSponsoredConfirmedLoans(account);
+        const loanProposals = await getLoanProposals(ownedNfts)
+        console.log(sponsoredProposals);
 
         // Render table of sponsored loans
-        const [sponsoredLoansTable,] = await NftTable({
+        const sponsoredLoans = await NftTable({
             account: account,
             nfts: sponsoredProposals,
             type: "confirmed",
@@ -79,7 +81,7 @@ export default function LendingPage() {
         });
 
         // Render table of potential NFTs
-        const [proposedLoansTable, token] = await NftTable({
+        const proposedLoans = await NftTable({
             account: account,
             nfts: loanProposals,
             type: "sponsor",
@@ -87,9 +89,13 @@ export default function LendingPage() {
             disabledOverriden: true,
         });
 
-        token !== null && setCurrentToken({ address: token.address, id: token.id });
-        sponsoredLoansTable !== null && setSponsoredConfirmedLoansTable(sponsoredLoansTable);
-        proposedLoansTable !== null && setCurrentLoanProposalsTable(proposedLoansTable);
+        proposedLoans[1] !== null && setCurrentToken({
+            address: proposedLoans[1].address,
+            id: proposedLoans[1].id
+        });
+
+        setSponsoredConfirmedLoansTable(sponsoredLoans);
+        setCurrentLoanProposalsTable(proposedLoans);
 
         setIsPageLoad(false);
     }
@@ -134,11 +140,13 @@ export default function LendingPage() {
         const [collateralAddress, collateralId, , index] = selectedProposal.split("-");
 
         Object.keys(terms).map((type) => {
-            terms[type] = document.getElementsByName(`${type}-${collateralAddress}-${collateralId}-${index}`)[0].value;
+            const rowObj = { contract: { address: collateralAddress }, tokenId: collateralId, tableType: "sponsor", index: index };
+            terms[type] = document.getElementsByName(setName(type, rowObj))[0].value;
             terms[type] = (type !== "principal") ? terms[type] : ethers.utils.parseEther(terms[type]).toString();
             terms[type] = (type !== "is_fixed") ? terms[type] : (terms[type] === "Y") ? 1 : 0;
         });
-        console.log(terms)
+        console.log('terms');
+        console.log(terms);
 
         terms["collateral"] = getLendingTermsPrimaryKey(collateralAddress, collateralId);
 
@@ -156,6 +164,8 @@ export default function LendingPage() {
             terms["lender_royalties"]
         ))[0];
 
+        console.log(response);
+
         // Get LoanContract instance
         const LoanContract = new ethers.Contract(
             config[currentChainId].LoanContract,
@@ -163,8 +173,31 @@ export default function LendingPage() {
             signer
         );
 
+        // Get LibLoanContractTerms instance
+        const LibLoanContractTerms = new ethers.Contract(
+            config[currentChainId].LibLoanContractTerms,
+            artifact_LibLoanContractTerms.abi,
+            signer
+        );
+
+        // Get LibLoanContractSigning instance
+        const LibLoanContractSigning = new ethers.Contract(
+            config[currentChainId].LibLoanContractSigning,
+            artifact_LibLoanContractSigning.abi,
+            provider
+        );
+
         // Store nonce for finding borrower later
         const collateralNonce = await LoanContract.getCollateralNonce(collateralAddress, collateralId);
+
+        const borrower = await LibLoanContractSigning.recoverSigner(
+            response["principal"],
+            response["packed_contract_terms"],
+            collateralAddress,
+            collateralId,
+            collateralNonce,
+            response["signed_message"]
+        );
 
         // Initialize loan contract
         let tx;
@@ -192,12 +225,6 @@ export default function LendingPage() {
         ] = await listenerLoanContractInit(tx, LoanContract);
 
         // Get borrower
-        const LibLoanContractSigning = new ethers.Contract(
-            config[currentChainId].LibLoanContractSigning,
-            artifact_LibLoanContractSigning.abi,
-            provider
-        );
-
         const _borrower = await LibLoanContractSigning.recoverSigner(
             response["principal"],
             response["packed_contract_terms"],
@@ -206,8 +233,12 @@ export default function LendingPage() {
             collateralNonce,
             response["signed_message"]
         );
+        console.log(_borrower);
+
         const _lender = await signer.getAddress();
+        const _loanTerms = await LoanContract.getDebtTerms(_debtId);
         const _loanStartTime = await LoanContract.loanStart(_debtId);
+        const _loanCommitTime = await LibLoanContractTerms.loanCommitalTime(_loanTerms);
         const _loanCloseTime = await LoanContract.loanClose(_debtId);
 
         // Set confirmed loan into database
@@ -219,10 +250,11 @@ export default function LendingPage() {
             _lender,
             _activeLoanIndex,
             _loanStartTime,
+            _loanCommitTime,
             _loanCloseTime
         );
 
-        setNewSponsoredLoan(_debtId);
+        // setNewSponsoredLoan(_debtId);
     }
 
     /* ---------------------------------------  *
@@ -272,6 +304,7 @@ export default function LendingPage() {
         lender,
         activeLoanIndex,
         loanStartTime,
+        loanCommitTime,
         loanCloseTime
     ) => {
         // Update confirmed loans with debt ID
@@ -281,6 +314,7 @@ export default function LendingPage() {
             lender,
             activeLoanIndex,
             loanStartTime,
+            loanCommitTime,
             loanCloseTime
         );
 
@@ -326,15 +360,16 @@ export default function LendingPage() {
             </div>
             {!!sponsoredConfirmedLoans && <div className='container container-table container-table-sponsored-loans'>
                 <h2>Sponsored Loans</h2>
-                {sponsoredConfirmedLoans}
+                {sponsoredConfirmedLoans[0]}
             </div>
             }
             <div className='container container-table container-table-available-nfts'>
                 <h2>Available for Sponsor</h2>
-                <div className='buttongroup buttongroup-body'>
+                {!!currentLoanProposalsTable[1] && <div className='buttongroup buttongroup-body'>
                     <div className='button button-body' onClick={callback__SponsorLoanContract}>Sponsor Loan</div>
                 </div>
-                {currentLoanProposalsTable}
+                }
+                {currentLoanProposalsTable[0]}
             </div>
         </main>
     );

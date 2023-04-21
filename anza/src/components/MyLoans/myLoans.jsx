@@ -10,7 +10,7 @@ import { getSubAddress } from '../../utils/addressUtils';
 import { getLendingTermsPrimaryKey } from '../../utils/databaseUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 import { getSignedMessage, getContractTerms } from '../../utils/signingUtils';
-import { getOwnedTokens } from '../../utils/blockchainIndexingUtils';
+import { getOwnedTokens, getChainTimeNow } from '../../utils/blockchainIndexingUtils';
 import { checkIfWalletIsConnected as checkConnection, connectWallet } from '../../utils/window/ethereumConnect';
 import { insertProposedLoanTerms } from '../../db/client_insertLendingTerms';
 import { selectProposedLoanTerms } from '../../db/client_selectLendingTerms';
@@ -24,7 +24,7 @@ export default function BorrowingPage() {
     const [currentAccount, setCurrentAccount] = useState(null);
     const [currentChainId, setCurrentChainId] = useState(null);
     const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState(null);
-    const [currentAvailableNftsTable, setCurrentAvailableNftsTable] = useState(null);
+    const [currentCommitedLoans, setCurrentCommitedLoans] = useState(null);
     const [currentToken, setCurrentToken] = useState({ address: null, id: null });
     const [accountNfts, setAccountNfts] = useState({});
 
@@ -45,12 +45,8 @@ export default function BorrowingPage() {
      *       EVENT SEQUENCE FUNCTIONS           *
      * ---------------------------------------  */
     const pageLoadSequence = async () => {
-        /**
-         * Sequence when page is loaded.
-         */
-
         // Set page title
-        setPageTitle('Borrowing');
+        setPageTitle('My Loans');
 
         // Set account and network
         const { account, chainId } = await checkIfWalletIsConnected();
@@ -58,32 +54,36 @@ export default function BorrowingPage() {
         console.log(`Network: ${chainId}`);
 
         // Update nft.available table
-        const ownedNfts = await updateNftPortfolio(account, chainId);
-        const loanProposals = await getLoanProposals(ownedNfts)
+        const loanCommitments = await updateNftPortfolio(account, chainId);
+        // const loanProposals = await getLoanProposals(ownedNfts)
 
         // Render table of potential NFTs
-        const [openLoans, token] = await NftTable({
+        const committedLoans = await NftTable({
             account: account,
-            nfts: loanProposals,
-            type: "open",
+            nfts: loanCommitments,
+            type: "commits",
             useDefaultTerms: false,
             disabledOverriden: true,
         });
 
-        // Render table of owned NFTs
-        const [committedLons,] = await NftTable({
-            account: account,
-            nfts: ownedNfts,
-            type: "committed",
-            useDefaultTerms: true,
-            disabledOverriden: false,
-            callbackRadioButton: callback__SetProposalParams,
-            callbackSelect: callback__SetFixedLoanParams
+        // // Render table of owned NFTs
+        // const [committedLons,] = await NftTable({
+        //     account: account,
+        //     nfts: ownedNfts,
+        //     type: "committed",
+        //     useDefaultTerms: true,
+        //     disabledOverriden: false,
+        //     callbackRadioButton: callback__SetProposalParams,
+        //     callbackSelect: callback__SetFixedLoanParams
+        // });
+
+        committedLoans[1] !== null && setCurrentToken({
+            address: committedLoans[0].address.toLowerCase(),
+            id: committedLoans[0].id
         });
 
-        token !== null && setCurrentToken({ address: token.address.toLowerCase(), id: token.id });
-        setCurrentLoanProposalsTable(openLoans);
-        setCurrentAvailableNftsTable(committedLons);
+        setCurrentCommitedLoans(committedLoans);
+        // setCurrentLoanProposalsTable(openLoans);
 
         setIsPageLoad(false);
     }
@@ -254,7 +254,7 @@ export default function BorrowingPage() {
         // await createTokensPortfolio(portfolioVals);
     }
 
-    const getLoanProposals = async (ownedNfts) => {
+    const getCommittedLoans = async (ownedNfts) => {
         const collateral = [];
 
         Object.keys(ownedNfts).map((i) => {
@@ -283,17 +283,17 @@ export default function BorrowingPage() {
                     : (<div className='button button-ethereum button-connect-wallet' onClick={callback__ConnectWallet}>Connect Wallet</div>)
                 }
             </div>
-            {!!currentLoanProposalsTable && <div className='container container-table container-table-available-nfts'>
-                <h2>Open Loans</h2>
-                {currentLoanProposalsTable}
-            </div>
-            }
             <div className='container container-table container-table-available-nfts'>
-                <h2>Committed Loans</h2>
-                <div className='buttongroup buttongroup-body'>
+                <h2>Open Loans</h2>
+                {!!currentLoanProposalsTable && <div className='buttongroup buttongroup-body'>
                     <div className='button button-body' onClick={callback__ProposeLoanTerms}>Propose Loan</div>
                 </div>
-                {currentAvailableNftsTable}
+                }
+                {currentLoanProposalsTable}
+            </div>
+            <div className='container container-table container-table-available-nfts'>
+                <h2>Committed Loans</h2>
+                {currentCommitedLoans}
             </div>
         </main>
     );

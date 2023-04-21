@@ -8,6 +8,7 @@ export const insertConfirmedLoans = async (
   lender,
   activeLoanIndex,
   loanStartTime,
+  loanCommitTime,
   loanEndTime
 ) => {
   let response;
@@ -21,6 +22,7 @@ export const insertConfirmedLoans = async (
         lender: lender.toLowerCase(),
         activeLoanIndex: activeLoanIndex.toString(),
         loanStartTime: loanStartTime.toString(),
+        loanCommitTime: loanCommitTime.toString(),
         loanEndTime: loanEndTime.toString()
       }
     );
