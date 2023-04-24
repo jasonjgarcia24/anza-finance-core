@@ -20,7 +20,7 @@ import { selectConfirmedLoans } from '../../db/client_selectConfirmedLoans';
 import { insertConfirmedLoans } from '../../db/client_insertConfirmedLoans';
 import {
     updateApprovedLendingTerms,
-    updateUnallowedCollateralLendingTerms
+    updateUnallowedLendingTerms
 } from '../../db/client_updateLendingTerms';
 import artifact_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
 import artifact_LibLoanContractSigning from '../../artifacts/LibLoanContract.sol/LibLoanContractSigning.json';
@@ -302,7 +302,7 @@ export default function LendingPage() {
         }
 
         // Clean-up all loans proposals with same collateral
-        response = await updateUnallowedCollateralLendingTerms(collateral);
+        response = await updateUnallowedLendingTerms(collateral);
 
         if (response.status === 200) {
             console.log("Loan proposals successfully updated at Anza database!");

@@ -5,15 +5,16 @@ import config from '../config.json';
 export const insertProposedLoanTerms = async (
   signedMessage,
   packedContractTerms,
+  borrower,
   collateralAddress,
   collateralId,
   collateralNonce,
-  contractTerms
+  contractTerms,
+  refinanceDebtId
 ) => {
   let response;
 
-  console.log(typeof collateralId);
-  console.log(`${collateralAddress.toLowerCase()}_${collateralId.padStart(78, "0")}`);
+  console.log(refinanceDebtId);
 
   try {
     response = await axios.post(
@@ -21,6 +22,7 @@ export const insertProposedLoanTerms = async (
       {
         signedMessage: signedMessage,
         packedContractTerms: packedContractTerms,
+        borrower: borrower.toLowerCase(),
         collateral: `${collateralAddress.toLowerCase()}_${collateralId.padStart(78, "0")}`,
         collateralNonce: collateralNonce.toString(),
         isFixed: contractTerms["is_fixed"].toString(),
@@ -31,7 +33,8 @@ export const insertProposedLoanTerms = async (
         duration: contractTerms["duration"].toString(),
         commital: contractTerms["commital"].toString(),
         termsExpiry: contractTerms["terms_expiry"].toString(),
-        lenderRoyalties: contractTerms["lender_royalties"].toString()
+        lenderRoyalties: contractTerms["lender_royalties"].toString(),
+        refinanceDebtId: refinanceDebtId ? refinanceDebtId.toString() : null
       }
     );
   } catch (err) {

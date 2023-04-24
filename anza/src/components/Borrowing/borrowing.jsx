@@ -13,7 +13,7 @@ import { getSignedMessage, getContractTerms } from '../../utils/signingUtils';
 import { getOwnedTokens } from '../../utils/blockchainIndexingUtils';
 import { checkIfWalletIsConnected as checkConnection, connectWallet } from '../../utils/window/ethereumConnect';
 import { insertProposedLoanTerms } from '../../db/client_insertLendingTerms';
-import { selectProposedLoanTerms } from '../../db/client_selectLendingTerms';
+import { selectProposedLoanTerms, selectProposedRefinanceLoanTerms } from '../../db/client_selectLendingTerms';
 import abi_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
 import abi_ERC721 from '../../artifacts/IERC721.sol/IERC721.json';
 
@@ -24,8 +24,9 @@ export default function BorrowingPage() {
     const [currentAccount, setCurrentAccount] = useState(null);
     const [currentChainId, setCurrentChainId] = useState(null);
     const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState([null, null]);
+    const [currentLoanRefinanceProposalsTable, setCurrentLoanRefinanceProposalsTable] = useState([null, null]);
     const [currentAvailableNftsTable, setCurrentAvailableNftsTable] = useState([null, null]);
-    const [currentToken, setCurrentToken] = useState({ address: null, id: null });
+    const [currentToken, setCurrentToken] = useState({ address: null, id: null, debtId: null });
     const [accountNfts, setAccountNfts] = useState({});
 
     useEffect(() => {
@@ -60,12 +61,22 @@ export default function BorrowingPage() {
         // Update nft.available table
         const ownedNfts = await updateNftPortfolio(account, chainId);
         const loanProposals = await getLoanProposals(ownedNfts)
+        const loanRefinanceProposals = await getLoanRefinanceProposals(ownedNfts, account);
 
-        // Render table of potential NFTs
+        // Render table of potential loans
         const proposedLoans = await NftTable({
             account: account,
             nfts: loanProposals,
             type: "proposal",
+            useDefaultTerms: false,
+            disabledOverriden: true,
+        });
+
+        // Render table of potential refinanced loans
+        const proposedRefinanceLoans = await NftTable({
+            account: account,
+            nfts: loanRefinanceProposals,
+            type: "refinance",
             useDefaultTerms: false,
             disabledOverriden: true,
         });
@@ -87,6 +98,7 @@ export default function BorrowingPage() {
         });
 
         setCurrentLoanProposalsTable(proposedLoans);
+        setCurrentLoanRefinanceProposalsTable(proposedRefinanceLoans);
         setCurrentAvailableNftsTable(availableNfts);
 
         setIsPageLoad(false);
@@ -140,7 +152,7 @@ export default function BorrowingPage() {
         }
 
         // Collect loan terms and signature for loan initialization
-        const contractTerms = getContractTerms(currentToken.address, currentToken.id);
+        const contractTerms = getContractTerms(currentToken.address, currentToken.id, 'terms');
 
         const { packedContractTerms, collateralNonce, signedMessage } = await getSignedMessage(
             signer,
@@ -154,6 +166,7 @@ export default function BorrowingPage() {
         const response = await insertProposedLoanTerms(
             signedMessage,
             packedContractTerms,
+            currentAccount,
             currentToken.address,
             currentToken.id,
             collateralNonce,
@@ -198,14 +211,14 @@ export default function BorrowingPage() {
     }
 
     const callback__SetProposalParams = async ({ target }) => {
-        const [tokenAddress, tokenId] = target.value.split('-');
-        console.log(target.value);
+        const [tokenAddress, tokenId, , , debtId] = target.value.split('-');
+
         if (currentToken.address === tokenAddress && currentToken.id === tokenId) {
             // Do nothing
             return;
         }
 
-        setCurrentToken({ address: tokenAddress.toLowerCase(), id: tokenId });
+        setCurrentToken({ address: tokenAddress.toLowerCase(), id: tokenId, debtId: debtId });
     }
 
     /* ---------------------------------------  *
@@ -235,6 +248,11 @@ export default function BorrowingPage() {
 
         const ownedNfts = await getOwnedTokens(chainId, account);
 
+        // There should be no existing debt ID for owned NFTs
+        Object.keys(ownedNfts).map((i) => {
+            ownedNfts[i].debtId = null;
+        });
+
         // Format tokens owned for database update
         const portfolioVals = [];
         Object.keys(ownedNfts).map((i) => {
@@ -247,7 +265,7 @@ export default function BorrowingPage() {
                 primaryKey,
                 account,
                 ownedNfts[i].contract.address,
-                ownedNfts[i].tokenId,
+                ownedNfts[i].tokenId
             ]);
         });
 
@@ -273,6 +291,23 @@ export default function BorrowingPage() {
         return data;
     }
 
+    const getLoanRefinanceProposals = async (ownedNfts, account) => {
+        const collateral = [];
+
+        Object.keys(ownedNfts).map((i) => {
+            collateral.push(
+                getLendingTermsPrimaryKey(
+                    ownedNfts[i].contract.address,
+                    ownedNfts[i].tokenId
+                )
+            )
+        });
+
+        const data = await selectProposedRefinanceLoanTerms(collateral, account);
+
+        return data;
+    }
+
     /* ---------------------------------------  *
      *        BORROWERPAGE.JSX RETURN           *
      * ---------------------------------------  */
@@ -288,6 +323,10 @@ export default function BorrowingPage() {
             <div className='container container-table container-table-proposed-nfts'>
                 <h2>Loan Proposals</h2>
                 {currentLoanProposalsTable[0]}
+            </div>
+            <div className='container container-table container-table-refinance-nfts'>
+                <h2>Refinance Proposals</h2>
+                {currentLoanRefinanceProposalsTable[0]}
             </div>
             <div className='container container-table container-table-available-nfts'>
                 <h2>Available Collateral</h2>

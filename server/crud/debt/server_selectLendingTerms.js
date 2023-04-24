@@ -36,15 +36,22 @@ const dbSelectAtProposedLendingTerms = (app, db) => {
 
 // 1.0.2 :: Selects the lender's available loans for sponsorship.
 const dbSelectAvailableLendingTerms = (app, db) => {
-    app.get('/api/select/available/lending_terms/:collateral', async (req, res) => {
+    app.get('/api/select/available/lending_terms/:collateral/:account', async (req, res) => {
         const collateral = req.params.collateral;
+        const account = req.params.account;
+        console.log(account);
+        console.log(collateral);
 
         let query = `
             SELECT 
             *
-            FROM anza_loans.lending_terms
-            WHERE collateral NOT IN (${collateral}) 
-            AND allowed = true
+            FROM 
+                anza_loans.lending_terms lt
+                INNER JOIN anza_loans.confirmed_loans cl ON lt.refinance_debt_id = cl.debt_id
+            WHERE 
+                lt.collateral NOT IN (${collateral}) 
+                AND lt.allowed = true
+                AND cl.borrower != ${account}
             ORDER BY collateral ASC;
         `
 
@@ -98,9 +105,31 @@ const dbSelectApprovedLendingTerms = (app, db) => {
         });
 }
 
+// 1.0.4 :: Selects the borrower's proposed refinanced loans.
+const dbSelectProposedRefinanceLoanTerms = (app, db) => {
+    app.get('/api/select/proposed_refinance/lending_terms/:collateral/:borrower', async (req, res) => {
+        const collateral = req.params.collateral;
+        const borrower = req.params.borrower;
+
+        let query = `
+            SELECT 
+            *
+            FROM anza_loans.lending_terms
+            WHERE collateral NOT IN (${collateral})
+            AND borrower = ${borrower}
+            AND debt_id IS NULL
+            AND rejected = false
+            ORDER BY collateral ASC;
+        `
+
+        await dbQueryGet(db, res, query);
+    });
+}
+
 module.exports = {
     dbSelectProposedLendingTerms,
     dbSelectAtProposedLendingTerms,
     dbSelectAvailableLendingTerms,
-    dbSelectApprovedLendingTerms
+    dbSelectApprovedLendingTerms,
+    dbSelectProposedRefinanceLoanTerms
 };

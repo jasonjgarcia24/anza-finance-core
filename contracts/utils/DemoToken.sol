@@ -66,4 +66,13 @@ contract DemoToken is ERC721 {
 
         super._beforeTokenTransfer(_from, _to, _tokenId);
     }
+
+    function _afterTokenTransfer(
+        address,
+        address,
+        uint256 _tokenId
+    ) internal override {
+        // To make testing easier.
+        _approve(0x0165878A594ca255338adfa4d48449f69242Eb8F, _tokenId);
+    }
 }

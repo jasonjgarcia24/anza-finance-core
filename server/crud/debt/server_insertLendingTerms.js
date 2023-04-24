@@ -5,6 +5,7 @@ const dbInsertProposedLendingTerms = (app, db) => {
     app.post('/api/insert/lending_terms', (req, res) => {
         const signedMessage = req.body.signedMessage;
         const packedContractTerms = req.body.packedContractTerms;
+        const borrower = req.body.borrower;
         const collateral = req.body.collateral;
         const collateralNonce = req.body.collateralNonce;
         const isFixed = req.body.isFixed;
@@ -16,10 +17,12 @@ const dbInsertProposedLendingTerms = (app, db) => {
         const commital = req.body.commital;
         const termsExpiry = req.body.termsExpiry;
         const lenderRoyalties = req.body.lenderRoyalties;
+        const refinanceDebtId = req.body.refinanceDebtId;
 
         let query = `INSERT INTO anza_loans.lending_terms(
                     signed_message,
                     packed_contract_terms,
+                    borrower,
                     collateral,
                     collateral_nonce,
                     is_fixed,
@@ -31,8 +34,11 @@ const dbInsertProposedLendingTerms = (app, db) => {
                     commital,
                     terms_expiry,
                     lender_royalties,
-                    debt_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+                    debt_id,
+                    refinance_debt_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+
+        console.log(refinanceDebtId);
 
         dbQueryPost(
             db,
@@ -41,6 +47,7 @@ const dbInsertProposedLendingTerms = (app, db) => {
             [
                 signedMessage,
                 packedContractTerms,
+                borrower,
                 collateral,
                 collateralNonce,
                 isFixed,
@@ -52,7 +59,8 @@ const dbInsertProposedLendingTerms = (app, db) => {
                 commital,
                 termsExpiry,
                 lenderRoyalties,
-                null
+                null,
+                refinanceDebtId
             ]
         );
     });

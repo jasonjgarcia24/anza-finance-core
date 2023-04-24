@@ -27,11 +27,12 @@ export const selectAtProposedLoanTerms = async (collateral) => {
 };
 
 // 1.0.2 :: Selects the lender's available loans for sponsorship.
-export const selectAvailableLoanTerms = async (ownedNfts) => {
+export const selectAvailableLoanTerms = async (ownedNfts, account) => {
     const _ownedNfts = "'" + ownedNfts.join("','") + "'";
+    const _account = "'" + account.toLowerCase() + "'";
 
     const domain = `http://${config.SERVER.HOST}:${config.SERVER.PORT}`;
-    const endpoints = `/api/select/available/lending_terms/${_ownedNfts}`;
+    const endpoints = `/api/select/available/lending_terms/${_ownedNfts}/${_account}`;
 
     const { data } = await axios.get(`${domain}${endpoints}`);
 
@@ -74,6 +75,19 @@ export const selectApprovedLoanTerms = async (
         `${_commital}/` +
         `${_termsExpiry}/` +
         `${_lenderRoyalties}`;
+
+    const { data } = await axios.get(`${domain}${endpoints}`);
+
+    return data;
+};
+
+// 1.0.4 :: Selects the borrower's proposed refinanced loans.
+export const selectProposedRefinanceLoanTerms = async (collateral, borrower) => {
+    const _collateral = "'" + collateral.join("','") + "'";
+    const _borrower = "'" + borrower.toLowerCase() + "'";
+
+    const domain = `http://${config.SERVER.HOST}:${config.SERVER.PORT}`;
+    const endpoints = `/api/select/proposed_refinance/lending_terms/${_collateral}/${_borrower}`;
 
     const { data } = await axios.get(`${domain}${endpoints}`);
 

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import config from '../../config.json';
 
-import { NftTable } from '../Common/common';
+import { NftTable, setEnableControlId, setName } from '../Common/common';
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
 import { getLendingTermsPrimaryKey } from '../../utils/databaseUtils';
@@ -13,7 +13,7 @@ import { getSignedMessage, getContractTerms } from '../../utils/signingUtils';
 import { getOwnedTokens, getChainTimeNow } from '../../utils/blockchainIndexingUtils';
 import { checkIfWalletIsConnected as checkConnection, connectWallet } from '../../utils/window/ethereumConnect';
 import { insertProposedLoanTerms } from '../../db/client_insertLendingTerms';
-import { selectProposedLoanTerms } from '../../db/client_selectLendingTerms';
+import { selectOpenConfirmedLoans, selectCommittedConfirmedLoans } from '../../db/client_selectConfirmedLoans';
 import abi_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
 import abi_ERC721 from '../../artifacts/IERC721.sol/IERC721.json';
 
@@ -23,10 +23,9 @@ export default function BorrowingPage() {
     const [newLoanProposal, setNewLoanProposal] = useState('');
     const [currentAccount, setCurrentAccount] = useState(null);
     const [currentChainId, setCurrentChainId] = useState(null);
-    const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState(null);
-    const [currentCommitedLoans, setCurrentCommitedLoans] = useState(null);
-    const [currentToken, setCurrentToken] = useState({ address: null, id: null });
-    const [accountNfts, setAccountNfts] = useState({});
+    const [currentOpenLoans, setCurrentOpenLoansTable] = useState([null, null]);
+    const [currentCommitedLoans, setCurrentCommitedLoans] = useState([null, null]);
+    const [currentToken, setCurrentToken] = useState({ address: null, id: null, debtId: null });
 
     useEffect(() => {
         console.log('Page loading...');
@@ -38,7 +37,7 @@ export default function BorrowingPage() {
     }, [currentToken]);
 
     useEffect(() => {
-        if (!!newLoanProposal) window.location.reload();
+        // if (!!newLoanProposal) window.location.reload();
     }, [newLoanProposal]);
 
     /* ---------------------------------------  *
@@ -53,49 +52,59 @@ export default function BorrowingPage() {
         console.log(`Account: ${account}`);
         console.log(`Network: ${chainId}`);
 
-        // Update nft.available table
-        const loanCommitments = await updateNftPortfolio(account, chainId);
-        // const loanProposals = await getLoanProposals(ownedNfts)
+        // Update nft.savailable table
+        const openLoans = await getOpenLoans(account)
+        const committedLoans = await getCommittedLoans(account);
 
-        // Render table of potential NFTs
-        const committedLoans = await NftTable({
+        console.log(openLoans);
+
+        // Render table of open loans for refinancing
+        const openLoansTable = await NftTable({
             account: account,
-            nfts: loanCommitments,
-            type: "commits",
+            nfts: openLoans,
+            type: "open",
+            useDefaultTerms: false,
+            disabledOverriden: false,
+            callbackRadioButton: callback__SetProposalParams,
+            callbackSelect: callback__SetFixedLoanParams
+        });
+
+        // Render table of open loans for refinancing
+        const committedLoansTable = await NftTable({
+            account: account,
+            nfts: committedLoans,
+            type: "commit",
             useDefaultTerms: false,
             disabledOverriden: true,
         });
 
-        // // Render table of owned NFTs
-        // const [committedLons,] = await NftTable({
-        //     account: account,
-        //     nfts: ownedNfts,
-        //     type: "committed",
-        //     useDefaultTerms: true,
-        //     disabledOverriden: false,
-        //     callbackRadioButton: callback__SetProposalParams,
-        //     callbackSelect: callback__SetFixedLoanParams
-        // });
+        console.log(`openLoansTable:`);
+        console.log(openLoansTable[1]);
 
-        committedLoans[1] !== null && setCurrentToken({
-            address: committedLoans[0].address.toLowerCase(),
-            id: committedLoans[0].id
+        openLoansTable[1].address !== null && setCurrentToken({
+            address: openLoansTable[1].address.toLowerCase(),
+            id: openLoansTable[1].id,
+            debtId: openLoansTable[1].debtId
         });
 
-        setCurrentCommitedLoans(committedLoans);
-        // setCurrentLoanProposalsTable(openLoans);
+        setCurrentOpenLoansTable(openLoansTable);
+        setCurrentCommitedLoans(committedLoansTable);
 
         setIsPageLoad(false);
     }
 
     const tokenSelectionChangeSequence = async () => {
         // Update terms enable/disable
-        const terms = document.getElementsByClassName("loan-term-text");
-
+        const terms = document.getElementsByClassName("loan-term");
+        const rowObj = {
+            contract: { address: currentToken.address },
+            tokenId: currentToken.id,
+            tableType: "open"
+        };
 
         [...terms].forEach((term) => {
-            const [termType, , ,] = term.id.split('-');
-            term.disabled = `${termType}-${currentToken.address}-${currentToken.id}-terms` != term.id;
+            const [_term, , ,] = term.id.split('-');
+            term.disabled = setEnableControlId(_term, rowObj) != term.id;
         });
     }
 
@@ -128,15 +137,15 @@ export default function BorrowingPage() {
             signer
         );
 
-        // Ensure LoanContract is an approver to move the NFT
-        let approver = await TokenContract.getApproved(currentToken.id);
-        if (approver.toLowerCase() !== LoanContract.address.toLowerCase()) {
-            let tx = await TokenContract.approve(LoanContract.address, currentToken.id);
-            await tx.wait();
-        }
+        // // Ensure LoanContract is an approver to move the NFT
+        // let approver = await TokenContract.getApproved(currentToken.id);
+        // if (approver.toLowerCase() !== LoanContract.address.toLowerCase()) {
+        //     let tx = await TokenContract.approve(LoanContract.address, currentToken.id);
+        //     await tx.wait();
+        // }
 
         // Collect loan terms and signature for loan initialization
-        const contractTerms = getContractTerms(currentToken.address, currentToken.id);
+        const contractTerms = getContractTerms(currentToken.address, currentToken.id, 'open');
 
         const { packedContractTerms, collateralNonce, signedMessage } = await getSignedMessage(
             signer,
@@ -146,14 +155,18 @@ export default function BorrowingPage() {
             currentToken.id
         );
 
+        console.log(`debt id: ${currentToken.debtId}`);
+
         // Insert loan proposal into database
         const response = await insertProposedLoanTerms(
             signedMessage,
             packedContractTerms,
+            currentAccount,
             currentToken.address,
             currentToken.id,
             collateralNonce,
-            contractTerms
+            contractTerms,
+            currentToken.debtId
         );
 
         if (response.status === 200) {
@@ -173,12 +186,12 @@ export default function BorrowingPage() {
     const callback__SetFixedLoanParams = async ({ target }) => {
         const isDisabled = target.value === "Y";
 
-        const [, tokenAddress, tokenId] = target.id.split('-');
-
-        const firInterval = document.getElementsByClassName(`firInterval-${tokenAddress}-${tokenId}`)[0];
-        const gracePeriod = document.getElementsByClassName(`gracePeriod-${tokenAddress}-${tokenId}`)[0];
-        const commital = document.getElementsByClassName(`commital-${tokenAddress}-${tokenId}`)[0];
-        const lenderRoyalties = document.getElementsByClassName(`lenderRoyalties-${tokenAddress}-${tokenId}`)[0];
+        const [, tokenAddress, tokenId, , index] = target.name.split('-');
+        const rowObj = { contract: { address: tokenAddress }, tokenId: tokenId, tableType: "open", index: index };
+        const firInterval = document.getElementsByName(setName("fir_interval", rowObj))[0];
+        const gracePeriod = document.getElementsByName(setName("grace_period", rowObj))[0];
+        const commital = document.getElementsByName(setName("commital", rowObj))[0];
+        const lenderRoyalties = document.getElementsByName(setName("lender_royalties", rowObj))[0];
 
         firInterval.disabled = isDisabled;
         gracePeriod.disabled = isDisabled;
@@ -194,13 +207,17 @@ export default function BorrowingPage() {
     }
 
     const callback__SetProposalParams = async ({ target }) => {
-        const [tokenAddress, tokenId] = target.value.split('-');
+        const [tokenAddress, tokenId, , , debtId] = target.value.split('-');
+        console.log("target value:");
+        console.log(target.value);
+        console.log(`Debt ID: ${debtId}`);
+
         if (currentToken.address === tokenAddress && currentToken.id === tokenId) {
             // Do nothing
             return;
         }
 
-        setCurrentToken({ address: tokenAddress.toLowerCase(), id: tokenId });
+        setCurrentToken({ address: tokenAddress.toLowerCase(), id: tokenId, debtId: debtId });
     }
 
     /* ---------------------------------------  *
@@ -225,48 +242,27 @@ export default function BorrowingPage() {
     /* ---------------------------------------  *
      *           DATABASE FUNCTIONS             *
      * ---------------------------------------  */
-    const updateNftPortfolio = async (account = currentAccount, chainId = currentChainId) => {
-        if (!account) { return; }
+    const getOpenLoans = async (account) => {
+        const now = await getChainTimeNow()
+        const data = await selectOpenConfirmedLoans(account, now);
 
-        const ownedNfts = await getOwnedTokens(chainId, account);
-
-        // Format tokens owned for database update
-        const portfolioVals = [];
-        Object.keys(ownedNfts).map((i) => {
-            let primaryKey = getLendingTermsPrimaryKey(
-                ownedNfts[i].contract.address,
-                ownedNfts[i].tokenId
-            );
-
-            portfolioVals.push([
-                primaryKey,
-                account,
-                ownedNfts[i].contract.address,
-                ownedNfts[i].tokenId,
-            ]);
+        data.map((loan) => {
+            loan.contract = {};
+            [loan.contract.address, loan.tokenId] = loan.collateral.split("_");
+            loan.debtId = loan.debt_id;
         });
 
-        setAccountNfts(ownedNfts);
-
-        return ownedNfts
-
-        // // Update portfolio database
-        // await createTokensPortfolio(portfolioVals);
+        return data;
     }
 
-    const getCommittedLoans = async (ownedNfts) => {
-        const collateral = [];
+    const getCommittedLoans = async (account) => {
+        const now = await getChainTimeNow()
+        const data = await selectCommittedConfirmedLoans(account, now);
 
-        Object.keys(ownedNfts).map((i) => {
-            collateral.push(
-                getLendingTermsPrimaryKey(
-                    ownedNfts[i].contract.address,
-                    ownedNfts[i].tokenId
-                )
-            )
+        data.map((loan) => {
+            loan.contract = {};
+            [loan.contract.address, loan.tokenId] = loan.collateral.split("_");
         });
-
-        const data = await selectProposedLoanTerms(collateral);
 
         return data;
     }
@@ -285,15 +281,15 @@ export default function BorrowingPage() {
             </div>
             <div className='container container-table container-table-available-nfts'>
                 <h2>Open Loans</h2>
-                {!!currentLoanProposalsTable && <div className='buttongroup buttongroup-body'>
-                    <div className='button button-body' onClick={callback__ProposeLoanTerms}>Propose Loan</div>
+                {!!currentOpenLoans[0] !== null && <div className='buttongroup buttongroup-body'>
+                    <div className='button button-body' onClick={callback__ProposeLoanTerms}>Refinance Loan</div>
                 </div>
                 }
-                {currentLoanProposalsTable}
+                {currentOpenLoans[0]}
             </div>
             <div className='container container-table container-table-available-nfts'>
                 <h2>Committed Loans</h2>
-                {currentCommitedLoans}
+                {currentCommitedLoans[0]}
             </div>
         </main>
     );

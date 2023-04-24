@@ -12,6 +12,8 @@ export const insertConfirmedLoans = async (
   loanEndTime
 ) => {
   let response;
+  console.log(loanStartTime);
+  console.log(loanCommitTime);
 
   try {
     response = await axios.post(

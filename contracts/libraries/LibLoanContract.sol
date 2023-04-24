@@ -123,6 +123,20 @@ library LibLoanContractIndexer {
 }
 
 library LibLoanContractTerms {
+    struct ContractTerms {
+        uint256 loanState;
+        uint256 firInterval;
+        uint256 fixedInterestRate;
+        uint256 loanStart;
+        uint256 loanDuration;
+        uint256 loanCommital;
+        uint256 loanCommitalTime;
+        uint256 loanClose;
+        uint256 isFixed;
+        uint256 lenderRoyalties;
+        uint256 activeLoanCount;
+    }
+
     function loanState(
         bytes32 _contractTerms
     ) public pure returns (uint256 _loanState) {
