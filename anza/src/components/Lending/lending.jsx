@@ -4,13 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import config from '../../config.json';
 
-import { NftTable, LoanTable, setName } from '../Common/common';
+import { NftTable, setName } from '../Common/common';
 import { listenerLoanContractInit } from '../../utils/events/listenersLoanContract';
 import { setPageTitle } from '../../utils/titleUtils';
 import { getSubAddress } from '../../utils/addressUtils';
 import { getLendingTermsPrimaryKey } from '../../utils/databaseUtils';
 import { getNetworkName } from '../../utils/networkUtils';
 import { getOwnedTokens } from '../../utils/blockchainIndexingUtils';
+import { loanStart, loanDuration } from '../../utils/constants/loanContractConstants';
 import {
     checkIfWalletIsConnected as checkConnection,
     connectWallet
@@ -20,7 +21,8 @@ import { selectSponsoredConfirmedLoans } from '../../db/client_selectConfirmedLo
 import { insertConfirmedLoans } from '../../db/client_insertConfirmedLoans';
 import {
     updateApprovedLendingTerms,
-    updateUnallowedCollateralLendingTerms
+    updateUnallowedLendingTerms,
+    updateRejectedLendingTerms
 } from '../../db/client_updateLendingTerms';
 import artifact_LoanContract from '../../artifacts/LoanContract.sol/LoanContract.json';
 import artifact_LibLoanContractSigning from '../../artifacts/LibLoanContract.sol/LibLoanContractSigning.json';
@@ -28,7 +30,6 @@ import artifact_LibLoanContractTerms from '../../artifacts/LibLoanContract.sol/L
 
 export default function LendingPage() {
     const [isPageLoad, setIsPageLoad] = useState(true);
-    const [newSponsoredLoan, setNewSponsoredLoan] = useState('');
     const [currentAccount, setCurrentAccount] = useState(null);
     const [currentChainId, setCurrentChainId] = useState(null);
     const [currentLoanProposalsTable, setCurrentLoanProposalsTable] = useState([null, null]);
@@ -40,14 +41,6 @@ export default function LendingPage() {
         if (!!isPageLoad) pageLoadSequence();
         // eslint-disable-next-line
     }, []);
-
-    useEffect(() => {
-        if (!!currentToken.address) tokenSelectionChangeSequence();
-    }, [currentToken]);
-
-    useEffect(() => {
-        if (!!newSponsoredLoan) window.location.reload();
-    }, [newSponsoredLoan])
 
     /* ---------------------------------------  *
      *       EVENT SEQUENCE FUNCTIONS           *
@@ -68,8 +61,7 @@ export default function LendingPage() {
         // Update nft.available table
         const ownedNfts = await getOwnedTokens(chainId, account);
         const sponsoredProposals = await selectSponsoredConfirmedLoans(account);
-        const loanProposals = await getLoanProposals(ownedNfts)
-        console.log(sponsoredProposals);
+        const loanProposals = await getLoanProposals(ownedNfts, account)
 
         // Render table of sponsored loans
         const sponsoredLoans = await NftTable({
@@ -98,11 +90,6 @@ export default function LendingPage() {
         setCurrentLoanProposalsTable(proposedLoans);
 
         setIsPageLoad(false);
-    }
-
-    const tokenSelectionChangeSequence = async () => {
-        // Update current selection
-        // console.log(`Token change seq: ${currentToken.address}-${currentToken.id}`);
     }
 
     /* ---------------------------------------  *
@@ -145,8 +132,6 @@ export default function LendingPage() {
             terms[type] = (type !== "principal") ? terms[type] : ethers.utils.parseEther(terms[type]).toString();
             terms[type] = (type !== "is_fixed") ? terms[type] : (terms[type] === "Y") ? 1 : 0;
         });
-        console.log('terms');
-        console.log(terms);
 
         terms["collateral"] = getLendingTermsPrimaryKey(collateralAddress, collateralId);
 
@@ -163,8 +148,6 @@ export default function LendingPage() {
             terms["terms_expiry"],
             terms["lender_royalties"]
         ))[0];
-
-        console.log(response);
 
         // Get LoanContract instance
         const LoanContract = new ethers.Contract(
@@ -189,15 +172,6 @@ export default function LendingPage() {
 
         // Store nonce for finding borrower later
         const collateralNonce = await LoanContract.getCollateralNonce(collateralAddress, collateralId);
-
-        const borrower = await LibLoanContractSigning.recoverSigner(
-            response["principal"],
-            response["packed_contract_terms"],
-            collateralAddress,
-            collateralId,
-            collateralNonce,
-            response["signed_message"]
-        );
 
         // Initialize loan contract
         let tx;
@@ -233,13 +207,13 @@ export default function LendingPage() {
             collateralNonce,
             response["signed_message"]
         );
-        console.log(_borrower);
 
         const _lender = await signer.getAddress();
         const _loanTerms = await LoanContract.getDebtTerms(_debtId);
-        const _loanStartTime = await LoanContract.loanStart(_debtId);
+
+        const _loanStartTime = loanStart(_loanTerms.toString());
         const _loanCommitTime = await LibLoanContractTerms.loanCommitalTime(_loanTerms);
-        const _loanCloseTime = await LoanContract.loanClose(_debtId);
+        const _loanCloseTime = _loanStartTime + loanDuration(_loanTerms.toString());
 
         // Set confirmed loan into database
         await setApprovedLoan(
@@ -253,8 +227,6 @@ export default function LendingPage() {
             _loanCommitTime,
             _loanCloseTime
         );
-
-        // setNewSponsoredLoan(_debtId);
     }
 
     /* ---------------------------------------  *
@@ -279,7 +251,7 @@ export default function LendingPage() {
     /* ---------------------------------------  *
      *           DATABASE FUNCTIONS             *
      * ---------------------------------------  */
-    const getLoanProposals = async (ownedNfts) => {
+    const getLoanProposals = async (ownedNfts, account) => {
         const collateral = [];
 
         Object.keys(ownedNfts).map((i) => {
@@ -291,7 +263,7 @@ export default function LendingPage() {
             )
         });
 
-        const data = await selectAvailableLoanTerms(collateral);
+        const data = await selectAvailableLoanTerms(collateral, account);
 
         return data;
     }
@@ -336,7 +308,8 @@ export default function LendingPage() {
         }
 
         // Clean-up all loans proposals with same collateral
-        response = await updateUnallowedCollateralLendingTerms(collateral);
+        response = await updateUnallowedLendingTerms(collateral);
+        response = await updateRejectedLendingTerms(collateral);
 
         if (response.status === 200) {
             console.log("Loan proposals successfully updated at Anza database!");

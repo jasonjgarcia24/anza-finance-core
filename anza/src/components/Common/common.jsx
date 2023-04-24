@@ -78,12 +78,16 @@ const getDefaultLoanValue = (term, nft) => {
 /* ---------------------------------------  *
  *          ELEMENT IDENTIFIERS             *
  * ---------------------------------------  */
-const setEnableControlId = (term, rowObj) => {
+export const setEnableControlId = (term, rowObj) => {
     return `${term}-${rowObj.contract.address}-${rowObj.tokenId}-${rowObj.tableType}`
 }
 
 export const setName = (term, rowObj) => {
     return `${term}-${rowObj.contract.address}-${rowObj.tokenId}-${rowObj.tableType}-${rowObj.index}`
+}
+
+export const setValue = (rowObj) => {
+    return `${rowObj.contract.address}-${rowObj.tokenId}-${rowObj.tableType}-${rowObj.index}-${rowObj.debtId}`;
 }
 
 /* ---------------------------------------  *
@@ -100,7 +104,7 @@ const rowSelector = (account, callbackRadioButton, rowObj) => {
             id={`${rowObj.tableType}-${rowObj.contract.address}-${rowObj.tokenId}`}
             name={`radio-${account}`}
             className={`radio-${rowObj.tableType}`}
-            value={`${rowObj.contract.address}-${rowObj.tokenId}-${rowObj.tableType}-${rowObj.index}`}
+            value={setValue(rowObj)}
             defaultChecked={rowObj.index === '0'}
             onClick={callbackRadioButton}
         />
@@ -133,11 +137,14 @@ const isFixedDisplay = (rowObj) => {
 }
 
 /*
- *  Borrower Page
- *    - Loan Proposals
- *    - Available Collateral
- *  Lender Page
- *    - Available for Sponsor
+ *  Table type key:
+ *    - 'terms'     = Borrower available collateral
+ *    - 'proposal'  = Borrower loan proposals
+ *    - 'refinance' = Borrower loan refinance proposals
+ *    - 'sponsor'   = Lender available for sponsor
+ *    - 'confirmed' = Lender sponsored active loan
+ *    - 'open'      = Loan open to refinance
+ *    - 'commit'    = Loan closed to refinance
  */
 export const NftTable = async (nftTableObj) => {
     const renderNftTable = async ({
@@ -156,7 +163,7 @@ export const NftTable = async (nftTableObj) => {
         tokenElements.push(
             Object.keys(nfts).map((i) => {
                 // If loading from database
-                if (['proposal', 'sponsor', 'confirmed', 'commits', 'open'].includes(type)) {
+                if (['proposal', 'refinance', 'sponsor', 'confirmed', 'commit', 'open'].includes(type)) {
                     nfts[i].contract = {};
                     [nfts[i].contract.address, nfts[i].tokenId] = nfts[i].collateral.split("_");
                 }
@@ -169,7 +176,7 @@ export const NftTable = async (nftTableObj) => {
                     <tr key={`tr-${nfts[i].contract.address}-${nfts[i].tokenId}-${i}`}>
                         {/* RADIO BUTTON */}
                         {
-                            !['proposal', 'confirmed', 'commits'].includes(type)
+                            !['proposal', 'refinance', 'confirmed', 'commit'].includes(type)
                             && rowSelector(account, callbackRadioButton, nfts[i])
                         }
                         {/* COLLATERAL ADDRESS */}
@@ -187,7 +194,7 @@ export const NftTable = async (nftTableObj) => {
                         {/* IS FIXED? */}
                         <td>
                             {
-                                !['proposal', 'sponsor'].includes(type) &&
+                                !['proposal', 'refinance', 'sponsor', 'commit'].includes(type) &&
                                 isFixedSelector(callbackSelect, disabledOverriden, nfts[i]) ||
                                 isFixedDisplay(nfts[i])
                             }
@@ -209,11 +216,11 @@ export const NftTable = async (nftTableObj) => {
 
         const availableNftsTable = (
             <form className='form-table form-table-available-nfts'>
-                <table className='table-available-nfts'>
+                <table className={`table-nfts table-${type}-nfts`}>
                     <thead><tr>
-                        {!['proposal', 'confirmed', 'commits'].includes(type) && <th></th>}
+                        {!['proposal', 'refinance', 'confirmed', 'commit'].includes(type) && <th></th>}
                         {
-                            ['proposal', 'terms', 'sponsor'].includes(type) &&
+                            ['proposal', 'refinance', 'terms', 'sponsor', 'open'].includes(type) &&
                             nftsHeaders.map((hdr, index) => {
                                 return <th key={`${type}-${index}`}><label>{hdr}</label></th>
                             }) ||
@@ -232,7 +239,7 @@ export const NftTable = async (nftTableObj) => {
         return nfts.length > 0
             ? [
                 availableNftsTable,
-                { address: nfts[0].contract.address, id: nfts[0].tokenId }
+                { address: nfts[0].contract.address, id: nfts[0].tokenId, debtId: nfts[0].debtId }
             ]
             : [<div>{getEmptyString(type)}</div>, null];
     }
@@ -256,7 +263,7 @@ export const NftTable = async (nftTableObj) => {
         return Object.keys(termObj).map((term) => {
             let defaultValue;
 
-            if (!['proposal', 'confirmed', 'commits'].includes(nft.tableType)) {
+            if (!['proposal', 'refinance', 'confirmed', 'commit'].includes(nft.tableType)) {
                 defaultValue = useDefaultTerms ? termObj[term] : getDefaultTermsValue(term, nft);
             } else {
                 defaultValue = getDefaultLoanValue(term, nft);
@@ -270,7 +277,7 @@ export const NftTable = async (nftTableObj) => {
                         key={`text-${term}-${nft.contract.address}-${nft.tokenId}-${nft.index}`}
                         id={setEnableControlId(term, nft)}
                         name={setName(term, nft)}
-                        className={`loan-term ${term}-${nft.contract.address}-${nft.tokenId}`}
+                        className={`loan-term loan-term-text ${term}-${nft.contract.address}-${nft.tokenId}`}
                         defaultValue={defaultValue}
                         disabled={disabled}
                     />

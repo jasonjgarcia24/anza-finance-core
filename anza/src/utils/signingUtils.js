@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import config from "../config.json";
 import { hexlify } from "@ethersproject/bytes";
+import { setEnableControlId } from '../components/Common/common';
 import abi_LoanContract from '../artifacts/LoanContract.sol/LoanContract.json';
 import abi_LibLoanContractSigning from '../artifacts/LibLoanContract.sol/LibLoanContractSigning.json';
 
@@ -64,7 +65,7 @@ export const getSignedMessage = async (
     };
 }
 
-export const getContractTerms = (tokenAddress, tokenId) => {
+export const getContractTerms = (tokenAddress, tokenId, tableType) => {
     // Get selected loan terms
     const contractTerms = {};
 
@@ -81,7 +82,7 @@ export const getContractTerms = (tokenAddress, tokenId) => {
     ];
 
     termNames.map(term => {
-        const id = `${term}-${tokenAddress}-${tokenId}-terms`;
+        const id = setEnableControlId(term, { contract: { address: tokenAddress }, tokenId: tokenId, tableType: tableType });
         contractTerms[term] = document.getElementById(id).value
         contractTerms[term] = term !== "is_fixed" ? contractTerms[term].toString() : contractTerms[term] === "Y" ? "1" : "0";
         contractTerms[term] = term !== "principal" ? ethers.BigNumber.from(contractTerms[term]) : ethers.utils.parseEther(contractTerms[term]);

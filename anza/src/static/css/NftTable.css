@@ -1,7 +1,12 @@
-.table-available-nfts,
+.form-table {
+    background-color: orange;
+}
+
+.table-nfts,
 .table-lending-nfts {
     margin: 0 auto;
     width: 100%;
+    table-layout: fixed;
 }
 
 .loan-term {

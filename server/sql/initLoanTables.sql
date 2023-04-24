@@ -19,6 +19,7 @@ CREATE TABLE
     lending_terms (
         signed_message CHAR(132) NOT NULL UNIQUE PRIMARY KEY,
         packed_contract_terms CHAR(66) NOT NULL,
+        borrower CHAR(42) NOT NULL,
         collateral VARCHAR(121) NOT NULL,
         collateral_nonce VARCHAR(78) NOT NULL,
         is_fixed BOOLEAN NOT NULL,
@@ -31,6 +32,9 @@ CREATE TABLE
         terms_expiry VARCHAR(10) NOT NULL,
         lender_royalties VARCHAR(3) NOT NULL,
         allowed BOOLEAN NOT NULL DEFAULT true,
+        rejected BOOLEAN NOT NULL DEFAULT false,
         debt_id VARCHAR(78) UNIQUE,
-        FOREIGN KEY (debt_id) REFERENCES confirmed_loans (debt_id)
+        refinance_debt_id VARCHAR(78),
+        FOREIGN KEY (debt_id) REFERENCES confirmed_loans (debt_id),
+        FOREIGN KEY (refinance_debt_id) REFERENCES confirmed_loans (debt_id)
     );

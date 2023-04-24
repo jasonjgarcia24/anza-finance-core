@@ -17,16 +17,20 @@ const {
     dbSelectProposedLendingTerms,
     dbSelectAtProposedLendingTerms,
     dbSelectAvailableLendingTerms,
-    dbSelectApprovedLendingTerms
+    dbSelectApprovedLendingTerms,
+    dbSelectProposedRefinanceLoanTerms
 } = require('./crud/debt/server_selectLendingTerms');
 const {
     dbSelectConfirmedLoans,
-    dbSelectSponsoredConfirmedLoans
+    dbSelectSponsoredConfirmedLoans,
+    dbSelectOpenConfirmedLoans,
+    dbSelectCommittedConfirmedLoans
 } = require('./crud/debt/server_selectConfirmedLoans');
 
 const {
     dbUpdateApprovedLendingTerms,
-    dbUpdateUnallowedCollateralLendingTerms
+    dbUpdateUnallowedLendingTerms,
+    dbUpdateRejectedLendingTerms
 } = require('./crud/debt/server_updateLendingTerms');
 
 const db = mysql.createPool({
@@ -57,12 +61,16 @@ dbSelectProposedLendingTerms(app, db);
 dbSelectAtProposedLendingTerms(app, db);
 dbSelectAvailableLendingTerms(app, db);
 dbSelectApprovedLendingTerms(app, db);
+dbSelectProposedRefinanceLoanTerms(app, db);
 dbSelectConfirmedLoans(app, db);
 dbSelectSponsoredConfirmedLoans(app, db);
+dbSelectOpenConfirmedLoans(app, db);
+dbSelectCommittedConfirmedLoans(app, db);
 
 // Update
 dbUpdateApprovedLendingTerms(app, db);
-dbUpdateUnallowedCollateralLendingTerms(app, db);
+dbUpdateUnallowedLendingTerms(app, db);
+dbUpdateRejectedLendingTerms(app, db);
 
 app.listen(config.SERVER.PORT, () => {
     console.log(`Running on port ${config.SERVER.PORT}`);

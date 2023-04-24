@@ -22,9 +22,9 @@ const dbUpdateApprovedLendingTerms = (app, db) => {
 }
 
 
-// 2.0.1 :: Update the loan proposals with matching collateral to unallowed.
-const dbUpdateUnallowedCollateralLendingTerms = (app, db) => {
-    app.post('/api/update/collateral_unallowed/lending_terms', async (req, res) => {
+// 2.0.1 :: Update the loan proposals to unallowed.
+const dbUpdateUnallowedLendingTerms = (app, db) => {
+    app.post('/api/update/unallowed/lending_terms', async (req, res) => {
         const collateral = "'" + req.body.collateral + "'";
 
         let query = `
@@ -42,7 +42,30 @@ const dbUpdateUnallowedCollateralLendingTerms = (app, db) => {
     });
 }
 
+
+// 2.0.2 :: Update the loan proposals to rejected.
+const dbUpdateRejectedLendingTerms = (app, db) => {
+    app.post('/api/update/rejected/lending_terms', async (req, res) => {
+        const collateral = "'" + req.body.collateral + "'";
+
+        let query = `
+            UPDATE anza_loans.lending_terms
+            SET rejected=${1}
+            WHERE collateral=${collateral}
+            AND debt_id IS NULL
+        `;
+
+        dbQueryPost(
+            db,
+            res,
+            query,
+            [0]
+        );
+    });
+}
+
 module.exports = {
     dbUpdateApprovedLendingTerms,
-    dbUpdateUnallowedCollateralLendingTerms
+    dbUpdateUnallowedLendingTerms,
+    dbUpdateRejectedLendingTerms
 };

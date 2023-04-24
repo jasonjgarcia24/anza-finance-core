@@ -17,13 +17,29 @@ export const updateApprovedLendingTerms = async (signedMessage, debtId) => {
 	return response;
 };
 
-// 2.0.1 :: Update the loan proposals with matching collateral to unallowed.
-export const updateUnallowedCollateralLendingTerms = async (collateral) => {
+// 2.0.1 :: Update the loan proposals to unallowed.
+export const updateUnallowedLendingTerms = async (collateral) => {
 	let response;
 
 	try {
 		response = axios.post(
-			`http://${config.SERVER.HOST}:${config.SERVER.PORT}/api/update/collateral_unallowed/lending_terms`,
+			`http://${config.SERVER.HOST}:${config.SERVER.PORT}/api/update/unallowed/lending_terms`,
+			{ collateral: collateral }
+		);
+	} catch (err) {
+		response = err.response;
+	}
+
+	return response;
+};
+
+// 2.0.2 :: Update the loan proposals to rejected.
+export const updateRejectedLendingTerms = async (collateral) => {
+	let response;
+
+	try {
+		response = axios.post(
+			`http://${config.SERVER.HOST}:${config.SERVER.PORT}/api/update/rejected/lending_terms`,
 			{ collateral: collateral }
 		);
 	} catch (err) {
