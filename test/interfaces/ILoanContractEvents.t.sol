@@ -7,7 +7,8 @@ interface ILoanContractEvents {
     event LoanContractInitialized(
         address indexed collateralAddress,
         uint256 indexed collateralId,
-        uint256 indexed debtId
+        uint256 indexed debtId,
+        uint256 activeLoanIndex
     );
 
     event PaymentSubmitted(

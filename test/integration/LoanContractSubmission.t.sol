@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.20;
 
 import "../../contracts/domain/LoanContractErrorCodes.sol";
 import "../../contracts/domain/LoanContractNumbers.sol";
@@ -22,6 +22,7 @@ abstract contract LoanContractSubmitFunctions is
 {
     function initLoanContractExpectations(
         uint256 _debtId,
+        uint256 _activeLoanIndex,
         ContractTerms memory _contractTerms
     ) public {
         LoanContractHarness _loanContractHarness = new LoanContractHarness();
@@ -101,7 +102,8 @@ abstract contract LoanContractSubmitFunctions is
                 emit LoanContractInitialized(
                     address(demoToken),
                     collateralId,
-                    _debtId
+                    _debtId,
+                    _activeLoanIndex
                 );
             } catch (bytes memory err) {
                 console.logBytes(err);
@@ -122,6 +124,7 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        (uint256 __debtId, , ) = _loanContract.debts(_collateralAddress, collateralId);
 
         // Verify debt ID for collateral
         uint256 numDebtIds = _loanContract.getCollateralNonce(
@@ -129,18 +132,7 @@ abstract contract LoanContractSubmitFunctions is
             collateralId
         );
 
-        assertEq(
-            _loanContract.debtIds(
-                _collateralAddress,
-                collateralId,
-                numDebtIds - 1
-            ),
-            _debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        _loanContract.debtIds(_collateralAddress, collateralId, numDebtIds);
+        assertEq(__debtId, _debtId);
     }
 
     function verifyLoanAgreementTerms(
@@ -262,6 +254,8 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
         super.setUp();
     }
 
+    function testPass() public {}
+
     function testBasicLenderSubmitProposal() public {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
@@ -283,11 +277,11 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
             collateralId
         );
 
-        initLoanContractExpectations(_debtId, _contractTerms);
+        initLoanContractExpectations(_debtId + 1, 0, _contractTerms);
 
         createLoanContract(collateralId, _collateralNonce, _contractTerms);
 
-        // verifyPostContractInit(_debtId, _contractTerms);
+        verifyPostContractInit(_debtId + 1, _contractTerms);
     }
 }
 
@@ -327,7 +321,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,
@@ -369,7 +363,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,
@@ -411,7 +405,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,
@@ -453,7 +447,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,
@@ -495,7 +489,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,
@@ -539,7 +533,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,
@@ -581,7 +575,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,
@@ -613,7 +607,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        initLoanContractExpectations(_debtId, _terms);
+        initLoanContractExpectations(_debtId + 1, 0, _terms);
 
         initLoanContract(
             _contractTerms,

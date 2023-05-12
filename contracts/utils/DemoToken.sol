@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
@@ -43,7 +43,8 @@ contract DemoToken is ERC721 {
     function _beforeTokenTransfer(
         address _from,
         address _to,
-        uint256 _tokenId
+        uint256 _tokenId,
+        uint256
     ) internal override {
         if (_from != address(0)) {
             uint256[] storage _ownedTokens = ownedTokens[_from];
@@ -63,14 +64,13 @@ contract DemoToken is ERC721 {
         }
 
         ownedTokens[_to].push(_tokenId);
-
-        super._beforeTokenTransfer(_from, _to, _tokenId);
     }
 
     function _afterTokenTransfer(
         address,
         address,
-        uint256 _tokenId
+        uint256 _tokenId,
+        uint256
     ) internal override {
         // To make testing easier.
         _approve(0x0165878A594ca255338adfa4d48449f69242Eb8F, _tokenId);

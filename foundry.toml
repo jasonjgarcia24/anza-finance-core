@@ -6,7 +6,7 @@
         '@optionality.io/=node_modules/@optionality.io/',
         'eth-gas-reporter/=node_modules/eth-gas-reporter/',
     ]
-    solc = "0.8.17"
+    solc = "0.8.20"
     gas_reports = ["LoanContract", "LoanTreasurey", "CollateralVault", "AnzaDebtStorefront"]
     [fuzz]
     runs = 300
