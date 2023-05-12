@@ -70,10 +70,10 @@ contract CollateralVault is
         uint256 _collateralId,
         uint256 _debtId
     ) public returns (bool) {
-        ILoanContract.Debt memory _debt = ILoanContract(_loanContract).debts(_collateralAddress, _collateralId);
+        (uint256 __debtId, , ) = ILoanContract(_loanContract).debts(_collateralAddress, _collateralId);
 
         return
-           _debt.debtId == _debtId &&
+           __debtId == _debtId &&
             __collaterals[_debtId].collateralAddress == address(0);
     }
 

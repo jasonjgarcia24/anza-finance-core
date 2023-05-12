@@ -25,7 +25,7 @@ abstract contract Utils {
      * ------------------------------------------------ */
     uint8 public constant _FIR_INTERVAL_ = 14;
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.10
-    uint8 public constant _IS_FIXED_ = 0x00; // false
+    uint8 public constant _IS_FIXED_ = 0; // false
     uint8 public constant _COMMITAL_ = 25; // 0.25
     uint128 public constant _PRINCIPAL_ = 10000000000000000000; // WEI
     uint32 public constant _GRACE_PERIOD_ = 86400;
@@ -166,8 +166,8 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         vm.stopPrank();
 
         vm.startPrank(borrower);
-        // demoToken = new DemoToken();
-        demoToken = DemoToken(0x3aAde2dCD2Df6a8cAc689EE797591b2913658659);
+        demoToken = new DemoToken();
+        // demoToken = DemoToken(0x3aAde2dCD2Df6a8cAc689EE797591b2913658659);
         demoToken.approve(address(loanContract), collateralId);
         demoToken.setApprovalForAll(address(loanContract), true);
 
@@ -236,6 +236,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes32 _message = Signing.prefixed(
             keccak256(
                 abi.encode(
+                    _PRINCIPAL_,
                     _contractTerms,
                     address(demoToken),
                     _collateralId,

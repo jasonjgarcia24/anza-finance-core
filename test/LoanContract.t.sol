@@ -35,12 +35,12 @@ abstract contract LoanSigned is LoanContractDeployer {
             collateralId
         );
 
-        contractTerms = createContractTerms();
-        signature = createContractSignature(
-            collateralId,
-            collateralNonce,
-            contractTerms
-        );
+        // contractTerms = createContractTerms();
+        // signature = createContractSignature(
+        //     collateralId,
+        //     collateralNonce,
+        //     contractTerms
+        // );
     }
 }
 
