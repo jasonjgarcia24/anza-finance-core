@@ -33,7 +33,6 @@ out/
 
 # Docs
 docs/
-lib
 bin
 
 # Dotenv file
