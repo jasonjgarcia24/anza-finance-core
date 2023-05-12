@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.20;
 
 import "hardhat/console.sol";
 
@@ -70,13 +70,10 @@ contract CollateralVault is
         uint256 _collateralId,
         uint256 _debtId
     ) public returns (bool) {
+        ILoanContract.Debt memory _debt = ILoanContract(_loanContract).debts(_collateralAddress, _collateralId);
+
         return
-            ILoanContract(_loanContract).debtIds(
-                _collateralAddress,
-                _collateralId,
-                ILoanCodec(_loanContract).activeLoanCount(_debtId)
-            ) ==
-            _debtId &&
+           _debt.debtId == _debtId &&
             __collaterals[_debtId].collateralAddress == address(0);
     }
 

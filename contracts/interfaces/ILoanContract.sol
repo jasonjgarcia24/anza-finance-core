@@ -35,12 +35,12 @@ interface ILoanContract {
 
     function totalDebts() external returns (uint256);
 
-    function debtIds(
+    function debts(
         address _collateralAddress,
         uint256 _collateralId
-    ) external returns (uint256);
+    ) external returns (uint256, uint256, uint256);
 
-    function debtIdBranch(uint256 _childDebtId) external returns (Debt);
+    function debtIdBranch(uint256 _childDebtId) external returns (Debt memory);
 
     function debtBalanceOf(uint256 _debtId) external view returns (uint256);
 

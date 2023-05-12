@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.20;
 
 import {ILoanCollateralVaultEvents} from "./interfaces/ILoanCollateralVaultEvents.t.sol";
 import {ILoanTreasureyEvents} from "./interfaces/ILoanTreasureyEvents.t.sol";

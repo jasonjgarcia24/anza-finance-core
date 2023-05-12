@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.20;
 
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.20;
 
 import "../../contracts/domain/LoanContractErrorCodes.sol";
 import "../../contracts/domain/LoanContractNumbers.sol";
@@ -122,6 +122,7 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        ILoanContract.Debt memory _debt = _loanContract.debts(_collateralAddress, collateralId);
 
         // Verify debt ID for collateral
         uint256 numDebtIds = _loanContract.getCollateralNonce(
@@ -129,18 +130,7 @@ abstract contract LoanContractSubmitFunctions is
             collateralId
         );
 
-        assertEq(
-            _loanContract.debtIds(
-                _collateralAddress,
-                collateralId,
-                numDebtIds - 1
-            ),
-            _debtId
-        );
-
-        // Verify no additional debtIds set for this collateral
-        vm.expectRevert(bytes(""));
-        _loanContract.debtIds(_collateralAddress, collateralId, numDebtIds);
+        assertEq(_debt.debtId, _debtId);
     }
 
     function verifyLoanAgreementTerms(

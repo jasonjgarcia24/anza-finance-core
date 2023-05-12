@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.20;
 
 import "./LoanManager.sol";
 import "./utils/TypeUtils.sol";
@@ -18,8 +18,8 @@ contract LoanContract is
     uint256 public totalDebts;
 
     // Mapping from collateral to debt ID
-    mapping(address collateralAddress => mapping(uint256 collateralId => Debt)) public debtIds;
-    mapping(uint256 childDebtId => Debt parentDebtId) public debtIdBranch;
+    mapping(address _collateralAddress => mapping(uint256 _collateralId => Debt)) public debts;
+    mapping(uint256 _childDebtId => Debt _parentDebtId) public debtIdBranch;
 
     constructor() LoanManager() {}
 
@@ -45,14 +45,14 @@ contract LoanContract is
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (uint256) {
-        return debtIds[_collateralAddress][_collateralId].collateralNonce + 1;
+        return debts[_collateralAddress][_collateralId].collateralNonce + 1;
     }
 
     function getCollateralDebtId(
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (uint256) {
-        return debtIds[_collateralAddress][_collateralId].debtId;
+        return debts[_collateralAddress][_collateralId].debtId;
     }
 
     /*
@@ -81,7 +81,7 @@ contract LoanContract is
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
 
-        Debt storage _debt = debtIds[_collateralAddress][_collateralId];
+        Debt storage _debt = debts[_collateralAddress][_collateralId];
 
         // Increment loan field
         _debt.debtId = ++totalDebts;
@@ -165,14 +165,14 @@ contract LoanContract is
         ICollateralVault.Collateral memory _collateral = _loanCollateralVault
             .getCollateral(_debtId);
 
-        Debt storage _debt = debtIds[_collateral.collateralAddress][_collateral.collateralId];
+        Debt storage _debt = debts[_collateral.collateralAddress][_collateral.collateralId];
 
         // Map the child loan to the parent
         debtIdBranch[_debt.debtId] = _debt;
 
         // Increment child loan fields
         _debt.debtId = ++totalDebts;
-        ++_debt.activeLoanIndex
+        ++_debt.activeLoanIndex;
 
         // Verify borrower participation
         address _borrower = _recoverSigner(
