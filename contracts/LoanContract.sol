@@ -18,7 +18,8 @@ contract LoanContract is
     uint256 public totalDebts;
 
     // Mapping from collateral to debt ID
-    mapping(address => mapping(uint256 => uint256[])) public debtIds;
+    mapping(address collateralAddress => mapping(uint256 collateralId => Debt)) public debtIds;
+    mapping(uint256 childDebtId => Debt parentDebtId) public debtIdBranch;
 
     constructor() LoanManager() {}
 
@@ -44,19 +45,14 @@ contract LoanContract is
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (uint256) {
-        uint256 _collateralNonce = debtIds[_collateralAddress][_collateralId]
-            .length;
-        return _collateralNonce;
+        return debtIds[_collateralAddress][_collateralId].collateralNonce + 1;
     }
 
     function getCollateralDebtId(
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (uint256) {
-        return
-            debtIds[_collateralAddress][_collateralId][
-                debtIds[_collateralAddress][_collateralId].length - 1
-            ];
+        return debtIds[_collateralAddress][_collateralId].debtId;
     }
 
     /*
@@ -84,6 +80,12 @@ contract LoanContract is
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
+
+        Debt storage _debt = debtIds[_collateralAddress][_collateralId];
+
+        // Increment loan field
+        _debt.debtId = ++totalDebts;
+
         if (
             (_borrower !=
                 _recoverSigner(
@@ -91,7 +93,7 @@ contract LoanContract is
                     _contractTerms,
                     _collateralAddress,
                     _collateralId,
-                    getCollateralNonce(_collateralAddress, _collateralId),
+                    ++_debt.collateralNonce,
                     _borrowerSignature
                 ) ||
                 (_borrower == msg.sender))
@@ -99,7 +101,6 @@ contract LoanContract is
 
         // Add debt to database
         __setLoanAgreement(_now, 0, _contractTerms);
-        debtIds[_collateralAddress][_collateralId].push(totalDebts);
 
         // The collateral ID and address will be mapped within
         // the loan collateral vault to the debt ID.
@@ -132,9 +133,6 @@ contract LoanContract is
             totalDebts,
             0
         );
-
-        // Setup for next debt ID
-        totalDebts += 1;
     }
 
     /*
@@ -161,22 +159,28 @@ contract LoanContract is
         uint256 _principal = msg.value;
         _validateLoanTerms(_contractTerms, _now, _principal);
 
-        // Verify borrower participation
         ICollateralVault _loanCollateralVault = ICollateralVault(
             _collateralVault
         );
         ICollateralVault.Collateral memory _collateral = _loanCollateralVault
             .getCollateral(_debtId);
 
+        Debt storage _debt = debtIds[_collateral.collateralAddress][_collateral.collateralId];
+
+        // Map the child loan to the parent
+        debtIdBranch[_debt.debtId] = _debt;
+
+        // Increment child loan fields
+        _debt.debtId = ++totalDebts;
+        ++_debt.activeLoanIndex
+
+        // Verify borrower participation
         address _borrower = _recoverSigner(
             _principal,
             _contractTerms,
             _collateral.collateralAddress,
             _collateral.collateralId,
-            getCollateralNonce(
-                _collateral.collateralAddress,
-                _collateral.collateralId
-            ),
+            ++_debt.collateralNonce,
             _borrowerSignature
         );
 
@@ -188,17 +192,7 @@ contract LoanContract is
             (_borrower == msg.sender)
         ) revert InvalidParticipant();
 
-        // Add debt to database
-        uint256[] storage _debtIds = debtIds[_collateral.collateralAddress][
-            _collateral.collateralId
-        ];
-
-        uint256 _activeLoanIndex = activeLoanCount(
-            _debtIds[_debtIds.length - 1]
-        ) + 1;
-
-        __setLoanAgreement(_now, _activeLoanIndex, _contractTerms);
-        _debtIds.push(totalDebts);
+        __setLoanAgreement(_now, _debt.activeLoanIndex, _contractTerms);
 
         // Store collateral-debtId mapping in vault
         _loanCollateralVault.setCollateral(
@@ -237,7 +231,7 @@ contract LoanContract is
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _activeLoanIndex
+            _debt.activeLoanIndex
         );
 
         // Setup for next debt ID
