@@ -18,7 +18,8 @@ contract LoanContract is
     uint256 public totalDebts;
 
     // Mapping from collateral to debt ID
-    mapping(address _collateralAddress => mapping(uint256 _collateralId => Debt)) public debts;
+    mapping(address _collateralAddress => mapping(uint256 _collateralId => Debt))
+        public debts;
     mapping(uint256 _childDebtId => Debt _parentDebtId) public debtIdBranch;
 
     constructor() LoanManager() {}
@@ -165,7 +166,9 @@ contract LoanContract is
         ICollateralVault.Collateral memory _collateral = _loanCollateralVault
             .getCollateral(_debtId);
 
-        Debt storage _debt = debts[_collateral.collateralAddress][_collateral.collateralId];
+        Debt storage _debt = debts[_collateral.collateralAddress][
+            _collateral.collateralId
+        ];
 
         // Map the child loan to the parent
         debtIdBranch[_debt.debtId] = _debt;
