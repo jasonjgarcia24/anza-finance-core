@@ -227,7 +227,7 @@ abstract contract LoanCodec is ILoanCodec {
         bytes32 _contractTerms,
         uint32 _loanStart,
         uint256 _principal
-    ) internal pure {
+    ) internal view {
         uint8 _lenderRoyalties;
         uint32 _termsExpiry;
         uint32 _duration;
@@ -310,9 +310,12 @@ abstract contract LoanCodec is ILoanCodec {
     function _getTotalFirIntervals(
         uint256 _firInterval,
         uint256 _seconds
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
+        // console.log(_seconds / _MINUTELY_MULTIPLIER_);
+
         // _SECONDLY_
         if (_firInterval == 0) {
+            console.log("FIR Interval: %s", _seconds);
             return _seconds;
         }
         // _MINUTELY_

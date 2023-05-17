@@ -124,13 +124,16 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        (uint256 __debtId, , ) = _loanContract.debts(_collateralAddress, collateralId);
-
-        // Verify debt ID for collateral
-        uint256 numDebtIds = _loanContract.getCollateralNonce(
+        (uint256 __debtId, , ) = _loanContract.debts(
             _collateralAddress,
             collateralId
         );
+
+        // // Verify debt ID for collateral
+        // uint256 numDebtIds = _loanContract.getCollateralNonce(
+        //     _collateralAddress,
+        //     collateralId
+        // );
 
         assertEq(__debtId, _debtId);
     }
@@ -178,7 +181,7 @@ abstract contract LoanContractSubmitFunctions is
         );
     }
 
-    function verifyTokenBalances(uint256 _debtId, uint128 _principal) public {
+    function verifyTokenBalances(uint256 _debtId, uint256 _principal) public {
         // Verify token balances
         uint256 borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
         uint256 lenderTokenId = Indexer.getLenderTokenId(_debtId);
@@ -192,7 +195,7 @@ abstract contract LoanContractSubmitFunctions is
         ids[1] = borrowerTokenId;
 
         uint256[] memory balances = new uint256[](2);
-        balances[0] = uint256(_principal);
+        balances[0] = _principal;
         balances[1] = 1;
 
         assertEq(anzaToken.balanceOfBatch(accounts, ids), balances);
@@ -316,6 +319,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -325,7 +329,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature
@@ -358,6 +362,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -367,7 +372,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature
@@ -400,6 +405,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -409,7 +415,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature
@@ -442,6 +448,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -451,7 +458,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature
@@ -469,7 +476,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             fixedInterestRate: _FIXED_INTEREST_RATE_,
             isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
-            principal: _principal,
+            principal: uint256(_principal),
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
             termsExpiry: _TERMS_EXPIRY_,
@@ -484,6 +491,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -493,7 +501,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature
@@ -528,6 +536,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -537,7 +546,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature
@@ -570,6 +579,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -579,7 +589,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature
@@ -602,6 +612,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             collateralId,
             _collateralNonce,
             _contractTerms
@@ -611,7 +622,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
 
         initLoanContract(
             _contractTerms,
-            uint256(_terms.principal),
+            _terms.principal,
             address(demoToken),
             collateralId,
             _signature

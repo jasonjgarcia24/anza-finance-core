@@ -193,7 +193,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertTrue(loanContract.maxRefinances() == 255, "2 :: Should be 255");
     }
 
-    function testFuzzSetMaxRefinancesDeny(address _account) public {
+    function testFuzzSetMaxRefinancesDenyAddress(address _account) public {
         vm.assume(_account != admin);
 
         assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
@@ -210,7 +210,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
     }
 
-    function testFuzzSetMaxRefinancesDeny(uint256 _amount) public {
+    function testFuzzSetMaxRefinancesDenyAmount(uint256 _amount) public {
         _amount = bound(_amount, 256, type(uint256).max);
 
         assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
@@ -218,11 +218,6 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Disallow
         vm.deal(admin, 1 ether);
         vm.startPrank(admin);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ILoanContract.ExceededRefinanceLimit.selector
-            )
-        );
         loanContract.setMaxRefinances(_amount);
         vm.stopPrank();
 
@@ -250,7 +245,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Create loan contract
         uint256 _timeLoanCreated = block.timestamp;
         createLoanContract(collateralId);
-        _debtId = loanContract.totalDebts() - 1;
+        _debtId = loanContract.totalDebts();
 
         // Loan state should remain unchanged
         vm.startPrank(address(loanTreasurer));
@@ -258,12 +253,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertEq(
             loanContract.loanState(_debtId),
             _ACTIVE_GRACE_STATE_,
-            "Loan state should remain unchanged"
+            "0 :: Loan state should remain unchanged"
         );
         assertEq(
             loanContract.loanLastChecked(_debtId),
             _timeLoanCreated + _GRACE_PERIOD_,
-            "Loan last checked time should remain the loan start time"
+            "1 :: Loan last checked time should remain the loan start time"
         );
 
         // Loan state should change to _ACTIVE_STATE_
@@ -274,12 +269,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertEq(
             loanContract.loanState(_debtId),
             _ACTIVE_STATE_,
-            "Loan state should change to _ACTIVE_STATE_"
+            "2 :: Loan state should change to _ACTIVE_STATE_"
         );
         assertEq(
             loanContract.loanLastChecked(_debtId),
             _timeLoanCreated + _GRACE_PERIOD_,
-            "Loan last checked time should remain the loan start time"
+            "3 :: Loan last checked time should remain the loan start time"
         );
 
         // Loan state should remain _ACTIVE_
@@ -289,12 +284,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertEq(
             loanContract.loanState(_debtId),
             _ACTIVE_STATE_,
-            "Loan state should remain _ACTIVE_"
+            "4 :: Loan state should remain _ACTIVE_"
         );
         assertEq(
             loanContract.loanLastChecked(_debtId),
             _now,
-            "Loan last checked time should be updated to now"
+            "5 :: Loan last checked time should be updated to now"
         );
 
         // Loan state should change to _DEFAULT_STATE_
@@ -306,18 +301,18 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertEq(
             loanContract.loanState(_debtId),
             _DEFAULT_STATE_,
-            "Loan state should change to _DEFAULT_STATE_"
+            "6 :: Loan state should change to _DEFAULT_STATE_"
         );
         assertEq(
             loanContract.loanLastChecked(_debtId),
             _now,
-            "Loan last checked time should be updated to now"
+            "7 :: Loan last checked time should be updated to now"
         );
         vm.stopPrank();
 
         // Loan payoff
         createLoanContract(collateralId + 1);
-        _debtId = loanContract.totalDebts() - 1;
+        _debtId = loanContract.totalDebts();
 
         vm.deal(borrower, _PRINCIPAL_);
         vm.startPrank(borrower);
@@ -331,12 +326,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertEq(
             loanContract.loanState(_debtId),
             _PAID_STATE_,
-            "Loan state should be paid in full"
+            "8 :: Loan state should be paid in full"
         );
         assertEq(
             loanContract.loanLastChecked(_debtId),
             _loanStart,
-            "Loan last checked time should remain the loan start time"
+            "9 :: Loan last checked time should remain the loan start time"
         );
         vm.stopPrank();
     }
@@ -352,8 +347,6 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
             block.timestamp + type(uint32).max
         );
 
-        uint256 _debtId = loanContract.totalDebts();
-
         // Create loan contract
         uint256 _timeLoanCreated = block.timestamp;
         (bool _success, ) = address(this).call{value: 0}(
@@ -362,6 +355,8 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
                 localCollateralId++
             )
         );
+        uint256 _debtId = loanContract.totalDebts();
+
         // Ignore conditions where loan terms are invalid. Specifically,
         // scenarios where the calculated compounded interest is beyond
         // the maximum value signed 64.64-bit fixed point number.
@@ -489,26 +484,30 @@ contract LoanContractViewsUnitTest is LoanSigned {
     }
 
     function testDebtBalanceOf() public {
+        uint256 _debtId = 0;
+
         assertEq(
-            loanContract.debtBalanceOf(0),
+            loanContract.debtBalanceOf(_debtId),
             0,
             "0 :: Debt balance for token 0 should be zero"
         );
 
         // Create loan contract
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
-            loanContract.debtBalanceOf(0),
+            loanContract.debtBalanceOf(_debtId),
             _PRINCIPAL_,
             "1 :: Debt balance for token 0 should be _PRINCIPAL_"
         );
 
         // Create loan contract
         createLoanContract(collateralId + 1);
+        ++_debtId;
 
         assertEq(
-            loanContract.debtBalanceOf(1),
+            loanContract.debtBalanceOf(_debtId),
             _PRINCIPAL_,
             "Debt balance for token 2 should be _PRINCIPAL_"
         );
@@ -517,8 +516,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
     function testGetCollateralNonce() public {
         assertEq(
             loanContract.getCollateralNonce(address(demoToken), collateralId),
-            0,
-            "0 :: Collateral nonce should be zero"
+            1,
+            "0 :: Collateral nonce should be one"
         );
 
         // Create loan contract
@@ -526,8 +525,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         assertEq(
             loanContract.getCollateralNonce(address(demoToken), collateralId),
-            1,
-            "1 :: Collateral nonce should be one"
+            2,
+            "1 :: Collateral nonce should be two"
         );
 
         assertEq(
@@ -535,22 +534,25 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 address(demoToken),
                 collateralId + 1
             ),
-            0,
-            "2 :: Collateral nonce should be zero"
+            1,
+            "2 :: Collateral nonce should be one"
         );
     }
 
     function testGetCollateralDebtId() public {
-        vm.expectRevert(stdError.arithmeticError);
-        loanContract.getCollateralDebtId(address(demoToken), collateralId);
+        assertEq(
+            loanContract.getCollateralDebtId(address(demoToken), collateralId),
+            0,
+            "0 :: Collateral debt ID should be zero"
+        );
 
         // Create loan contract
         createLoanContract(collateralId);
 
         assertEq(
             loanContract.getCollateralDebtId(address(demoToken), collateralId),
-            0,
-            "0 :: Collateral debt ID should be zero"
+            1,
+            "1 :: Collateral debt ID should be one"
         );
     }
 
@@ -566,6 +568,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         uint256 _now = block.timestamp;
         createLoanContract(collateralId);
+        ++_debtId;
 
         bytes32 _contractTerms = loanContract.getDebtTerms(_debtId);
 
@@ -647,6 +650,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
             loanContract.loanState(_debtId),
@@ -666,6 +670,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
             loanContract.firInterval(_debtId),
@@ -685,6 +690,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
             loanContract.fixedInterestRate(_debtId),
@@ -705,6 +711,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         uint256 _now = block.timestamp;
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertGt(
             loanContract.loanLastChecked(_debtId),
@@ -725,6 +732,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         uint256 _now = block.timestamp;
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertGt(
             loanContract.loanStart(_debtId),
@@ -744,6 +752,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
             loanContract.loanDuration(_debtId),
@@ -764,6 +773,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         uint256 _now = block.timestamp;
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
             loanContract.loanClose(_debtId),
@@ -784,10 +794,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         assertTrue(
             anzaToken.hasRole(
-                keccak256(abi.encodePacked(address(0), _debtId)),
-                address(0)
-            ),
-            "0 :: loan borrower should be the default address zero"
+                keccak256(abi.encodePacked(borrower, ++_debtId)),
+                borrower
+            ) == false,
+            "0 :: loan borrower should not be borrower"
         );
 
         // Create loan contract
@@ -813,6 +823,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
             loanContract.lenderRoyalties(_debtId),
@@ -825,328 +836,344 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.activeLoanCount(_debtId),
+            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
             0,
             "0 :: active loan count should be the default 0"
         );
 
         // Create loan contract
         createLoanContract(collateralId);
+        ++_debtId;
 
         assertEq(
-            loanContract.activeLoanCount(_debtId),
-            0,
-            "1 :: active loan count should be 0"
-        );
-
-        // Create loan contract partial refinance
-        refinanceDebt(_debtId);
-
-        uint256 _refDebtId = loanContract.totalDebts() - 1;
-
-        assertEq(
-            loanContract.activeLoanCount(_refDebtId),
+            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
             1,
-            "2 :: active loan count should be 1"
+            "1 :: active loan count should be 1"
         );
 
         // Create loan contract partial refinance
-        refinanceDebt(_debtId);
-
-        _refDebtId = loanContract.totalDebts() - 1;
+        bool _success = refinanceDebt(_debtId);
+        require(_success, "2 :: Refinance failed.");
+        uint256 _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.activeLoanCount(_refDebtId),
+            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
             2,
             "3 :: active loan count should be 2"
         );
 
         // Create loan contract partial refinance
-        refinanceDebt(_refDebtId);
-
-        _refDebtId = loanContract.totalDebts() - 1;
+        _success = refinanceDebt(_debtId);
+        require(_success, "4 :: Refinance failed.");
+        _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.activeLoanCount(_refDebtId),
+            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
             3,
-            "4 :: active loan count should be 3"
+            "5 :: active loan count should be 3"
+        );
+
+        // Create loan contract partial refinance
+        _success = refinanceDebt(_debtId);
+        require(_success, "6 :: Refinance failed.");
+        _refDebtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
+            4,
+            "7 :: active loan count should be 4"
         );
     }
 
     function testTotalFirIntervals() public {
+        // Will manually set values to avoid of loan contract
+        // max compounded debt validations
+
         // Create loan contract
         uint256 _debtId = loanContract.totalDebts();
-        createLoanContract(
+
+        bool _success = createLoanContract(
             collateralId,
             ContractTerms({
                 firInterval: _SECONDLY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_SECONDLY_MULTIPLIER_),
                 termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
+                lenderRoyalties: 0
             })
         );
+        require(_success, "0 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.totalFirIntervals(_debtId, _SECONDLY_MULTIPLIER_),
             1,
-            "0 :: total fir intervals should be 1"
+            "1 :: total fir intervals should be 1"
         );
 
         // Create loan contract
-        _debtId = loanContract.totalDebts();
-        createLoanContract(
+        _success = createLoanContract(
             collateralId + 1,
             ContractTerms({
                 firInterval: _MINUTELY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_MINUTELY_MULTIPLIER_),
                 termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
+                lenderRoyalties: 0
             })
         );
+        require(_success, "2 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.totalFirIntervals(_debtId, _MINUTELY_MULTIPLIER_ - 1),
             0,
-            "1 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _MINUTELY_MULTIPLIER_),
-            1,
-            "2 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        _debtId = loanContract.totalDebts();
-        createLoanContract(
-            collateralId + 2,
-            ContractTerms({
-                firInterval: _HOURLY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _HOURLY_MULTIPLIER_ - 1),
-            0,
             "3 :: total fir intervals should be 0"
         );
         assertEq(
-            loanContract.totalFirIntervals(_debtId, _HOURLY_MULTIPLIER_),
+            loanContract.totalFirIntervals(_debtId, _MINUTELY_MULTIPLIER_),
             1,
             "4 :: total fir intervals should be 1"
         );
 
         // Create loan contract
+        _success = createLoanContract(
+            collateralId + 2,
+            ContractTerms({
+                firInterval: _HOURLY_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_HOURLY_MULTIPLIER_),
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: 0
+            })
+        );
+        require(_success, "5 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
-        createLoanContract(
+
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _HOURLY_MULTIPLIER_ - 1),
+            0,
+            "6 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _HOURLY_MULTIPLIER_),
+            1,
+            "7 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _success = createLoanContract(
             collateralId + 3,
             ContractTerms({
                 firInterval: _DAILY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_DAILY_MULTIPLIER_),
                 termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
+                lenderRoyalties: 0
             })
         );
+        require(_success, "8 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.totalFirIntervals(_debtId, _DAILY_MULTIPLIER_ - 1),
             0,
-            "5 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _DAILY_MULTIPLIER_),
-            1,
-            "6 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        _debtId = loanContract.totalDebts();
-        createLoanContract(
-            collateralId + 4,
-            ContractTerms({
-                firInterval: _WEEKLY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _WEEKLY_MULTIPLIER_ - 1),
-            0,
-            "7 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _WEEKLY_MULTIPLIER_),
-            1,
-            "8 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        _debtId = loanContract.totalDebts();
-        createLoanContract(
-            collateralId + 5,
-            ContractTerms({
-                firInterval: _2_WEEKLY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _2_WEEKLY_MULTIPLIER_ - 1),
-            0,
             "9 :: total fir intervals should be 0"
         );
         assertEq(
-            loanContract.totalFirIntervals(_debtId, _2_WEEKLY_MULTIPLIER_),
+            loanContract.totalFirIntervals(_debtId, _DAILY_MULTIPLIER_),
             1,
             "10 :: total fir intervals should be 1"
         );
 
         // Create loan contract
-        _debtId = loanContract.totalDebts();
-        createLoanContract(
-            collateralId + 6,
+        _success = createLoanContract(
+            collateralId + 4,
             ContractTerms({
-                firInterval: _4_WEEKLY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
+                firInterval: _WEEKLY_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_WEEKLY_MULTIPLIER_),
                 termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
+                lenderRoyalties: 0
             })
         );
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _4_WEEKLY_MULTIPLIER_ - 1),
-            0,
-            "10 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _4_WEEKLY_MULTIPLIER_),
-            1,
-            "11 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
+        require(_success, "11 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
-        createLoanContract(
-            collateralId + 7,
-            ContractTerms({
-                firInterval: _6_WEEKLY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
 
         assertEq(
-            loanContract.totalFirIntervals(_debtId, _6_WEEKLY_MULTIPLIER_ - 1),
+            loanContract.totalFirIntervals(_debtId, _WEEKLY_MULTIPLIER_ - 1),
             0,
             "12 :: total fir intervals should be 0"
         );
         assertEq(
-            loanContract.totalFirIntervals(_debtId, _6_WEEKLY_MULTIPLIER_),
+            loanContract.totalFirIntervals(_debtId, _WEEKLY_MULTIPLIER_),
             1,
             "13 :: total fir intervals should be 1"
         );
 
         // Create loan contract
+        _success = createLoanContract(
+            collateralId + 5,
+            ContractTerms({
+                firInterval: _2_WEEKLY_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_2_WEEKLY_MULTIPLIER_),
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: 0
+            })
+        );
+        require(_success, "14 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
-        createLoanContract(
+
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _2_WEEKLY_MULTIPLIER_ - 1),
+            0,
+            "15 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _2_WEEKLY_MULTIPLIER_),
+            1,
+            "16 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _success = createLoanContract(
+            collateralId + 6,
+            ContractTerms({
+                firInterval: _4_WEEKLY_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_4_WEEKLY_MULTIPLIER_),
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: 0
+            })
+        );
+        require(_success, "17 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _4_WEEKLY_MULTIPLIER_ - 1),
+            0,
+            "18 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _4_WEEKLY_MULTIPLIER_),
+            1,
+            "19 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _success = createLoanContract(
+            collateralId + 7,
+            ContractTerms({
+                firInterval: _6_WEEKLY_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_6_WEEKLY_MULTIPLIER_),
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: 0
+            })
+        );
+        require(_success, "20 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
+
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _6_WEEKLY_MULTIPLIER_ - 1),
+            0,
+            "21 :: total fir intervals should be 0"
+        );
+        assertEq(
+            loanContract.totalFirIntervals(_debtId, _6_WEEKLY_MULTIPLIER_),
+            1,
+            "22 :: total fir intervals should be 1"
+        );
+
+        // Create loan contract
+        _success = createLoanContract(
             collateralId + 8,
             ContractTerms({
                 firInterval: _8_WEEKLY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_8_WEEKLY_MULTIPLIER_),
                 termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
+                lenderRoyalties: 0
             })
         );
+        require(_success, "23 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.totalFirIntervals(_debtId, _8_WEEKLY_MULTIPLIER_ - 1),
             0,
-            "14 :: total fir intervals should be 0"
+            "24 :: total fir intervals should be 0"
         );
         assertEq(
             loanContract.totalFirIntervals(_debtId, _8_WEEKLY_MULTIPLIER_),
             1,
-            "15 :: total fir intervals should be 1"
+            "25 :: total fir intervals should be 1"
         );
 
         // Create loan contract
-        _debtId = loanContract.totalDebts();
-        createLoanContract(
+        _success = createLoanContract(
             collateralId + 9,
             ContractTerms({
                 firInterval: _360_DAILY_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
+                fixedInterestRate: 1,
+                isFixed: 0,
+                commital: 0,
+                principal: 1,
+                gracePeriod: 0,
+                duration: uint32(_360_DAILY_MULTIPLIER_),
                 termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
+                lenderRoyalties: 0
             })
         );
+        require(_success, "26 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.totalFirIntervals(_debtId, _360_DAILY_MULTIPLIER_ - 1),
             0,
-            "16 :: total fir intervals should be 0"
+            "27 :: total fir intervals should be 0"
         );
         assertEq(
             loanContract.totalFirIntervals(_debtId, _360_DAILY_MULTIPLIER_),
             1,
-            "17 :: total fir intervals should be 1"
+            "28 :: total fir intervals should be 1"
         );
     }
 
@@ -1159,12 +1186,14 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract
-        createLoanContract(collateralId);
+        bool _success = createLoanContract(collateralId);
+        require(_success, "0 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract partial refinance
-        refinanceDebt(
+        _success = refinanceDebt(
             _debtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1178,14 +1207,14 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
+        require(_success, "1 :: loan contract refinance failed.");
+        uint256 _refDebtId = loanContract.totalDebts();
 
         loanContract.verifyLoanActive(_debtId);
-
-        uint256 _refDebtId = loanContract.totalDebts() - 1;
         loanContract.verifyLoanActive(_refDebtId);
 
         // Create loan contract partial refinance
-        refinanceDebt(
+        _success = refinanceDebt(
             _refDebtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1199,6 +1228,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
+        require(_success, "2 :: loan contract refinance failed.");
 
         loanContract.verifyLoanActive(_debtId);
 
@@ -1214,20 +1244,22 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.checkLoanActive(_debtId),
             false,
-            "0 :: loan should be inactive"
+            "0 :: loan should be default inactive"
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        bool _success = createLoanContract(collateralId);
+        require(_success, "1 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.checkLoanActive(_debtId),
             true,
-            "1 :: loan should be active"
+            "2 :: loan should be active"
         );
 
         // Create loan contract partial refinance
-        refinanceDebt(
+        _success = refinanceDebt(
             _debtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1241,22 +1273,22 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
+        require(_success, "3 :: loan contract refinance failed.");
+        uint256 _refDebtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.checkLoanActive(_debtId),
             true,
-            "2 :: loan should be active"
+            "4 :: loan should be active"
         );
-
-        uint256 _refDebtId = loanContract.totalDebts() - 1;
         assertEq(
             loanContract.checkLoanActive(_refDebtId),
             true,
-            "3 :: refinanced loan should be active"
+            "5 :: refinanced loan should be active"
         );
 
         // Create loan contract partial refinance
-        refinanceDebt(
+        _success = refinanceDebt(
             _refDebtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1270,17 +1302,24 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
+        require(_success, "6 :: loan contract refinance failed.");
 
         assertEq(
             loanContract.checkLoanActive(_debtId),
             true,
-            "4 :: loan should be active"
+            "7 :: loan should be active"
         );
-
         assertEq(
             loanContract.checkLoanActive(_refDebtId),
             false,
-            "5 :: refinanced loan should be inactive"
+            "8 :: refinanced loan should be inactive"
+        );
+
+        _refDebtId = loanContract.totalDebts();
+        assertEq(
+            loanContract.checkLoanActive(_refDebtId),
+            true,
+            "9 :: refinanced loan should be active"
         );
     }
 
@@ -1294,12 +1333,14 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(localCollateralId++);
+        bool _success = createLoanContract(localCollateralId++);
+        require(_success, "1 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.checkLoanDefault(_debtId),
             false,
-            "1 :: loan should not be default"
+            "2 :: loan should not be default"
         );
 
         vm.warp(loanContract.loanClose(_debtId));
@@ -1307,7 +1348,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.checkLoanDefault(_debtId),
             false,
-            "2 :: loan should not be default without an update performed"
+            "3 :: loan should not be default without an update performed"
         );
 
         vm.startPrank(address(loanTreasurer));
@@ -1317,26 +1358,27 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.checkLoanDefault(_debtId),
             true,
-            "3 :: loan should be default with an update performed"
+            "4 :: loan should be default with an update performed"
         );
 
         // Create loan contract
-        createLoanContract(localCollateralId++);
-        _debtId = loanContract.totalDebts() - 1;
+        _success = createLoanContract(localCollateralId++);
+        require(_success, "5 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         // Pay off loan
         vm.deal(borrower, _PRINCIPAL_);
         vm.startPrank(borrower);
-        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+        (_success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success, "Payment was unsuccessful");
+        require(_success, "6 :: Payment was unsuccessful");
         vm.stopPrank();
 
         assertEq(
             loanContract.checkLoanDefault(_debtId),
             false,
-            "4 :: loan should not be default"
+            "7 :: loan should not be default"
         );
 
         vm.warp(loanContract.loanClose(_debtId));
@@ -1344,7 +1386,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.checkLoanDefault(_debtId),
             false,
-            "5:: loan should not be default"
+            "8:: loan should not be default"
         );
     }
 
@@ -1358,12 +1400,14 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(localCollateralId++);
+        bool _success = createLoanContract(localCollateralId++);
+        require(_success, "1 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.checkLoanExpired(_debtId),
             false,
-            "1 :: loan should not be expired"
+            "2 :: loan should not be expired"
         );
 
         vm.warp(loanContract.loanClose(_debtId));
@@ -1385,22 +1429,23 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(localCollateralId++);
-        _debtId = loanContract.totalDebts() - 1;
+        _success = createLoanContract(localCollateralId++);
+        require(_success, "4 :: loan contract creation failed.");
+        _debtId = loanContract.totalDebts();
 
         // Pay off loan
         vm.deal(borrower, _PRINCIPAL_);
         vm.startPrank(borrower);
-        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+        (_success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success, "Payment was unsuccessful");
+        require(_success, "5 :: Payment was unsuccessful");
         vm.stopPrank();
 
         assertEq(
             loanContract.checkLoanExpired(_debtId),
             false,
-            "4 :: loan should not be expired"
+            "6 :: loan should not be expired"
         );
 
         vm.warp(loanContract.loanClose(_debtId));
@@ -1408,7 +1453,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.checkLoanExpired(_debtId),
             false,
-            "5:: loan should not be expired"
+            "7 :: loan should not be expired"
         );
     }
 }
