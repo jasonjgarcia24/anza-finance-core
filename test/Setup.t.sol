@@ -27,7 +27,7 @@ abstract contract Utils {
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.10
     uint8 public constant _IS_FIXED_ = 0; // false
     uint8 public constant _COMMITAL_ = 25; // 0.25
-    uint256 public constant _PRINCIPAL_ = 10000000000000000000; // WEI
+    uint256 public constant _PRINCIPAL_ = 10000000000; // WEI
     uint32 public constant _GRACE_PERIOD_ = 86400;
     uint32 public constant _DURATION_ = 1209600;
     uint32 public constant _TERMS_EXPIRY_ = 86400;
@@ -91,7 +91,7 @@ contract LoanContractHarness is LoanContract {
     function exposed__getTotalFirIntervals(
         uint256 _firInterval,
         uint256 _seconds
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         return _getTotalFirIntervals(_firInterval, _seconds);
     }
 }
@@ -207,13 +207,10 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             mstore(0x20, _firInterval)
             mstore(0x1f, _fixedInterestRate)
 
-            switch eq(_isDirect, 0x01)
-            case true {
-                mstore(0x1e, add(0x65, _commital))
+            if eq(_isDirect, 0x01) {
+                _commital := add(0x65, _commital)
             }
-            case false {
-                mstore(0x1e, _commital)
-            }
+            mstore(0x1e, _commital)
 
             mstore(0x0d, _gracePeriod)
             mstore(0x09, _duration)
@@ -298,7 +295,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes memory _signature
     ) public virtual returns (bool) {
         // Create loan contract
-        vm.deal(lender, _principal + (1 ether));
+        vm.deal(lender, _principal);
         vm.startPrank(lender);
 
         (bool _success, ) = address(loanContract).call{value: _principal}(

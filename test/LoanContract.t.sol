@@ -78,7 +78,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.stopPrank();
     }
 
-    function testSetLoanTreasurer() public {
+    function testLoanContract__SetLoanTreasurer() public {
         assertTrue(
             loanContract.loanTreasurer() == address(loanTreasurer),
             "0 :: Should be loan treasurer"
@@ -104,7 +104,9 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         );
     }
 
-    function testFuzzSetLoanTreasurerDeny(address _account) public {
+    function testLoanContract__FuzzSetLoanTreasurerDeny(
+        address _account
+    ) public {
         vm.assume(_account != admin);
 
         assertTrue(
@@ -127,7 +129,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         );
     }
 
-    function testSetAnzaToken() public {
+    function testLoanContract__SetAnzaToken() public {
         assertTrue(
             loanContract.anzaToken() == address(anzaToken),
             "0 :: Should be AnzaToken"
@@ -153,7 +155,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         );
     }
 
-    function testFuzzSetAnzaTokenDeny(address _account) public {
+    function testLoanContract__FuzzSetAnzaTokenDeny(address _account) public {
         vm.assume(_account != admin);
 
         assertTrue(
@@ -176,7 +178,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         );
     }
 
-    function testSetMaxRefinances() public {
+    function testLoanContract__SetMaxRefinances() public {
         assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
 
         // Allow
@@ -193,7 +195,9 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertTrue(loanContract.maxRefinances() == 255, "2 :: Should be 255");
     }
 
-    function testFuzzSetMaxRefinancesDenyAddress(address _account) public {
+    function testLoanContract__FuzzSetMaxRefinancesDenyAddress(
+        address _account
+    ) public {
         vm.assume(_account != admin);
 
         assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
@@ -210,7 +214,9 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
     }
 
-    function testFuzzSetMaxRefinancesDenyAmount(uint256 _amount) public {
+    function testLoanContract__FuzzSetMaxRefinancesDenyAmount(
+        uint256 _amount
+    ) public {
         _amount = bound(_amount, 256, type(uint256).max);
 
         assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
@@ -224,7 +230,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
     }
 
-    function testUpdateLoanStateValidate() public {
+    function testLoanContract__UpdateLoanStateValidate() public {
         uint256 _debtId = loanContract.totalDebts();
 
         // Expect to fail for access control
@@ -336,7 +342,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.stopPrank();
     }
 
-    function testFuzzUpdateLoanStateValidate(
+    function testLoanContract__FuzzUpdateLoanStateValidate(
         uint256 _now,
         uint256 _payment
     ) public {
@@ -449,9 +455,9 @@ contract LoanContractViewsUnitTest is LoanSigned {
         super.setUp();
     }
 
-    function testPass() public view {}
+    function testLoanContract__Pass() public view {}
 
-    function testLoanContractStateVars() public {
+    function testLoanContract__StateVars() public {
         assertEq(
             loanContract.collateralVault(),
             address(collateralVault),
@@ -483,7 +489,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testDebtBalanceOf() public {
+    function testLoanContract__DebtBalanceOf() public {
         uint256 _debtId = 0;
 
         assertEq(
@@ -513,7 +519,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testGetCollateralNonce() public {
+    function testLoanContract__GetCollateralNonce() public {
         assertEq(
             loanContract.getCollateralNonce(address(demoToken), collateralId),
             1,
@@ -539,7 +545,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testGetCollateralDebtId() public {
+    function testLoanContract__GetCollateralDebtId() public {
         assertEq(
             loanContract.getCollateralDebtId(address(demoToken), collateralId),
             0,
@@ -556,7 +562,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testGetDebtTerms() public {
+    function testLoanContract__GetDebtTerms() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -639,7 +645,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testLoanState() public {
+    function testLoanContract__LoanState() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -659,7 +665,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testFirInterval() public {
+    function testLoanContract__FirInterval() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -679,7 +685,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testFixedInterestRate() public {
+    function testLoanContract__FixedInterestRate() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -699,7 +705,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testLoanLastChecked() public {
+    function testLoanContract__LoanLastChecked() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -710,7 +716,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         uint256 _now = block.timestamp;
-        createLoanContract(collateralId);
+        bool _success = createLoanContract(collateralId);
+        require(_success, "0 :: loan contract creation failed.");
         ++_debtId;
 
         assertGt(
@@ -720,7 +727,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testLoanStart() public {
+    function testLoanContract__LoanStart() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -741,7 +748,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testLoanDuration() public {
+    function testLoanContract__LoanDuration() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -761,7 +768,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testLoanClose() public {
+    function testLoanContract__LoanClose() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -789,7 +796,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testBorrower() public {
+    function testLoanContract__Borrower() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertTrue(
@@ -812,7 +819,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testLenderRoyalties() public {
+    function testLoanContract__LenderRoyalties() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -832,7 +839,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testActiveLoanCount() public {
+    function testLoanContract__ActiveLoanCount() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -885,7 +892,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testTotalFirIntervals() public {
+    function testLoanContract__TotalFirIntervals() public {
         // Will manually set values to avoid of loan contract
         // max compounded debt validations
 
@@ -1177,7 +1184,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testVerifyLoanActive() public {
+    function testLoanContract__VerifyLoanActive() public {
         uint256 _debtId = loanContract.totalDebts();
 
         vm.expectRevert(
@@ -1238,7 +1245,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_refDebtId);
     }
 
-    function testCheckLoanActive() public {
+    function testLoanContract__CheckLoanActive() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1323,7 +1330,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testCheckLoanDefault() public {
+    function testLoanContract__CheckLoanDefault() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1390,7 +1397,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testCheckLoanExpired() public {
+    function testLoanContract__CheckLoanExpired() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(

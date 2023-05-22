@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "../../contracts/domain/LoanContractStates.sol";
+import "../../contracts/domain/LoanContractFIRIntervals.sol";
+
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
+import {Setup} from "../Setup.t.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractSubmitFunctions} from "./LoanContractSubmission.t.sol";
 import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
@@ -11,186 +15,220 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
         super.setUp();
     }
 
-    // function testBasicCompoundingInterest() public {
-    //     /*
-    //      * Setup
-    //      */
-    //     bytes32 _contractTerms;
+    function testLoanContractCompound__BasicCompoundingInterest() public {
+        /*
+         * Setup
+         */
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0, "0 :: no debts should exist.");
+
+        ContractTerms memory _contractTerms = ContractTerms({
+            firInterval: _360_DAILY_,
+            fixedInterestRate: 100,
+            isFixed: 0,
+            commital: 0,
+            principal: 2,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: uint32(_360_DAILY_MULTIPLIER_ * 2),
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
+
+        bool _expectedSuccess = initLoanContractExpectations(_contractTerms);
+
+        bool _success = createLoanContract(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+        if (!_success && !_expectedSuccess) return;
+        require(_success, "1 :: loan contract creation failed.");
+
+        _debtId = loanContract.totalDebts();
+
+        /*
+         * Testing
+         */
+        uint256 _initialLoanLastChecked = loanContract.loanLastChecked(_debtId);
+        assertGt(
+            _initialLoanLastChecked,
+            block.timestamp,
+            "2 :: loan last checked should be greater than now."
+        );
+
+        loanTreasurer.updateDebt(_debtId);
+        assertEq(
+            loanContract.loanLastChecked(_debtId),
+            _initialLoanLastChecked,
+            "3 :: loan last checked should be unchanged."
+        );
+
+        // FIR interval default should be _360_DAILY_
+        vm.warp(
+            loanContract.loanStart(_debtId) +
+                _GRACE_PERIOD_ +
+                _360_DAILY_MULTIPLIER_ +
+                1
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit LoanStateChanged(_debtId, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_);
+        uint256 _now = block.timestamp;
+        loanTreasurer.updateDebt(_debtId);
+
+        uint256 _loanLastChecked = loanContract.loanLastChecked(_debtId);
+        assertEq(
+            _loanLastChecked,
+            _now,
+            "4 :: loan last checked should be updated to now."
+        );
+        assertGt(
+            _loanLastChecked,
+            _initialLoanLastChecked,
+            "5 :: loan last checked should be greater than before."
+        );
+
+        assertEq(
+            loanContract.debtBalanceOf(_debtId),
+            _contractTerms.principal * 2,
+            "6 :: debt balance should be doubled."
+        );
+    }
+
+    function testLoanContractCompound__FuzzBasicCompoundingInterest(
+        uint32 _principal
+    ) public {
+        // /*
+        //  * Setup
+        //  */
+        // uint32 _gracePeriod = 0;
+        // uint32 _timeMultiplier = uint32(_SECONDLY_MULTIPLIER_);
+        // uint256 _debtId = loanContract.totalDebts();
+        // assertEq(_debtId, 0, "0 :: no debts should exist.");
+        // ContractTerms memory _contractTerms = ContractTerms({
+        //     firInterval: _SECONDLY_,
+        //     fixedInterestRate: 100,
+        //     isFixed: 0,
+        //     commital: 0,
+        //     principal: uint256(_principal),
+        //     gracePeriod: _gracePeriod,
+        //     duration: uint32(_timeMultiplier * 2),
+        //     termsExpiry: _TERMS_EXPIRY_,
+        //     lenderRoyalties: _LENDER_ROYALTIES_
+        // });
+        // uint256 _collateralNonce = loanContract.getCollateralNonce(
+        //     address(demoToken),
+        //     collateralId
+        // );
+        // bool _expectedSuccess = initLoanContractExpectations(_contractTerms);
+        // bool _success = createLoanContract(
+        //     collateralId,
+        //     _collateralNonce,
+        //     _contractTerms
+        // );
+        // if (!_success && !_expectedSuccess) return;
+        // require(_success, "1 :: loan contract creation failed.");
+        // _debtId = loanContract.totalDebts();
+        // /*
+        //  * Testing
+        //  */
+        // uint256 _initialLoanLastChecked = loanContract.loanLastChecked(_debtId);
+        // assertGt(
+        //     _initialLoanLastChecked,
+        //     block.timestamp,
+        //     "2 :: loan last checked should be greater than now."
+        // );
+        // loanTreasurer.updateDebt(_debtId);
+        // assertEq(
+        //     loanContract.loanLastChecked(_debtId),
+        //     _initialLoanLastChecked,
+        //     "3 :: loan last checked should be unchanged."
+        // );
+        // // FIR interval default should be _360_DAILY_
+        // vm.warp(
+        //     loanContract.loanStart(_debtId) +
+        //         _contractTerms.gracePeriod +
+        //         _timeMultiplier +
+        //         1
+        // );
+        // uint256 _now = block.timestamp;
+        // vm.expectEmit(true, true, true, true);
+        // emit LoanStateChanged(_debtId, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_);
+        // loanTreasurer.updateDebt(_debtId);
+        // uint256 _loanLastChecked = loanContract.loanLastChecked(_debtId);
+        // assertEq(
+        //     _loanLastChecked,
+        //     _now,
+        //     "4 :: loan last checked should be updated to now."
+        // );
+        // assertGt(
+        //     _loanLastChecked,
+        //     _initialLoanLastChecked,
+        //     "5 :: loan last checked should be greater than before."
+        // );
+        // assertEq(
+        //     loanContract.debtBalanceOf(_debtId),
+        //     _contractTerms.principal * 2,
+        //     "6 :: debt balance should be doubled."
+        // );
+    }
+
+    // function test_Rando() public {
+    //     uint256 _num;
+    //     uint256 _max32 = type(uint32).max;
 
     //     assembly {
-    //         mstore(0x20, _FIR_INTERVAL_)
-    //         mstore(0x1f, _FIXED_INTEREST_RATE_)
-    //         mstore(0x1d, _PRINCIPAL_)
-    //         mstore(0x0d, _GRACE_PERIOD_)
-    //         mstore(0x09, _DURATION_)
-    //         mstore(0x05, _TERMS_EXPIRY_)
-    //         mstore(0x01, _LENDER_ROYALTIES_)
-
-    //         _contractTerms := mload(0x20)
+    //         _num := and(4294967297, _max32)
     //     }
 
-    //     // Create message for signing
-    //     bytes32 message = Signing.prefixed(
-    //         keccak256(
-    //             abi.encode(
-    //                 _contractTerms,
-    //                 address(demoToken),
-    //                 collateralId,
-    //                 collateralNonce
-    //             )
-    //         )
-    //     );
-
-    //     // Sign borrower's terms
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, message);
-    //     bytes memory _signature = abi.encodePacked(r, s, v);
-
-    //     uint256 _debtId = loanContract.totalDebts();
-
-    //     // Submit proposal
-    //     initLoanContractExpectations(
-    //         address(loanContract),
-    //         lender,
-    //         address(demoToken),
-    //         _debtId,
-    //         10,
-    //         62208000,
-    //         _GRACE_PERIOD_,
-    //         _TERMS_EXPIRY_
-    //     );
-
-    //     vm.deal(lender, uint256(10) + 1 ether);
-    //     vm.startPrank(lender);
-
-    //     (bool success, ) = address(loanContract).call{value: 10}(
-    //         abi.encodeWithSignature(
-    //             "initLoanContract(bytes32,address,uint256,bytes)",
-    //             _contractTerms,
-    //             address(demoToken),
-    //             collateralId,
-    //             _signature
-    //         )
-    //     );
-    //     require(success);
-    //     vm.stopPrank();
-
-    //     /*
-    //      * Testing
-    //      */
-    //     uint256 _initialLoanLastChecked = loanContract.loanLastChecked(_debtId);
-    //     assertGt(_initialLoanLastChecked, block.timestamp);
-
-    //     loanTreasurer.updateDebt(_debtId);
-    //     assertEq(
-    //         loanContract.loanLastChecked(_debtId),
-    //         _initialLoanLastChecked
-    //     );
-
-    //     // FIR interval default should be _360_DAILY_
-    //     vm.warp(loanContract.loanStart(_debtId) + 60 * 60 * 24 * 360);
-
-    //     vm.expectEmit(true, true, true, true);
-    //     emit LoanStateChanged(
-    //         _debtId,
-    //         States._ACTIVE_STATE_,
-    //         States._ACTIVE_GRACE_STATE_
-    //     );
-
-    //     // assertEq(loanTreasurer.updateDebt(_debtId), 11);
-    //     assertGt(
-    //         loanContract.loanLastChecked(_debtId),
-    //         _initialLoanLastChecked
-    //     );
+    //     console.log(_num);
     // }
 
-    // function testBasicLenderCompoundingSubmitProposal() public {
-    //     uint256 _debtId = loanContract.totalDebts();
-    //     assertEq(_debtId, 0);
+    function testLoanContractCompound__BasicLenderCompoundingSubmitProposal()
+        public
+    {
+        /*
+         * Setup
+         */
+        uint256 _debtId = loanContract.totalDebts();
+        assertEq(_debtId, 0, "0 :: no debts should exist.");
 
-    //     initLoanContractExpectations(
-    //         address(loanContract),
-    //         lender,
-    //         address(demoToken),
-    //         _debtId,
-    //         _PRINCIPAL_,
-    //         _DURATION_,
-    //         _GRACE_PERIOD_,
-    //         _TERMS_EXPIRY_
-    //     );
+        ContractTerms memory _contractTerms = ContractTerms({
+            firInterval: _360_DAILY_,
+            fixedInterestRate: 1,
+            isFixed: 0,
+            commital: 0,
+            principal: 1,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: uint32(_360_DAILY_MULTIPLIER_ * 2),
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
 
-    //     // Submit proposal
-    //     vm.deal(lender, _PRINCIPAL_);
-    //     vm.startPrank(lender);
-    //     (bool success, ) = address(loanContract).call{value: _PRINCIPAL_}(
-    //         abi.encodeWithSignature(
-    //             "initLoanContract(bytes32,address,uint256,bytes)",
-    //             contractTerms,
-    //             address(demoToken),
-    //             collateralId,
-    //             signature
-    //         )
-    //     );
-    //     require(success);
-    //     vm.stopPrank();
+        uint256 _collateralNonce = loanContract.getCollateralNonce(
+            address(demoToken),
+            collateralId
+        );
 
-    //     if (_PRINCIPAL_ == 0 || _DURATION_ == 0 || _TERMS_EXPIRY_ == 0) {
-    //         return;
-    //     }
+        bool _expectedSuccess = initLoanContractExpectations(_contractTerms);
 
-    //     // Verify balance of borrower token is zero
-    //     uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-    //     assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 0);
+        bool _success = createLoanContract(
+            collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+        if (!_success && !_expectedSuccess) return;
+        require(_success, "1 :: loan contract creation failed.");
 
-    //     // Mint replica token
-    //     vm.deal(borrower, 1 ether);
-    //     vm.startPrank(borrower);
-    //     loanContract.mintReplica(_debtId);
-    //     vm.stopPrank();
+        _debtId = loanContract.totalDebts();
 
-    //     // Verify debt ID for collateral
-    //     verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
-
-    //     // Verify loan agreement terms for this debt ID
-    //     verifyLoanAgreementTerms(
-    //         borrower,
-    //         address(loanContract),
-    //         _debtId,
-    //         TestTermsStruct({
-    //             loanState: States._ACTIVE_GRACE_STATE_,
-    //             firInterval: _FIR_INTERVAL_,
-    //             fixedInterestRate: _FIXED_INTEREST_RATE_,
-    //             principal: 0,
-    //             gracePeriod: 0,
-    //             duration: _DURATION_,
-    //             termsExpiry: 0
-    //         })
-    //     );
-
-    //     // Verify loan participants
-    //     uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
-    //     assertEq(
-    //         anzaToken.ownerOf(_lenderTokenId),
-    //         lender,
-    //         "Invalid lender token ID"
-    //     );
-
-    //     // Verify total debt balance
-    //     assertEq(loanContract.debtBalanceOf(_debtId), _PRINCIPAL_);
-
-    //     // Verify token balances
-    //     verifyTokenBalances(
-    //         borrower,
-    //         lender,
-    //         address(anzaToken),
-    //         _debtId,
-    //         _PRINCIPAL_
-    //     );
-
-    //     // Minted lender NFT should have debt token URI
-    //     assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
-
-    //     // Verify debtId is updated at end
-    //     _debtId = loanContract.totalDebts();
-    //     assertEq(_debtId, 1);
-    // }
+        /*
+         * Testing
+         */
+    }
 }
