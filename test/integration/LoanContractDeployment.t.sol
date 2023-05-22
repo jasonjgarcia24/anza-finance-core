@@ -17,13 +17,12 @@ contract LoanContractTestDeployment is LoanContractDeployer {
 }
 
 contract LoanContractTestAccessControl is LoanContractDeployer {
-    function testHasRole() public {
+    function testLoanContractDeployment__HasRole() public {
         assertTrue(loanContract.hasRole(_ADMIN_, admin));
         assertTrue(loanContract.hasRole(_TREASURER_, address(loanTreasurer)));
-        assertTrue(loanContract.hasRole(_COLLECTOR_, collector));
     }
 
-    function testDoesNotHaveRole() public {
+    function testLoanContractDeployment__DoesNotHaveRole() public {
         assertFalse(loanContract.hasRole(_ADMIN_, treasurer));
         assertFalse(loanContract.hasRole(_ADMIN_, collector));
 
@@ -34,7 +33,7 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
         assertFalse(loanContract.hasRole(_COLLECTOR_, treasurer));
     }
 
-    function testGrantRole() public {
+    function testLoanContractDeployment__GrantRole() public {
         vm.startPrank(admin);
 
         vm.expectEmit(true, true, true, true);
@@ -45,14 +44,10 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
         emit RoleGranted(_TREASURER_, alt_account, admin);
         loanContract.grantRole(_TREASURER_, alt_account);
 
-        vm.expectEmit(true, true, true, true);
-        emit RoleGranted(_COLLECTOR_, alt_account, admin);
-        loanContract.grantRole(_COLLECTOR_, alt_account);
-
         vm.stopPrank();
     }
 
-    function testCannotGrantRole() public {
+    function testLoanContractDeployment__CannotGrantRole() public {
         // Fail call from treasurer
         vm.startPrank(treasurer);
         vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, treasurer));
@@ -60,9 +55,6 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
 
         vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, treasurer));
         loanContract.grantRole(_TREASURER_, alt_account);
-
-        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, treasurer));
-        loanContract.grantRole(_COLLECTOR_, alt_account);
         vm.stopPrank();
 
         // Fail call from collector
@@ -72,9 +64,6 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
 
         vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, collector));
         loanContract.grantRole(_TREASURER_, alt_account);
-
-        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, collector));
-        loanContract.grantRole(_COLLECTOR_, alt_account);
         vm.stopPrank();
 
         // Fail call from alt_account
@@ -84,9 +73,6 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
 
         vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, alt_account));
         loanContract.grantRole(_TREASURER_, alt_account);
-
-        vm.expectRevert(__getCheckRoleFailMsg(_ADMIN_, alt_account));
-        loanContract.grantRole(_COLLECTOR_, alt_account);
         vm.stopPrank();
     }
 
@@ -109,10 +95,10 @@ contract LoanContractTestAccessControl is LoanContractDeployer {
 }
 
 contract LoanContractTestERC1155URIStorage is LoanContractSubmitted {
-    function testUriStateVars() public {
+    function testLoanContractDeployment__UriStateVars() public {
         // URI for collateralized token should be the collateralized
         // token's URI.
-        uint256 _debtId = loanContract.totalDebts() - 1;
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
         uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
 

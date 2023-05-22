@@ -21,9 +21,17 @@ contract CollateralVault is
 
     constructor(
         address _anzaTokenAddress
-    ) VaultAccessController(_anzaTokenAddress) {}
+    ) VaultAccessController(_anzaTokenAddress) {
+        // This is necessary because the LoanContract
+        // debtId starts at 1
+        __collaterals[0] = Collateral(
+            0x000000000000000000000000000000000000D3ad,
+            0,
+            false
+        );
+    }
 
-    modifier onlyDepositAllowed(
+    modifier onlyUniqueDeposit(
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId
@@ -70,10 +78,13 @@ contract CollateralVault is
         uint256 _collateralId,
         uint256 _debtId
     ) public returns (bool) {
-        (uint256 __debtId, , ) = ILoanContract(_loanContract).debts(_collateralAddress, _collateralId);
+        (uint256 __debtId, , ) = ILoanContract(_loanContract).debts(
+            _collateralAddress,
+            _collateralId
+        );
 
         return
-           __debtId == _debtId &&
+            __debtId == _debtId &&
             __collaterals[_debtId].collateralAddress == address(0);
     }
 
@@ -153,9 +164,9 @@ contract CollateralVault is
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId
-    ) internal onlyDepositAllowed(_collateralAddress, _collateralId, _debtId) {
+    ) internal onlyUniqueDeposit(_collateralAddress, _collateralId, _debtId) {
         // Add collateral to inventory
-        totalCollateral += 1;
+        ++totalCollateral;
         __collaterals[_debtId] = Collateral(
             _collateralAddress,
             _collateralId,

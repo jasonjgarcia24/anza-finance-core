@@ -40,7 +40,9 @@ interface ILoanContract {
         uint256 _collateralId
     ) external returns (uint256, uint256, uint256);
 
-    function debtIdBranch(uint256 _childDebtId) external returns (uint256, uint256, uint256);
+    function debtIdBranch(
+        uint256 _childDebtId
+    ) external returns (uint256, uint256, uint256);
 
     function debtBalanceOf(uint256 _debtId) external view returns (uint256);
 
@@ -50,6 +52,11 @@ interface ILoanContract {
     ) external view returns (uint256);
 
     function getCollateralDebtId(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) external view returns (uint256);
+
+    function getActiveLoanIndex(
         address _collateralAddress,
         uint256 _collateralId
     ) external view returns (uint256);

@@ -27,7 +27,7 @@ abstract contract Utils {
     uint8 public constant _FIXED_INTEREST_RATE_ = 10; // 0.10
     uint8 public constant _IS_FIXED_ = 0; // false
     uint8 public constant _COMMITAL_ = 25; // 0.25
-    uint128 public constant _PRINCIPAL_ = 10000000000000000000; // WEI
+    uint256 public constant _PRINCIPAL_ = 10000000000; // WEI
     uint32 public constant _GRACE_PERIOD_ = 86400;
     uint32 public constant _DURATION_ = 1209600;
     uint32 public constant _TERMS_EXPIRY_ = 86400;
@@ -45,7 +45,7 @@ abstract contract Utils {
 
     uint8 public constant _ALT_FIR_INTERVAL_ = 14;
     uint8 public constant _ALT_FIXED_INTEREST_RATE_ = 5; // 0.05
-    uint128 public constant _ALT_PRINCIPAL_ = 4; // ETH // 226854911280625642308916404954512140970
+    uint256 public constant _ALT_PRINCIPAL_ = 4; // ETH // 226854911280625642308916404954512140970
     uint32 public constant _ALT_GRACE_PERIOD_ = 60 * 60 * 24 * 5; // 604800 (5 days)
     uint32 public constant _ALT_DURATION_ = 60 * 60 * 24 * 360 * 1; // 62208000 (1 year)
     uint32 public constant _ALT_TERMS_EXPIRY_ = 60 * 60 * 24 * 4; // 1209600 (4 days)
@@ -122,7 +122,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint8 fixedInterestRate;
         uint8 isFixed;
         uint8 commital;
-        uint128 principal;
+        uint256 principal;
         uint32 gracePeriod;
         uint32 duration;
         uint32 termsExpiry;
@@ -182,7 +182,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         assembly {
             mstore(0x20, _FIR_INTERVAL_)
             mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x1d, _PRINCIPAL_)
             mstore(0x0d, _GRACE_PERIOD_)
             mstore(0x09, _DURATION_)
             mstore(0x05, _TERMS_EXPIRY_)
@@ -199,7 +198,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint8 _fixedInterestRate = _terms.fixedInterestRate;
         uint8 _isDirect = _terms.isFixed;
         uint8 _commital = _terms.commital;
-        uint128 _principal = _terms.principal;
         uint32 _gracePeriod = _terms.gracePeriod;
         uint32 _duration = _terms.duration;
         uint32 _termsExpiry = _terms.termsExpiry;
@@ -209,15 +207,11 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             mstore(0x20, _firInterval)
             mstore(0x1f, _fixedInterestRate)
 
-            switch eq(_isDirect, 0x01)
-            case true {
-                mstore(0x1e, add(0x65, _commital))
+            if eq(_isDirect, 0x01) {
+                _commital := add(0x65, _commital)
             }
-            case false {
-                mstore(0x1e, _commital)
-            }
+            mstore(0x1e, _commital)
 
-            mstore(0x1d, _principal)
             mstore(0x0d, _gracePeriod)
             mstore(0x09, _duration)
             mstore(0x05, _termsExpiry)
@@ -228,6 +222,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     }
 
     function createContractSignature(
+        uint256 _principal,
         uint256 _collateralId,
         uint256 _collateralNonce,
         bytes32 _contractTerms
@@ -236,7 +231,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes32 _message = Signing.prefixed(
             keccak256(
                 abi.encode(
-                    _PRINCIPAL_,
+                    _principal,
                     _contractTerms,
                     address(demoToken),
                     _collateralId,
@@ -273,7 +268,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     function initLoanContract(
         bytes32 _contractTerms,
         uint256 _debtId,
-        uint128 _principal,
+        uint256 _principal,
         bytes memory _signature
     ) public virtual returns (bool) {
         // Create loan contract
@@ -300,7 +295,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes memory _signature
     ) public virtual returns (bool) {
         // Create loan contract
-        vm.deal(lender, _principal + (1 ether));
+        vm.deal(lender, _principal);
         vm.startPrank(lender);
 
         (bool _success, ) = address(loanContract).call{value: _principal}(
@@ -328,6 +323,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         );
 
         bytes memory _signature = createContractSignature(
+            _PRINCIPAL_,
             _collateralId,
             _collateralNonce,
             _contractTerms
@@ -349,7 +345,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     ) public virtual returns (bool) {
         uint256 _collateralNonce = loanContract.getCollateralNonce(
             address(demoToken),
-            collateralId
+            _collateralId
         );
 
         return createLoanContract(_collateralId, _collateralNonce, _terms);
@@ -363,6 +359,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes32 _contractTerms = createContractTerms(_terms);
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             _collateralId,
             _collateralNonce,
             _contractTerms
@@ -371,7 +368,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         return
             initLoanContract(
                 _contractTerms,
-                uint256(_terms.principal),
+                _terms.principal,
                 address(demoToken),
                 _collateralId,
                 _signature
@@ -403,6 +400,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         );
 
         bytes memory _signature = createContractSignature(
+            _ALT_PRINCIPAL_,
             _collateral.collateralId,
             _collateralNonce,
             _contractTerms
@@ -433,6 +431,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         );
 
         bytes memory _signature = createContractSignature(
+            _terms.principal,
             _collateral.collateralId,
             _collateralNonce,
             _contractTerms

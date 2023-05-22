@@ -11,16 +11,16 @@ contract LoanContractPayoff is LoanContractSubmitted {
         super.setUp();
     }
 
-    function testPayoff() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+    function testLoanContractPayment__Payoff() public {
+        uint256 _debtId = loanContract.totalDebts();
 
         // Pay off loan
         vm.deal(borrower, _PRINCIPAL_);
         vm.startPrank(borrower);
-        (bool success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
@@ -28,16 +28,16 @@ contract LoanContractPayoff is LoanContractSubmitted {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
-        require(success);
+        _success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
         assertEq(loanTreasurer.withdrawableBalance(lender), 0);
     }
 
-    function testPayoffNonBorrower() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+    function testLoanContractPayment__PayoffNonBorrower() public {
+        uint256 _debtId = loanContract.totalDebts();
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -49,19 +49,19 @@ contract LoanContractPayoff is LoanContractSubmitted {
         // Pay off loan expected failure
         vm.deal(alt_account, _PRINCIPAL_);
         vm.startPrank(alt_account);
-        (bool success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
 
-        // Pay off loan expected success
-        (success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+        // Pay off loan expected _success
+        (_success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
                 alt_account,
                 _debtId
             )
         );
-        require(success);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
@@ -69,8 +69,8 @@ contract LoanContractPayoff is LoanContractSubmitted {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
-        require(success);
+        _success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
@@ -83,17 +83,17 @@ contract LoanContractPayment is LoanContractSubmitted {
         super.setUp();
     }
 
-    function testPayment() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+    function testLoanContractPayment__Payment() public {
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _payment = _PRINCIPAL_ / 10;
 
         // Pay off loan
         vm.deal(borrower, _payment);
         vm.startPrank(borrower);
-        (bool success, ) = address(loanTreasurer).call{value: _payment}(
+        (bool _success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
@@ -101,41 +101,84 @@ contract LoanContractPayment is LoanContractSubmitted {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawFromBalance(_payment);
-        require(success);
+        _success = loanTreasurer.withdrawFromBalance(_payment);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
         assertEq(loanTreasurer.withdrawableBalance(lender), 0);
     }
 
-    function testOverpayment() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+    function testLoanContractPayment__Overpayment() public {
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _payment = _PRINCIPAL_ + 1 ether;
+
+        // Initial borrower balance and withdrawal
+        // Used to set all balances to zero.
+        vm.startPrank(borrower);
+        assertEq(
+            loanTreasurer.withdrawableBalance(borrower),
+            _PRINCIPAL_,
+            "0 :: borrower's initial withdrawable balance should be the principal."
+        );
+
+        bool _success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
+        require(_success == true, "1 :: withdraw payment should succeed.");
+
+        assertEq(
+            loanTreasurer.withdrawableBalance(borrower),
+            0,
+            "2 :: borrower's withdrawable balance should be 0."
+        );
 
         // Pay off loan
         vm.deal(borrower, _payment);
-        vm.startPrank(borrower);
-
-        // Should revert with "AnzaToken: burn amount exceeds totalSupply"
-        (bool success, ) = address(loanTreasurer).call{value: _payment}(
+        (_success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success == false);
+        require(_success == true, "3 :: deposit payment should succeed.");
+        vm.stopPrank();
+
+        // Ensure lender's withdrawable balance is the princial
+        assertEq(
+            loanTreasurer.withdrawableBalance(lender),
+            _PRINCIPAL_,
+            "4 :: lender's withdrawable balance should be the principal."
+        );
+        // Ensure borrower's withdrawable balance is 1 ether (the extra)
+        assertEq(
+            loanTreasurer.withdrawableBalance(borrower),
+            1 ether,
+            "5 :: borrower's withdrawable balance should be 10^18."
+        );
+
+        // Allow lender to withdraw payment
+        vm.startPrank(lender);
+        // vm.expectRevert(stdError.arithmeticError);
+        _success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
+        require(_success == true, "6 :: withdraw payment should succeed.");
+        vm.stopPrank();
+
+        // Allow borrower to withdraw payment
+        vm.startPrank(borrower);
+        // vm.expectRevert(stdError.arithmeticError);
+        _success = loanTreasurer.withdrawFromBalance(1 ether);
+        require(_success == true, "7 :: withdraw payment should succeed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is 0
-        assertEq(loanTreasurer.withdrawableBalance(lender), 0);
+        assertEq(
+            loanTreasurer.withdrawableBalance(lender),
+            0,
+            "8 :: lender's withdrawable balance should be 0."
+        );
 
-        // Deny lender to withdraw payment
-        vm.startPrank(lender);
-        vm.expectRevert(stdError.arithmeticError);
-        success = loanTreasurer.withdrawFromBalance(_payment);
-        require(success == false);
-        vm.stopPrank();
-
-        // Ensure lender's withdrawable balance is unchanged
-        assertEq(loanTreasurer.withdrawableBalance(lender), 0);
+        // Ensure borrower's withdrawable balance is 0
+        assertEq(
+            loanTreasurer.withdrawableBalance(borrower),
+            0,
+            "9 :: borrower's withdrawable balance should be 0."
+        );
     }
 }
 
@@ -144,17 +187,17 @@ contract LoanContractWithdrawal is LoanContractSubmitted {
         super.setUp();
     }
 
-    function testWithdrawal() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+    function testLoanContractPayment__Withdrawal() public {
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _withdrawal = _PRINCIPAL_ / 10;
 
         // Pay off loan
         vm.deal(borrower, _PRINCIPAL_);
         vm.startPrank(borrower);
-        (bool success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
@@ -162,8 +205,8 @@ contract LoanContractWithdrawal is LoanContractSubmitted {
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
-        success = loanTreasurer.withdrawFromBalance(_withdrawal);
-        require(success);
+        _success = loanTreasurer.withdrawFromBalance(_withdrawal);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
@@ -173,17 +216,17 @@ contract LoanContractWithdrawal is LoanContractSubmitted {
         );
     }
 
-    function testOverwithdrawal() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+    function testLoanContractPayment__Overwithdrawal() public {
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _withdrawal = _PRINCIPAL_ + 1 ether;
 
         // Pay off loan
         vm.deal(borrower, _PRINCIPAL_);
         vm.startPrank(borrower);
-        (bool success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
+        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
@@ -192,8 +235,8 @@ contract LoanContractWithdrawal is LoanContractSubmitted {
         // Deny lender to over withdraw
         vm.startPrank(lender);
         vm.expectRevert(stdError.arithmeticError);
-        success = loanTreasurer.withdrawFromBalance(_withdrawal);
-        require(success == false);
+        _success = loanTreasurer.withdrawFromBalance(_withdrawal);
+        require(_success == false);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is unchanged
@@ -208,16 +251,20 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         super.setUp();
     }
 
-    function testFuzzPayment(uint256 _payment) public {
+    function testLoanContractPayment__FuzzPayment(uint256 _payment) public {
         // Setup
-        bound(_payment, 0, 2 ** 128);
+        _payment = bound(_payment, 0, 2 ** 128);
         mintDemoTokens(1);
-        updatedCollateralId = demoToken.totalSupply();
-        bool _success = createLoanContract(updatedCollateralId);
-        require(_success);
 
-        uint256 _debtId = loanContract.totalDebts() - 1;
-        bool _invalidPayment = _payment == 0 || _payment > _PRINCIPAL_;
+        updatedCollateralId = demoToken.totalSupply();
+        uint256 _actualPayment = _payment > _PRINCIPAL_
+            ? _PRINCIPAL_
+            : _payment;
+
+        bool _success = createLoanContract(updatedCollateralId);
+        require(_success, "0 :: loan creation failed.");
+
+        uint256 _debtId = loanContract.totalDebts();
 
         // Pay off loan
         vm.deal(borrower, _payment);
@@ -227,13 +274,14 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         (_success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success || _invalidPayment);
+        require(_success || _payment == 0, "1 :: payment failed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
         assertEq(
             loanTreasurer.withdrawableBalance(lender),
-            _invalidPayment ? 0 : _payment
+            _actualPayment,
+            "2 :: lender's withdrawable balance not equal to payment."
         );
 
         // Allow lender to withdraw payment
@@ -244,21 +292,25 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
                     ILoanTreasureyEvents.InvalidFundsTransfer.selector
                 )
             );
-        } else if (_payment > _PRINCIPAL_) {
-            vm.expectRevert(stdError.arithmeticError);
         }
-        _success = loanTreasurer.withdrawFromBalance(_payment);
-        require(_success || _invalidPayment);
+        _success = loanTreasurer.withdrawFromBalance(_actualPayment);
+        require(_success || _payment == 0, "3 :: withdrawal failed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
-        assertEq(loanTreasurer.withdrawableBalance(lender), 0);
+        assertEq(
+            loanTreasurer.withdrawableBalance(lender),
+            0,
+            "4 :: lender's withdrawable balance should be 0."
+        );
     }
 
-    function testFuzzWithdrawals(uint256 _withdrawal) public {
+    function testLoanContractPayment__FuzzWithdrawals(
+        uint256 _withdrawal
+    ) public {
         bound(_withdrawal, 0, 2 ** 128);
 
-        uint256 _debtId = loanContract.totalDebts() - 1;
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _payment = _PRINCIPAL_;
         bool _invalidWithdrawal = _withdrawal == 0 || _withdrawal > _payment;
 
@@ -266,10 +318,10 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         vm.deal(borrower, _payment);
         vm.startPrank(borrower);
 
-        (bool success, ) = address(loanTreasurer).call{value: _payment}(
+        (bool _success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success);
+        require(_success);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
@@ -286,8 +338,8 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         } else if (_withdrawal > _payment) {
             vm.expectRevert(stdError.arithmeticError);
         }
-        success = loanTreasurer.withdrawFromBalance(_withdrawal);
-        require(success || _invalidWithdrawal);
+        _success = loanTreasurer.withdrawFromBalance(_withdrawal);
+        require(_success || _invalidWithdrawal);
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
@@ -299,29 +351,36 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         }
     }
 
-    function testFuzzExchanges(uint256 _payment, uint256 _withdrawal) public {
-        bound(_payment, 0, 2 ** 128);
-        bound(_withdrawal, 0, 2 ** 128);
+    function testLoanContractPayment__FuzzExchanges(
+        uint256 _payment,
+        uint256 _withdrawal
+    ) public {
+        _payment = bound(_payment, 0, 2 ** 128);
+        _withdrawal = bound(_withdrawal, 0, 2 ** 128);
 
-        uint256 _debtId = loanContract.totalDebts() - 1;
-        bool _invalidPayment = _payment == 0 || _payment > _PRINCIPAL_;
-        bool _invalidWithdrawal = _withdrawal == 0 || _withdrawal > _payment;
+        uint256 _debtId = loanContract.totalDebts();
+        uint256 _actualPayment = _payment > _PRINCIPAL_
+            ? _PRINCIPAL_
+            : _payment;
+        bool _invalidWithdrawal = _withdrawal == 0 ||
+            _withdrawal > _actualPayment;
 
         // Pay off loan
         vm.deal(borrower, _payment);
         vm.startPrank(borrower);
 
         // If _invalidPayment, "AnzaToken: burn amount exceeds totalSupply"
-        (bool success, ) = address(loanTreasurer).call{value: _payment}(
+        (bool _success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(success || _invalidPayment);
+        require(_success || _actualPayment == 0, "0 :: valid payment failed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
         assertEq(
             loanTreasurer.withdrawableBalance(lender),
-            _invalidPayment ? 0 : _payment
+            _actualPayment,
+            "1 :: lender's withdrawable balance is not equal to payment."
         );
 
         // Allow lender to withdraw payment
@@ -332,19 +391,23 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
                     ILoanTreasureyEvents.InvalidFundsTransfer.selector
                 )
             );
-        } else if (_payment > _PRINCIPAL_ || _withdrawal > _payment) {
+        } else if (_withdrawal > _actualPayment) {
             vm.expectRevert(stdError.arithmeticError);
         }
-        success = loanTreasurer.withdrawFromBalance(_withdrawal);
-        require(success || _invalidPayment || _invalidWithdrawal);
+        _success = loanTreasurer.withdrawFromBalance(_withdrawal);
+        require(
+            _success || _invalidWithdrawal,
+            "2 :: valid withdrawal failed."
+        );
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
         assertEq(
             loanTreasurer.withdrawableBalance(lender),
-            _invalidPayment ? 0 : _invalidWithdrawal
-                ? _payment
-                : _payment - _withdrawal
+            _actualPayment == 0 ? 0 : _invalidWithdrawal
+                ? _actualPayment
+                : _actualPayment - _withdrawal,
+            "3 :: lender's withdrawable balance does not reflect withdrawal."
         );
     }
 }

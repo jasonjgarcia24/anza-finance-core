@@ -4,7 +4,14 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 
 contract AnzaGovernanceToken is ERC20Votes {
-    constructor() ERC20("AnzaGovernanceToken", "AGT") ERC20Permit("AnzaGovernanceToken") {}
+    uint256 public tokenSupply = 1000000000000;
+
+    constructor()
+        ERC20("AnzaGovernanceToken", "AGT")
+        ERC20Permit("AnzaGovernanceToken")
+    {
+        _mint(msg.sender, tokenSupply);
+    }
 
     function _afterTokenTransfer(
         address _from,
