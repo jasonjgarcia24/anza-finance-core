@@ -1,0 +1,106 @@
+{
+  "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "ADMIN",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "COLLECTOR",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "DEBT_STOREFRONT",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "LOAN_CONTRACT",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "TREASURER",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xde199b686793a5745c58a3d114b942343e444a09c75cab21092851699d3b78e6",
+  "receipt": {
+    "to": null,
+    "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "contractAddress": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    "transactionIndex": 0,
+    "gasUsed": "132886",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x2b89b6c2ba1b704aa715e63ea8cd6adeee8462a1d68366fab3da8df22a048e31",
+    "transactionHash": "0xde199b686793a5745c58a3d114b942343e444a09c75cab21092851699d3b78e6",
+    "logs": [],
+    "blockNumber": 8,
+    "cumulativeGasUsed": "132886",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "6026b98393f52c3678e3a85d9b556f4c",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.20+commit.a1b79de6\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"ADMIN\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"COLLECTOR\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"DEBT_STOREFRONT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"LOAN_CONTRACT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"TREASURER\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/libraries/LibLoanContractConstants.sol\":\"LibLoanContractRoles\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":100},\"remappings\":[]},\"sources\":{\"contracts/domain/LoanContractErrorCodes.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.20;\\n\\n/* ------------------------------------------------ *\\n *           Loan Term Standard Errors              *\\n * ------------------------------------------------ */\\nbytes4 constant _LOAN_STATE_ERROR_ID_ = 0xdacce9d3;\\nbytes4 constant _FIR_INTERVAL_ERROR_ID_ = 0xa13e8948;\\nbytes4 constant _DURATION_ERROR_ID_ = 0xfcbf8511;\\nbytes4 constant _PRINCIPAL_ERROR_ID_ = 0x6a901435;\\nbytes4 constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0x8fe03ac3;\\nbytes4 constant _GRACE_PERIOD_ERROR_ID_ = 0xb677e65e;\\nbytes4 constant _TIME_EXPIRY_ERROR_ID_ = 0x67b21a5c;\\nbytes4 constant _LENDER_ROYALTIES_ERROR_ID_ = 0xecc752dd;\\n\",\"keccak256\":\"0xbce9c5dc9ea265767ce8a45d5b4d590d14e142f5eb6813b7cf1a14b900abb6dc\",\"license\":\"MIT\"},\"contracts/domain/LoanContractFIRIntervals.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.20;\\n\\n/* ------------------------------------------------ *\\n *       Fixed Interest Rate (FIR) Intervals        *\\n * ------------------------------------------------ */\\n//  Need to validate duration > FIR interval\\nuint8 constant _SECONDLY_ = 0;\\nuint8 constant _MINUTELY_ = 1;\\nuint8 constant _HOURLY_ = 2;\\nuint8 constant _DAILY_ = 3;\\nuint8 constant _WEEKLY_ = 4;\\nuint8 constant _2_WEEKLY_ = 5;\\nuint8 constant _4_WEEKLY_ = 6;\\nuint8 constant _6_WEEKLY_ = 7;\\nuint8 constant _8_WEEKLY_ = 8;\\nuint8 constant _MONTHLY_ = 9;\\nuint8 constant _2_MONTHLY_ = 10;\\nuint8 constant _3_MONTHLY_ = 11;\\nuint8 constant _4_MONTHLY_ = 12;\\nuint8 constant _6_MONTHLY_ = 13;\\nuint8 constant _360_DAILY_ = 14;\\nuint8 constant _ANNUALLY_ = 15;\\n\\n/* ------------------------------------------------ *\\n *               FIR Interval Multipliers           *\\n * ------------------------------------------------ */\\nuint256 constant _SECONDLY_MULTIPLIER_ = 1;\\nuint256 constant _MINUTELY_MULTIPLIER_ = 60;\\nuint256 constant _HOURLY_MULTIPLIER_ = 60 * 60;\\nuint256 constant _DAILY_MULTIPLIER_ = 60 * 60 * 24;\\nuint256 constant _WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7;\\nuint256 constant _2_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 2;\\nuint256 constant _4_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 4;\\nuint256 constant _6_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 6;\\nuint256 constant _8_WEEKLY_MULTIPLIER_ = 60 * 60 * 24 * 7 * 8;\\nuint256 constant _360_DAILY_MULTIPLIER_ = 60 * 60 * 24 * 360;\\n\",\"keccak256\":\"0xff26ca73af5ce6b9cc6014706d189c58007f73731a32a59580fd9d1e02cb8027\",\"license\":\"MIT\"},\"contracts/domain/LoanContractNumbers.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.20;\\n\\n/* ------------------------------------------------ *\\n *                 Contract Numbers                 *\\n * ------------------------------------------------ */\\nuint256 constant _SECONDS_PER_24_MINUTES_RATIO_SCALED_ = 1440;\\nuint256 constant _UINT32_MAX_ = 4294967295;\\n\",\"keccak256\":\"0x8fb831fd90293e11e3361fb6147476b111c2b588dce2cbbb50b746a23b309549\",\"license\":\"MIT\"},\"contracts/domain/LoanContractRoles.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.20;\\n\\n/* ------------------------------------------------ *\\n *              Loan Contract Roles                 *\\n * ------------------------------------------------ */\\nbytes32 constant _ADMIN_ = keccak256(\\\"_ADMIN_\\\");\\nbytes32 constant _LOAN_CONTRACT_ = keccak256(\\\"_LOAN_CONTRACT_\\\");\\nbytes32 constant _TREASURER_ = keccak256(\\\"_TREASURER_\\\");\\nbytes32 constant _COLLECTOR_ = keccak256(\\\"_COLLECTOR_\\\");\\nbytes32 constant _DEBT_STOREFRONT_ = keccak256(\\\"_DEBT_STOREFRONT_\\\");\\n\\n\",\"keccak256\":\"0xcc4c0a9996c576747d5a3a42503130e2b8760de3311599ad976180499c51d711\",\"license\":\"MIT\"},\"contracts/domain/LoanContractStates.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.20;\\n\\n/* ------------------------------------------------ *\\n *                  Loan States                     *\\n * ------------------------------------------------ */\\nuint8 constant _UNDEFINED_STATE_ = 0;\\nuint8 constant _NONLEVERAGED_STATE_ = 1;\\nuint8 constant _UNSPONSORED_STATE_ = 2;\\nuint8 constant _SPONSORED_STATE_ = 3;\\nuint8 constant _FUNDED_STATE_ = 4;\\nuint8 constant _ACTIVE_GRACE_STATE_ = 5;\\nuint8 constant _ACTIVE_STATE_ = 6;\\nuint8 constant _DEFAULT_STATE_ = 7;\\nuint8 constant _COLLECTION_STATE_ = 8;\\nuint8 constant _AUCTION_STATE_ = 9;\\nuint8 constant _AWARDED_STATE_ = 10;\\nuint8 constant _PAID_PENDING_STATE_ = 11;\\nuint8 constant _CLOSE_STATE_ = 12;\\nuint8 constant _PAID_STATE_ = 13;\\nuint8 constant _CLOSE_DEFAULT_STATE_ = 14;\\n\",\"keccak256\":\"0x2568dd05e31045e55e2618a877979fd263f71b4d82f9df38c6f93177a0c32855\",\"license\":\"MIT\"},\"contracts/domain/LoanContractTermMaps.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.20;\\n\\n/* ------------------------------------------------ *\\n *           Packed Debt Term Mappings              *\\n *-------------------------------------------*/\\nuint256 constant _LOAN_STATE_MASK_ =       0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0;\\nuint256 constant _LOAN_STATE_MAP_ =        0x000000000000000000000000000000000000000000000000000000000000000F;\\nuint256 constant _FIR_INTERVAL_MASK_ =     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0F;\\nuint256 constant _FIR_INTERVAL_MAP_ =      0x00000000000000000000000000000000000000000000000000000000000000F0;\\nuint256 constant _FIR_MASK_ =              0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FF;\\nuint256 constant _FIR_MAP_ =               0x000000000000000000000000000000000000000000000000000000000000FF00;\\nuint256 constant _LOAN_START_MASK_ =       0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFF;\\nuint256 constant _LOAN_START_MAP_ =        0x0000000000000000000000000000000000000000000000000000FFFFFFFF0000;\\nuint256 constant _LOAN_DURATION_MASK_ =    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFF;\\nuint256 constant _LOAN_DURATION_MAP_ =     0x00000000000000000000000000000000000000000000FFFFFFFF000000000000;\\nuint256 constant _IS_FIXED_MASK_ =         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0FFFFFFFFFFFFFFFFFFFF;\\nuint256 constant _IS_FIXED_MAP_ =          0x0000000000000000000000000000000000000000000F00000000000000000000;\\nuint256 constant _COMMITAL_MASK_ =         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFFFFFFFFFFF;\\nuint256 constant _COMMITAL_MAP_ =          0x00000000000000000000000000000000000000000FF000000000000000000000;\\nuint256 constant _LENDER_ROYALTIES_MASK_ = 0xFF00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;\\nuint256 constant _LENDER_ROYALTIES_MAP_ =  0x00FF000000000000000000000000000000000000000000000000000000000000;\\nuint256 constant _LOAN_COUNT_MASK_ =       0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;\\nuint256 constant _LOAN_COUNT_MAP_ =        0xFF00000000000000000000000000000000000000000000000000000000000000;\\nuint256 constant _CLEANUP_MASK_ =          0xFFFF0000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFF;\\n\\nuint8 constant _LOAN_STATE_POS_ = 0;\\nuint8 constant _FIR_INTERVAL_POS_ = 4;\\nuint8 constant _FIR_POS_ = 8;\\nuint8 constant _LOAN_START_POS_ = 16;\\nuint8 constant _LOAN_DURATION_POS_ = 48;\\nuint8 constant _IS_FIXED_POS_ = 80;\\nuint8 constant _COMMITAL_POS_ = 84;\\nuint8 constant _LENDER_ROYALTIES_POS_ = 240;\\nuint8 constant _LOAN_COUNT_POS_ = 248;\\n\",\"keccak256\":\"0x049c6fb78ce1cff66ec933608058fd25fe5568c40d6fdd5f3d9dc85670d08788\",\"license\":\"MIT\"},\"contracts/libraries/LibLoanContractConstants.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.20;\\n\\nimport \\\"../domain/LoanContractErrorCodes.sol\\\";\\nimport \\\"../domain/LoanContractFIRIntervals.sol\\\";\\nimport \\\"../domain/LoanContractNumbers.sol\\\";\\nimport \\\"../domain/LoanContractTermMaps.sol\\\";\\nimport \\\"../domain/LoanContractRoles.sol\\\";\\nimport \\\"../domain/LoanContractStates.sol\\\";\\n\\nlibrary LibLoanContractStandardErrors {\\n    bytes4 public constant LOAN_STATE_ERROR_ID = _LOAN_STATE_ERROR_ID_;\\n    bytes4 public constant FIR_INTERVAL_ERROR_ID = _FIR_INTERVAL_ERROR_ID_;\\n    bytes4 public constant DURATION_ERROR_ID = _DURATION_ERROR_ID_;\\n    bytes4 public constant PRINCIPAL_ERROR_ID = _PRINCIPAL_ERROR_ID_;\\n    bytes4 public constant FIXED_INTEREST_RATE_ERROR_ID =\\n        _FIXED_INTEREST_RATE_ERROR_ID_;\\n    bytes4 public constant GRACE_PERIOD_ERROR_ID = _GRACE_PERIOD_ERROR_ID_;\\n    bytes4 public constant TIME_EXPIRY_ERROR_ID = _TIME_EXPIRY_ERROR_ID_;\\n    bytes4 public constant LENDER_ROYALTIES_ERROR_ID =\\n        _LENDER_ROYALTIES_ERROR_ID_;\\n}\\n\\nlibrary LibLoanContractFIRIntervals {\\n    uint8 public constant SECONDLY = _SECONDLY_;\\n    uint8 public constant MINUTELY = _MINUTELY_;\\n    uint8 public constant HOURLY = _HOURLY_;\\n    uint8 public constant DAILY = _DAILY_;\\n    uint8 public constant WEEKLY = _WEEKLY_;\\n    uint8 public constant _2_WEEKLY = _2_WEEKLY_;\\n    uint8 public constant _4_WEEKLY = _4_WEEKLY_;\\n    uint8 public constant _6_WEEKLY = _6_WEEKLY_;\\n    uint8 public constant _8_WEEKLY = _8_WEEKLY_;\\n    uint8 public constant MONTHLY = _MONTHLY_;\\n    uint8 public constant _2_MONTHLY = _2_MONTHLY_;\\n    uint8 public constant _3_MONTHLY = _3_MONTHLY_;\\n    uint8 public constant _4_MONTHLY = _4_MONTHLY_;\\n    uint8 public constant _6_MONTHLY = _6_MONTHLY_;\\n    uint8 public constant _360_DAILY = _360_DAILY_;\\n    uint8 public constant ANNUALLY = _ANNUALLY_;\\n}\\n\\nlibrary LibLoanContractFIRIntervalMultipliers {\\n    uint256 public constant SECONDLY_MULTIPLIER = _SECONDLY_MULTIPLIER_;\\n    uint256 public constant MINUTELY_MULTIPLIER = _MINUTELY_MULTIPLIER_;\\n    uint256 public constant HOURLY_MULTIPLIER = _HOURLY_MULTIPLIER_;\\n    uint256 public constant DAILY_MULTIPLIER = _DAILY_MULTIPLIER_;\\n    uint256 public constant WEEKLY_MULTIPLIER = _WEEKLY_MULTIPLIER_;\\n    uint256 public constant _2_WEEKLY_MULTIPLIER = _2_WEEKLY_MULTIPLIER_;\\n    uint256 public constant _4_WEEKLY_MULTIPLIER = _4_WEEKLY_MULTIPLIER_;\\n    uint256 public constant _6_WEEKLY_MULTIPLIER = _6_WEEKLY_MULTIPLIER_;\\n    uint256 public constant _8_WEEKLY_MULTIPLIER = _8_WEEKLY_MULTIPLIER_;\\n    uint256 public constant _360_DAILY_MULTIPLIER = _360_DAILY_MULTIPLIER_;\\n}\\n\\nlibrary LibLoanContractNumbers {\\n    uint256 public constant SECONDS_PER_24_MINUTES_RATIO_SCALED =\\n        _SECONDS_PER_24_MINUTES_RATIO_SCALED_;\\n    uint256 public constant UINT32_MAX = _UINT32_MAX_;\\n}\\n\\nlibrary LibLoanContractTermMaps {\\n    uint256 public constant LOAN_STATE_MASK = _LOAN_STATE_MASK_;\\n    uint256 public constant LOAN_STATE_MAP = _LOAN_STATE_MAP_;\\n    uint256 public constant FIR_INTERVAL_MASK = _FIR_INTERVAL_MASK_;\\n    uint256 public constant FIR_INTERVAL_MAP = _FIR_INTERVAL_MAP_;\\n    uint256 public constant FIR_MASK = _FIR_MASK_;\\n    uint256 public constant FIR_MAP = _FIR_MAP_;\\n    uint256 public constant LOAN_START_MASK = _LOAN_START_MASK_;\\n    uint256 public constant LOAN_START_MAP = _LOAN_START_MAP_;\\n    uint256 public constant LOAN_DURATION_MASK = _LOAN_DURATION_MASK_;\\n    uint256 public constant LOAN_DURATION_MAP = _LOAN_DURATION_MAP_;\\n    uint256 public constant IS_FIXED_MASK = _IS_FIXED_MASK_;\\n    uint256 public constant IS_FIXED_MAP = _IS_FIXED_MAP_;\\n    uint256 public constant COMMITAL_MASK = _COMMITAL_MASK_;\\n    uint256 public constant COMMITAL_MAP = _COMMITAL_MAP_;\\n    uint256 public constant LENDER_ROYALTIES_MASK = _LENDER_ROYALTIES_MASK_;\\n    uint256 public constant LENDER_ROYALTIES_MAP = _LENDER_ROYALTIES_MAP_;\\n    uint256 public constant LOAN_COUNT_MASK = _LOAN_COUNT_MASK_;\\n    uint256 public constant LOAN_COUNT_MAP = _LOAN_COUNT_MAP_;\\n\\n    uint8 public constant LOAN_STATE_POS = _LOAN_STATE_POS_;\\n    uint8 public constant FIR_INTERVAL_POS = _FIR_INTERVAL_POS_;\\n    uint8 public constant FIR_POS = _FIR_POS_;\\n    uint8 public constant LOAN_START_POS = _LOAN_START_POS_;\\n    uint8 public constant LOAN_DURATION_POS = _LOAN_DURATION_POS_;\\n    uint8 public constant LENDER_ROYALTIES_POS = _LENDER_ROYALTIES_POS_;\\n    uint8 public constant LOAN_COUNT_POS = _LOAN_COUNT_POS_;\\n}\\n\\nlibrary LibLoanContractRoles {\\n    bytes32 public constant ADMIN = _ADMIN_;\\n    bytes32 public constant LOAN_CONTRACT = _LOAN_CONTRACT_;\\n    bytes32 public constant TREASURER = _TREASURER_;\\n    bytes32 public constant COLLECTOR = _COLLECTOR_;\\n    bytes32 public constant DEBT_STOREFRONT = _DEBT_STOREFRONT_;\\n}\\n\\nlibrary LibLoanContractStates {\\n    uint8 public constant UNDEFINED_STATE = _UNDEFINED_STATE_;\\n    uint8 public constant NONLEVERAGED_STATE = _NONLEVERAGED_STATE_;\\n    uint8 public constant UNSPONSORED_STATE = _UNSPONSORED_STATE_;\\n    uint8 public constant SPONSORED_STATE = _SPONSORED_STATE_;\\n    uint8 public constant FUNDED_STATE = _FUNDED_STATE_;\\n    uint8 public constant ACTIVE_GRACE_STATE = _ACTIVE_GRACE_STATE_;\\n    uint8 public constant ACTIVE_STATE = _ACTIVE_STATE_;\\n    uint8 public constant DEFAULT_STATE = _DEFAULT_STATE_;\\n    uint8 public constant COLLECTION_STATE = _COLLECTION_STATE_;\\n    uint8 public constant AUCTION_STATE = _AUCTION_STATE_;\\n    uint8 public constant AWARDED_STATE = _AWARDED_STATE_;\\n    uint8 public constant PAID_PENDING_STATE = _PAID_PENDING_STATE_;\\n    uint8 public constant CLOSE_STATE = _CLOSE_STATE_;\\n    uint8 public constant PAID_STATE = _PAID_STATE_;\\n    uint8 public constant CLOSE_DEFAULT_STATE = _CLOSE_DEFAULT_STATE_;\\n}\\n\",\"keccak256\":\"0xae584ec5897e6c2cdb49783e365f0bb84e4d3e00ff06c0d5a91dce60c401e9de\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x61016f610035600b8282823980515f1a60731461002957634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe7300000000000000000000000000000000000000003014608060405260043610610060575f3560e01c80632a0acc6a146100645780633cbadf781461009d5780633dceb280146100c4578063fb1849ee146100eb578063fc6ca72d14610112575b5f80fd5b61008b7fc9d3ed72b71767c9a467f79cf288882213fa725f40ea5b833a2b70350c4e0f1281565b60405190815260200160405180910390f35b61008b7f2d2f5bedf7d8f217c75277e619754ebd414a7ba49e87afb45bdec61736e10d6881565b61008b7faca95a87ebdd693d0a3734440ea0ab66d6317f6d32766e386292131defadde1a81565b61008b7f8d24385f76974ce9574accf90a96cb183e175b097a0cdc49dd2ddd96f6374b7281565b61008b7f6ff243dd0433898c62e5507995453d38065c2abe8d8faf3cc448711da30c566a8156fea2646970667358221220a07d67a966da96cfd93f28cdd9e643424e37edf3994d6cc7e2c8443655f85a1764736f6c63430008140033",
+  "deployedBytecode": "0x7300000000000000000000000000000000000000003014608060405260043610610060575f3560e01c80632a0acc6a146100645780633cbadf781461009d5780633dceb280146100c4578063fb1849ee146100eb578063fc6ca72d14610112575b5f80fd5b61008b7fc9d3ed72b71767c9a467f79cf288882213fa725f40ea5b833a2b70350c4e0f1281565b60405190815260200160405180910390f35b61008b7f2d2f5bedf7d8f217c75277e619754ebd414a7ba49e87afb45bdec61736e10d6881565b61008b7faca95a87ebdd693d0a3734440ea0ab66d6317f6d32766e386292131defadde1a81565b61008b7f8d24385f76974ce9574accf90a96cb183e175b097a0cdc49dd2ddd96f6374b7281565b61008b7f6ff243dd0433898c62e5507995453d38065c2abe8d8faf3cc448711da30c566a8156fea2646970667358221220a07d67a966da96cfd93f28cdd9e643424e37edf3994d6cc7e2c8443655f85a1764736f6c63430008140033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}
