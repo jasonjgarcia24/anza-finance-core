@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import "./domain/LoanContractErrorCodes.sol";
 import "./domain/LoanContractFIRIntervals.sol";
