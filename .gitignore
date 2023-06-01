@@ -3,6 +3,7 @@ coverage
 coverage.json
 typechain
 typechain-types
+venv/*
 venv
 
 #Hardhat files
@@ -34,9 +35,13 @@ out/
 
 # Docs
 docs/
+lib/*
 lib
 bin
 deployments/*
+deployments
+signal-desktop-keyring.gpg
+proposals.json
 
 # Dotenv file
 .env
