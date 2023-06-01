@@ -7,6 +7,7 @@ import "forge-std/console.sol";
 import "../contracts/domain/LoanContractRoles.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ILoanNotary} from "../contracts/interfaces/ILoanNotary.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 import {ICollateralVault} from "../contracts/interfaces/ICollateralVault.sol";
@@ -15,7 +16,7 @@ import {CollateralVault} from "../contracts/CollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
-import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
 
 error TryCatchErr(bytes err);
 
@@ -228,16 +229,20 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes32 _contractTerms
     ) public virtual returns (bytes memory _signature) {
         // Create message for signing
-        bytes32 _message = Signing.prefixed(
-            keccak256(
-                abi.encode(
-                    _principal,
-                    _contractTerms,
-                    address(demoToken),
-                    _collateralId,
-                    _collateralNonce
-                )
-            )
+        bytes32 _message = Signing.typeDataHash(
+            ILoanNotary.SignatureParams({
+                principal: _PRINCIPAL_,
+                contractTerms: _contractTerms,
+                collateralAddress: address(demoToken),
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            }),
+            Signing.DomainSeperator({
+                name: "LoanContract",
+                version: "0",
+                chainId: block.chainid,
+                contractAddress: address(loanContract)
+            })
         );
 
         // Sign borrower's terms
