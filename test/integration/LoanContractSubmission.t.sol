@@ -129,6 +129,12 @@ abstract contract LoanContractSubmitFunctions is
             collateralId
         );
 
+        // Verify debt ID for collateral
+        uint256 numDebtIds = _loanContract.getCollateralNonce(
+            _collateralAddress,
+            collateralId
+        );
+
         assertEq(__debtId, _debtId);
     }
 
