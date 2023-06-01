@@ -51,6 +51,13 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         return debts[_collateralAddress][_collateralId].debtId;
     }
 
+    function getActiveLoanIndex(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) public view returns (uint256) {
+        return debts[_collateralAddress][_collateralId].activeLoanIndex;
+    }
+
     /*
      * Input _contractTerms:
      *  > 004 - [0..3]     `firInterval`
@@ -73,14 +80,16 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         uint256 _principal = msg.value;
         _validateLoanTerms(_contractTerms, _now, _principal);
 
+        // Set debt
+        Debt storage _debt = debts[_collateralAddress][_collateralId];
+
+        _debt.debtId = ++totalDebts;
+        ++_debt.activeLoanIndex;
+        ++_debt.collateralNonce;
+
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
         address _borrower = _collateralToken.ownerOf(_collateralId);
-
-        Debt storage _debt = debts[_collateralAddress][_collateralId];
-
-        // Increment loan field
-        _debt.debtId = ++totalDebts;
 
         if (
             (_borrower !=
@@ -173,6 +182,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Increment child loan fields
         _debt.debtId = ++totalDebts;
         ++_debt.activeLoanIndex;
+        ++_debt.collateralNonce;
 
         // Verify borrower participation
         address _borrower = _recoverSigner(
@@ -235,9 +245,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             totalDebts,
             _debt.activeLoanIndex
         );
-
-        // Setup for next debt ID
-        totalDebts += 1;
     }
 
     function mintReplica(uint256 _debtId) external {

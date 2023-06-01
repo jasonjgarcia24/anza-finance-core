@@ -50,7 +50,7 @@ contract AnzaDebtStorefrontUnitTest is
     }
 
     function testBasicBuyDebt() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _price = _PRINCIPAL_ - 1;
         bytes32 _listingHash = keccak256(
             "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
@@ -80,7 +80,7 @@ contract AnzaDebtStorefrontUnitTest is
 
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(anzaDebtStorefront));
         emit DebtPurchased(alt_account, _debtId, _price);
         (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
             abi.encodeWithSignature(
@@ -114,7 +114,7 @@ contract AnzaDebtStorefrontUnitTest is
     }
 
     function testReplicaBuyDebt() public {
-        uint256 _debtId = loanContract.totalDebts() - 1;
+        uint256 _debtId = loanContract.totalDebts();
         uint256 _price = _PRINCIPAL_ - 1;
         bytes32 _listingHash = keccak256(
             "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
