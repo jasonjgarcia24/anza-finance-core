@@ -43,13 +43,13 @@ contract AnzaDebtStorefrontUnitTest is
         _signature = abi.encodePacked(r, s, v);
     }
 
-    function testStorefrontStateVars() public {
+    function testAnzaDebtStorefront__StorefrontStateVars() public {
         assertEq(anzaDebtStorefront.loanContract(), address(loanContract));
         assertEq(anzaDebtStorefront.loanTreasurer(), address(loanTreasurer));
         assertEq(anzaDebtStorefront.anzaToken(), address(anzaToken));
     }
 
-    function testBasicBuyDebt() public {
+    function testAnzaDebtStorefront__BasicBuyDebt() public {
         uint256 _debtId = loanContract.totalDebts();
         uint256 _price = _PRINCIPAL_ - 1;
         bytes32 _listingHash = keccak256(
@@ -69,8 +69,8 @@ contract AnzaDebtStorefrontUnitTest is
         );
         assertEq(
             anzaToken.ownerOf(_borrowerTokenId),
-            address(0),
-            "1 :: AnzaToken owner should be address(0)"
+            borrower,
+            "1 :: AnzaToken owner should be borrower"
         );
         assertEq(
             loanContract.debtBalanceOf(_debtId),
@@ -95,8 +95,8 @@ contract AnzaDebtStorefrontUnitTest is
 
         assertEq(
             anzaToken.ownerOf(_borrowerTokenId),
-            address(0),
-            "3 :: AnzaToken owner should be address(0)"
+            borrower,
+            "3 :: AnzaToken owner should be borrower"
         );
         assertTrue(
             !anzaToken.checkBorrowerOf(borrower, _debtId),
@@ -113,7 +113,7 @@ contract AnzaDebtStorefrontUnitTest is
         );
     }
 
-    function testReplicaBuyDebt() public {
+    function testAnzaDebtStorefront__ReplicaBuyDebt() public {
         uint256 _debtId = loanContract.totalDebts();
         uint256 _price = _PRINCIPAL_ - 1;
         bytes32 _listingHash = keccak256(

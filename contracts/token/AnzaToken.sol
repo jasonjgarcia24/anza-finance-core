@@ -55,11 +55,11 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
     }
 
     function borrowerOf(uint256 _debtId) public view returns (address) {
-        return __owners[(_debtId * 2) + 1];
+        return __owners[borrowerTokenId(_debtId)];
     }
 
     function lenderOf(uint256 _debtId) public view returns (address) {
-        return __owners[_debtId * 2];
+        return __owners[lenderTokenId(_debtId)];
     }
 
     function checkBorrowerOf(
@@ -232,14 +232,18 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
      */
     function _afterTokenTransfer(
         address,
-        address,
+        address _from,
         address _to,
         uint256[] memory _ids,
         uint256[] memory,
-        bytes memory
+        bytes memory _data
     ) internal override {
         // Set token owners
         if (_to != address(0)) __owners[_ids[0]] = _to;
+
+        // Set the replica token's owner automatically
+        if (_from == address(0))
+            __owners[_ids[0] + 1] = address(bytes20(_data));
     }
 
     function __updateBorrowerRole(
