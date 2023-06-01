@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "forge-std/console.sol";
+
 import "../domain/LoanContractFIRIntervals.sol";
 import "../domain/LoanContractTermMaps.sol";
 
@@ -79,7 +81,6 @@ library LibLoanNotary {
         bytes memory _signature
     ) public view returns (address) {
         bytes32 _message = typeDataHash(_signatureParams, _domainSeperator);
-
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
         return ecrecover(_message, v, r, s);
@@ -121,21 +122,23 @@ library LibLoanNotary {
             keccak256(
                 abi.encode(
                     typeHash(
+                        _signatureParams.borrower,
                         _signatureParams.collateralAddress,
                         _signatureParams.collateralId
                     ),
-                    msg.sender,
+                    _signatureParams.borrower,
                     _signatureParams.collateralNonce
                 )
             );
     }
 
     function typeHash(
+        address _borrower,
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (bytes32) {
         return
-            IERC721(_collateralAddress).ownerOf(_collateralId) == msg.sender
+            IERC721(_collateralAddress).ownerOf(_collateralId) == _borrower
                 ? _initLoanContract__typeHash0
                 : _initLoanContract__typeHash1;
     }
@@ -158,13 +161,6 @@ library LibLoanNotary {
                 )
             );
     }
-
-    // function prefixed(bytes32 _hash) public pure returns (bytes32) {
-    //     return
-    //         keccak256(
-    //             abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash)
-    //         );
-    // }
 
     function splitSignature(
         bytes memory _signature
