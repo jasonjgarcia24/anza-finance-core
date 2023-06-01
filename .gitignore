@@ -3,6 +3,7 @@ coverage
 coverage.json
 typechain
 typechain-types
+venv
 
 #Hardhat files
 cache
@@ -35,6 +36,7 @@ out/
 docs/
 lib
 bin
+deployments/
 
 # Dotenv file
 .env

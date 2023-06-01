@@ -38,10 +38,6 @@ contract LoanTreasurey is
         _;
     }
 
-    function getDebtBalanceOf(uint256 _debtId) external view returns (uint256) {
-        return _anzaToken.totalSupply(_debtId * 2);
-    }
-
     function depositFunds(
         address _account
     ) external payable onlyRole(_LOAN_CONTRACT_) nonReentrant {

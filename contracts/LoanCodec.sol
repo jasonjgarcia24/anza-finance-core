@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import "./domain/LoanContractErrorCodes.sol";
 import "./domain/LoanContractFIRIntervals.sol";
@@ -39,14 +39,9 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _loanState) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint8 __loanState;
 
         assembly {
-            __loanState := and(_contractTerms, _LOAN_STATE_MAP_)
-        }
-
-        unchecked {
-            _loanState = __loanState;
+            _loanState := and(_contractTerms, _LOAN_STATE_MAP_)
         }
     }
 
@@ -54,17 +49,12 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _firInterval) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint8 __firInterval;
 
         assembly {
-            __firInterval := shr(
+            _firInterval := shr(
                 _FIR_INTERVAL_POS_,
                 and(_contractTerms, _FIR_INTERVAL_MAP_)
             )
-        }
-
-        unchecked {
-            _firInterval = __firInterval;
         }
     }
 
@@ -72,33 +62,17 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _fixedInterestRate) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        bytes32 __fixedInterestRate;
 
         assembly {
-            __fixedInterestRate := shr(
-                _FIR_POS_,
-                and(_contractTerms, _FIR_MAP_)
-            )
-        }
-
-        unchecked {
-            _fixedInterestRate = uint256(__fixedInterestRate);
+            _fixedInterestRate := shr(_FIR_POS_, and(_contractTerms, _FIR_MAP_))
         }
     }
 
     function isFixed(uint256 _debtId) public view returns (uint256 _isFixed) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint32 __isFixed;
 
         assembly {
-            __isFixed := shr(
-                _IS_FIXED_POS_,
-                and(_contractTerms, _IS_FIXED_MAP_)
-            )
-        }
-
-        unchecked {
-            _isFixed = __isFixed;
+            _isFixed := shr(_IS_FIXED_POS_, and(_contractTerms, _IS_FIXED_MAP_))
         }
     }
 
@@ -110,17 +84,12 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _loanStart) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint32 __loanStart;
 
         assembly {
-            __loanStart := shr(
+            _loanStart := shr(
                 _LOAN_START_POS_,
                 and(_contractTerms, _LOAN_START_MAP_)
             )
-        }
-
-        unchecked {
-            _loanStart = __loanStart;
         }
     }
 
@@ -128,17 +97,12 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _loanDuration) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint32 __loanDuration;
 
         assembly {
-            __loanDuration := shr(
+            _loanDuration := shr(
                 _LOAN_DURATION_POS_,
                 and(_contractTerms, _LOAN_DURATION_MAP_)
             )
-        }
-
-        unchecked {
-            _loanDuration = __loanDuration;
         }
     }
 
@@ -146,17 +110,12 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _loanCommital) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint32 __loanCommital;
 
         assembly {
-            __loanCommital := shr(
+            _loanCommital := shr(
                 _COMMITAL_POS_,
                 and(_contractTerms, _COMMITAL_MAP_)
             )
-        }
-
-        unchecked {
-            _loanCommital = __loanCommital;
         }
     }
 
@@ -164,20 +123,15 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _loanClose) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint32 __loanClose;
 
         assembly {
-            __loanClose := add(
+            _loanClose := add(
                 shr(_LOAN_START_POS_, and(_contractTerms, _LOAN_START_MAP_)),
                 shr(
                     _LOAN_DURATION_POS_,
                     and(_contractTerms, _LOAN_DURATION_MAP_)
                 )
             )
-        }
-
-        unchecked {
-            _loanClose = __loanClose;
         }
     }
 
@@ -198,17 +152,12 @@ abstract contract LoanCodec is ILoanCodec {
         uint256 _debtId
     ) public view returns (uint256 _activeLoanCount) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
-        uint8 __activeLoanCount;
 
         assembly {
-            __activeLoanCount := shr(
+            _activeLoanCount := shr(
                 _LOAN_COUNT_POS_,
                 and(_contractTerms, _LOAN_COUNT_MAP_)
             )
-        }
-
-        unchecked {
-            _activeLoanCount = __activeLoanCount;
         }
     }
 
@@ -218,7 +167,10 @@ abstract contract LoanCodec is ILoanCodec {
     ) public view returns (uint256) {
         uint256 _firInterval = firInterval(_debtId);
         uint256 _duration = loanDuration(_debtId);
-        _seconds = _seconds <= _duration ? _seconds : _duration;
+
+        _seconds = (_seconds + _duration) <= loanClose(_debtId)
+            ? _seconds
+            : _duration;
 
         return _getTotalFirIntervals(_firInterval, _seconds);
     }

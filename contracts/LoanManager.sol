@@ -24,29 +24,29 @@ contract LoanManager is ILoanManager, LoanCodec, ManagerAccessController {
      */
     function updateLoanState(uint256 _debtId) external onlyRole(_TREASURER_) {
         if (!checkLoanActive(_debtId)) {
-            console.log("Inactive loan: %s", _debtId);
+            // console.log("Inactive loan: %s", _debtId);
             revert InactiveLoanState();
         }
 
         // Loan defaulted
         if (checkLoanExpired(_debtId)) {
-            console.log("Defaulted loan: %s", _debtId);
+            // console.log("Defaulted loan: %s", _debtId);
             _updateLoanTimes(_debtId);
             _setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
         else if (_anzaToken.totalSupply(_debtId * 2) <= 0) {
-            console.log("Paid loan: %s", _debtId);
+            // console.log("Paid loan: %s", _debtId);
             _setLoanState(_debtId, _PAID_STATE_);
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
-            console.log("Active loan: %s", _debtId);
+            // console.log("Active loan: %s", _debtId);
             _updateLoanTimes(_debtId);
         }
         // Loan no longer in grace period
         else if (!_checkGracePeriod(_debtId)) {
-            console.log("Grace period expired: %s", _debtId);
+            // console.log("Grace period expired: %s", _debtId);
             _setLoanState(_debtId, _ACTIVE_STATE_);
             _updateLoanTimes(_debtId);
         }
