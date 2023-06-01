@@ -36,7 +36,7 @@ out/
 docs/
 lib
 bin
-deployments/
+deployments/*
 
 # Dotenv file
 .env
