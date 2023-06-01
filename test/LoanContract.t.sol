@@ -34,13 +34,6 @@ abstract contract LoanSigned is LoanContractDeployer {
             address(demoToken),
             collateralId
         );
-
-        // contractTerms = createContractTerms();
-        // signature = createContractSignature(
-        //     collateralId,
-        //     collateralNonce,
-        //     contractTerms
-        // );
     }
 }
 
@@ -51,7 +44,6 @@ abstract contract LoanContractSubmitted is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        // Create loan contract
         createLoanContract(collateralId);
     }
 

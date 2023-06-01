@@ -3,25 +3,21 @@ pragma solidity 0.8.20;
 
 import "./LoanManager.sol";
 import "./utils/TypeUtils.sol";
-import "./utils/LoanSigningUtils.sol";
+import {LoanNotary} from "./LoanNotary.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ICollateralVault.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
-contract LoanContract is
-    ILoanContract,
-    LoanManager,
-    LoanSigningUtils,
-    TypeUtils
-{
+contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     // Count of total inactive/active debts
     uint256 public totalDebts;
 
     // Mapping from collateral to debt ID
-    mapping(address _collateralAddress => mapping(uint256 _collateralId => Debt)) public debts;
+    mapping(address _collateralAddress => mapping(uint256 _collateralId => Debt))
+        public debts;
     mapping(uint256 _childDebtId => Debt _parentDebtId) public debtIdBranch;
 
-    constructor() LoanManager() {}
+    constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 
     function supportsInterface(
         bytes4 _interfaceId
@@ -89,11 +85,13 @@ contract LoanContract is
         if (
             (_borrower !=
                 _recoverSigner(
-                    _principal,
-                    _contractTerms,
-                    _collateralAddress,
-                    _collateralId,
-                    ++_debt.collateralNonce,
+                    SignatureParams({
+                        principal: _principal,
+                        contractTerms: _contractTerms,
+                        collateralAddress: _collateralAddress,
+                        collateralId: _collateralId,
+                        collateralNonce: ++_debt.collateralNonce
+                    }),
                     _borrowerSignature
                 ) ||
                 (_borrower == msg.sender))
@@ -165,7 +163,9 @@ contract LoanContract is
         ICollateralVault.Collateral memory _collateral = _loanCollateralVault
             .getCollateral(_debtId);
 
-        Debt storage _debt = debts[_collateral.collateralAddress][_collateral.collateralId];
+        Debt storage _debt = debts[_collateral.collateralAddress][
+            _collateral.collateralId
+        ];
 
         // Map the child loan to the parent
         debtIdBranch[_debt.debtId] = _debt;
@@ -176,11 +176,13 @@ contract LoanContract is
 
         // Verify borrower participation
         address _borrower = _recoverSigner(
-            _principal,
-            _contractTerms,
-            _collateral.collateralAddress,
-            _collateral.collateralId,
-            ++_debt.collateralNonce,
+            SignatureParams({
+                principal: _principal,
+                contractTerms: _contractTerms,
+                collateralAddress: _collateral.collateralAddress,
+                collateralId: _collateral.collateralId,
+                collateralNonce: ++_debt.collateralNonce
+            }),
             _borrowerSignature
         );
 

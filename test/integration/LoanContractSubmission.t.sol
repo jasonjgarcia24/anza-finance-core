@@ -124,10 +124,7 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        (uint256 __debtId, , ) = _loanContract.debts(_collateralAddress, collateralId);
-
-        // Verify debt ID for collateral
-        uint256 numDebtIds = _loanContract.getCollateralNonce(
+        (uint256 __debtId, , ) = _loanContract.debts(
             _collateralAddress,
             collateralId
         );
