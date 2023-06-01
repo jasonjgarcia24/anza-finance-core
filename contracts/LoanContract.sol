@@ -95,11 +95,12 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             (_borrower !=
                 _recoverSigner(
                     SignatureParams({
+                        borrower: _borrower,
                         principal: _principal,
                         contractTerms: _contractTerms,
                         collateralAddress: _collateralAddress,
                         collateralId: _collateralId,
-                        collateralNonce: ++_debt.collateralNonce
+                        collateralNonce: _debt.collateralNonce
                     }),
                     _borrowerSignature
                 ) ||
@@ -185,25 +186,24 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         ++_debt.collateralNonce;
 
         // Verify borrower participation
-        address _borrower = _recoverSigner(
-            SignatureParams({
-                principal: _principal,
-                contractTerms: _contractTerms,
-                collateralAddress: _collateral.collateralAddress,
-                collateralId: _collateral.collateralId,
-                collateralNonce: ++_debt.collateralNonce
-            }),
-            _borrowerSignature
-        );
+        address _borrower = _anzaToken.borrowerOf(_debtId);
 
-        // During initial loan submission (i.e. activeLoanIndex 0), in the
-        // AnzaToken contract, the borrower is given admin role specific to
-        // the debt ID. This is then used for borrower verification.
         if (
-            !_anzaToken.checkBorrowerOf(_borrower, _debtId) ||
-            (_borrower == msg.sender)
+            (_borrower !=
+                _recoverSigner(
+                    SignatureParams({
+                        borrower: _borrower,
+                        principal: _principal,
+                        contractTerms: _contractTerms,
+                        collateralAddress: _collateral.collateralAddress,
+                        collateralId: _collateral.collateralId,
+                        collateralNonce: _debt.collateralNonce
+                    }),
+                    _borrowerSignature
+                ))
         ) revert InvalidParticipant();
 
+        // Add debt to database
         __setLoanAgreement(_now, _debt.activeLoanIndex, _contractTerms);
 
         // Store collateral-debtId mapping in vault
