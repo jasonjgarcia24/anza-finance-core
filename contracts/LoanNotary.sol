@@ -66,21 +66,23 @@ contract LoanNotary is ILoanNotary {
             keccak256(
                 abi.encode(
                     __typeHash(
+                        _signatureParams.borrower,
                         _signatureParams.collateralAddress,
                         _signatureParams.collateralId
                     ),
-                    msg.sender,
+                    _signatureParams.borrower,
                     _signatureParams.collateralNonce
                 )
             );
     }
 
     function __typeHash(
+        address _borrower,
         address _collateralAddress,
         uint256 _collateralId
     ) private view returns (bytes32) {
         return
-            IERC721(_collateralAddress).ownerOf(_collateralId) == msg.sender
+            IERC721(_collateralAddress).ownerOf(_collateralId) == _borrower
                 ? __initLoanContract__typeHash0
                 : __initLoanContract__typeHash1;
     }

@@ -231,7 +231,8 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         // Create message for signing
         bytes32 _message = Signing.typeDataHash(
             ILoanNotary.SignatureParams({
-                principal: _PRINCIPAL_,
+                borrower: borrower,
+                principal: _principal,
                 contractTerms: _contractTerms,
                 collateralAddress: address(demoToken),
                 collateralId: _collateralId,
