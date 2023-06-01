@@ -35,6 +35,8 @@ out/
 
 # Docs
 docs/
+lib/*
+lib
 bin
 deployments/*
 deployments
