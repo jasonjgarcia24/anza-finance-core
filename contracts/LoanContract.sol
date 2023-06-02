@@ -91,7 +91,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
 
-        address _borrower = __getBorrower(
+        address _borrower = _getBorrower(
             _collateralId,
             SignatureParams({
                 borrower: address(0),
@@ -104,8 +104,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _borrowerSignature,
             _collateralToken.ownerOf
         );
-
-        if (_borrower == msg.sender) revert InvalidParticipant();
 
         // Add debt to database
         __setLoanAgreement(_now, 0, _contractTerms);
@@ -192,7 +190,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress
         );
 
-        address _borrower = __getBorrower(
+        address _borrower = _getBorrower(
             _debtId,
             SignatureParams({
                 borrower: address(0),
@@ -259,22 +257,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             "",
             abi.encodePacked(_borrower, _debtId)
         );
-    }
-
-    function __getBorrower(
-        uint256 _assetId,
-        SignatureParams memory _signatureParams,
-        bytes memory _borrowerSignature,
-        function(uint256) external view returns (address) ownerOf
-    ) private view returns (address) {
-        _signatureParams.borrower = ownerOf(_assetId);
-
-        if (
-            _signatureParams.borrower !=
-            _recoverSigner(_signatureParams, _borrowerSignature)
-        ) revert InvalidParticipant();
-
-        return _signatureParams.borrower;
     }
 
     function __setLoanAgreement(

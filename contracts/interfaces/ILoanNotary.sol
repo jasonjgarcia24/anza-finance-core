@@ -2,6 +2,8 @@
 pragma solidity 0.8.20;
 
 interface ILoanNotary {
+    error InvalidParticipant();
+
     struct SignatureParams {
         address borrower;
         uint256 principal;

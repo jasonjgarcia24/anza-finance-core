@@ -35,7 +35,24 @@ contract LoanNotary is ILoanNotary {
         );
     }
 
-    function _recoverSigner(
+    function _getBorrower(
+        uint256 _assetId,
+        SignatureParams memory _signatureParams,
+        bytes memory _borrowerSignature,
+        function(uint256) external view returns (address) ownerOf
+    ) internal view returns (address) {
+        _signatureParams.borrower = ownerOf(_assetId);
+
+        if (
+            _signatureParams.borrower !=
+            __recoverSigner(_signatureParams, _borrowerSignature) ||
+            _signatureParams.borrower == msg.sender
+        ) revert InvalidParticipant();
+
+        return _signatureParams.borrower;
+    }
+
+    function __recoverSigner(
         SignatureParams memory _signatureParams,
         bytes memory _signature
     ) internal view returns (address) {
