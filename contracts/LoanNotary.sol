@@ -83,6 +83,13 @@ contract LoanNotary is ILoanNotary {
         return ECDSA.recover(_message, v, r, s);
     }
 
+    /**
+     * @dev Returns an Ethereum Signed Typed Data, created from a
+     * `domainSeparator` and a `structHash`. This produces hash corresponding
+     * to the one signed with the
+     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
+     * JSON-RPC method as part of EIP-712.
+     */
     function __typeDataHash(
         SignatureParams memory _signatureParams
     ) private view returns (bytes32) {
@@ -127,10 +134,12 @@ contract LoanNotary is ILoanNotary {
     function __splitSignature(
         bytes memory _signature
     ) private pure returns (uint8 v, bytes32 r, bytes32 s) {
+        if (_signature.length != 65) revert InvalidSignatureLength();
+
         assembly {
-            r := mload(add(_signature, 32))
-            s := mload(add(_signature, 64))
-            v := byte(0, mload(add(_signature, 96)))
+            r := mload(add(_signature, 0x20))
+            s := mload(add(_signature, 0x40))
+            v := byte(0, mload(add(_signature, 0x60)))
         }
     }
 }
