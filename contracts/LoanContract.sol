@@ -83,29 +83,29 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Set debt
         Debt storage _debt = debts[_collateralAddress][_collateralId];
 
+        // Set loan fields
         _debt.debtId = ++totalDebts;
         ++_debt.activeLoanIndex;
         ++_debt.collateralNonce;
 
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
-        address _borrower = _collateralToken.ownerOf(_collateralId);
 
-        if (
-            (_borrower !=
-                _recoverSigner(
-                    SignatureParams({
-                        borrower: _borrower,
-                        principal: _principal,
-                        contractTerms: _contractTerms,
-                        collateralAddress: _collateralAddress,
-                        collateralId: _collateralId,
-                        collateralNonce: _debt.collateralNonce
-                    }),
-                    _borrowerSignature
-                ) ||
-                (_borrower == msg.sender))
-        ) revert InvalidParticipant();
+        address _borrower = __getBorrower(
+            _collateralId,
+            SignatureParams({
+                borrower: address(0),
+                principal: _principal,
+                contractTerms: _contractTerms,
+                collateralAddress: _collateralAddress,
+                collateralId: _collateralId,
+                collateralNonce: _debt.collateralNonce
+            }),
+            _borrowerSignature,
+            _collateralToken.ownerOf
+        );
+
+        if (_borrower == msg.sender) revert InvalidParticipant();
 
         // Add debt to database
         __setLoanAgreement(_now, 0, _contractTerms);
@@ -167,12 +167,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         uint256 _principal = msg.value;
         _validateLoanTerms(_contractTerms, _now, _principal);
 
+        // Get collateral from vault
         ICollateralVault _loanCollateralVault = ICollateralVault(
             _collateralVault
         );
         ICollateralVault.Collateral memory _collateral = _loanCollateralVault
             .getCollateral(_debtId);
 
+        // Set debt
         Debt storage _debt = debts[_collateral.collateralAddress][
             _collateral.collateralId
         ];
@@ -180,28 +182,29 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Map the child loan to the parent
         debtIdBranch[_debt.debtId] = _debt;
 
-        // Increment child loan fields
+        // Set child loan fields
         _debt.debtId = ++totalDebts;
         ++_debt.activeLoanIndex;
         ++_debt.collateralNonce;
 
         // Verify borrower participation
-        address _borrower = _anzaToken.borrowerOf(_debtId);
+        IERC721Metadata _collateralToken = IERC721Metadata(
+            _collateral.collateralAddress
+        );
 
-        if (
-            (_borrower !=
-                _recoverSigner(
-                    SignatureParams({
-                        borrower: _borrower,
-                        principal: _principal,
-                        contractTerms: _contractTerms,
-                        collateralAddress: _collateral.collateralAddress,
-                        collateralId: _collateral.collateralId,
-                        collateralNonce: _debt.collateralNonce
-                    }),
-                    _borrowerSignature
-                ))
-        ) revert InvalidParticipant();
+        address _borrower = __getBorrower(
+            _debtId,
+            SignatureParams({
+                borrower: address(0),
+                principal: _principal,
+                contractTerms: _contractTerms,
+                collateralAddress: _collateral.collateralAddress,
+                collateralId: _collateral.collateralId,
+                collateralNonce: _debt.collateralNonce
+            }),
+            _borrowerSignature,
+            _anzaToken.borrowerOf
+        );
 
         // Add debt to database
         __setLoanAgreement(_now, _debt.activeLoanIndex, _contractTerms);
@@ -232,9 +235,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             msg.sender,
             totalDebts * 2,
             _principal,
-            IERC721Metadata(_collateral.collateralAddress).tokenURI(
-                _collateral.collateralId
-            ),
+            _collateralToken.tokenURI(_collateral.collateralId),
             abi.encodePacked(_borrower, totalDebts)
         );
 
@@ -258,6 +259,22 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             "",
             abi.encodePacked(_borrower, _debtId)
         );
+    }
+
+    function __getBorrower(
+        uint256 _assetId,
+        SignatureParams memory _signatureParams,
+        bytes memory _borrowerSignature,
+        function(uint256) external view returns (address) ownerOf
+    ) private view returns (address) {
+        _signatureParams.borrower = ownerOf(_assetId);
+
+        if (
+            _signatureParams.borrower !=
+            _recoverSigner(_signatureParams, _borrowerSignature)
+        ) revert InvalidParticipant();
+
+        return _signatureParams.borrower;
     }
 
     function __setLoanAgreement(
