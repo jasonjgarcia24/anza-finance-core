@@ -38,7 +38,7 @@ contract AnzaDebtStorefront is IAnzaDebtStorefront, ReentrancyGuard {
     ) external payable {
         (bool success, ) = address(this).call{value: msg.value}(
             abi.encodeWithSignature(
-                "executeDebtPurchase(bytes32,uint256,bytes)",
+                "buyDebt(bytes32,uint256,bytes)",
                 _listingTerms,
                 ILoanContract(loanContract).getCollateralDebtId(
                     _collateralAddress,

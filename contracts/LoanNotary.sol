@@ -15,16 +15,16 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
  * This contract implements the EIP 712 V4 domain separator part of the encoding scheme:
  *   keccak256(abi.encode(_TYPE_HASH, _hashedName, _hashedVersion, block.chainid, address(this)))
  *
- * The final step of the encoding is the message digest that is then signed via ECDSA ({_hashTypedDataV4}).
+ * The final step of the encoding is the message digest that is then signed via ECDSA.
  *
- * The implementation of the domain separator was designed to be as efficient as possible while still properly updating
- * the chain id to protect against replay attacks on an eventual fork of the chain.
+ * The implementation of the domain separator was designed to be as efficient as possible while
+ * still properly updating the chain id to protect against replay attacks on an eventual fork of
+ * the chain.
  *
- * NOTE: This contract implements the version of the encoding known as "v4", as implemented by the JSON RPC method
- * https://docs.metamask.io/guide/signing-data.html[`eth_signTypedDataV4` in MetaMask].
- *
+ * NOTE: This contract implements the version of the encoding known as "v4", as implemented by the
+ * JSON RPC method https://docs.metamask.io/guide/signing-data.html[`eth_signTypedDataV4` in
+ * MetaMask].
  */
-
 contract LoanNotary is ILoanNotary {
     bytes32 private constant __initLoanContract__typeHash0 =
         keccak256(
@@ -72,6 +72,12 @@ contract LoanNotary is ILoanNotary {
         return _signatureParams.borrower;
     }
 
+    /**
+     * @dev Returns the address that signed a hashed message (`hash`) with
+     * `_signature`. This address can then be used for verification purposes.
+     *
+     * {see ECDSA-recover}
+     */
     function __recoverSigner(
         SignatureParams memory _signatureParams,
         bytes memory _signature
@@ -103,6 +109,13 @@ contract LoanNotary is ILoanNotary {
             );
     }
 
+    /**
+     * @dev Returns an Ethereum Signed Typed Data, created from a
+     * `domainSeparator` and a `structHash`. This produces hash corresponding
+     * to the one signed with the
+     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
+     * JSON-RPC method as part of EIP-712.
+     */
     function __structHash(
         SignatureParams memory _signatureParams
     ) private view returns (bytes32) {
@@ -114,7 +127,10 @@ contract LoanNotary is ILoanNotary {
                         _signatureParams.collateralAddress,
                         _signatureParams.collateralId
                     ),
-                    _signatureParams.borrower,
+                    _signatureParams.principal,
+                    _signatureParams.contractTerms,
+                    _signatureParams.collateralAddress,
+                    _signatureParams.collateralId,
                     _signatureParams.collateralNonce
                 )
             );

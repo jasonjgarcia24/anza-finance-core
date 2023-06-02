@@ -8,6 +8,7 @@ import "../domain/LoanContractTermMaps.sol";
 
 import "../interfaces/ILoanNotary.sol";
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 library LibLoanNotary {
@@ -83,7 +84,7 @@ library LibLoanNotary {
         bytes32 _message = typeDataHash(_signatureParams, _domainSeperator);
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
-        return ecrecover(_message, v, r, s);
+        return ECDSA.recover(_message, v, r, s);
     }
 
     function domainSeperator(
@@ -126,7 +127,10 @@ library LibLoanNotary {
                         _signatureParams.collateralAddress,
                         _signatureParams.collateralId
                     ),
-                    _signatureParams.borrower,
+                    _signatureParams.principal,
+                    _signatureParams.contractTerms,
+                    _signatureParams.collateralAddress,
+                    _signatureParams.collateralId,
                     _signatureParams.collateralNonce
                 )
             );
@@ -165,6 +169,9 @@ library LibLoanNotary {
     function splitSignature(
         bytes memory _signature
     ) public pure returns (uint8 v, bytes32 r, bytes32 s) {
+        if (_signature.length != 65)
+            revert ILoanNotary.InvalidSignatureLength();
+
         assembly {
             r := mload(add(_signature, 32))
             s := mload(add(_signature, 64))
