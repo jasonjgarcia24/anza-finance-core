@@ -3,7 +3,27 @@ pragma solidity 0.8.20;
 
 import "hardhat/console.sol";
 import "./interfaces/ILoanNotary.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
+/**
+ * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of
+ * typed structured data.
+ *
+ * This contract implements the EIP 712 type-specific encoding of signed loan contract terms.
+ *
+ * This contract implements the EIP 712 V4 domain separator part of the encoding scheme:
+ *   keccak256(abi.encode(_TYPE_HASH, _hashedName, _hashedVersion, block.chainid, address(this)))
+ *
+ * The final step of the encoding is the message digest that is then signed via ECDSA ({_hashTypedDataV4}).
+ *
+ * The implementation of the domain separator was designed to be as efficient as possible while still properly updating
+ * the chain id to protect against replay attacks on an eventual fork of the chain.
+ *
+ * NOTE: This contract implements the version of the encoding known as "v4", as implemented by the JSON RPC method
+ * https://docs.metamask.io/guide/signing-data.html[`eth_signTypedDataV4` in MetaMask].
+ *
+ */
 
 contract LoanNotary is ILoanNotary {
     bytes32 private constant __initLoanContract__typeHash0 =
@@ -60,7 +80,7 @@ contract LoanNotary is ILoanNotary {
 
         (uint8 v, bytes32 r, bytes32 s) = __splitSignature(_signature);
 
-        return ecrecover(_message, v, r, s);
+        return ECDSA.recover(_message, v, r, s);
     }
 
     function __typeDataHash(
