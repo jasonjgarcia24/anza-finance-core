@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 import "./domain/LoanContractErrorCodes.sol";
 import "./domain/LoanContractFIRIntervals.sol";
 import "./domain/LoanContractNumbers.sol";
 import "./domain/LoanContractTermMaps.sol";
 import "./domain/LoanContractStates.sol";
+import "./domain/LoanCodecErrorCodes.sol";
 
 import "./interfaces/ILoanCodec.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
@@ -23,9 +24,11 @@ abstract contract LoanCodec is ILoanCodec {
      *  > 004 - [0..3]     `loanState`
      *  > 004 - [4..7]     `firInterval`
      *  > 008 - [8..15]    `fixedInterestRate`
-     *  > 032 - [16..47]   `loanStart`
-     *  > 032 - [48..79]   `loanDuration`
-     *  > 160 - [80..239]  unused space
+     *  > 064 - [16..79]   `loanStart`
+     *  > 032 - [80..111]  `loanDuration`
+     *  > 004 - [112..115] `isFixed`
+     *  > 008 - [116..123] `commital`
+     *  > 160 - [124..239]  unused space
      *  > 008 - [240..247] `lenderRoyalties`
      *  > 008 - [248..255] `activeLoanIndex`
      */
@@ -177,85 +180,81 @@ abstract contract LoanCodec is ILoanCodec {
 
     function _validateLoanTerms(
         bytes32 _contractTerms,
-        uint32 _loanStart,
+        uint64 _loanStart,
         uint256 _principal
     ) internal pure {
-        uint8 _lenderRoyalties;
-        uint32 _termsExpiry;
+        if (_principal == 0) revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+
         uint32 _duration;
-        uint32 _gracePeriod;
         uint8 _fixedInterestRate;
         uint8 _firInterval;
 
         assembly {
             // Get packed lender royalties
             mstore(0x1f, _contractTerms)
-            _lenderRoyalties := mload(0)
+            let _lenderRoyalties := and(mload(0), _UINT8_MAX_)
+
+            if gt(_lenderRoyalties, 100) {
+                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
+                mstore(0x24, _LENDER_ROYALTIES_ERROR_ID_)
+                revert(0x20, 0x08)
+            }
 
             // Get packed terms expiry
             mstore(0x1b, _contractTerms)
-            _termsExpiry := mload(0)
+            let _termsExpiry := and(mload(0), _UINT32_MAX_)
+
+            if lt(_termsExpiry, _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
+                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
+                mstore(0x24, _TIME_EXPIRY_ERROR_ID_)
+                revert(0x20, 0x08)
+            }
 
             // Get packed duration
             mstore(0x17, _contractTerms)
-            _duration := mload(0)
+            _duration := and(mload(0), _UINT32_MAX_)
+
+            if iszero(_duration) {
+                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
+                mstore(0x24, _DURATION_ERROR_ID_)
+                revert(0x20, 0x08)
+            }
 
             // Get packed grace period
             mstore(0x13, _contractTerms)
-            _gracePeriod := mload(0)
+            let _gracePeriod := and(mload(0), _UINT32_MAX_)
+
+            if gt(add(add(_loanStart, _duration), _gracePeriod), _UINT32_MAX_) {
+                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
+                mstore(0x24, _DURATION_ERROR_ID_)
+                revert(0x20, 0x08)
+            }
 
             // Get fixed interest rate
             mstore(0x01, _contractTerms)
-            _fixedInterestRate := mload(0)
+            _fixedInterestRate := and(mload(0), _UINT8_MAX_)
 
             // Get fir interval
             mstore(0x00, _contractTerms)
-            _firInterval := mload(0)
+            _firInterval := and(mload(0), _UINT8_MAX_)
+
+            if gt(_firInterval, 15) {
+                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
+                mstore(0x24, _FIR_INTERVAL_ERROR_ID_)
+                revert(0x20, 0x08)
+            }
         }
 
-        unchecked {
-            // Check lender royalties
-            if (_lenderRoyalties > 100) {
-                revert InvalidLoanParameter(_LENDER_ROYALTIES_ERROR_ID_);
-            }
-
-            // Check terms expiry
-            if (_termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
-                revert InvalidLoanParameter(_TIME_EXPIRY_ERROR_ID_);
-            }
-
-            // Check duration and grace period
-            if (
-                uint256(_duration) == 0 ||
-                (uint256(_loanStart) +
-                    uint256(_duration) +
-                    uint256(_gracePeriod)) >
-                type(uint32).max
-            ) {
-                revert InvalidLoanParameter(_DURATION_ERROR_ID_);
-            }
-
-            // Check principal
-            if (_principal == 0)
-                revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
-
-            // No fixed interest rate check necessary
-
-            // Check FIR interval
-            if (_firInterval > 15)
-                revert InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
-
-            // Check max compounded debt
-            try
-                Interest.compoundWithTopoff(
-                    _principal,
-                    _fixedInterestRate,
-                    _getTotalFirIntervals(_firInterval, _duration)
-                )
-            returns (uint256) {} catch {
-                if (_firInterval != 0)
-                    revert InvalidLoanParameter(_FIXED_INTEREST_RATE_ERROR_ID_);
-            }
+        // Check max compounded debt
+        try
+            Interest.compoundWithTopoff(
+                _principal,
+                _fixedInterestRate,
+                _getTotalFirIntervals(_firInterval, _duration)
+            )
+        returns (uint256) {} catch {
+            if (_firInterval != 0)
+                revert InvalidLoanParameter(_FIXED_INTEREST_RATE_ERROR_ID_);
         }
     }
 
@@ -308,7 +307,7 @@ abstract contract LoanCodec is ILoanCodec {
     }
 
     function _setLoanAgreement(
-        uint32 _now,
+        uint64 _now,
         uint256 _debtId,
         uint256 _activeLoanIndex,
         bytes32 _contractTerms
@@ -318,25 +317,25 @@ abstract contract LoanCodec is ILoanCodec {
         assembly {
             // Get packed fixed interest rate
             mstore(0x01, _contractTerms)
-            let _fixedInterestRate := mload(0)
+            let _fixedInterestRate := and(mload(0), _UINT8_MAX_)
 
             // Get packed is direct and commital
             // Need to mask other packed terms for gt
             // comparison below.
             mstore(0x02, _contractTerms)
-            let _isDirect_Commital := and(mload(0), 0xFF)
+            let _isDirect_Commital := and(mload(0), _UINT8_MAX_)
 
             // Get packed grace period
             mstore(0x13, _contractTerms)
-            let _gracePeriod := mload(0)
+            let _gracePeriod := and(mload(0), _UINT32_MAX_)
 
             // Get packed duration
             mstore(0x17, _contractTerms)
-            let _duration := mload(0)
+            let _duration := and(mload(0), _UINT32_MAX_)
 
             // Get packed lender royalties
             mstore(0x1f, _contractTerms)
-            let _lenderTerms := mload(0)
+            let _lenderRoylaties := and(mload(0), _UINT8_MAX_)
 
             // Shif left to make space for loan state
             mstore(0x20, shl(4, _contractTerms))
@@ -374,7 +373,7 @@ abstract contract LoanCodec is ILoanCodec {
                 )
             )
 
-            // Pack loan start time (uint32)
+            // Pack loan start time (uint64)
             mstore(
                 0x20,
                 xor(
@@ -451,7 +450,7 @@ abstract contract LoanCodec is ILoanCodec {
                     and(_LENDER_ROYALTIES_MASK_, mload(0x20)),
                     and(
                         _LENDER_ROYALTIES_MAP_,
-                        shl(_LENDER_ROYALTIES_POS_, _lenderTerms)
+                        shl(_LENDER_ROYALTIES_POS_, _lenderRoylaties)
                     )
                 )
             )
@@ -519,8 +518,11 @@ abstract contract LoanCodec is ILoanCodec {
 
             // Store loan close time
             let _loanClose := add(
-                shr(16, and(_LOAN_START_MAP_, _contractTerms)),
-                shr(48, and(_LOAN_DURATION_MAP_, _contractTerms))
+                shr(_LOAN_START_POS_, and(_LOAN_START_MAP_, _contractTerms)),
+                shr(
+                    _LOAN_DURATION_POS_,
+                    and(_LOAN_DURATION_MAP_, _contractTerms)
+                )
             )
 
             let _now := timestamp()

@@ -347,7 +347,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
 
         // Create loan contract
         uint256 _timeLoanCreated = block.timestamp;
-        (bool _success, ) = address(this).call{value: 0}(
+        (bool _success, bytes memory _data) = address(this).call{value: 0}(
             abi.encodeWithSignature(
                 "createLoanContract(uint256)",
                 localCollateralId++
@@ -369,15 +369,23 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         bool _isExpired = _now >=
             (_timeLoanCreated + _GRACE_PERIOD_ + _DURATION_);
 
+        console.log(_now);
+        console.log(_timeLoanCreated, _GRACE_PERIOD_, _DURATION_);
+        console.log(_isGracePeriod, _isExpired);
+
         // Make payment
         vm.deal(borrower, _payment);
         vm.startPrank(borrower);
         uint256 _loanStart = loanContract.loanStart(_debtId);
-        (_success, ) = address(loanTreasurer).call{value: _payment}(
+
+        (_success, _data) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_isExpired || _success, "Payment was unsuccessful");
+        require(_isExpired || _success, "0 :: Payment was unsuccessful");
         vm.stopPrank();
+
+        console.log(_success);
+        console.logBytes(_data);
 
         // Set state payoff flag
         bool _isPayoff = anzaToken.totalSupply(_debtId * 2) <= 0;
@@ -389,12 +397,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
             assertEq(
                 loanContract.loanState(_debtId),
                 _prevLoanState,
-                "0 :: Loan state should remain unchanged"
+                "1 :: Loan state should remain unchanged"
             );
             assertEq(
                 loanContract.loanLastChecked(_debtId),
                 _timeLoanCreated + _GRACE_PERIOD_,
-                "1 :: Loan last checked time should remain the loan start time"
+                "2 :: Loan last checked time should remain the loan start time"
             );
         }
         // Loan state should change to _ACTIVE_STATE_
@@ -402,12 +410,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
             assertEq(
                 loanContract.loanState(_debtId),
                 _ACTIVE_STATE_,
-                "2 :: Loan state should change to _ACTIVE_STATE_"
+                "3 :: Loan state should change to _ACTIVE_STATE_"
             );
             assertEq(
                 loanContract.loanLastChecked(_debtId),
                 _now,
-                "3 :: Loan last checked time should be now"
+                "4 :: Loan last checked time should be now"
             );
         }
         // Loan state should change to _DEFAULT_STATE_
@@ -415,12 +423,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
             assertEq(
                 loanContract.loanState(_debtId),
                 _DEFAULT_STATE_,
-                "4 :: Loan state should change to _DEFAULT_STATE_"
+                "5 :: Loan state should change to _DEFAULT_STATE_"
             );
             assertEq(
                 loanContract.loanLastChecked(_debtId),
                 loanContract.loanClose(_debtId),
-                "5 :: Loan last checked time should be updated to loan close time"
+                "6 :: Loan last checked time should be updated to loan close time"
             );
         }
         // Loan payoff
@@ -428,12 +436,12 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
             assertEq(
                 loanContract.loanState(_debtId),
                 _PAID_STATE_,
-                "6 :: Loan state should be paid"
+                "7 :: Loan state should be paid"
             );
             assertEq(
                 loanContract.loanLastChecked(_debtId),
                 _isGracePeriod ? _loanStart : _now,
-                "7 :: Loan last checked time should be either loan start or now"
+                "8 :: Loan last checked time should be either loan start or now"
             );
         }
         vm.stopPrank();
