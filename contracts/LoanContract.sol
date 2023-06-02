@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import "./LoanManager.sol";
 import "./utils/TypeUtils.sol";
 import {LoanNotary} from "./LoanNotary.sol";
-import "./interfaces/ILoanContract.sol";
-import "./interfaces/ICollateralVault.sol";
+import {ILoanContract} from "./interfaces/ILoanContract.sol";
+import {ICollateralVault} from "./interfaces/ICollateralVault.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
@@ -76,7 +76,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         bytes calldata _borrowerSignature
     ) external payable {
         // Validate loan terms
-        uint32 _now = _toUint32(block.timestamp);
+        uint64 _now = _toUint64(block.timestamp);
         uint256 _principal = msg.value;
         _validateLoanTerms(_contractTerms, _now, _principal);
 
@@ -163,7 +163,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         if (checkLoanDefault(_debtId)) revert InvalidCollateral();
 
         // Validate loan terms
-        uint32 _now = _toUint32(block.timestamp);
+        uint64 _now = _toUint64(block.timestamp);
         uint256 _principal = msg.value;
         _validateLoanTerms(_contractTerms, _now, _principal);
 
@@ -261,7 +261,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     }
 
     function __setLoanAgreement(
-        uint32 _now,
+        uint64 _now,
         uint256 _activeLoanIndex,
         bytes32 _contractTerms
     ) private {

@@ -8,6 +8,7 @@ import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 
 import "./interfaces/ILoanTreasurey.sol";
+import "./interfaces/ILoanCodec.sol";
 import "./access/TreasureyAccessController.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 import "@openzeppelin/contracts/utils/Address.sol";

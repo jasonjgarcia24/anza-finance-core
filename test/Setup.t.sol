@@ -304,7 +304,9 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         vm.deal(lender, _principal);
         vm.startPrank(lender);
 
-        (bool _success, ) = address(loanContract).call{value: _principal}(
+        (bool _success, bytes memory _data) = address(loanContract).call{
+            value: _principal
+        }(
             abi.encodeWithSignature(
                 "initLoanContract(bytes32,address,uint256,bytes)",
                 _contractTerms,
@@ -313,6 +315,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 _signature
             )
         );
+        console.logBytes(_data);
         vm.stopPrank();
 
         return _success;

@@ -216,7 +216,13 @@ abstract contract LoanContractSubmitFunctions is
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
         // Verify loan agreement terms for this debt ID
-        verifyLoanAgreementTerms(_debtId, _ACTIVE_GRACE_STATE_, _contractTerms);
+        verifyLoanAgreementTerms(
+            _debtId,
+            _contractTerms.gracePeriod == 0
+                ? _ACTIVE_STATE_
+                : _ACTIVE_GRACE_STATE_,
+            _contractTerms
+        );
 
         // Verify loan participants
         uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
