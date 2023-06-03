@@ -13,9 +13,9 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     uint256 public totalDebts;
 
     // Mapping from collateral to debt ID
-    mapping(address _collateralAddress => mapping(uint256 _collateralId => Debt))
+    mapping(address collateralAddress => mapping(uint256 collateralId => Debt))
         public debts;
-    mapping(uint256 _childDebtId => Debt _parentDebtId) public debtIdBranch;
+    mapping(uint256 childDebtId => Debt parentDebtId) public debtIdBranch;
 
     constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 

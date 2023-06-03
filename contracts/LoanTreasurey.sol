@@ -21,7 +21,7 @@ contract LoanTreasurey is
     using Address for address payable;
 
     uint256 public poolBalance;
-    mapping(address => uint256) public withdrawableBalance;
+    mapping(address account => uint256) public withdrawableBalance;
     mapping(uint256 debtId => uint256) private __debtSaleNonces;
 
     constructor() TreasureyAccessController() {}
