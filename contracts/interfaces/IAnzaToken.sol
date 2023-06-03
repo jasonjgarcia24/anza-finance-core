@@ -3,6 +3,8 @@ pragma solidity 0.8.20;
 
 interface IAnzaToken {
     error InvalidTransferType();
+    error IllegalMint();
+    error IllegalBurn();
 
     /**
      * @dev Returns the token collection name.
@@ -35,11 +37,6 @@ interface IAnzaToken {
     /// @param _debtId The debt ID of the loan.
     /// @return The lender of the debt.
     function lenderOf(uint256 _debtId) external view returns (address);
-
-    function checkBorrowerOf(
-        address _account,
-        uint256 _debtId
-    ) external view returns (bool);
 
     /// @notice Get the borrower token ID for a given debt.
     /// @param _debtId The debt ID of the loan.

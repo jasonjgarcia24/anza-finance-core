@@ -128,7 +128,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             totalDebts * 2,
             _principal,
             _collateralToken.tokenURI(_collateralId),
-            abi.encodePacked(_borrower, totalDebts)
+            abi.encodePacked(_borrower)
         );
 
         // Emit initialization event
@@ -232,7 +232,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             totalDebts * 2,
             _principal,
             _collateralToken.tokenURI(_collateral.collateralId),
-            abi.encodePacked(_borrower, totalDebts)
+            abi.encodePacked(_borrower)
         );
 
         // Emit initialization event
@@ -325,7 +325,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             IERC721Metadata(_collateral.collateralAddress).tokenURI(
                 _collateral.collateralId
             ),
-            abi.encodePacked(_borrower, totalDebts)
+            abi.encodePacked(_borrower)
         );
 
         // Emit initialization event
@@ -334,19 +334,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralId,
             totalDebts,
             _debt.activeLoanIndex
-        );
-    }
-
-    function mintReplica(uint256 _debtId) external {
-        // AnzaToken.sol manages replica mint access control.
-        address _borrower = msg.sender;
-
-        _anzaToken.mint(
-            _borrower,
-            (_debtId * 2) + 1,
-            1,
-            "",
-            abi.encodePacked(_borrower, _debtId)
         );
     }
 

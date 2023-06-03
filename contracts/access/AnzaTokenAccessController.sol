@@ -22,11 +22,11 @@ abstract contract AnzaTokenAccessController is
         _grantRole(_ADMIN_, msg.sender);
     }
 
-    function checkBorrowerOf(
-        address _account,
-        uint256 _debtId
-    ) external view returns (bool) {
-        return
-            hasRole(keccak256(abi.encodePacked(_account, _debtId)), _account);
-    }
+    // function checkBorrowerOf(
+    //     address _account,
+    //     uint256 _debtId
+    // ) external view returns (bool) {
+    //     return
+    //         hasRole(keccak256(abi.encodePacked(_account, _debtId)), _account);
+    // }
 }

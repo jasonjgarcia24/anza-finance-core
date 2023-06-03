@@ -106,7 +106,7 @@ contract CollateralVault is
         return
             __collaterals[_debtId].vault &&
             ILoanCodec(_loanContract).loanState(_debtId) == _PAID_STATE_ &&
-            IAnzaToken(anzaToken).checkBorrowerOf(_to, _debtId);
+            IAnzaToken(anzaToken).borrowerOf(_debtId) == _to;
     }
 
     function withdraw(

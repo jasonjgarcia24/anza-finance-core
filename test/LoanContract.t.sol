@@ -48,12 +48,12 @@ abstract contract LoanContractSubmitted is LoanSigned {
         createLoanContract(collateralId);
     }
 
-    function mintReplica(uint256 _debtId) public virtual {
-        vm.deal(borrower, 1 ether);
-        vm.startPrank(borrower);
-        loanContract.mintReplica(_debtId);
-        vm.stopPrank();
-    }
+    // function mintReplica(uint256 _debtId) public virtual {
+    //     vm.deal(borrower, 1 ether);
+    //     vm.startPrank(borrower);
+    //     loanContract.mintReplica(_debtId);
+    //     vm.stopPrank();
+    // }
 }
 
 contract LoanContractConstantsTest is Test {
@@ -801,21 +801,16 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
 
         assertTrue(
-            anzaToken.hasRole(
-                keccak256(abi.encodePacked(borrower, ++_debtId)),
-                borrower
-            ) == false,
+            anzaToken.borrowerOf(++_debtId) != borrower,
             "0 :: loan borrower should not be borrower"
         );
 
         // Create loan contract
         createLoanContract(collateralId);
 
-        assertTrue(
-            anzaToken.hasRole(
-                keccak256(abi.encodePacked(borrower, _debtId)),
-                borrower
-            ),
+        assertEq(
+            anzaToken.borrowerOf(_debtId),
+            borrower,
             "1 :: loan borrower should be borrower"
         );
     }

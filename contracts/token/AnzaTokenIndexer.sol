@@ -58,4 +58,8 @@ abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     function _incrementTotalSupply(uint256 _tokenId, uint256 _amount) internal {
         __totalSupply[_tokenId] += _amount;
     }
+
+    function _decrementTotalSupply(uint256 _tokenId, uint256 _amount) internal {
+        __totalSupply[_tokenId] -= _amount;
+    }
 }

@@ -41,7 +41,7 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         } else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
             // __sponsorshipBatchTransferFrom(_from, _to, _debtIds, _amounts, "");
         } else {
-            revert InvalidTransferType();
+            revert IllegalTransfer();
         }
     }
 
@@ -62,21 +62,21 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
     ) external onlyRole(_LOAN_CONTRACT_) {
         bytes32 _tokenAdminRole = keccak256(_data);
 
-        /* Lender Token */
+        /** Lender Token */
         if (_id % 2 == 0) {
-            // Update borrower token admin
-            __updateBorrowerRole(address(0), address(bytes20(_data)), _id / 2);
-
             // Preset borrower token's URI
             _setURI(_id + 1, _collateralURI);
         }
-        /* Borrower Token */
+        /** Borrower Token */
         else {
             _checkRole(_tokenAdminRole, _to);
         }
 
         // Mint ALC debt tokens
         _mint(_to, _id, _amount, _data);
+
+        // Mint ALC replica token
+        _mint(address(bytes20(_data)), _id + 1, 1, "");
     }
 
     function burn(address _address, uint256 _id, uint256 _amount) external {
@@ -126,58 +126,55 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         uint256[] memory _amounts,
         bytes memory
     ) internal virtual override {
-        if (_from == address(0)) {
-            require(_ids.length == 1, "Invalid Anza mint");
-            require(
-                ((_ids[0] % 2) == 0) || (totalSupply(_ids[0]) == 0),
-                "Cannot remint replica"
-            );
+        for (uint256 i = 0; i < _ids.length; ++i) {
+            uint256 _id = _ids[i];
+            uint256 _amount = _amounts[i];
 
-            for (uint256 i = 0; i < _ids.length; ++i) {
-                _incrementTotalSupply(_ids[i], _amounts[i]);
+            /** Minting */
+            if (_from == address(0)) {
+                // Total Supply: increment the total supply of the token ID if the
+                // token is being minted.
+                _incrementTotalSupply(_id, _amount);
+
+                // Ownership: set the token owner.
+                _setOwner(_id, _to);
             }
-        } else {
-            for (uint256 i = 0; i < _ids.length; ++i) {
-                uint256 _id = _ids[i];
+            /** Transfering */
+            else if (_to != address(0)) {
+                // Total Supply: the total supply shall not be updated when the
+                // tokens are being transfered to a non-zero address while not a
+                // minting transaction.
 
-                // // Conditionally update borrower token admin on transfer.
-                // if (_id % 2 == 1) __updateBorrowerRole(_from, _to, _id / 2);
+                // Ownership: set token owners only when the replica token is not
+                // being burned nor minted. Lender token direct transfers are prohibited.
+                if (_id % 2 == 0) revert IllegalTransfer();
+                _setOwner(_id, _to);
             }
-        }
+            /** Burning */
+            else {
+                if (_id % 2 == 0) {
+                    // Total Supply: decrement the total supply of the token ID if
+                    // the token is being burned.
+                    _decrementTotalSupply(_id, _amount);
 
-        if (_to == address(0)) {
-            for (uint256 i = 0; i < _ids.length; ++i) {
-                uint256 _id = _ids[i];
-                uint256 amount = _amounts[i];
-                uint256 supply = totalSupply(_id);
-                require(
-                    supply >= amount,
-                    "AnzaToken: burn amount exceeds totalSupply"
-                );
-                unchecked {
-                    _setTotalSupply(_id, supply - amount);
+                    // Ownership: set the lender token owner to the zero address when
+                    // the debt balance is zero.
+                    if (totalSupply(_id) == 0) _setOwner(_id, address(0));
+                } else {
+                    // Do not allow burning of replica token if the current debt balance
+                    // is not zero.
+                    if (totalSupply(_id - 1) != 0) revert IllegalTransfer();
+
+                    // Total Supply: decrement the total supply of the borrower token
+                    // ID by 1 to account for the replica token.
+                    _decrementTotalSupply(_id, 1);
+
+                    // Ownership: the replica token's owner shall be set to the zero
+                    // address when the borrower withdraws the collateral.
+                    _setOwner(_id, address(0));
                 }
             }
         }
-    }
-
-    /**
-     * @dev See {ERC1155-_beforeTokenTransfer}.
-     */
-    function _afterTokenTransfer(
-        address,
-        address _from,
-        address _to,
-        uint256[] memory _ids,
-        uint256[] memory,
-        bytes memory _data
-    ) internal override {
-        // Set token owners
-        if (_to != address(0)) _setOwner(_ids[0], _to);
-
-        // Set the replica token's owner automatically
-        if (_from == address(0))
-            _setOwner(_ids[0] + 1, address(bytes20(_data)));
     }
 
     function __debtTransferFrom(
@@ -187,10 +184,11 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         uint256 /* _amount */,
         bytes memory /* _data */
     ) private {
-        __updateBorrowerRole(_from, _to, _debtId);
-
         uint256 _id = borrowerTokenId(_debtId);
-        if (exists(_id)) super._safeTransferFrom(_from, _to, _id, 1, "");
+
+        exists(_id)
+            ? super._safeTransferFrom(_from, _to, _id, 1, "")
+            : _setOwner(_id, _to);
     }
 
     function __debtBatchTransferFrom(
@@ -204,8 +202,6 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         uint256[] memory _amounts;
 
         for (uint256 i = 0; i < _debtIds.length; ++i) {
-            __updateBorrowerRole(_from, _to, _debtIds[i]);
-
             uint256 _id = borrowerTokenId(_debtIds[i]);
 
             if (!exists(_id)) {
@@ -227,29 +223,5 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
     ) private {
         uint256 _id = lenderTokenId(_debtId);
         if (exists(_id)) super.safeTransferFrom(_from, _to, _id, _amount, "");
-    }
-
-    function __updateBorrowerRole(
-        address _oldBorrower,
-        address _newBorrower,
-        uint256 _debtId
-    ) private {
-        bytes32 _newTokenAdminRole = keccak256(
-            abi.encodePacked(_newBorrower, _debtId)
-        );
-
-        // Close out prev role
-        _revokeRole(
-            keccak256(abi.encodePacked(_oldBorrower, _debtId)),
-            _oldBorrower
-        );
-
-        // Only allow treasurer to grant/revoke access control.
-        // This is necessary to allow a single account to recall
-        // the collateral upon full repayment.
-        _setRoleAdmin(_newTokenAdminRole, _TREASURER_);
-
-        // Grant the borrower's address token admin access control.
-        _grantRole(_newTokenAdminRole, _newBorrower);
     }
 }

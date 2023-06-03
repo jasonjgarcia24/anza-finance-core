@@ -78,6 +78,4 @@ interface ILoanContract {
         address _borrower,
         address _lender
     ) external payable;
-
-    function mintReplica(uint256 _debtId) external;
 }

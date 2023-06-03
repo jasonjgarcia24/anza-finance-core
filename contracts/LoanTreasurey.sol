@@ -111,7 +111,7 @@ contract LoanTreasurey is
         // Therefore, no need to check here.
         if (_payment == 0) revert InvalidFundsTransfer();
 
-        if (!_anzaToken.checkBorrowerOf(_borrower, _debtId))
+        if (_anzaToken.borrowerOf(_debtId) != _borrower)
             revert InvalidParticipant();
 
         _depositPayment(_borrower, _debtId, _payment);
@@ -169,6 +169,13 @@ contract LoanTreasurey is
      *   balance remains unchanged, and the purchaser will become the
      *   loan's borrower. In this case, the borrower will forfeit the collateral
      *   to the purchaser at a lesser cost than the debt's value.
+     *
+     * Requirements:
+     *  - Only the debt storefront can execute this method.
+     *  - The debt must be active.
+     *  - The payment must be greater than zero and less than or equal to the
+     *    debt's balance.
+     *  - The debt's collateral must be in the vault.
      */
     function executeDebtPurchase(
         uint256 _debtId,
