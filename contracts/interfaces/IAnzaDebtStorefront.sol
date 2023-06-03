@@ -36,4 +36,17 @@ interface IAnzaDebtStorefront {
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
     ) external payable;
+
+    function buySponsorship(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _termsExpiry,
+        bytes calldata _sellerSignature
+    ) external payable;
+
+    function buySponsorship(
+        uint256 _debtId,
+        uint256 _termsExpiry,
+        bytes calldata _sellerSignature
+    ) external payable;
 }

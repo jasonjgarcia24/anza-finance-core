@@ -22,6 +22,15 @@ interface ILoanTreasurey {
 
     function getDebtSaleNonce(uint256 _debtId) external view returns (uint256);
 
+    function getSponsorshipSaleNonce(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) external view returns (uint256);
+
+    function getSponsorshipSaleNonce(
+        uint256 _debtId
+    ) external view returns (uint256);
+
     function sponsorPayment(address _sponsor, uint256 _debtId) external payable;
 
     function depositPayment(uint256 _debtId) external payable;

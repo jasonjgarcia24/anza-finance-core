@@ -24,3 +24,12 @@ interface IDebtNotary is ILoanNotaryErrors {
         uint256 termsExpiry;
     }
 }
+
+interface ISponsorshipNotary is ILoanNotaryErrors {
+    struct SponsorshipListingParams {
+        uint256 price;
+        uint256 debtId;
+        uint256 sponsorshipListingNonce;
+        uint256 termsExpiry;
+    }
+}

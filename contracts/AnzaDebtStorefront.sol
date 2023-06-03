@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "../lib/forge-std/src/console.sol";
 
-import {DebtNotary} from "./LoanNotary.sol";
+import {DebtNotary, SponsorshipNotary} from "./LoanNotary.sol";
 import "./interfaces/IAnzaToken.sol";
 import "./interfaces/IAnzaDebtStorefront.sol";
 import "./interfaces/ILoanContract.sol";
@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract AnzaDebtStorefront is
     IAnzaDebtStorefront,
     DebtNotary,
+    SponsorshipNotary,
     ReentrancyGuard
 {
     /* ------------------------------------------------ *
@@ -28,7 +29,10 @@ contract AnzaDebtStorefront is
         address _loanContract,
         address _loanTreasurer,
         address _anzaToken
-    ) DebtNotary("AnzaDebtStorefront", "0") {
+    )
+        DebtNotary("AnzaDebtStorefront", "0")
+        SponsorshipNotary("AnzaDebtStorefront", "0")
+    {
         loanContract = _loanContract;
         loanTreasurer = _loanTreasurer;
         anzaToken = _anzaToken;
@@ -60,7 +64,7 @@ contract AnzaDebtStorefront is
         bytes calldata _sellerSignature
     ) public payable nonReentrant {
         // Verify borrower participation
-        address _borrower = _getSigner(
+        address _borrower = _getBorrower(
             _debtId,
             DebtListingParams({
                 price: msg.value,
@@ -89,25 +93,45 @@ contract AnzaDebtStorefront is
     }
 
     function buySponsorship(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _termsExpiry,
+        bytes calldata _sellerSignature
+    ) external payable {
+        (bool success, ) = address(this).call{value: msg.value}(
+            abi.encodeWithSignature(
+                "buySponsorship(uint256,uint256,bytes)",
+                ILoanContract(loanContract).getCollateralDebtId(
+                    _collateralAddress,
+                    _collateralId
+                ),
+                _termsExpiry,
+                _sellerSignature
+            )
+        );
+        require(success);
+    }
+
+    function buySponsorship(
         uint256 _debtId,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
     ) public payable nonReentrant {
         // Verify lender participation
-        address _lender = _getSigner(
+        address _lender = _getLender(
             _debtId,
-            DebtListingParams({
+            SponsorshipListingParams({
                 price: msg.value,
                 debtId: _debtId,
-                debtListingNonce: ILoanTreasurey(loanTreasurer)
-                    .getDebtSaleNonce(_debtId),
+                sponsorshipListingNonce: ILoanTreasurey(loanTreasurer)
+                    .getSponsorshipSaleNonce(_debtId),
                 termsExpiry: _termsExpiry
             }),
             _sellerSignature,
             IAnzaToken(anzaToken).lenderOf
         );
 
-        // Transfer debt
+        // Transfer debt sponsorship
         address _purchaser = msg.sender;
         (bool _success, ) = loanTreasurer.call{value: msg.value}(
             abi.encodeWithSignature(

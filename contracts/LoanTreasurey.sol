@@ -23,6 +23,7 @@ contract LoanTreasurey is
     uint256 public poolBalance;
     mapping(address account => uint256) public withdrawableBalance;
     mapping(uint256 debtId => uint256) private __debtSaleNonces;
+    mapping(uint256 debtId => uint256) private __sponsorshipSaleNonces;
 
     constructor() TreasureyAccessController() {}
 
@@ -54,6 +55,25 @@ contract LoanTreasurey is
 
     function getDebtSaleNonce(uint256 _debtId) public view returns (uint256) {
         return __debtSaleNonces[_debtId] + 1;
+    }
+
+    function getSponsorshipSaleNonce(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) public view returns (uint256) {
+        return
+            getSponsorshipSaleNonce(
+                _loanContract.getCollateralDebtId(
+                    _collateralAddress,
+                    _collateralId
+                )
+            );
+    }
+
+    function getSponsorshipSaleNonce(
+        uint256 _debtId
+    ) public view returns (uint256) {
+        return __sponsorshipSaleNonces[_debtId] + 1;
     }
 
     function depositFunds(
@@ -205,7 +225,7 @@ contract LoanTreasurey is
         returns (bool _results)
     {
         // Increment nonce
-        ++__debtSaleNonces[_debtId];
+        ++__sponsorshipSaleNonces[_debtId];
 
         uint256 _balance = _loanContract.debtBalanceOf(_debtId);
         uint256 _payment = msg.value;
