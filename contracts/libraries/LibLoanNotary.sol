@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "forge-std/console.sol";
+import "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractFIRIntervals.sol";
 import "../domain/LoanContractTermMaps.sol";
@@ -18,7 +18,7 @@ library LibLoanNotary {
             "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
         );
 
-    struct DomainSeperator {
+    struct DomainSeparator {
         string name;
         string version;
         uint256 chainId;
@@ -56,55 +56,83 @@ library LibLoanNotary {
         }
     }
 
+    /**
+     * {see LoanNotary:LoanNotary-__recoverSigner}
+     */
     function recoverSigner(
         ILoanNotary.ContractParams memory _contractParams,
-        DomainSeperator memory _domainSeperator,
+        DomainSeparator memory _domainSeparator,
         bytes memory _signature
-    ) public view returns (address) {
-        bytes32 _message = typeDataHash(_contractParams, _domainSeperator);
+    ) public pure returns (address) {
+        bytes32 _message = typeDataHash(_contractParams, _domainSeparator);
+
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
         return ECDSA.recover(_message, v, r, s);
     }
 
-    function domainSeperator(
-        DomainSeperator memory _domainSeperator
+    /**
+     * {see LoanNotary:DebtNotary-__recoverSigner}
+     */
+    function recoverSigner(
+        IDebtNotary.DebtListingParams memory _debtListingParams,
+        DomainSeparator memory _domainSeparator,
+        bytes memory _signature
+    ) public pure returns (address) {
+        bytes32 _message = typeDataHash(_debtListingParams, _domainSeparator);
+
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
+
+        return ECDSA.recover(_message, v, r, s);
+    }
+
+    /**
+     * {see LoanNotary:LoanNotary-__domainSeparator}
+     */
+    function domainSeparator(
+        DomainSeparator memory _domainSeparator
     ) public pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
                     _typeHash,
-                    keccak256(abi.encodePacked(_domainSeperator.name)),
-                    keccak256(abi.encodePacked(_domainSeperator.version)),
-                    _domainSeperator.chainId,
-                    _domainSeperator.contractAddress
+                    keccak256(abi.encodePacked(_domainSeparator.name)),
+                    keccak256(abi.encodePacked(_domainSeparator.version)),
+                    _domainSeparator.chainId,
+                    _domainSeparator.contractAddress
                 )
             );
     }
 
+    /**
+     * {see LoanNotary:LoanNotary-__typeDataHash}
+     */
     function typeDataHash(
         ILoanNotary.ContractParams memory _contractParams,
-        DomainSeperator memory _domainSeperator
-    ) public view returns (bytes32) {
+        DomainSeparator memory _domainSeparator
+    ) public pure returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    domainSeperator(_domainSeperator),
+                    domainSeparator(_domainSeparator),
                     structHash(_contractParams)
                 )
             );
     }
 
+    /**
+     * {see LoanNotary:DebtNotary-__typeDataHash}
+     */
     function typeDataHash(
         IDebtNotary.DebtListingParams memory _debtListingParams,
-        DomainSeperator memory _domainSeperator
-    ) public view returns (bytes32) {
+        DomainSeparator memory _domainSeparator
+    ) public pure returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    domainSeperator(_domainSeperator),
+                    domainSeparator(_domainSeparator),
                     structHash(_debtListingParams)
                 )
             );
@@ -112,15 +140,11 @@ library LibLoanNotary {
 
     function structHash(
         ILoanNotary.ContractParams memory _contractParams
-    ) public view returns (bytes32) {
+    ) public pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    typeHash(
-                        _contractParams.borrower,
-                        _contractParams.collateralAddress,
-                        _contractParams.collateralId
-                    ),
+                    _CONTRACT_PARAMS_ENCODE_TYPE_HASH_,
                     _contractParams.principal,
                     _contractParams.contractTerms,
                     _contractParams.collateralAddress,
@@ -136,51 +160,11 @@ library LibLoanNotary {
         return
             keccak256(
                 abi.encode(
-                    typeHash(
-                        _debtListingParams.borrower,
-                        _debtListingParams.debtId
-                    ),
+                    _DEBT_LISTING_PARAMS_ENCODE_TYPE_HASH_,
                     _debtListingParams.listingTerms,
                     _debtListingParams.price,
                     _debtListingParams.debtId,
                     _debtListingParams.termsExpiry
-                )
-            );
-    }
-
-    function typeHash(
-        address _borrower,
-        address _collateralAddress,
-        uint256 _collateralId
-    ) public view returns (bytes32) {
-        return
-            IERC721(_collateralAddress).ownerOf(_collateralId) == _borrower
-                ? initLoanContract__typeHash0
-                : initLoanContract__typeHash1;
-    }
-
-    function typeHash(
-        address /*_borrower*/,
-        uint256 /*_debtId*/
-    ) public pure returns (bytes32) {
-        return buyDebt__typeHash0;
-    }
-
-    function hashMessage(
-        uint256 _principal,
-        bytes32 _contractTerms,
-        address _collateralAddress,
-        uint256 _collateralId,
-        uint256 _collateralNonce
-    ) public pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    _principal,
-                    _contractTerms,
-                    _collateralAddress,
-                    _collateralId,
-                    _collateralNonce
                 )
             );
     }

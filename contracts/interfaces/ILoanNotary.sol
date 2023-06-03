@@ -8,7 +8,6 @@ interface ILoanNotaryErrors {
 
 interface ILoanNotary is ILoanNotaryErrors {
     struct ContractParams {
-        address borrower;
         uint256 principal;
         bytes32 contractTerms;
         address collateralAddress;
@@ -19,7 +18,6 @@ interface ILoanNotary is ILoanNotaryErrors {
 
 interface IDebtNotary is ILoanNotaryErrors {
     struct DebtListingParams {
-        address borrower;
         uint256 price;
         bytes32 listingTerms;
         uint256 debtId;

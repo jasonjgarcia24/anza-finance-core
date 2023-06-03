@@ -4,16 +4,13 @@ pragma solidity 0.8.20;
 /* ------------------------------------------------ *
  *           Loan Contract Type Hashes              *
  * ------------------------------------------------ */
-bytes32 constant initLoanContract__typeHash0 = keccak256(
-    "InitLoanContract(bytes32 _contractTerms,address _collateralAddress,uint256 _collateralId,bytes _borrowerSignature)"
-);
-bytes32 constant initLoanContract__typeHash1 = keccak256(
-    "InitLoanContract(bytes32 _contractTerms,uint256 _debtId,bytes _borrowerSignature)"
+bytes32 constant _CONTRACT_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
+    "ContractParams(uint256 principal,bytes32 contractTerms,address collateralAddress,uint256 collateralId,uint256 collateralNonce)"
 );
 
 /* ------------------------------------------------ *
  *        Anza Debt Storefront Type Hashes          *
  * ------------------------------------------------ */
-bytes32 constant buyDebt__typeHash0 = keccak256(
-    "BuyDebt(bytes32 _listingTerms,uint256 _debtId,bytes _sellerSignature)"
+bytes32 constant _DEBT_LISTING_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
+    "DebtListingParams(uint256 price,bytes32 listingTerms,uint256 debtId,uint256 termsExpiry)"
 );

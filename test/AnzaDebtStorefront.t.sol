@@ -38,13 +38,12 @@ contract AnzaDebtStorefrontUnitTest is
 
         bytes32 _message = Signing.typeDataHash(
             IDebtNotary.DebtListingParams({
-                borrower: address(0),
                 price: _price,
                 listingTerms: _listingHash,
                 debtId: _debtId,
                 termsExpiry: _termsExpiry
             }),
-            Signing.DomainSeperator({
+            Signing.DomainSeparator({
                 name: "AnzaDebtStorefront",
                 version: "0",
                 chainId: block.chainid,

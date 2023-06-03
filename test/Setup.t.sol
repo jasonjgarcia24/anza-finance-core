@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
+import "../lib/forge-std/src/Test.sol";
+import "../lib/forge-std/src/console.sol";
 
 import "../contracts/domain/LoanContractRoles.sol";
 
@@ -231,14 +231,13 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         // Create message for signing
         bytes32 _message = Signing.typeDataHash(
             ILoanNotary.ContractParams({
-                borrower: borrower,
                 principal: _principal,
                 contractTerms: _contractTerms,
                 collateralAddress: address(demoToken),
                 collateralId: _collateralId,
                 collateralNonce: _collateralNonce
             }),
-            Signing.DomainSeperator({
+            Signing.DomainSeparator({
                 name: "LoanContract",
                 version: "0",
                 chainId: block.chainid,

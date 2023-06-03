@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import "../lib/forge-std/src/console.sol";
+
+import "./domain/LoanNotaryTypeHashes.sol";
+
 import {ILoanNotary, IDebtNotary} from "./interfaces/ILoanNotary.sol";
 import {LibLoanNotary} from "./libraries/LibLoanNotary.sol";
-import "./domain/LoanNotaryTypeHashes.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
@@ -31,7 +33,13 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
  * MetaMask].
  */
 abstract contract LoanNotary is ILoanNotary {
-    bytes32 private immutable __domainSeperator;
+    /**
+     * @dev Returns the value that is unique to each contract that uses EIP-712.
+     * This hashed value is used to prevent replay attacks from malicious actors
+     * attempting to use a signed message to execute the same action multiple
+     * times.
+     */
+    bytes32 private immutable __domainSeparator;
 
     constructor(string memory _contractName, string memory _contractVersion) {
         bytes32 typeHash = keccak256(
@@ -40,7 +48,7 @@ abstract contract LoanNotary is ILoanNotary {
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
-        __domainSeperator = keccak256(
+        __domainSeparator = keccak256(
             abi.encode(
                 typeHash,
                 nameHash,
@@ -51,21 +59,36 @@ abstract contract LoanNotary is ILoanNotary {
         );
     }
 
+    /**
+     * @dev Returns the verified borrower of a signed set of loan contract
+     * terms.
+     *
+     * @param _assetId the collateral or debt ID of the asset. If this is
+     * called as an original loan contract for a new loan, this should be the
+     * collateral ID. If this is called as a loan contract refinance for
+     * existing debt, this should be the debt ID.
+     * @param _contractParams the loan contract terms.
+     * @param _borrowerSignature the signed loan contract terms.
+     * @param ownerOf the function used to identify the recorded borrower. If
+     * this is called as an original loan contract for a new loan, this should
+     * be a IERC721.ownerOf call on the collateral contract. If this is called
+     * as a loan contract refinance for existing debt, this should be a
+     * IAnzaToken.borrowerOf call on the debt contract.
+     */
     function _getBorrower(
         uint256 _assetId,
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
-        _contractParams.borrower = ownerOf(_assetId);
+        address _borrower = ownerOf(_assetId);
 
         if (
-            _contractParams.borrower !=
-            __recoverSigner(_contractParams, _borrowerSignature) ||
-            _contractParams.borrower == msg.sender
+            _borrower == msg.sender ||
+            _borrower != __recoverSigner(_contractParams, _borrowerSignature)
         ) revert InvalidParticipant();
 
-        return _contractParams.borrower;
+        return _borrower;
     }
 
     /**
@@ -101,30 +124,27 @@ abstract contract LoanNotary is ILoanNotary {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    __domainSeperator,
+                    __domainSeparator,
                     __structHash(_contractParams)
                 )
             );
     }
 
     /**
-     * @dev Returns an Ethereum Signed Typed Data, created from a
-     * `domainSeparator` and a `structHash`. This produces hash corresponding
-     * to the one signed with the
-     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
-     * JSON-RPC method as part of EIP-712.
+     * @dev Returns the hash of a structured message. This hash shall be
+     * combined with the `domainSeparator` and signed by the signer using their
+     * private key to produce a signature. The signature is then used to verify
+     * that the structured message originated
+     * from the signer.
+     * https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
      */
     function __structHash(
         ContractParams memory _contractParams
-    ) private view returns (bytes32) {
+    ) private pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    __typeHash(
-                        _contractParams.borrower,
-                        _contractParams.collateralAddress,
-                        _contractParams.collateralId
-                    ),
+                    _CONTRACT_PARAMS_ENCODE_TYPE_HASH_,
                     _contractParams.principal,
                     _contractParams.contractTerms,
                     _contractParams.collateralAddress,
@@ -132,17 +152,6 @@ abstract contract LoanNotary is ILoanNotary {
                     _contractParams.collateralNonce
                 )
             );
-    }
-
-    function __typeHash(
-        address _borrower,
-        address _collateralAddress,
-        uint256 _collateralId
-    ) private view returns (bytes32) {
-        return
-            IERC721(_collateralAddress).ownerOf(_collateralId) == _borrower
-                ? initLoanContract__typeHash0
-                : initLoanContract__typeHash1;
     }
 }
 
@@ -163,7 +172,13 @@ abstract contract LoanNotary is ILoanNotary {
  * MetaMask].
  */
 abstract contract DebtNotary is IDebtNotary {
-    bytes32 private immutable __domainSeperator;
+    /**
+     * @dev Returns the value that is unique to each contract that uses EIP-712.
+     * This hashed value is used to prevent replay attacks from malicious actors
+     * attempting to use a signed message to execute the same action multiple
+     * times.
+     */
+    bytes32 private immutable __domainSeparator;
 
     constructor(string memory _contractName, string memory _contractVersion) {
         bytes32 typeHash = keccak256(
@@ -172,7 +187,7 @@ abstract contract DebtNotary is IDebtNotary {
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
-        __domainSeperator = keccak256(
+        __domainSeparator = keccak256(
             abi.encode(
                 typeHash,
                 nameHash,
@@ -183,21 +198,29 @@ abstract contract DebtNotary is IDebtNotary {
         );
     }
 
+    /**
+     * @dev Returns the verified borrower of a signed set of loan contract
+     * terms.
+     *
+     * @param _assetId the debt ID of the asset.
+     * @param _debtListingParams the debt listing terms.
+     * @param _sellerSignature the signed debt listing terms.
+     * @param ownerOf the function used to identify the recorded borrower.
+     */
     function _getBorrower(
         uint256 _assetId,
         DebtListingParams memory _debtListingParams,
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
-        _debtListingParams.borrower = ownerOf(_assetId);
+        address _borrower = ownerOf(_assetId);
 
         if (
-            _debtListingParams.borrower !=
-            __recoverSigner(_debtListingParams, _sellerSignature) ||
-            _debtListingParams.borrower == msg.sender
+            _borrower == msg.sender ||
+            _borrower != __recoverSigner(_debtListingParams, _sellerSignature)
         ) revert InvalidParticipant();
 
-        return _debtListingParams.borrower;
+        return _borrower;
     }
 
     /**
@@ -233,18 +256,19 @@ abstract contract DebtNotary is IDebtNotary {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    __domainSeperator,
+                    __domainSeparator,
                     __structHash(_debtListingParams)
                 )
             );
     }
 
     /**
-     * @dev Returns an Ethereum Signed Typed Data, created from a
-     * `domainSeparator` and a `structHash`. This produces hash corresponding
-     * to the one signed with the
-     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
-     * JSON-RPC method as part of EIP-712.
+     * @dev Returns the hash of a structured message. This hash shall be
+     * combined with the `domainSeparator` and signed by the signer using their
+     * private key to produce a signature. The signature is then used to verify
+     * that the structured message originated
+     * from the signer.
+     * https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
      */
     function __structHash(
         DebtListingParams memory _debtListingParams
@@ -252,22 +276,12 @@ abstract contract DebtNotary is IDebtNotary {
         return
             keccak256(
                 abi.encode(
-                    __typeHash(
-                        _debtListingParams.borrower,
-                        _debtListingParams.debtId
-                    ),
+                    _DEBT_LISTING_PARAMS_ENCODE_TYPE_HASH_,
                     _debtListingParams.listingTerms,
                     _debtListingParams.price,
                     _debtListingParams.debtId,
                     _debtListingParams.termsExpiry
                 )
             );
-    }
-
-    function __typeHash(
-        address /*_borrower*/,
-        uint256 /*_debtId*/
-    ) private pure returns (bytes32) {
-        return buyDebt__typeHash0;
     }
 }

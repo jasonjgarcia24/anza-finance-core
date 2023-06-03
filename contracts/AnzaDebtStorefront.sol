@@ -67,7 +67,6 @@ contract AnzaDebtStorefront is
         address _borrower = _getBorrower(
             _debtId,
             DebtListingParams({
-                borrower: address(0),
                 price: _payment,
                 listingTerms: _listingTerms,
                 debtId: _debtId,

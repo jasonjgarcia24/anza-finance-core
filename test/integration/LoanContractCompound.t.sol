@@ -8,7 +8,7 @@ import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {Setup} from "../Setup.t.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractSubmitFunctions} from "./LoanContractSubmission.t.sol";
-import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
 
 contract LoanContractCompounding is LoanContractSubmitFunctions {
     function setUp() public virtual override {

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "../lib/forge-std/src/Test.sol";
+import "../lib/forge-std/src/console.sol";
+
 import "../contracts/domain/LoanContractFIRIntervals.sol";
 import "../contracts/domain/LoanContractRoles.sol";
 import "../contracts/domain/LoanContractStates.sol";
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
 import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
 import {LoanContract} from "../contracts/LoanContract.sol";
 import {CollateralVault} from "../contracts/CollateralVault.sol";
@@ -16,7 +17,7 @@ import {ILoanCodec} from "../contracts/interfaces/ILoanCodec.sol";
 import {ILoanTreasurey} from "../contracts/interfaces/ILoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
-import {LibLoanContractSigning as Signing, LibLoanContractTerms as Terms} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractTerms as Terms} from "../contracts/libraries/LibLoanContract.sol";
 import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers} from "../contracts/libraries/LibLoanContractConstants.sol";
 import {Utils, Setup} from "./Setup.t.sol";
 

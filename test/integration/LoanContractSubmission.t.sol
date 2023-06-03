@@ -13,7 +13,7 @@ import {ILoanCodec} from "../../contracts/interfaces/ILoanCodec.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractHarness} from "../Setup.t.sol";
-import {LibLoanContractSigning as Signing, LibLoanContractIndexer as Indexer, LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractIndexer as Indexer, LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
 
 abstract contract LoanContractSubmitFunctions is
     IERC721Events,

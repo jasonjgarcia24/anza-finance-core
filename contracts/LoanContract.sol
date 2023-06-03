@@ -94,7 +94,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         address _borrower = _getBorrower(
             _collateralId,
             ContractParams({
-                borrower: address(0),
                 principal: _principal,
                 contractTerms: _contractTerms,
                 collateralAddress: _collateralAddress,
@@ -193,7 +192,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         address _borrower = _getBorrower(
             _debtId,
             ContractParams({
-                borrower: address(0),
                 principal: _principal,
                 contractTerms: _contractTerms,
                 collateralAddress: _collateral.collateralAddress,
