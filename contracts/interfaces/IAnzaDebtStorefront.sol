@@ -24,14 +24,6 @@ interface IAnzaDebtStorefront {
         uint256 price
     );
 
-    struct Listing {
-        uint256 price;
-        address debtOwner;
-        address collateralAddress;
-        uint256 collateralId;
-        bytes32 debtTerms;
-    }
-
     function buyDebt(
         bytes32 _listingTerms,
         address _collateralAddress,
@@ -42,6 +34,7 @@ interface IAnzaDebtStorefront {
     function buyDebt(
         bytes32 _listingTerms,
         uint256 _debtId,
+        uint256 _termsExpiry,
         bytes calldata _sellerSignature
     ) external payable;
 }

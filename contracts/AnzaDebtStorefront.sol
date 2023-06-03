@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {DebtNotary} from "./LoanNotary.sol";
 import "./interfaces/IAnzaToken.sol";
 import "./interfaces/IAnzaDebtStorefront.sol";
 import "./interfaces/ILoanContract.sol";
-import "./interfaces/ILoanTreasurey.sol";
-import "./interfaces/ICollateralVault.sol";
+// import "./interfaces/ILoanTreasurey.sol";
+// import "./interfaces/ICollateralVault.sol";
 import {LibLoanContractIndexer as Indexer} from "./libraries/LibLoanContract.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-contract AnzaDebtStorefront is IAnzaDebtStorefront, ReentrancyGuard {
+contract AnzaDebtStorefront is
+    IAnzaDebtStorefront,
+    DebtNotary,
+    ReentrancyGuard
+{
     /* ------------------------------------------------ *
      *              Priviledged Accounts                *
      * ------------------------------------------------ */
@@ -24,7 +29,7 @@ contract AnzaDebtStorefront is IAnzaDebtStorefront, ReentrancyGuard {
         address _loanContract,
         address _loanTreasurer,
         address _anzaToken
-    ) {
+    ) DebtNotary("AnzaDebtStorefront", "0") {
         loanContract = _loanContract;
         loanTreasurer = _loanTreasurer;
         anzaToken = _anzaToken;
@@ -54,18 +59,23 @@ contract AnzaDebtStorefront is IAnzaDebtStorefront, ReentrancyGuard {
     function buyDebt(
         bytes32 _listingTerms,
         uint256 _debtId,
+        uint256 _termsExpiry,
         bytes calldata _sellerSignature
     ) public payable nonReentrant {
         uint256 _payment = msg.value;
-        address _borrower = __recoverSigner(
-            _listingTerms,
-            _payment,
-            _debtId,
-            _sellerSignature
-        );
 
-        if (!IAnzaToken(anzaToken).checkBorrowerOf(_borrower, _debtId))
-            revert InvalidListingTerms();
+        address _borrower = _getBorrower(
+            _debtId,
+            DebtListingParams({
+                borrower: address(0),
+                price: _payment,
+                listingTerms: _listingTerms,
+                debtId: _debtId,
+                termsExpiry: _termsExpiry
+            }),
+            _sellerSignature,
+            IAnzaToken(anzaToken).borrowerOf
+        );
 
         // Transfer debt
         address _purchaser = msg.sender;
@@ -83,21 +93,6 @@ contract AnzaDebtStorefront is IAnzaDebtStorefront, ReentrancyGuard {
     }
 
     function refinance() public payable nonReentrant {}
-
-    function __recoverSigner(
-        bytes32 _listingTerms,
-        uint256 _payment,
-        uint256 _debtId,
-        bytes memory _signature
-    ) private pure returns (address) {
-        bytes32 _message = __prefixed(
-            keccak256(abi.encode(_listingTerms, _payment, _debtId))
-        );
-
-        (uint8 v, bytes32 r, bytes32 s) = __splitSignature(_signature);
-
-        return ecrecover(_message, v, r, s);
-    }
 
     function __prefixed(bytes32 _hash) private pure returns (bytes32) {
         return

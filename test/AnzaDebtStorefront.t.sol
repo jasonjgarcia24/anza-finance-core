@@ -4,9 +4,10 @@ pragma solidity 0.8.20;
 import "../contracts/domain/LoanContractRoles.sol";
 
 import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
+import {IDebtNotary} from "../contracts/interfaces/ILoanNotary.sol";
 import {console, LoanContractSubmitted} from "./LoanContract.t.sol";
 import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
-import {LibLoanContractSigning as Signing} from "../contracts/libraries/LibLoanContract.sol";
+import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
 import {LibLoanContractStates as States} from "../contracts/libraries/LibLoanContractConstants.sol";
 
 contract AnzaDebtStorefrontUnitTest is
@@ -33,9 +34,22 @@ contract AnzaDebtStorefrontUnitTest is
         uint256 _price,
         uint256 _debtId
     ) public virtual returns (bytes memory _signature) {
-        // Create message for signing
-        bytes32 _message = Signing.prefixed(
-            keccak256(abi.encode(_listingHash, _price, _debtId))
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
+
+        bytes32 _message = Signing.typeDataHash(
+            IDebtNotary.DebtListingParams({
+                borrower: address(0),
+                price: _price,
+                listingTerms: _listingHash,
+                debtId: _debtId,
+                termsExpiry: _termsExpiry
+            }),
+            Signing.DomainSeperator({
+                name: "AnzaDebtStorefront",
+                version: "0",
+                chainId: block.chainid,
+                contractAddress: address(anzaDebtStorefront)
+            })
         );
 
         // Sign borrower's listing terms
@@ -50,11 +64,12 @@ contract AnzaDebtStorefrontUnitTest is
     }
 
     function testAnzaDebtStorefront__BasicBuyDebt() public {
-        uint256 _debtId = loanContract.totalDebts();
-        uint256 _price = _PRINCIPAL_ - 1;
         bytes32 _listingHash = keccak256(
             "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
         );
+        uint256 _price = _PRINCIPAL_ - 1;
+        uint256 _debtId = loanContract.totalDebts();
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes memory _signature = createListingSignature(
             _listingHash,
@@ -84,9 +99,10 @@ contract AnzaDebtStorefrontUnitTest is
         emit DebtPurchased(alt_account, _debtId, _price);
         (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
             abi.encodeWithSignature(
-                "buyDebt(bytes32,uint256,bytes)",
+                "buyDebt(bytes32,uint256,uint256,bytes)",
                 _listingHash,
                 _debtId,
+                _termsExpiry,
                 _signature
             )
         );
@@ -114,11 +130,12 @@ contract AnzaDebtStorefrontUnitTest is
     }
 
     function testAnzaDebtStorefront__ReplicaBuyDebt() public {
-        uint256 _debtId = loanContract.totalDebts();
-        uint256 _price = _PRINCIPAL_ - 1;
         bytes32 _listingHash = keccak256(
             "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
         );
+        uint256 _price = _PRINCIPAL_ - 1;
+        uint256 _debtId = loanContract.totalDebts();
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         // Mint replica token
         vm.deal(borrower, 1 ether);
@@ -154,9 +171,10 @@ contract AnzaDebtStorefrontUnitTest is
         emit DebtPurchased(alt_account, _debtId, _price);
         (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
             abi.encodeWithSignature(
-                "buyDebt(bytes32,uint256,bytes)",
+                "buyDebt(bytes32,uint256,uint256,bytes)",
                 _listingHash,
                 _debtId,
+                _termsExpiry,
                 _signature
             )
         );

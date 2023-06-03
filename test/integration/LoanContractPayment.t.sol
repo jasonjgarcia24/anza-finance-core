@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {ILoanNotary} from "../../contracts/interfaces/ILoanNotary.sol";
+import {ILoanNotaryErrors} from "../../contracts/interfaces/ILoanNotary.sol";
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {ILoanTreasureyEvents} from "../interfaces/ILoanTreasureyEvents.t.sol";
 import {Test, console, stdError, LoanContractSubmitted} from "../LoanContract.t.sol";
@@ -41,7 +41,7 @@ contract LoanContractPayoff is LoanContractSubmitted {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILoanNotary.InvalidParticipant.selector,
+                ILoanNotaryErrors.InvalidParticipant.selector,
                 alt_account
             )
         );

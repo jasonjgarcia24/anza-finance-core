@@ -5,38 +5,18 @@ import "forge-std/console.sol";
 
 import "../domain/LoanContractFIRIntervals.sol";
 import "../domain/LoanContractTermMaps.sol";
+import "../domain/LoanNotaryTypeHashes.sol";
 
-import "../interfaces/ILoanNotary.sol";
+import {ILoanNotaryErrors, ILoanNotary, IDebtNotary} from "../interfaces/ILoanNotary.sol";
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 library LibLoanNotary {
-    bytes32 internal constant _initLoanContract__typeHash0 =
-        keccak256(
-            "InitLoanContract(bytes32 _contractTerms,address _collateralAddress,uint256 _collateralId,bytes _borrowerSignature)"
-        );
-    bytes32 internal constant _initLoanContract__typeHash1 =
-        keccak256(
-            "InitLoanContract(bytes32 _contractTerms,uint256 _debtId,bytes _borrowerSignature)"
-        );
-
     bytes32 internal constant _typeHash =
         keccak256(
             "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
         );
-
-    struct ContractTerms {
-        uint256 firInterval;
-        uint8 fixedInterestRate;
-        uint8 isFixed;
-        uint8 commital;
-        uint128 principal;
-        uint32 gracePeriod;
-        uint32 duration;
-        uint32 termsExpiry;
-        uint8 lenderRoyalties;
-    }
 
     struct DomainSeperator {
         string name;
@@ -77,11 +57,11 @@ library LibLoanNotary {
     }
 
     function recoverSigner(
-        ILoanNotary.SignatureParams memory _signatureParams,
+        ILoanNotary.ContractParams memory _contractParams,
         DomainSeperator memory _domainSeperator,
         bytes memory _signature
     ) public view returns (address) {
-        bytes32 _message = typeDataHash(_signatureParams, _domainSeperator);
+        bytes32 _message = typeDataHash(_contractParams, _domainSeperator);
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
         return ECDSA.recover(_message, v, r, s);
@@ -103,7 +83,7 @@ library LibLoanNotary {
     }
 
     function typeDataHash(
-        ILoanNotary.SignatureParams memory _signatureParams,
+        ILoanNotary.ContractParams memory _contractParams,
         DomainSeperator memory _domainSeperator
     ) public view returns (bytes32) {
         return
@@ -111,27 +91,59 @@ library LibLoanNotary {
                 abi.encodePacked(
                     "\x19\x01",
                     domainSeperator(_domainSeperator),
-                    structHash(_signatureParams)
+                    structHash(_contractParams)
+                )
+            );
+    }
+
+    function typeDataHash(
+        IDebtNotary.DebtListingParams memory _debtListingParams,
+        DomainSeperator memory _domainSeperator
+    ) public view returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    domainSeperator(_domainSeperator),
+                    structHash(_debtListingParams)
                 )
             );
     }
 
     function structHash(
-        ILoanNotary.SignatureParams memory _signatureParams
+        ILoanNotary.ContractParams memory _contractParams
     ) public view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
                     typeHash(
-                        _signatureParams.borrower,
-                        _signatureParams.collateralAddress,
-                        _signatureParams.collateralId
+                        _contractParams.borrower,
+                        _contractParams.collateralAddress,
+                        _contractParams.collateralId
                     ),
-                    _signatureParams.principal,
-                    _signatureParams.contractTerms,
-                    _signatureParams.collateralAddress,
-                    _signatureParams.collateralId,
-                    _signatureParams.collateralNonce
+                    _contractParams.principal,
+                    _contractParams.contractTerms,
+                    _contractParams.collateralAddress,
+                    _contractParams.collateralId,
+                    _contractParams.collateralNonce
+                )
+            );
+    }
+
+    function structHash(
+        IDebtNotary.DebtListingParams memory _debtListingParams
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    typeHash(
+                        _debtListingParams.borrower,
+                        _debtListingParams.debtId
+                    ),
+                    _debtListingParams.listingTerms,
+                    _debtListingParams.price,
+                    _debtListingParams.debtId,
+                    _debtListingParams.termsExpiry
                 )
             );
     }
@@ -143,8 +155,15 @@ library LibLoanNotary {
     ) public view returns (bytes32) {
         return
             IERC721(_collateralAddress).ownerOf(_collateralId) == _borrower
-                ? _initLoanContract__typeHash0
-                : _initLoanContract__typeHash1;
+                ? initLoanContract__typeHash0
+                : initLoanContract__typeHash1;
+    }
+
+    function typeHash(
+        address /*_borrower*/,
+        uint256 /*_debtId*/
+    ) public pure returns (bytes32) {
+        return buyDebt__typeHash0;
     }
 
     function hashMessage(
@@ -170,12 +189,12 @@ library LibLoanNotary {
         bytes memory _signature
     ) public pure returns (uint8 v, bytes32 r, bytes32 s) {
         if (_signature.length != 65)
-            revert ILoanNotary.InvalidSignatureLength();
+            revert ILoanNotaryErrors.InvalidSignatureLength();
 
         assembly {
-            r := mload(add(_signature, 32))
-            s := mload(add(_signature, 64))
-            v := byte(0, mload(add(_signature, 96)))
+            r := mload(add(_signature, 0x20))
+            s := mload(add(_signature, 0x40))
+            v := byte(0, mload(add(_signature, 0x60)))
         }
     }
 }

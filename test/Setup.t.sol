@@ -230,7 +230,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     ) public virtual returns (bytes memory _signature) {
         // Create message for signing
         bytes32 _message = Signing.typeDataHash(
-            ILoanNotary.SignatureParams({
+            ILoanNotary.ContractParams({
                 borrower: borrower,
                 principal: _principal,
                 contractTerms: _contractTerms,
