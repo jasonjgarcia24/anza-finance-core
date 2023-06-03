@@ -7,6 +7,7 @@ import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 
 import "./interfaces/ICollateralVault.sol";
+import "./interfaces/IAnzaToken.sol";
 import "./access/VaultAccessController.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -120,12 +121,22 @@ contract CollateralVault is
         Collateral storage _collateral = __collaterals[_debtId];
         totalCollateral -= 1;
 
+        // Transfer collateral to borrower
         IERC721(_collateral.collateralAddress).safeTransferFrom(
             address(this),
             _to,
             _collateral.collateralId,
             ""
         );
+
+        // Burn replica
+        try IAnzaToken(anzaToken).burnBorrowerToken(_debtId) {} catch Error(
+            string memory err
+        ) {
+            console.log(err);
+            // If token does not exist, ignore
+            // 'burn amount exceeds balance' revert.
+        }
 
         emit WithdrawnCollateral(
             _to,

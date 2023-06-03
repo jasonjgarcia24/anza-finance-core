@@ -6,8 +6,10 @@ import "hardhat/console.sol";
 import "./domain/LoanContractFIRIntervals.sol";
 import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
+import "./domain/AnzaTokenTransferTypes.sol";
 
 import "./interfaces/ILoanTreasurey.sol";
+import "./interfaces/ICollateralVault.sol";
 import "./access/TreasureyAccessController.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -143,21 +145,28 @@ contract LoanTreasurey is
     }
 
     /*
-     * A full transfer of debt responsibilities of the current borrower
-     * to the purchaser.
+     * A transfer of debt responsibilities of the current borrower to the
+     * purchaser.
+     *
+     * This method is straight forward due to the state of the borrower account
+     * only being tied to the borrower role for the given Anza Token ID.
+     * Therefore, no change is made to the original loan contract nor is an
+     * updated debt ID necessary.
      *
      * Scenario #1:
      *   Should the payment cover the cost of the debt, the payment less
      *   the excess funds is used to close out the loan, the excess funds
      *   from the payment, if any, will be transferred to the borrower's
      *   account and the purchaser will be able to withdraw the collateral
-     *   to their account.
+     *   to their account. In this case, the borrower will forfeit the
+     *   collateral to the purchaser at the debt's value.
      *
      * Scenario #2:
      *   Should the payment not cover the entirety of the debt, the
      *   payment is applied directly to the loan, the borrower's withdrawable
      *   balance remains unchanged, and the purchaser will become the
-     *   loan's borrower.
+     *   loan's borrower. In this case, the borrower will forfeit the collateral
+     *   to the purchaser at a lesser cost than the debt's value.
      */
     function executeDebtPurchase(
         uint256 _debtId,
@@ -174,22 +183,28 @@ contract LoanTreasurey is
         // Increment nonce
         ++__debtSaleNonces[_debtId];
 
-        uint256 _balance = _loanContract.debtBalanceOf(_debtId);
+        uint256 _debtBalance = _loanContract.debtBalanceOf(_debtId);
         uint256 _payment = msg.value;
 
         // Transfer collateral
-        if (_payment >= _balance) {
-            _depositPayment(_purchaser, _debtId, _balance);
+        if (_payment >= _debtBalance) {
+            _depositPayment(_purchaser, _debtId, _debtBalance);
 
             _loanCollateralVault.withdraw(_purchaser, _debtId);
 
-            withdrawableBalance[_borrower] += _payment - _balance;
+            withdrawableBalance[_borrower] += _payment - _debtBalance;
         }
         // Transfer debt
         else {
             _depositPayment(_purchaser, _debtId, _payment);
 
-            _anzaToken.anzaTransferFrom(_borrower, _purchaser, _debtId, "");
+            _anzaToken.safeTransferFrom(
+                _borrower,
+                _purchaser,
+                _debtId,
+                _payment,
+                abi.encodePacked(_DEBT_TRANSFER_)
+            );
         }
 
         _results = true;
@@ -214,7 +229,7 @@ contract LoanTreasurey is
      */
     function executeSponsorshipPurchase(
         uint256 _debtId,
-        address _borrower,
+        address _lender,
         address _purchaser
     )
         external
@@ -224,26 +239,28 @@ contract LoanTreasurey is
         debtUpdater(_debtId)
         returns (bool _results)
     {
-        // Increment nonce
-        ++__sponsorshipSaleNonces[_debtId];
-
-        uint256 _balance = _loanContract.debtBalanceOf(_debtId);
+        // Get current debt terms
+        uint256 _debtBalance = _loanContract.debtBalanceOf(_debtId);
         uint256 _payment = msg.value;
 
-        // Transfer collateral
-        if (_payment >= _balance) {
-            _depositPayment(_purchaser, _debtId, _balance);
+        _depositPayment(_purchaser, _debtId, _debtBalance);
 
-            _loanCollateralVault.withdraw(_purchaser, _debtId);
+        // Create loan contract for new lender
+        _loanContract.initLoanContract(
+            _loanCodec.getDebtTerms(_debtId),
+            _debtId,
+            _anzaToken.borrowerOf(_debtId),
+            _purchaser
+        );
 
-            withdrawableBalance[_borrower] += _payment - _balance;
-        }
-        // Transfer debt
-        else {
-            _depositPayment(_purchaser, _debtId, _payment);
-
-            _anzaToken.anzaTransferFrom(_borrower, _purchaser, _debtId, "");
-        }
+        // Transfer sponsorship
+        _anzaToken.safeTransferFrom(
+            _lender,
+            _purchaser,
+            _debtId,
+            _payment,
+            abi.encodePacked(_SPONSORSHIP_TRANSFER_)
+        );
 
         _results = true;
     }
@@ -280,6 +297,8 @@ contract LoanTreasurey is
         uint256 _debtId,
         uint256 _payment
     ) internal {
+        if (_payment == 0) revert InvalidFundsTransfer();
+
         address _lender = _anzaToken.lenderOf(_debtId);
         uint256 _balance = _anzaToken.balanceOf(_lender, _debtId * 2);
 
@@ -288,18 +307,13 @@ contract LoanTreasurey is
             withdrawableBalance[_lender] += _payment;
 
             // Burn ALC debt token
-            _anzaToken.burn(_lender, _debtId * 2, _payment);
+            _anzaToken.burnLenderToken(_debtId * 2, _payment);
         } else {
             withdrawableBalance[_lender] += _balance;
             withdrawableBalance[_payer] += _payment - _balance;
 
             // Burn ALC debt token
-            _anzaToken.burn(_lender, _debtId * 2, _balance);
-        }
-
-        // Conditionally burn replica
-        if (!_loanManager.checkLoanActive(_debtId)) {
-            _anzaToken.burnBorrowerToken(_debtId);
+            _anzaToken.burnLenderToken(_debtId * 2, _balance);
         }
     }
 }

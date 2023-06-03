@@ -73,5 +73,12 @@ interface ILoanContract {
         bytes calldata _borrowerSignature
     ) external payable;
 
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _debtId,
+        address _borrower,
+        address _lender
+    ) external payable;
+
     function mintReplica(uint256 _debtId) external;
 }

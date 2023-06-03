@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import "hardhat/console.sol";
 
+import "../domain/AnzaTokenTransferTypes.sol";
 import "../domain/LoanContractRoles.sol";
 
 import "./AnzaERC1155URIStorage.sol";
@@ -28,6 +29,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         _setRoleAdmin(_ADMIN_, _ADMIN_);
         _setRoleAdmin(_LOAN_CONTRACT_, _ADMIN_);
         _setRoleAdmin(_TREASURER_, _ADMIN_);
+        _setRoleAdmin(_COLLATERAL_VAULT_, _ADMIN_);
         _setRoleAdmin(_DEBT_STOREFRONT_, _ADMIN_);
 
         _grantRole(_ADMIN_, msg.sender);
@@ -92,18 +94,33 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         return totalSupply(id) > 0;
     }
 
-    function anzaTransferFrom(
+    function safeTransferFrom(
         address _from,
         address _to,
         uint256 _debtId,
+        uint256 _amount,
         bytes memory _data
-    ) external onlyRole(_TREASURER_) {
-        uint256 _id = borrowerTokenId(_debtId);
+    ) public override onlyRole(_TREASURER_) {
+        if (bytes32(_data) == _DEBT_TRANSFER_) {
+            __debtTransferFrom(_from, _to, _debtId, _amount, "");
+        } else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
+            __sponsorshipTransferFrom(_from, _to, _debtId, _amount, "");
+        }
+    }
 
-        if (exists(_id)) {
-            safeTransferFrom(_from, _to, _id, 1, _data);
+    function safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] memory _debtIds,
+        uint256[] memory _amounts,
+        bytes memory _data
+    ) public override onlyRole(_TREASURER_) {
+        if (bytes32(_data) == _DEBT_TRANSFER_) {
+            __debtBatchTransferFrom(_from, _to, _debtIds, _amounts, "");
+        } else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
+            __sponsorshipTransferFrom(_from, _to, _debtId, _amount, "");
         } else {
-            __updateBorrowerRole(_from, _to, _debtId);
+            revert InvalidTransferType();
         }
     }
 
@@ -141,47 +158,38 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         _mint(_to, _id, _amount, _data);
     }
 
-    function burn(address _account, uint256 _id, uint256 _value) external {
-        if (!exists(_id)) return;
-
+    function burn(address _address, uint256 _id, uint256 _amount) external {
         require(
-            _account == msg.sender || isApprovedForAll(_account, msg.sender),
+            _address == msg.sender || isApprovedForAll(_address, msg.sender),
             "ERC1155: caller is not token owner nor approved"
         );
 
-        _burn(_account, _id, _value);
+        _burn(_address, _id, _amount);
     }
 
     function burnBatch(
-        address account,
-        uint256[] memory ids,
-        uint256[] memory values
+        address _address,
+        uint256[] memory _ids,
+        uint256[] memory _values
     ) public virtual {
         require(
-            account == msg.sender || isApprovedForAll(account, msg.sender),
+            _address == msg.sender || isApprovedForAll(_address, msg.sender),
             "ERC1155: caller is not token owner nor approved"
         );
 
-        _burnBatch(account, ids, values);
+        _burnBatch(_address, _ids, _values);
     }
 
-    function burnBorrowerToken(uint256 _debtId) external onlyRole(_TREASURER_) {
-        uint256 _borrowerToken = borrowerTokenId(_debtId);
+    function burnBorrowerToken(uint256 _debtId) external onlyRole(_COLLATERAL_VAULT_) {
+        uint256 _borrowerTokenId = borrowerTokenId(_debtId);
 
-        if (!exists(_borrowerToken)) return;
-
-        _burn(borrowerOf(_debtId), _borrowerToken, 1);
+        _burn(borrowerOf(_debtId), _borrowerTokenId, 1);
     }
 
-    function isApprovedForAll(
-        address _account,
-        address _operator
-    ) public view override returns (bool) {
-        // This token is recallable by the Anza treasurer
-        // account
-        return
-            hasRole(_TREASURER_, _operator) ||
-            super.isApprovedForAll(_account, _operator);
+    function burnLenderToken(uint256 _debtId, uint256 _amount) external onlyRole(_TREASURER_) {
+        uint256 _lenderTokenId = lenderTokenId(_debtId);
+
+        _burn(lenderOf(_debtId), _lenderTokenId, _amint);
     }
 
     function _beforeTokenTransfer(
@@ -206,8 +214,8 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
             for (uint256 i = 0; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
 
-                // Conditionally update borrower token admin on transfer.
-                if (_id % 2 == 1) __updateBorrowerRole(_from, _to, _id / 2);
+                // // Conditionally update borrower token admin on transfer.
+                // if (_id % 2 == 1) __updateBorrowerRole(_from, _to, _id / 2);
             }
         }
 
@@ -244,6 +252,54 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         // Set the replica token's owner automatically
         if (_from == address(0))
             __owners[_ids[0] + 1] = address(bytes20(_data));
+    }
+
+    function __debtTransferFrom(
+        address _from,
+        address _to,
+        uint256 _debtId,
+        uint256 /* _amount */,
+        bytes memory /* _data */
+    ) private {
+        __updateBorrowerRole(_from, _to, _debtId);
+
+        uint256 _id = borrowerTokenId(_debtId);
+        if (exists(_id)) super.safeTransferFrom(_from, _to, _id, 1, "");
+    }
+
+    function __debtBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] _debtIds,
+        uint256[] /* _amounts */,
+        bytes memory /* _data */
+    ) private {
+        uint256[] _ids;
+        uint256[] _amounts;
+
+        for (uint256 i = 0; i < _debtIds.length; ++i) {
+            __updateBorrowerRole(_from, _to, _debtId);
+
+            uint256 _id = borrowerTokenId(_debtIds[i]);
+
+            if (exists(_id)) {
+                _ids.push(_id);
+                _amounts.push(1);
+        }
+
+        if (_ids.length > 0)
+            super.safeBatchTransferFrom(_from, _to, _ids, _amounts, "");
+    }
+
+    function __sponsorshipTransferFrom(
+        address _from,
+        address _to,
+        uint256 _debtId,
+        uint256 _amount,
+        bytes memory /* _data */
+    ) private {
+        uint256 _id = lenderTokenId(_debtId);
+        if (exists(_id)) super.safeTransferFrom(_from, _to, _id, _amount, "");
     }
 
     function __updateBorrowerRole(

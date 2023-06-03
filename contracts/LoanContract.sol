@@ -58,7 +58,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         return debts[_collateralAddress][_collateralId].activeLoanIndex;
     }
 
-    /*
+    /**
      * Input _contractTerms:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
@@ -140,7 +140,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
     }
 
-    /*
+    /**
      * Input _contractTerms:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
@@ -232,6 +232,99 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             totalDebts * 2,
             _principal,
             _collateralToken.tokenURI(_collateral.collateralId),
+            abi.encodePacked(_borrower, totalDebts)
+        );
+
+        // Emit initialization event
+        emit LoanContractInitialized(
+            _collateral.collateralAddress,
+            _collateral.collateralId,
+            totalDebts,
+            _debt.activeLoanIndex
+        );
+    }
+
+    /**
+     * @notice This function does not verify the loan contract with the
+     * borrower. It should never be used to alter existing contract terms
+     * and shall only be callable by the treasurer.
+     *
+     * Input _contractTerms:
+     *  > 004 - [0..3]     `firInterval`
+     *  > 004 - [4..11]    `fixedInterestRate`
+     *  > 008 - [12..19]   unused space
+     *  > 128 - [20..147]  `principal`
+     *  > 032 - [148..179] `gracePeriod`
+     *  > 032 - [180..211] `duration`
+     *  > 032 - [212..243] `termsExpiry`
+     *  > 008 - [244..255] `lenderRoyalties`
+     */
+    function initLoanContract(
+        bytes32 _contractTerms,
+        uint256 _debtId,
+        address _borrower,
+        address _lender
+    ) external payable onlyRole(_TREASURER_) {
+        // Verify existing loan is in good standing
+        if (checkLoanDefault(_debtId)) revert InvalidCollateral();
+
+        // Validate loan terms
+        uint64 _now = _toUint64(block.timestamp);
+        uint256 _principal = msg.value;
+        _validateLoanTerms(_contractTerms, _now, _principal);
+
+        // Get collateral from vault
+        ICollateralVault _loanCollateralVault = ICollateralVault(
+            _collateralVault
+        );
+        ICollateralVault.Collateral memory _collateral = _loanCollateralVault
+            .getCollateral(_debtId);
+
+        // Set debt
+        Debt storage _debt = debts[_collateral.collateralAddress][
+            _collateral.collateralId
+        ];
+
+        // Map the child loan to the parent
+        debtIdBranch[_debt.debtId] = _debt;
+
+        // Set child loan fields
+        _debt.debtId = ++totalDebts;
+        ++_debt.activeLoanIndex;
+        ++_debt.collateralNonce;
+
+        // Add debt to database
+        __setLoanAgreement(_now, _debt.activeLoanIndex, _contractTerms);
+
+        // Store collateral-debtId mapping in vault
+        _loanCollateralVault.setCollateral(
+            _collateral.collateralAddress,
+            _collateral.collateralId,
+            totalDebts
+        );
+
+        // Replace or reduce previous debt. Any excess funds will
+        // be available for withdrawal in the treasurey.
+        uint256 _balance = debtBalanceOf(_debtId);
+        (bool _success, ) = _loanTreasurer.call{
+            value: _principal >= _balance ? _balance : _principal
+        }(
+            abi.encodeWithSignature(
+                "sponsorPayment(address,uint256)",
+                _borrower,
+                _debtId
+            )
+        );
+        if (!_success) revert FailedFundsTransfer();
+
+        // Mint debt ALC debt tokens for lender.
+        _anzaToken.mint(
+            _lender,
+            totalDebts * 2,
+            _principal,
+            IERC721Metadata(_collateral.collateralAddress).tokenURI(
+                _collateral.collateralId
+            ),
             abi.encodePacked(_borrower, totalDebts)
         );
 

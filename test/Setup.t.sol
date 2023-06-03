@@ -149,6 +149,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         // Set AnzaToken access control roles
         anzaToken.grantRole(_LOAN_CONTRACT_, address(loanContract));
         anzaToken.grantRole(_TREASURER_, address(loanTreasurer));
+        anzaToken.grantRole(_COLLATERAL_VAULT_, address(collateralVault));
 
         // Set LoanContract access control roles
         loanContract.setAnzaToken(address(anzaToken));

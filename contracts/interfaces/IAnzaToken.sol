@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 interface IAnzaToken is IAccessControl {
+    error InvalidTransferType();
+
     /**
      * @dev Returns the token collection name.
      */
@@ -18,13 +20,6 @@ interface IAnzaToken is IAccessControl {
      * @dev Indicates whether any token exist with a given id, or not.
      */
     function exists(uint256 id) external view returns (bool);
-
-    function anzaTransferFrom(
-        address _from,
-        address _to,
-        uint256 _debtId,
-        bytes memory _data
-    ) external;
 
     function ownerOf(uint256 _tokenId) external view returns (address);
 
@@ -82,31 +77,39 @@ interface IAnzaToken is IAccessControl {
     ) external;
 
     /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
-    /// @param _value argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
-    function mint(uint256 _debtId, uint256 _value) external;
+    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
+    function mint(uint256 _debtId, uint256 _amount) external;
 
     /// @param _to argument MUST be the address of the recipient whose balance is increased.
     /// @param _id argument MUST be the token ID being transferred.
-    /// @param _value argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
+    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
     /// @param _data Additional data with no specified format, MUST be sent unaltered in call to the `ERC1155TokenReceiver` hook(s) on `_to`
     function mint(
         address _to,
         uint256 _id,
-        uint256 _value,
+        uint256 _amount,
         string calldata _collateralURI,
         bytes memory _data
     ) external;
 
     /// @param _account argument MUST be the address of the owner/operator whose balance is decreased.
     /// @param _id argument MUST be the token being burned.
-    /// @param _value argument MUST be the number of tokens the holder balance is decreased by.
-    function burn(address _account, uint256 _id, uint256 _value) external;
+    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by.
+    function burn(address _account, uint256 _id, uint256 _amount) external;
 
+    /// @param _address argument MUST be the address of the owner/operator whose balance is decreased.
+    /// @param _ids argument MUST be the tokens being burned.
+    /// @param _amounts argument MUST be the number of tokens the holder balance is decreased by.
     function burnBatch(
-        address _account,
+        address _address,
         uint256[] memory _ids,
-        uint256[] memory _values
+        uint256[] memory _amounts
     ) external;
 
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
     function burnBorrowerToken(uint256 _debtId) external;
+
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
+    function burnLenderToken(uint256 _debtId, uint256 _amount) external;
 }
