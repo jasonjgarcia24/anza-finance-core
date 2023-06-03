@@ -175,6 +175,59 @@ contract LoanTreasurey is
         _results = true;
     }
 
+    /*
+     * A full transfer of debt responsibilities of the current borrower
+     * to the purchaser.
+     *
+     * Scenario #1:
+     *   Should the payment cover the cost of the debt, the payment less
+     *   the excess funds is used to close out the loan, the excess funds
+     *   from the payment, if any, will be transferred to the borrower's
+     *   account and the purchaser will be able to withdraw the collateral
+     *   to their account.
+     *
+     * Scenario #2:
+     *   Should the payment not cover the entirety of the debt, the
+     *   payment is applied directly to the loan, the borrower's withdrawable
+     *   balance remains unchanged, and the purchaser will become the
+     *   loan's borrower.
+     */
+    function executeSponsorshipPurchase(
+        uint256 _debtId,
+        address _borrower,
+        address _purchaser
+    )
+        external
+        payable
+        onlyRole(_DEBT_STOREFRONT_)
+        onlyActiveLoan(_debtId)
+        debtUpdater(_debtId)
+        returns (bool _results)
+    {
+        // Increment nonce
+        ++__debtSaleNonces[_debtId];
+
+        uint256 _balance = _loanContract.debtBalanceOf(_debtId);
+        uint256 _payment = msg.value;
+
+        // Transfer collateral
+        if (_payment >= _balance) {
+            _depositPayment(_purchaser, _debtId, _balance);
+
+            _loanCollateralVault.withdraw(_purchaser, _debtId);
+
+            withdrawableBalance[_borrower] += _payment - _balance;
+        }
+        // Transfer debt
+        else {
+            _depositPayment(_purchaser, _debtId, _payment);
+
+            _anzaToken.anzaTransferFrom(_borrower, _purchaser, _debtId, "");
+        }
+
+        _results = true;
+    }
+
     // TODO: Need to revisit to ensure accuracy at larger total debt values
     // (e.g. 10000 * 10**18).
     function updateDebt(uint256 _debtId) public {

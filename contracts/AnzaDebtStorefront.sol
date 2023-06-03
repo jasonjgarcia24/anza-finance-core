@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "../lib/forge-std/src/console.sol";
+
 import {DebtNotary} from "./LoanNotary.sol";
 import "./interfaces/IAnzaToken.sol";
 import "./interfaces/IAnzaDebtStorefront.sol";
@@ -58,7 +60,7 @@ contract AnzaDebtStorefront is
         bytes calldata _sellerSignature
     ) public payable nonReentrant {
         // Verify borrower participation
-        address _borrower = _getBorrower(
+        address _borrower = _getSigner(
             _debtId,
             DebtListingParams({
                 price: msg.value,
@@ -78,6 +80,40 @@ contract AnzaDebtStorefront is
                 "executeDebtPurchase(uint256,address,address)",
                 _debtId,
                 _borrower,
+                _purchaser
+            )
+        );
+        require(_success);
+
+        emit DebtPurchased(_purchaser, _debtId, msg.value);
+    }
+
+    function buySponsorship(
+        uint256 _debtId,
+        uint256 _termsExpiry,
+        bytes calldata _sellerSignature
+    ) public payable nonReentrant {
+        // Verify lender participation
+        address _lender = _getSigner(
+            _debtId,
+            DebtListingParams({
+                price: msg.value,
+                debtId: _debtId,
+                debtListingNonce: ILoanTreasurey(loanTreasurer)
+                    .getDebtSaleNonce(_debtId),
+                termsExpiry: _termsExpiry
+            }),
+            _sellerSignature,
+            IAnzaToken(anzaToken).lenderOf
+        );
+
+        // Transfer debt
+        address _purchaser = msg.sender;
+        (bool _success, ) = loanTreasurer.call{value: msg.value}(
+            abi.encodeWithSignature(
+                "executeSponsorshipPurchase(uint256,address,address)",
+                _debtId,
+                _lender,
                 _purchaser
             )
         );

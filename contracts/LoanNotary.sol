@@ -207,7 +207,7 @@ abstract contract DebtNotary is IDebtNotary {
      * @param _sellerSignature the signed debt listing terms.
      * @param ownerOf the function used to identify the recorded borrower.
      */
-    function _getBorrower(
+    function _getSigner(
         uint256 _assetId,
         DebtListingParams memory _debtListingParams,
         bytes memory _sellerSignature,

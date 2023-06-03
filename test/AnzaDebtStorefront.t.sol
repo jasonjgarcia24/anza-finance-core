@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "../contracts/domain/LoanContractRoles.sol";
+import "../contracts/domain/LoanNotaryErrorCodes.sol";
 
 import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
 import {IDebtNotary} from "../contracts/interfaces/ILoanNotary.sol";
@@ -56,6 +57,33 @@ contract AnzaDebtStorefrontUnitTest is
         _signature = abi.encodePacked(r, s, v);
     }
 
+    function createListingSignature(
+        uint256 _price,
+        uint256 _debtId,
+        uint256 _debtListingNonce
+    ) public virtual returns (bytes memory _signature) {
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
+
+        bytes32 _message = Signing.typeDataHash(
+            IDebtNotary.DebtListingParams({
+                price: _price,
+                debtId: _debtId,
+                debtListingNonce: _debtListingNonce,
+                termsExpiry: _termsExpiry
+            }),
+            Signing.DomainSeparator({
+                name: "AnzaDebtStorefront",
+                version: "0",
+                chainId: block.chainid,
+                contractAddress: address(anzaDebtStorefront)
+            })
+        );
+
+        // Sign borrower's listing terms
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
     function testAnzaDebtStorefront__StorefrontStateVars() public {
         assertEq(anzaDebtStorefront.loanContract(), address(loanContract));
         assertEq(anzaDebtStorefront.loanTreasurer(), address(loanTreasurer));
@@ -89,7 +117,9 @@ contract AnzaDebtStorefrontUnitTest is
         vm.startPrank(alt_account);
         vm.expectEmit(true, true, true, true, address(anzaDebtStorefront));
         emit DebtPurchased(alt_account, _debtId, _price);
-        (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
+        (bool _success, bytes memory _data) = address(anzaDebtStorefront).call{
+            value: _price
+        }(
             abi.encodeWithSignature(
                 "buyDebt(uint256,uint256,bytes)",
                 _debtId,
@@ -97,6 +127,8 @@ contract AnzaDebtStorefrontUnitTest is
                 _signature
             )
         );
+        console.log(_success);
+        console.logBytes(_data);
         require(_success);
         vm.stopPrank();
 
@@ -117,6 +149,86 @@ contract AnzaDebtStorefrontUnitTest is
             loanContract.debtBalanceOf(_debtId),
             _PRINCIPAL_ - _price,
             "6 :: Debt balance should be _PRINCIPAL_ - _price"
+        );
+    }
+
+    function testAnzaDebtStorefront__BasicBuyDebtFail(
+        uint256 _debtListingNonce
+    ) public {
+        uint256 _price = _PRINCIPAL_ - 1;
+        uint256 _debtId = loanContract.totalDebts();
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
+        bool _isValidDebtListing = _debtListingNonce ==
+            loanTreasurer.getDebtSaleNonce(_debtId);
+
+        bytes memory _signature = createListingSignature(
+            _price,
+            _debtId,
+            _debtListingNonce
+        );
+
+        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        assertTrue(
+            anzaToken.checkBorrowerOf(borrower, _debtId),
+            "0 :: borrower should be borrower"
+        );
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            borrower,
+            "1 :: AnzaToken owner should be borrower"
+        );
+        assertEq(
+            loanContract.debtBalanceOf(_debtId),
+            _PRINCIPAL_,
+            "2 :: Debt balance should be _PRINCIPAL_"
+        );
+
+        vm.deal(alt_account, 4 ether);
+        vm.startPrank(alt_account);
+
+        if (_isValidDebtListing) {
+            vm.expectEmit(true, true, true, true, address(anzaDebtStorefront));
+            emit DebtPurchased(alt_account, _debtId, _price);
+        }
+        (bool _success, bytes memory _data) = address(anzaDebtStorefront).call{
+            value: _price
+        }(
+            abi.encodeWithSignature(
+                "buyDebt(uint256,uint256,bytes)",
+                _debtId,
+                _termsExpiry,
+                _signature
+            )
+        );
+        vm.stopPrank();
+
+        if (!_isValidDebtListing) {
+            require(
+                bytes4(_data) == _INVALID_PARTICIPANT_SELECTOR_,
+                "3 :: buyDebt test failed."
+            );
+            return;
+        }
+
+        require(_success, "3 :: buyDebt test failed.");
+
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            borrower,
+            "4 :: AnzaToken owner should be borrower"
+        );
+        assertTrue(
+            !anzaToken.checkBorrowerOf(borrower, _debtId),
+            "5 :: borrower should not have AnzaToken borrower token role"
+        );
+        assertTrue(
+            anzaToken.checkBorrowerOf(alt_account, _debtId),
+            "6 :: alt_account should have AnzaToken borrower token role"
+        );
+        assertEq(
+            loanContract.debtBalanceOf(_debtId),
+            _PRINCIPAL_ - _price,
+            "7 :: Debt balance should be _PRINCIPAL_ - _price"
         );
     }
 
