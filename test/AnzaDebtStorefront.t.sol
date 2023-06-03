@@ -30,17 +30,17 @@ contract AnzaDebtStorefrontUnitTest is
     }
 
     function createListingSignature(
-        bytes32 _listingHash,
         uint256 _price,
         uint256 _debtId
     ) public virtual returns (bytes memory _signature) {
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
+        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(_debtId);
 
         bytes32 _message = Signing.typeDataHash(
             IDebtNotary.DebtListingParams({
                 price: _price,
-                listingTerms: _listingHash,
                 debtId: _debtId,
+                debtListingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             }),
             Signing.DomainSeparator({
@@ -63,18 +63,11 @@ contract AnzaDebtStorefrontUnitTest is
     }
 
     function testAnzaDebtStorefront__BasicBuyDebt() public {
-        bytes32 _listingHash = keccak256(
-            "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
-        );
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
-        bytes memory _signature = createListingSignature(
-            _listingHash,
-            _price,
-            _debtId
-        );
+        bytes memory _signature = createListingSignature(_price, _debtId);
 
         uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
         assertTrue(
@@ -98,8 +91,7 @@ contract AnzaDebtStorefrontUnitTest is
         emit DebtPurchased(alt_account, _debtId, _price);
         (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
             abi.encodeWithSignature(
-                "buyDebt(bytes32,uint256,uint256,bytes)",
-                _listingHash,
+                "buyDebt(uint256,uint256,bytes)",
                 _debtId,
                 _termsExpiry,
                 _signature
@@ -129,9 +121,6 @@ contract AnzaDebtStorefrontUnitTest is
     }
 
     function testAnzaDebtStorefront__ReplicaBuyDebt() public {
-        bytes32 _listingHash = keccak256(
-            "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
-        );
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
@@ -142,11 +131,7 @@ contract AnzaDebtStorefrontUnitTest is
         loanContract.mintReplica(_debtId);
         vm.stopPrank();
 
-        bytes memory _signature = createListingSignature(
-            _listingHash,
-            _price,
-            _debtId
-        );
+        bytes memory _signature = createListingSignature(_price, _debtId);
 
         uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
         assertTrue(
@@ -170,8 +155,7 @@ contract AnzaDebtStorefrontUnitTest is
         emit DebtPurchased(alt_account, _debtId, _price);
         (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
             abi.encodeWithSignature(
-                "buyDebt(bytes32,uint256,uint256,bytes)",
-                _listingHash,
+                "buyDebt(uint256,uint256,bytes)",
                 _debtId,
                 _termsExpiry,
                 _signature

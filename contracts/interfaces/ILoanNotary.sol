@@ -19,8 +19,8 @@ interface ILoanNotary is ILoanNotaryErrors {
 interface IDebtNotary is ILoanNotaryErrors {
     struct DebtListingParams {
         uint256 price;
-        bytes32 listingTerms;
         uint256 debtId;
+        uint256 debtListingNonce;
         uint256 termsExpiry;
     }
 }

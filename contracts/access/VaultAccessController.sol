@@ -8,7 +8,10 @@ import "../domain/LoanContractRoles.sol";
 import "../interfaces/IVaultAccessController.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract VaultAccessController is IVaultAccessController, AccessControl {
+abstract contract VaultAccessController is
+    IVaultAccessController,
+    AccessControl
+{
     address internal _loanContract;
     address public immutable anzaToken;
 

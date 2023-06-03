@@ -8,7 +8,6 @@ import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 
 import "./interfaces/ILoanTreasurey.sol";
-import "./interfaces/ILoanCodec.sol";
 import "./access/TreasureyAccessController.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -23,6 +22,7 @@ contract LoanTreasurey is
 
     uint256 public poolBalance;
     mapping(address => uint256) public withdrawableBalance;
+    mapping(uint256 debtId => uint256) private __debtSaleNonces;
 
     constructor() TreasureyAccessController() {}
 
@@ -37,6 +37,23 @@ contract LoanTreasurey is
     modifier onlyActiveLoan(uint256 _debtId) {
         _loanManager.verifyLoanActive(_debtId);
         _;
+    }
+
+    function getDebtSaleNonce(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) public view returns (uint256) {
+        return
+            getDebtSaleNonce(
+                _loanContract.getCollateralDebtId(
+                    _collateralAddress,
+                    _collateralId
+                )
+            );
+    }
+
+    function getDebtSaleNonce(uint256 _debtId) public view returns (uint256) {
+        return __debtSaleNonces[_debtId] + 1;
     }
 
     function depositFunds(
@@ -134,6 +151,9 @@ contract LoanTreasurey is
         debtUpdater(_debtId)
         returns (bool _results)
     {
+        // Increment nonce
+        ++__debtSaleNonces[_debtId];
+
         uint256 _balance = _loanContract.debtBalanceOf(_debtId);
         uint256 _payment = msg.value;
 

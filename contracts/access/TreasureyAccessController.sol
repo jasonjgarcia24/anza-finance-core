@@ -8,7 +8,7 @@ import "../domain/LoanContractRoles.sol";
 import "../interfaces/ITreasureyAccessController.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract TreasureyAccessController is
+abstract contract TreasureyAccessController is
     ITreasureyAccessController,
     AccessControl
 {

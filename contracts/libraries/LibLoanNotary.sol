@@ -161,9 +161,9 @@ library LibLoanNotary {
             keccak256(
                 abi.encode(
                     _DEBT_LISTING_PARAMS_ENCODE_TYPE_HASH_,
-                    _debtListingParams.listingTerms,
                     _debtListingParams.price,
                     _debtListingParams.debtId,
+                    _debtListingParams.debtListingNonce,
                     _debtListingParams.termsExpiry
                 )
             );

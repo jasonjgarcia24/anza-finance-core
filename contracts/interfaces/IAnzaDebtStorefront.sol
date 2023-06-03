@@ -25,14 +25,13 @@ interface IAnzaDebtStorefront {
     );
 
     function buyDebt(
-        bytes32 _listingTerms,
         address _collateralAddress,
         uint256 _collateralId,
+        uint256 _termsExpiry,
         bytes calldata _sellerSignature
     ) external payable;
 
     function buyDebt(
-        bytes32 _listingTerms,
         uint256 _debtId,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
