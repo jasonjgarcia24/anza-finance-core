@@ -34,7 +34,7 @@ abstract contract LoanCodec is ILoanCodec {
      */
     mapping(uint256 => bytes32) private __packedDebtTerms;
 
-    function getDebtTerms(uint256 _debtId) external view returns (bytes32) {
+    function getDebtTerms(uint256 _debtId) public view returns (bytes32) {
         return __packedDebtTerms[_debtId];
     }
 

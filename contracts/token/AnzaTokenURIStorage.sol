@@ -12,7 +12,8 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
  *
  * _Available since v4.6._
  */
-abstract contract AnzaERC1155URIStorage is ERC1155("") {
+abstract contract AnzaTokenURIStorage is ERC1155 {
+    // abstract contract AnzaTokenURIStorage is ERC1155("") {
     using Strings for uint256;
 
     // Optional base URI

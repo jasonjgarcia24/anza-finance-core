@@ -6,6 +6,7 @@ interface ILoanTreasurey {
     error InvalidFundsTransfer();
     error InactiveLoanState();
     error InvalidLoanState();
+    error FailedPurchase();
 
     event Deposited(
         uint256 indexed debtId,

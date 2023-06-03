@@ -260,7 +260,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      *  > 008 - [244..255] `lenderRoyalties`
      */
     function initLoanContract(
-        bytes32 _contractTerms,
         uint256 _debtId,
         address _borrower,
         address _lender
@@ -269,9 +268,10 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         if (checkLoanDefault(_debtId)) revert InvalidCollateral();
 
         // Validate loan terms
+        // Not necessary since the terms are existing and have already
+        // been validated.
         uint64 _now = _toUint64(block.timestamp);
         uint256 _principal = msg.value;
-        _validateLoanTerms(_contractTerms, _now, _principal);
 
         // Get collateral from vault
         ICollateralVault _loanCollateralVault = ICollateralVault(
@@ -294,7 +294,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         ++_debt.collateralNonce;
 
         // Add debt to database
-        __setLoanAgreement(_now, _debt.activeLoanIndex, _contractTerms);
+        __setLoanAgreement(_now, _debt.activeLoanIndex, getDebtTerms(_debtId));
 
         // Store collateral-debtId mapping in vault
         _loanCollateralVault.setCollateral(

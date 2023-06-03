@@ -4,95 +4,16 @@ pragma solidity 0.8.20;
 import "hardhat/console.sol";
 
 import "../domain/AnzaTokenTransferTypes.sol";
-import "../domain/LoanContractRoles.sol";
 
-import "./AnzaERC1155URIStorage.sol";
-import "../interfaces/IAnzaToken.sol";
-import "../interfaces/ICollateralVault.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./AnzaBaseToken.sol";
+import "./AnzaTokenIndexer.sol";
 
-contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
-    /* ------------------------------------------------ *
-     *                Contract Constants                *
-     * ------------------------------------------------ */
-    string private constant _TOKEN_NAME_ = "Anza Debt Token";
-    string private constant _TOKEN_SYMBOL_ = "ADT";
-
-    /* ------------------------------------------------ *
-     *                    Databases                     *
-     * ------------------------------------------------ */
-    // Mapping from token ID to owner address
-    mapping(uint256 => address) private __owners;
-    mapping(uint256 => uint256) private _totalSupply;
-
-    constructor() {
-        _setRoleAdmin(_ADMIN_, _ADMIN_);
-        _setRoleAdmin(_LOAN_CONTRACT_, _ADMIN_);
-        _setRoleAdmin(_TREASURER_, _ADMIN_);
-        _setRoleAdmin(_COLLATERAL_VAULT_, _ADMIN_);
-        _setRoleAdmin(_DEBT_STOREFRONT_, _ADMIN_);
-
-        _grantRole(_ADMIN_, msg.sender);
-    }
-
-    function supportsInterface(
-        bytes4 _interfaceId
-    ) public view override(ERC1155, AccessControl) returns (bool) {
-        return
-            _interfaceId == type(IAnzaToken).interfaceId ||
-            ERC1155.supportsInterface(_interfaceId) ||
-            AccessControl.supportsInterface(_interfaceId);
-    }
-
-    function name() public pure returns (string memory) {
-        return _TOKEN_NAME_;
-    }
-
-    function symbol() public pure returns (string memory) {
-        return _TOKEN_SYMBOL_;
-    }
-
-    function ownerOf(uint256 _tokenId) external view returns (address) {
-        return __owners[_tokenId];
-    }
-
-    function borrowerOf(uint256 _debtId) public view returns (address) {
-        return __owners[borrowerTokenId(_debtId)];
-    }
-
-    function lenderOf(uint256 _debtId) public view returns (address) {
-        return __owners[lenderTokenId(_debtId)];
-    }
-
-    function checkBorrowerOf(
-        address _account,
-        uint256 _debtId
-    ) external view returns (bool) {
-        return
-            hasRole(keccak256(abi.encodePacked(_account, _debtId)), _account);
-    }
-
-    function borrowerTokenId(uint256 _debtId) public pure returns (uint256) {
-        return (_debtId * 2) + 1;
-    }
-
-    function lenderTokenId(uint256 _debtId) public pure returns (uint256) {
-        return _debtId * 2;
-    }
-
-    /**
-     * @dev Total amount of tokens in with a given id.
-     */
-    function totalSupply(uint256 id) public view virtual returns (uint256) {
-        return _totalSupply[id];
-    }
-
-    /**
-     * @dev Indicates whether any token exist with a given id, or not.
-     */
-    function exists(uint256 id) public view returns (bool) {
-        return totalSupply(id) > 0;
-    }
+contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        string memory _baseURI
+    ) AnzaBaseToken(_name, _symbol, _baseURI) AnzaTokenAccessController() {}
 
     function safeTransferFrom(
         address _from,
@@ -118,7 +39,7 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         if (bytes32(_data) == _DEBT_TRANSFER_) {
             __debtBatchTransferFrom(_from, _to, _debtIds, _amounts, "");
         } else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
-            __sponsorshipTransferFrom(_from, _to, _debtId, _amount, "");
+            // __sponsorshipBatchTransferFrom(_from, _to, _debtIds, _amounts, "");
         } else {
             revert InvalidTransferType();
         }
@@ -180,16 +101,21 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         _burnBatch(_address, _ids, _values);
     }
 
-    function burnBorrowerToken(uint256 _debtId) external onlyRole(_COLLATERAL_VAULT_) {
+    function burnBorrowerToken(
+        uint256 _debtId
+    ) external onlyRole(_COLLATERAL_VAULT_) {
         uint256 _borrowerTokenId = borrowerTokenId(_debtId);
 
         _burn(borrowerOf(_debtId), _borrowerTokenId, 1);
     }
 
-    function burnLenderToken(uint256 _debtId, uint256 _amount) external onlyRole(_TREASURER_) {
+    function burnLenderToken(
+        uint256 _debtId,
+        uint256 _amount
+    ) external onlyRole(_TREASURER_) {
         uint256 _lenderTokenId = lenderTokenId(_debtId);
 
-        _burn(lenderOf(_debtId), _lenderTokenId, _amint);
+        _burn(lenderOf(_debtId), _lenderTokenId, _amount);
     }
 
     function _beforeTokenTransfer(
@@ -203,12 +129,12 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         if (_from == address(0)) {
             require(_ids.length == 1, "Invalid Anza mint");
             require(
-                ((_ids[0] % 2) == 0) || (_totalSupply[_ids[0]] == 0),
+                ((_ids[0] % 2) == 0) || (totalSupply(_ids[0]) == 0),
                 "Cannot remint replica"
             );
 
             for (uint256 i = 0; i < _ids.length; ++i) {
-                _totalSupply[_ids[i]] += _amounts[i];
+                _incrementTotalSupply(_ids[i], _amounts[i]);
             }
         } else {
             for (uint256 i = 0; i < _ids.length; ++i) {
@@ -223,13 +149,13 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
             for (uint256 i = 0; i < _ids.length; ++i) {
                 uint256 _id = _ids[i];
                 uint256 amount = _amounts[i];
-                uint256 supply = _totalSupply[_id];
+                uint256 supply = totalSupply(_id);
                 require(
                     supply >= amount,
                     "AnzaToken: burn amount exceeds totalSupply"
                 );
                 unchecked {
-                    _totalSupply[_id] = supply - amount;
+                    _setTotalSupply(_id, supply - amount);
                 }
             }
         }
@@ -247,11 +173,11 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         bytes memory _data
     ) internal override {
         // Set token owners
-        if (_to != address(0)) __owners[_ids[0]] = _to;
+        if (_to != address(0)) _setOwner(_ids[0], _to);
 
         // Set the replica token's owner automatically
         if (_from == address(0))
-            __owners[_ids[0] + 1] = address(bytes20(_data));
+            _setOwner(_ids[0] + 1, address(bytes20(_data)));
     }
 
     function __debtTransferFrom(
@@ -264,27 +190,28 @@ contract AnzaToken is AnzaERC1155URIStorage, AccessControl {
         __updateBorrowerRole(_from, _to, _debtId);
 
         uint256 _id = borrowerTokenId(_debtId);
-        if (exists(_id)) super.safeTransferFrom(_from, _to, _id, 1, "");
+        if (exists(_id)) super._safeTransferFrom(_from, _to, _id, 1, "");
     }
 
     function __debtBatchTransferFrom(
         address _from,
         address _to,
-        uint256[] _debtIds,
-        uint256[] /* _amounts */,
+        uint256[] memory _debtIds,
+        uint256[] memory /* _amounts */,
         bytes memory /* _data */
     ) private {
-        uint256[] _ids;
-        uint256[] _amounts;
+        uint256[] memory _ids;
+        uint256[] memory _amounts;
 
         for (uint256 i = 0; i < _debtIds.length; ++i) {
-            __updateBorrowerRole(_from, _to, _debtId);
+            __updateBorrowerRole(_from, _to, _debtIds[i]);
 
             uint256 _id = borrowerTokenId(_debtIds[i]);
 
-            if (exists(_id)) {
-                _ids.push(_id);
-                _amounts.push(1);
+            if (!exists(_id)) {
+                _ids[i] = _ids[_ids.length - 1];
+                delete _ids[_ids.length - 1];
+            }
         }
 
         if (_ids.length > 0)

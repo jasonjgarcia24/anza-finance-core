@@ -140,7 +140,9 @@ contract LoanTreasurey is
         return _success;
     }
 
-    function withdrawCollateral(uint256 _debtId) external returns (bool) {
+    function withdrawCollateral(
+        uint256 _debtId
+    ) external nonReentrant returns (bool) {
         return _loanCollateralVault.withdraw(msg.sender, _debtId);
     }
 
@@ -178,6 +180,7 @@ contract LoanTreasurey is
         onlyRole(_DEBT_STOREFRONT_)
         onlyActiveLoan(_debtId)
         debtUpdater(_debtId)
+        nonReentrant
         returns (bool _results)
     {
         // Increment nonce
@@ -237,6 +240,7 @@ contract LoanTreasurey is
         onlyRole(_DEBT_STOREFRONT_)
         onlyActiveLoan(_debtId)
         debtUpdater(_debtId)
+        nonReentrant
         returns (bool _results)
     {
         // Get current debt terms
@@ -246,12 +250,15 @@ contract LoanTreasurey is
         _depositPayment(_purchaser, _debtId, _debtBalance);
 
         // Create loan contract for new lender
-        _loanContract.initLoanContract(
-            _loanCodec.getDebtTerms(_debtId),
-            _debtId,
-            _anzaToken.borrowerOf(_debtId),
-            _purchaser
+        (bool _success, ) = address(_loanContract).call{value: msg.value}(
+            abi.encodeWithSignature(
+                "initLoanContract(uint256,address,address)",
+                _debtId,
+                _anzaToken.borrowerOf(_debtId),
+                _purchaser
+            )
         );
+        if (!_success) revert FailedPurchase();
 
         // Transfer sponsorship
         _anzaToken.safeTransferFrom(
@@ -307,13 +314,13 @@ contract LoanTreasurey is
             withdrawableBalance[_lender] += _payment;
 
             // Burn ALC debt token
-            _anzaToken.burnLenderToken(_debtId * 2, _payment);
+            _anzaToken.burnLenderToken(_debtId, _payment);
         } else {
             withdrawableBalance[_lender] += _balance;
             withdrawableBalance[_payer] += _payment - _balance;
 
             // Burn ALC debt token
-            _anzaToken.burnLenderToken(_debtId * 2, _balance);
+            _anzaToken.burnLenderToken(_debtId, _balance);
         }
     }
 }

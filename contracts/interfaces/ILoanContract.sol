@@ -74,7 +74,6 @@ interface ILoanContract {
     ) external payable;
 
     function initLoanContract(
-        bytes32 _contractTerms,
         uint256 _debtId,
         address _borrower,
         address _lender

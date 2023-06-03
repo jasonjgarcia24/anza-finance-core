@@ -1,58 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-interface IAnzaToken {
+interface IAnzaTokenLite {
     error InvalidTransferType();
-
-    /**
-     * @dev Returns the token collection name.
-     */
-    function name() external view returns (string memory);
-
-    /**
-     * @dev Returns the token collection symbol.
-     */
-    function symbol() external view returns (string memory);
-
-    /**
-     * @dev Indicates whether any token exist with a given id, or not.
-     */
-    function exists(uint256 id) external view returns (bool);
-
-    function ownerOf(uint256 _tokenId) external view returns (address);
-
-    function balanceOf(
-        address account,
-        uint256 id
-    ) external view returns (uint256);
-
-    /// @notice Get the borrower of a debt.
-    /// @param _debtId The debt ID of the loan.
-    /// @return The borrower of the debt.
-    function borrowerOf(uint256 _debtId) external view returns (address);
-
-    /// @notice Get the lender of a debt.
-    /// @param _debtId The debt ID of the loan.
-    /// @return The lender of the debt.
-    function lenderOf(uint256 _debtId) external view returns (address);
-
-    function checkBorrowerOf(
-        address _account,
-        uint256 _debtId
-    ) external view returns (bool);
-
-    /// @notice Get the borrower token ID for a given debt.
-    /// @param _debtId The debt ID of the loan.
-    /// @return The borrower token ID of the debt.
-    function borrowerTokenId(uint256 _debtId) external pure returns (uint256);
-
-    /// @notice Get the lender token ID for a given debt.
-    /// @param _debtId The debt ID of the loan.
-    /// @return The lender token ID of the debt.
-    function lenderTokenId(uint256 _debtId) external pure returns (uint256);
-
-    /// @dev Total amount of tokens in with a given id.
-    function totalSupply(uint256 id) external view returns (uint256);
 
     /// @notice Transfers `_value` amount of an `_id` from the `_from` address to the `_to` address specified (with safety call).
     /// @dev Caller must be approved to manage the tokens being transferred out of the `_from` account (see "Approval" section of the standard).
@@ -66,13 +16,13 @@ interface IAnzaToken {
     /// @param _id ID of the token type
     /// @param _amount Transfer amount
     /// @param _data Additional data with no specified format, MUST be sent unaltered in call to `onERC1155Received` on `_to`
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount,
-        bytes calldata _data
-    ) external;
+    // function safeTransferFrom(
+    //     address _from,
+    //     address _to,
+    //     uint256 _id,
+    //     uint256 _amount,
+    //     bytes calldata _data
+    // ) external;
 
     /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
     /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
