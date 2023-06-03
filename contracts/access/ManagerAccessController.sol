@@ -8,7 +8,10 @@ import "../domain/LoanContractRoles.sol";
 import "../interfaces/IManagerAccessController.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract ManagerAccessController is IManagerAccessController, AccessControl {
+abstract contract ManagerAccessController is
+    IManagerAccessController,
+    AccessControl
+{
     address internal _collateralVault;
     address internal _loanTreasurer;
 

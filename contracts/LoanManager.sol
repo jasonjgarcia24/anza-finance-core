@@ -5,7 +5,11 @@ import "./interfaces/ILoanManager.sol";
 import "./LoanCodec.sol";
 import "./access/ManagerAccessController.sol";
 
-contract LoanManager is ILoanManager, LoanCodec, ManagerAccessController {
+abstract contract LoanManager is
+    ILoanManager,
+    LoanCodec,
+    ManagerAccessController
+{
     // Max number of loan refinances (default is unlimited)
     uint256 public maxRefinances = 2008;
 

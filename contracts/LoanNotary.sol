@@ -144,18 +144,6 @@ abstract contract LoanNotary is ILoanNotary {
                 ? initLoanContract__typeHash0
                 : initLoanContract__typeHash1;
     }
-
-    // function __splitSignature(
-    //     bytes memory _signature
-    // ) private pure returns (uint8 v, bytes32 r, bytes32 s) {
-    //     if (_signature.length != 65) revert InvalidSignatureLength();
-
-    //     assembly {
-    //         r := mload(add(_signature, 0x20))
-    //         s := mload(add(_signature, 0x40))
-    //         v := byte(0, mload(add(_signature, 0x60)))
-    //     }
-    // }
 }
 
 /**
@@ -282,16 +270,4 @@ abstract contract DebtNotary is IDebtNotary {
     ) private pure returns (bytes32) {
         return buyDebt__typeHash0;
     }
-
-    // function __splitSignature(
-    //     bytes memory _signature
-    // ) private pure returns (uint8 v, bytes32 r, bytes32 s) {
-    //     if (_signature.length != 65) revert InvalidSignatureLength();
-
-    //     assembly {
-    //         r := mload(add(_signature, 0x20))
-    //         s := mload(add(_signature, 0x40))
-    //         v := byte(0, mload(add(_signature, 0x60)))
-    //     }
-    // }
 }
