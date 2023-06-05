@@ -9,6 +9,8 @@ interface IAnzaTokenIndexer {
 
     function ownerOf(uint256 _tokenId) external view returns (address);
 
+    function debtId(uint256 _tokenId) external pure returns (uint256);
+
     // function balanceOf(
     //     address account,
     //     uint256 id

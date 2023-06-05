@@ -39,7 +39,9 @@ abstract contract LoanManager is
             _setLoanState(_debtId, _DEFAULT_STATE_);
         }
         // Loan fully paid off
-        else if (_anzaToken.totalSupply(_debtId * 2) <= 0) {
+        else if (
+            _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId)) <= 0
+        ) {
             console.log("Paid loan: %s", _debtId);
             _setLoanState(_debtId, _PAID_STATE_);
         }
@@ -81,7 +83,7 @@ abstract contract LoanManager is
 
     function checkLoanExpired(uint256 _debtId) public view returns (bool) {
         return
-            _anzaToken.totalSupply(_debtId * 2) > 0 &&
+            _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId)) > 0 &&
             loanClose(_debtId) <= block.timestamp;
     }
 

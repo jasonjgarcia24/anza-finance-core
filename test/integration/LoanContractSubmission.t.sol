@@ -116,7 +116,7 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        (uint256 __debtId, , ) = _loanContract.debts(
+        (uint256 __debtId, , , ) = _loanContract.debts(
             _collateralAddress,
             collateralId
         );

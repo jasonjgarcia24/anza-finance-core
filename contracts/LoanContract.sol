@@ -34,7 +34,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      * TODO: Test
      */
     function debtBalanceOf(uint256 _debtId) public view returns (uint256) {
-        return _anzaToken.totalSupply(_debtId * 2);
+        return _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId));
     }
 
     function getCollateralNonce(
@@ -87,6 +87,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         _debt.debtId = ++totalDebts;
         ++_debt.activeLoanIndex;
         ++_debt.collateralNonce;
+        _debt.rootDebtId = totalDebts;
 
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
@@ -125,7 +126,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Mint debt ALC debt tokens for lender
         _anzaToken.mint(
             msg.sender,
-            totalDebts * 2,
+            totalDebts,
             _principal,
             _collateralToken.tokenURI(_collateralId),
             abi.encodePacked(_borrower)
@@ -214,10 +215,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
-        uint256 _balance = debtBalanceOf(_debtId);
-        (bool _success, ) = _loanTreasurer.call{
-            value: _principal >= _balance ? _balance : _principal
-        }(
+        (bool _success, ) = _loanTreasurer.call{value: _principal}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
                 _borrower,
@@ -229,7 +227,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Mint debt ALC debt tokens for lender.
         _anzaToken.mint(
             msg.sender,
-            totalDebts * 2,
+            totalDebts,
             _principal,
             _collateralToken.tokenURI(_collateral.collateralId),
             abi.encodePacked(_borrower)
@@ -303,12 +301,17 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             totalDebts
         );
 
+        // Record balance for redistribution of debt.
+        // @note: This is necessary since the debt will be reduced
+        // by the sponsorPayment function.
+        uint256 _balance = _anzaToken.balanceOf(
+            _anzaToken.lenderOf(_debtId),
+            _anzaToken.lenderTokenId(_debtId)
+        );
+
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
-        uint256 _balance = debtBalanceOf(_debtId);
-        (bool _success, ) = _loanTreasurer.call{
-            value: _principal >= _balance ? _balance : _principal
-        }(
+        (bool _success, ) = _loanTreasurer.call{value: _principal}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
                 _borrower,
@@ -320,12 +323,9 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Mint debt ALC debt tokens for lender.
         _anzaToken.mint(
             _lender,
-            totalDebts * 2,
-            _principal,
-            IERC721Metadata(_collateral.collateralAddress).tokenURI(
-                _collateral.collateralId
-            ),
-            abi.encodePacked(_borrower)
+            totalDebts,
+            _principal >= _balance ? _balance : _principal,
+            abi.encode(address(_borrower), _debt.rootDebtId)
         );
 
         // Emit initialization event

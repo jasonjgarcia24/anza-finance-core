@@ -7,13 +7,19 @@ import "../domain/AnzaTokenTransferTypes.sol";
 
 import "./AnzaBaseToken.sol";
 import "./AnzaTokenIndexer.sol";
+import "../interfaces/IAnzaTokenLite.sol";
 
-contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
+contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
     constructor(
         string memory _name,
         string memory _symbol,
         string memory _baseURI
     ) AnzaBaseToken(_name, _symbol, _baseURI) AnzaTokenAccessController() {}
+
+    modifier onlyValidMint(uint256 _amount) {
+        if (_amount == 0) revert IllegalMint();
+        _;
+    }
 
     function safeTransferFrom(
         address _from,
@@ -21,11 +27,15 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         uint256 _debtId,
         uint256 _amount,
         bytes memory _data
-    ) public override onlyRole(_TREASURER_) {
-        if (bytes32(_data) == _DEBT_TRANSFER_) {
-            __debtTransferFrom(_from, _to, _debtId, _amount, "");
-        } else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
-            __sponsorshipTransferFrom(_from, _to, _debtId, _amount, "");
+    ) public override {
+        if (hasRole(_TREASURER_, _msgSender())) {
+            if (bytes32(_data) == _DEBT_TRANSFER_) {
+                __debtTransferFrom(_from, _to, _debtId, _amount, "");
+            } else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
+                __sponsorshipTransferFrom(_from, _to, _debtId, _amount, "");
+            }
+        } else {
+            super.safeTransferFrom(_from, _to, _debtId, _amount, _data);
         }
     }
 
@@ -55,28 +65,36 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
 
     function mint(
         address _to,
-        uint256 _id,
+        uint256 _debtId,
+        uint256 _amount,
+        bytes memory _data
+    ) external onlyRole(_LOAN_CONTRACT_) {
+        // Mint ALC debt tokens
+        console.log("_amount", _amount);
+        _mint(_to, lenderTokenId(_debtId), _amount, "");
+
+        // Mint ALC replica token
+        (address _borrower, uint256 _rootDebtId) = abi.decode(
+            _data,
+            (address, uint256)
+        );
+        _mint(_borrower, borrowerTokenId(_debtId), 1, "");
+        _setURI(borrowerTokenId(_debtId), uri(_rootDebtId));
+    }
+
+    function mint(
+        address _to,
+        uint256 _debtId,
         uint256 _amount,
         string calldata _collateralURI,
         bytes memory _data
     ) external onlyRole(_LOAN_CONTRACT_) {
-        bytes32 _tokenAdminRole = keccak256(_data);
-
-        /** Lender Token */
-        if (_id % 2 == 0) {
-            // Preset borrower token's URI
-            _setURI(_id + 1, _collateralURI);
-        }
-        /** Borrower Token */
-        else {
-            _checkRole(_tokenAdminRole, _to);
-        }
-
         // Mint ALC debt tokens
-        _mint(_to, _id, _amount, _data);
+        _mint(_to, lenderTokenId(_debtId), _amount, "");
 
         // Mint ALC replica token
-        _mint(address(bytes20(_data)), _id + 1, 1, "");
+        _mint(address(bytes20(_data)), borrowerTokenId(_debtId), 1, "");
+        _setURI(borrowerTokenId(_debtId), _collateralURI);
     }
 
     function burn(address _address, uint256 _id, uint256 _amount) external {
@@ -118,13 +136,22 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         _burn(lenderOf(_debtId), _lenderTokenId, _amount);
     }
 
+    function _mint(
+        address _to,
+        uint256 _id,
+        uint256 _amount,
+        bytes memory _data
+    ) internal override onlyValidMint(_amount) {
+        super._mint(_to, _id, _amount, _data);
+    }
+
     function _beforeTokenTransfer(
         address,
         address _from,
         address _to,
         uint256[] memory _ids,
         uint256[] memory _amounts,
-        bytes memory
+        bytes memory /* _data */
     ) internal virtual override {
         for (uint256 i = 0; i < _ids.length; ++i) {
             uint256 _id = _ids[i];
@@ -146,7 +173,7 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
                 // minting transaction.
 
                 // Ownership: set token owners only when the replica token is not
-                // being burned nor minted. Lender token direct transfers are prohibited.
+                // being burned nor minted. Direct lender token transfers are prohibited.
                 if (_id % 2 == 0) revert IllegalTransfer();
                 _setOwner(_id, _to);
             }
@@ -184,11 +211,7 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         uint256 /* _amount */,
         bytes memory /* _data */
     ) private {
-        uint256 _id = borrowerTokenId(_debtId);
-
-        exists(_id)
-            ? super._safeTransferFrom(_from, _to, _id, 1, "")
-            : _setOwner(_id, _to);
+        super._safeTransferFrom(_from, _to, borrowerTokenId(_debtId), 1, "");
     }
 
     function __debtBatchTransferFrom(
@@ -221,7 +244,12 @@ contract AnzaToken is AnzaBaseToken, AnzaTokenIndexer {
         uint256 _amount,
         bytes memory /* _data */
     ) private {
-        uint256 _id = lenderTokenId(_debtId);
-        if (exists(_id)) super.safeTransferFrom(_from, _to, _id, _amount, "");
+        super._safeTransferFrom(
+            _from,
+            _to,
+            lenderTokenId(_debtId),
+            _amount,
+            ""
+        );
     }
 }

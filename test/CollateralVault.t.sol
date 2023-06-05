@@ -150,9 +150,6 @@ contract LoanCollateralVaultUnitTest is
         bytes32 _hashedDebtId
     ) public {
         uint256 _testCollateralId = collateralId + 1;
-        uint256 _debts = loanContract.totalDebts();
-
-        console.log("total debts: %s", _debts);
 
         vm.startPrank(borrower);
         demoToken.approve(admin, _testCollateralId);

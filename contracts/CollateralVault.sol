@@ -79,7 +79,7 @@ contract CollateralVault is
         uint256 _collateralId,
         uint256 _debtId
     ) public returns (bool) {
-        (uint256 __debtId, , ) = ILoanContract(_loanContract).debts(
+        (uint256 __debtId, , , ) = ILoanContract(_loanContract).debts(
             _collateralAddress,
             _collateralId
         );
@@ -121,27 +121,15 @@ contract CollateralVault is
         Collateral storage _collateral = __collaterals[_debtId];
         totalCollateral -= 1;
 
+        // Burn replica
+        IAnzaToken(anzaToken).burnBorrowerToken(_debtId);
+
         // Transfer collateral to borrower
         IERC721(_collateral.collateralAddress).safeTransferFrom(
             address(this),
             _to,
             _collateral.collateralId,
             ""
-        );
-
-        // Burn replica
-        try IAnzaToken(anzaToken).burnBorrowerToken(_debtId) {} catch Error(
-            string memory err
-        ) {
-            console.log(err);
-            // If token does not exist, ignore
-            // 'burn amount exceeds balance' revert.
-        }
-
-        emit WithdrawnCollateral(
-            _to,
-            _collateral.collateralAddress,
-            _collateral.collateralId
         );
 
         return true;

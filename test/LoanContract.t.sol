@@ -370,10 +370,6 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         bool _isExpired = _now >=
             (_timeLoanCreated + _GRACE_PERIOD_ + _DURATION_);
 
-        console.log(_now);
-        console.log(_timeLoanCreated, _GRACE_PERIOD_, _DURATION_);
-        console.log(_isGracePeriod, _isExpired);
-
         // Make payment
         vm.deal(borrower, _payment);
         vm.startPrank(borrower);
@@ -384,9 +380,6 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         );
         require(_isExpired || _success, "0 :: Payment was unsuccessful");
         vm.stopPrank();
-
-        console.log(_success);
-        console.logBytes(_data);
 
         // Set state payoff flag
         bool _isPayoff = anzaToken.totalSupply(_debtId * 2) <= 0;

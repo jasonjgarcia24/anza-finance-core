@@ -17,6 +17,10 @@ abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
         return __owners[_tokenId];
     }
 
+    function debtId(uint256 _tokenId) public pure returns (uint256) {
+        return _tokenId / 2;
+    }
+
     function borrowerOf(uint256 _debtId) public view returns (address) {
         return __owners[borrowerTokenId(_debtId)];
     }

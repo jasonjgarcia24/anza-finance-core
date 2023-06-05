@@ -178,17 +178,6 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
         // );
     }
 
-    // function test_Rando() public {
-    //     uint256 _num;
-    //     uint256 _max32 = type(uint32).max;
-
-    //     assembly {
-    //         _num := and(4294967297, _max32)
-    //     }
-
-    //     console.log(_num);
-    // }
-
     function testLoanContractCompound__BasicLenderCompoundingSubmitProposal()
         public
     {

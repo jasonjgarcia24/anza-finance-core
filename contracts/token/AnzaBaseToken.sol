@@ -11,7 +11,7 @@ import "../interfaces/IAnzaBase.sol";
 import "../interfaces/IAnzaTokenLite.sol";
 
 abstract contract AnzaBaseToken is
-    IAnzaTokenLite,
+    IAnzaBase,
     AnzaTokenAccessController,
     AnzaTokenURIStorage
 {

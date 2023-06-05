@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 interface IAnzaTokenLite {
     error IllegalTransfer();
+    error IllegalMint();
 
     /// @notice Transfers `_value` amount of an `_id` from the `_from` address to the `_to` address specified (with safety call).
     /// @dev Caller must be approved to manage the tokens being transferred out of the `_from` account (see "Approval" section of the standard).
@@ -29,9 +30,20 @@ interface IAnzaTokenLite {
     function mint(uint256 _debtId, uint256 _amount) external;
 
     /// @param _to argument MUST be the address of the recipient whose balance is increased.
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
+    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
+    /// @param _data Additional data with the format of `bytes64(address _borrower, uint256 _rootDebtId)`.
+    function mint(
+        address _to,
+        uint256 _debtId,
+        uint256 _amount,
+        bytes memory _data
+    ) external;
+
+    /// @param _to argument MUST be the address of the recipient whose balance is increased.
     /// @param _id argument MUST be the token ID being transferred.
     /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
-    /// @param _data Additional data with no specified format, MUST be sent unaltered in call to the `ERC1155TokenReceiver` hook(s) on `_to`
+    /// @param _data Additional data with the format of `bytes32(address _borrower)`.
     function mint(
         address _to,
         uint256 _id,

@@ -250,12 +250,6 @@ contract LoanTreasurey is
         nonReentrant
         returns (bool _results)
     {
-        // Get current debt terms
-        uint256 _debtBalance = _loanContract.debtBalanceOf(_debtId);
-        uint256 _payment = msg.value;
-
-        _depositPayment(_purchaser, _debtId, _debtBalance);
-
         // Create loan contract for new lender
         (bool _success, ) = address(_loanContract).call{value: msg.value}(
             abi.encodeWithSignature(
@@ -266,15 +260,6 @@ contract LoanTreasurey is
             )
         );
         if (!_success) revert FailedPurchase();
-
-        // Transfer sponsorship
-        _anzaToken.safeTransferFrom(
-            _lender,
-            _purchaser,
-            _debtId,
-            _payment,
-            abi.encodePacked(_SPONSORSHIP_TRANSFER_)
-        );
 
         _results = true;
     }

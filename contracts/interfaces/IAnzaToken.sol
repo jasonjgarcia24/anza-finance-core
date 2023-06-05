@@ -23,6 +23,8 @@ interface IAnzaToken {
 
     function ownerOf(uint256 _tokenId) external view returns (address);
 
+    function debtId(uint256 _tokenId) external pure returns (uint256);
+
     function balanceOf(
         address account,
         uint256 id
@@ -74,6 +76,17 @@ interface IAnzaToken {
     /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
     /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
     function mint(uint256 _debtId, uint256 _amount) external;
+
+    /// @param _to argument MUST be the address of the recipient whose balance is increased.
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
+    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
+    /// @param _data Additional data with no specified format, MUST be sent unaltered in call to the `ERC1155TokenReceiver` hook(s) on `_to`
+    function mint(
+        address _to,
+        uint256 _debtId,
+        uint256 _amount,
+        bytes memory _data
+    ) external;
 
     /// @param _to argument MUST be the address of the recipient whose balance is increased.
     /// @param _id argument MUST be the token ID being transferred.

@@ -315,7 +315,10 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 _signature
             )
         );
+
+        console.log("initLoanContract error:");
         console.logBytes(_data);
+
         vm.stopPrank();
 
         return _success;
