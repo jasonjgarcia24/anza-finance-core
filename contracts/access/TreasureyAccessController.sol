@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractRoles.sol";
 
-import "../interfaces/ITreasureyAccessController.sol";
+import {ITreasureyAccessController} from "../interfaces/ITreasureyAccessController.sol";
+import {ILoanContract} from "../interfaces/ILoanContract.sol";
+import {ILoanManager} from "../interfaces/ILoanManager.sol";
+import {ILoanCodec} from "../interfaces/ILoanCodec.sol";
+import {ICollateralVault} from "../interfaces/ICollateralVault.sol";
+import {IAnzaToken} from "../interfaces/IAnzaToken.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 abstract contract TreasureyAccessController is
@@ -24,6 +29,14 @@ abstract contract TreasureyAccessController is
         _setRoleAdmin(_DEBT_STOREFRONT_, _ADMIN_);
 
         _grantRole(_ADMIN_, msg.sender);
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            _interfaceId == type(ITreasureyAccessController).interfaceId ||
+            AccessControl.supportsInterface(_interfaceId);
     }
 
     function anzaToken() external view returns (address) {

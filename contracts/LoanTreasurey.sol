@@ -8,8 +8,8 @@ import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 import "./domain/AnzaTokenTransferTypes.sol";
 
-import "./interfaces/ILoanTreasurey.sol";
-import "./interfaces/ICollateralVault.sol";
+import {ILoanTreasurey} from "./interfaces/ILoanTreasurey.sol";
+import {ICollateralVault} from "./interfaces/ICollateralVault.sol";
 import {TreasureyAccessController} from "./access/TreasureyAccessController.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -40,6 +40,14 @@ contract LoanTreasurey is
     modifier onlyActiveLoan(uint256 _debtId) {
         _loanManager.verifyLoanActive(_debtId);
         _;
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view override(TreasureyAccessController) returns (bool) {
+        return
+            _interfaceId == type(ILoanTreasurey).interfaceId ||
+            TreasureyAccessController.supportsInterface(_interfaceId);
     }
 
     function getDebtSaleNonce(uint256 _debtId) public view returns (uint256) {

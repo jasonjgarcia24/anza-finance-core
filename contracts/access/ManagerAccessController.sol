@@ -29,7 +29,7 @@ abstract contract ManagerAccessController is
     ) public view virtual override returns (bool) {
         return
             _interfaceId == type(IManagerAccessController).interfaceId ||
-            super.supportsInterface(_interfaceId);
+            AccessControl.supportsInterface(_interfaceId);
     }
 
     function anzaToken() external view returns (address) {

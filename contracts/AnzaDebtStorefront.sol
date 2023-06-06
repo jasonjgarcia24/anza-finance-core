@@ -3,11 +3,10 @@ pragma solidity 0.8.20;
 
 import {console} from "../lib/forge-std/src/console.sol";
 
+import {IAnzaDebtStorefront} from "./interfaces/IAnzaDebtStorefront.sol";
+import {IAnzaToken} from "./interfaces/IAnzaToken.sol";
+import {ILoanTreasurey} from "./interfaces/ILoanTreasurey.sol";
 import {ListingNotary} from "./LoanNotary.sol";
-import "./interfaces/IAnzaToken.sol";
-import "./interfaces/IAnzaDebtStorefront.sol";
-import "./interfaces/ILoanContract.sol";
-import "./interfaces/ILoanTreasurey.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract AnzaDebtStorefront is

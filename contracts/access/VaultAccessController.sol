@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractRoles.sol";
 
-import "../interfaces/IVaultAccessController.sol";
+import {IVaultAccessController} from "../interfaces/IVaultAccessController.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 abstract contract VaultAccessController is
@@ -23,6 +23,14 @@ abstract contract VaultAccessController is
         _grantRole(_ADMIN_, msg.sender);
 
         anzaToken = _anzaTokenAddress;
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            _interfaceId == type(IVaultAccessController).interfaceId ||
+            AccessControl.supportsInterface(_interfaceId);
     }
 
     function loanContract() external view returns (address) {

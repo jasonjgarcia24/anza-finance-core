@@ -6,7 +6,7 @@ import {console} from "../lib/forge-std/src/console.sol";
 import {ILoanContract} from "./interfaces/ILoanContract.sol";
 import {LoanManager, ICollateralVault, ManagerAccessController, _TREASURER_} from "./LoanManager.sol";
 import {LoanNotary} from "./LoanNotary.sol";
-import "./utils/TypeUtils.sol";
+import {TypeUtils} from "./utils/TypeUtils.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {

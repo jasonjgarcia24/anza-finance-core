@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../lib/forge-std/src/console.sol";
 
 import "./domain/LoanContractErrorCodes.sol";
 import "./domain/LoanContractFIRIntervals.sol";
@@ -10,7 +10,7 @@ import "./domain/LoanContractTermMaps.sol";
 import "./domain/LoanContractStates.sol";
 import "./domain/LoanCodecErrorCodes.sol";
 
-import "./interfaces/ILoanCodec.sol";
+import {ILoanCodec} from "./interfaces/ILoanCodec.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 
 abstract contract LoanCodec is ILoanCodec {

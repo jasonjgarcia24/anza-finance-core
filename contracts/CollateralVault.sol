@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../lib/forge-std/src/console.sol";
 
 import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 
-import "./interfaces/ICollateralVault.sol";
-import "./interfaces/IAnzaToken.sol";
-import "./access/VaultAccessController.sol";
+import {ICollateralVault} from "./interfaces/ICollateralVault.sol";
+import {IAnzaToken} from "./interfaces/IAnzaToken.sol";
+import {ILoanContract} from "./interfaces/ILoanContract.sol";
+import {ILoanCodec} from "./interfaces/ILoanCodec.sol";
+import {VaultAccessController} from "./access/VaultAccessController.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
@@ -45,6 +47,14 @@ contract CollateralVault is
     modifier onlyWithdrawalAllowed(address _to, uint256 _debtId) {
         if (!withdrawalAllowed(_to, _debtId)) revert UnallowedWithdrawal();
         _;
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view override(VaultAccessController) returns (bool) {
+        return
+            _interfaceId == type(ICollateralVault).interfaceId ||
+            VaultAccessController.supportsInterface(_interfaceId);
     }
 
     function getCollateral(
