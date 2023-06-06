@@ -6,11 +6,10 @@ interface ILoanContract {
     error FailedFundsTransfer();
     error ExceededRefinanceLimit();
 
-    struct Debt {
+    struct DebtMap {
         uint256 debtId;
-        uint256 collateralNonce;
         uint256 activeLoanIndex;
-        uint256 rootDebtId;
+        uint256 collateralNonce;
     }
 
     event LoanContractInitialized(
@@ -35,15 +34,6 @@ interface ILoanContract {
 
     function totalDebts() external returns (uint256);
 
-    function debts(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) external returns (uint256, uint256, uint256, uint256);
-
-    function debtIdBranch(
-        uint256 _childDebtId
-    ) external returns (uint256, uint256, uint256, uint256);
-
     function debtBalanceOf(uint256 _debtId) external view returns (uint256);
 
     function getCollateralNonce(
@@ -51,10 +41,10 @@ interface ILoanContract {
         uint256 _collateralId
     ) external view returns (uint256);
 
-    function getCollateralDebtId(
+    function getLatestDebt(
         address _collateralAddress,
         uint256 _collateralId
-    ) external view returns (uint256);
+    ) external view returns (DebtMap memory);
 
     function getActiveLoanIndex(
         address _collateralAddress,

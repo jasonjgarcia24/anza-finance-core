@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "./interfaces/ILoanManager.sol";
-import "./LoanCodec.sol";
-import "./access/ManagerAccessController.sol";
+import {console} from "../lib/forge-std/src/console.sol";
+
+import {ILoanManager} from "./interfaces/ILoanManager.sol";
+import {LoanCodec, _DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_} from "./LoanCodec.sol";
+import {ManagerAccessController, ICollateralVault, _ADMIN_, _TREASURER_} from "./access/ManagerAccessController.sol";
 
 abstract contract LoanManager is
     ILoanManager,
@@ -16,6 +18,21 @@ abstract contract LoanManager is
     mapping(address => mapping(bytes32 => bool)) private __revokedTerms;
 
     constructor() ManagerAccessController() {}
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    )
+        public
+        view
+        virtual
+        override(LoanCodec, ManagerAccessController)
+        returns (bool)
+    {
+        return
+            _interfaceId == type(ILoanManager).interfaceId ||
+            LoanCodec.supportsInterface(_interfaceId) ||
+            ManagerAccessController.supportsInterface(_interfaceId);
+    }
 
     function setMaxRefinances(
         uint256 _maxRefinances

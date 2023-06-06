@@ -540,20 +540,18 @@ contract LoanContractViewsUnitTest is LoanSigned {
     }
 
     function testLoanContract__GetCollateralDebtId() public {
-        assertEq(
-            loanContract.getCollateralDebtId(address(demoToken), collateralId),
-            0,
-            "0 :: Collateral debt ID should be zero"
+        ILoanContract.DebtMap memory _debtMap = loanContract.getLatestDebt(
+            address(demoToken),
+            collateralId
         );
+        assertEq(_debtMap.debtId, 0, "0 :: Collateral debt ID should be zero");
 
         // Create loan contract
         createLoanContract(collateralId);
 
-        assertEq(
-            loanContract.getCollateralDebtId(address(demoToken), collateralId),
-            1,
-            "1 :: Collateral debt ID should be one"
-        );
+        _debtMap = loanContract.getLatestDebt(address(demoToken), collateralId);
+
+        assertEq(_debtMap.debtId, 1, "1 :: Collateral debt ID should be one");
     }
 
     function testLoanContract__GetDebtTerms() public {
@@ -834,12 +832,12 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.getActiveLoanIndex(address(demoToken), collateralId),
             0,
-            "0 :: active loan count should be the default 0"
+            "0 :: active loan count should be 0"
         );
 
         // Create loan contract
         createLoanContract(collateralId);
-        ++_debtId;
+        _debtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.getActiveLoanIndex(address(demoToken), collateralId),

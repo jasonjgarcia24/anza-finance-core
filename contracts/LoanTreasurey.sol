@@ -42,34 +42,8 @@ contract LoanTreasurey is
         _;
     }
 
-    function getDebtSaleNonce(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) public view returns (uint256) {
-        return
-            getDebtSaleNonce(
-                _loanContract.getCollateralDebtId(
-                    _collateralAddress,
-                    _collateralId
-                )
-            );
-    }
-
     function getDebtSaleNonce(uint256 _debtId) public view returns (uint256) {
         return __debtSaleNonces[_debtId] + 1;
-    }
-
-    function getSponsorshipSaleNonce(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) public view returns (uint256) {
-        return
-            getSponsorshipSaleNonce(
-                _loanContract.getCollateralDebtId(
-                    _collateralAddress,
-                    _collateralId
-                )
-            );
     }
 
     function getSponsorshipSaleNonce(
@@ -239,7 +213,7 @@ contract LoanTreasurey is
      */
     function executeSponsorshipPurchase(
         uint256 _debtId,
-        address _lender,
+        address /* _lender */,
         address _purchaser
     )
         external

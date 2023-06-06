@@ -116,18 +116,15 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        (uint256 __debtId, , , ) = _loanContract.debts(
-            _collateralAddress,
-            collateralId
+        uint256 __debtId = _loanContract
+            .getLatestDebt(_collateralAddress, collateralId)
+            .debtId;
+
+        assertEq(
+            __debtId,
+            _debtId,
+            "0 :: verifyLatestDebtId :: Invalid debt ID."
         );
-
-        // // Verify debt ID for collateral
-        // uint256 numDebtIds = _loanContract.getCollateralNonce(
-        //     _collateralAddress,
-        //     collateralId
-        // );
-
-        assertEq(__debtId, _debtId);
     }
 
     function verifyLoanAgreementTerms(
@@ -139,22 +136,22 @@ abstract contract LoanContractSubmitFunctions is
         assertEq(
             loanContract.loanState(_debtId),
             _loanState,
-            "Invalid loan state"
+            "0 :: verifyLoanAgreementTerms :: Invalid loan state."
         );
         assertEq(
             loanContract.firInterval(_debtId),
             _contractTerms.firInterval,
-            "Invalid fir interval"
+            "1 :: verifyLoanAgreementTerms :: Invalid fir interval."
         );
         assertEq(
             loanContract.fixedInterestRate(_debtId),
             _contractTerms.fixedInterestRate,
-            "Invalid fixed interest rate"
+            "2 :: verifyLoanAgreementTerms :: Invalid fixed interest rate."
         );
         assertEq(
             loanContract.loanClose(_debtId) - loanContract.loanStart(_debtId),
             _contractTerms.duration,
-            "Invalid duration"
+            "3 :: verifyLoanAgreementTerms :: Invalid duration."
         );
     }
 
@@ -171,22 +168,22 @@ abstract contract LoanContractSubmitFunctions is
         assertEq(
             _anzaToken.borrowerTokenId(_debtId),
             _borrowerTokenId,
-            "Invalid borrower token ID"
+            "0 :: verifyLoanParticipants :: Invalid borrower token ID."
         );
         assertEq(
             _anzaToken.lenderTokenId(_debtId),
             _lenderTokenId,
-            "Invalid lender token ID"
+            "1 :: verifyLoanParticipants :: Invalid lender token ID."
         );
         assertEq(
             _anzaToken.borrowerOf(_debtId),
             _borrower,
-            "Invalid borrower account."
+            "2 :: verifyLoanParticipants :: Invalid borrower account.."
         );
         assertEq(
             _anzaToken.lenderOf(_debtId),
             _lender,
-            "Invalid lender account."
+            "3 :: verifyLoanParticipants :: Invalid lender account.."
         );
     }
 
@@ -207,7 +204,11 @@ abstract contract LoanContractSubmitFunctions is
         balances[0] = _principal;
         balances[1] = 1;
 
-        assertEq(anzaToken.balanceOfBatch(accounts, ids), balances);
+        assertEq(
+            anzaToken.balanceOfBatch(accounts, ids),
+            balances,
+            "0 :: verifyTokenBalances :: Invalid token balances."
+        );
     }
 
     function verifyPostContractInit(

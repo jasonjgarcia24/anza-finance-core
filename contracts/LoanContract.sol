@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "./LoanManager.sol";
-import "./utils/TypeUtils.sol";
-import {LoanNotary} from "./LoanNotary.sol";
+import {console} from "../lib/forge-std/src/console.sol";
+
 import {ILoanContract} from "./interfaces/ILoanContract.sol";
-import {ICollateralVault} from "./interfaces/ICollateralVault.sol";
+import {LoanManager, ICollateralVault, ManagerAccessController, _TREASURER_} from "./LoanManager.sol";
+import {LoanNotary} from "./LoanNotary.sol";
+import "./utils/TypeUtils.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
@@ -13,20 +14,18 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     uint256 public totalDebts;
 
     // Mapping from collateral to debt ID
-    mapping(address collateralAddress => mapping(uint256 collateralId => Debt))
-        public debts;
-    mapping(uint256 childDebtId => Debt parentDebtId) public debtIdBranch;
+    mapping(address collateralAddress => mapping(uint256 collateralId => DebtMap[]))
+        public debtMaps;
 
     constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 
     function supportsInterface(
         bytes4 _interfaceId
-    ) public view override(AccessControl) returns (bool) {
+    ) public view override(LoanManager, LoanNotary) returns (bool) {
         return
-            _interfaceId == 0xb7c3c5ea || // ILoanContract
-            _interfaceId == 0x4a23979d || // ILoanManager
-            _interfaceId == 0xf83e032d || // ILoanCodec
-            AccessControl.supportsInterface(_interfaceId);
+            _interfaceId == type(ILoanContract).interfaceId ||
+            LoanManager.supportsInterface(_interfaceId) ||
+            LoanNotary.supportsInterface(_interfaceId);
     }
 
     /*
@@ -41,21 +40,32 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (uint256) {
-        return debts[_collateralAddress][_collateralId].collateralNonce + 1;
+        return debtMaps[_collateralAddress][_collateralId].length + 1;
     }
 
-    function getCollateralDebtId(
+    function getLatestDebt(
         address _collateralAddress,
         uint256 _collateralId
-    ) public view returns (uint256) {
-        return debts[_collateralAddress][_collateralId].debtId;
+    ) public view returns (DebtMap memory) {
+        uint256 _length = debtMaps[_collateralAddress][_collateralId].length;
+
+        if (_length == 0)
+            return DebtMap({debtId: 0, activeLoanIndex: 0, collateralNonce: 0});
+
+        return debtMaps[_collateralAddress][_collateralId][_length - 1];
     }
 
     function getActiveLoanIndex(
         address _collateralAddress,
         uint256 _collateralId
     ) public view returns (uint256) {
-        return debts[_collateralAddress][_collateralId].activeLoanIndex;
+        uint256 _length = debtMaps[_collateralAddress][_collateralId].length;
+
+        if (_length == 0) return 0;
+
+        return
+            debtMaps[_collateralAddress][_collateralId][_length - 1]
+                .activeLoanIndex;
     }
 
     /**
@@ -76,18 +86,34 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         bytes calldata _borrowerSignature
     ) external payable {
         // Validate loan terms
-        uint64 _now = _toUint64(block.timestamp);
         uint256 _principal = msg.value;
-        _validateLoanTerms(_contractTerms, _now, _principal);
+        _validateLoanTerms(
+            _contractTerms,
+            _toUint64(block.timestamp),
+            _principal
+        );
 
         // Set debt
-        Debt storage _debt = debts[_collateralAddress][_collateralId];
+        DebtMap[] storage _debtMaps = debtMaps[_collateralAddress][
+            _collateralId
+        ];
 
-        // Set loan fields
-        _debt.debtId = ++totalDebts;
-        ++_debt.activeLoanIndex;
-        ++_debt.collateralNonce;
-        _debt.rootDebtId = totalDebts;
+        // Record new collateral nonce
+        uint256 _collateralNonce = _debtMaps.length == 0
+            ? 1
+            : _debtMaps[_debtMaps.length - 1].collateralNonce + 1;
+
+        // Clear previous debts
+        delete debtMaps[_collateralAddress][_collateralId];
+
+        // Set debt fields
+        _debtMaps.push(
+            DebtMap({
+                debtId: ++totalDebts,
+                activeLoanIndex: 1,
+                collateralNonce: _collateralNonce
+            })
+        );
 
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
@@ -99,26 +125,26 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
                 contractTerms: _contractTerms,
                 collateralAddress: _collateralAddress,
                 collateralId: _collateralId,
-                collateralNonce: _debt.collateralNonce
+                collateralNonce: _collateralNonce
             }),
             _borrowerSignature,
             _collateralToken.ownerOf
         );
 
         // Add debt to database
-        __setLoanAgreement(_now, 0, _contractTerms);
+        __setLoanAgreement(_toUint64(block.timestamp), 0, _contractTerms);
 
         // The collateral ID and address will be mapped within
         // the loan collateral vault to the debt ID.
         _collateralToken.safeTransferFrom(
             _borrower,
-            _collateralVault,
+            address(_collateralVault),
             _collateralId,
             abi.encodePacked(totalDebts)
         );
 
         // Transfer funds to borrower's account in treasurey
-        (bool _success, ) = _loanTreasurer.call{value: _principal}(
+        (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
             abi.encodeWithSignature("depositFunds(address)", _borrower)
         );
         if (!_success) revert FailedFundsTransfer();
@@ -137,7 +163,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateralAddress,
             _collateralId,
             totalDebts,
-            0
+            1
         );
     }
 
@@ -161,29 +187,34 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         if (checkLoanDefault(_debtId)) revert InvalidCollateral();
 
         // Validate loan terms
-        uint64 _now = _toUint64(block.timestamp);
         uint256 _principal = msg.value;
-        _validateLoanTerms(_contractTerms, _now, _principal);
+        _validateLoanTerms(
+            _contractTerms,
+            _toUint64(block.timestamp),
+            _principal
+        );
 
         // Get collateral from vault
-        ICollateralVault _loanCollateralVault = ICollateralVault(
-            _collateralVault
-        );
-        ICollateralVault.Collateral memory _collateral = _loanCollateralVault
+        ICollateralVault.Collateral memory _collateral = _collateralVault
             .getCollateral(_debtId);
 
         // Set debt
-        Debt storage _debt = debts[_collateral.collateralAddress][
+        DebtMap[] storage _debtMaps = debtMaps[_collateral.collateralAddress][
             _collateral.collateralId
         ];
 
-        // Map the child loan to the parent
-        debtIdBranch[_debt.debtId] = _debt;
+        // Record new active loan index
+        uint256 _activeLoanIndex = _debtMaps.length + 1;
 
-        // Set child loan fields
-        _debt.debtId = ++totalDebts;
-        ++_debt.activeLoanIndex;
-        ++_debt.collateralNonce;
+        // Set debt fields
+        _debtMaps.push(
+            DebtMap({
+                debtId: ++totalDebts,
+                activeLoanIndex: _activeLoanIndex,
+                collateralNonce: _debtMaps[_debtMaps.length - 1]
+                    .collateralNonce + 1
+            })
+        );
 
         // Verify borrower participation
         IERC721Metadata _collateralToken = IERC721Metadata(
@@ -197,17 +228,21 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
                 contractTerms: _contractTerms,
                 collateralAddress: _collateral.collateralAddress,
                 collateralId: _collateral.collateralId,
-                collateralNonce: _debt.collateralNonce
+                collateralNonce: _debtMaps[_debtMaps.length - 1].collateralNonce
             }),
             _borrowerSignature,
             _anzaToken.borrowerOf
         );
 
         // Add debt to database
-        __setLoanAgreement(_now, _debt.activeLoanIndex, _contractTerms);
+        __setLoanAgreement(
+            _toUint64(block.timestamp),
+            _activeLoanIndex,
+            _contractTerms
+        );
 
         // Store collateral-debtId mapping in vault
-        _loanCollateralVault.setCollateral(
+        _collateralVault.setCollateral(
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts
@@ -215,7 +250,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
-        (bool _success, ) = _loanTreasurer.call{value: _principal}(
+        (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
                 _borrower,
@@ -238,7 +273,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _debt.activeLoanIndex
+            _activeLoanIndex
         );
     }
 
@@ -266,36 +301,41 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         if (checkLoanDefault(_debtId)) revert InvalidCollateral();
 
         // Validate loan terms
-        // Not necessary since the terms are existing and have already
-        // been validated.
-        uint64 _now = _toUint64(block.timestamp);
+        // Unnecessary since the terms are existing and have already been
+        // validated.
         uint256 _principal = msg.value;
 
         // Get collateral from vault
-        ICollateralVault _loanCollateralVault = ICollateralVault(
-            _collateralVault
-        );
-        ICollateralVault.Collateral memory _collateral = _loanCollateralVault
+        ICollateralVault.Collateral memory _collateral = _collateralVault
             .getCollateral(_debtId);
 
         // Set debt
-        Debt storage _debt = debts[_collateral.collateralAddress][
+        DebtMap[] storage _debtMaps = debtMaps[_collateral.collateralAddress][
             _collateral.collateralId
         ];
 
-        // Map the child loan to the parent
-        debtIdBranch[_debt.debtId] = _debt;
+        // Record new active loan index
+        uint256 _activeLoanIndex = _debtMaps.length + 1;
 
-        // Set child loan fields
-        _debt.debtId = ++totalDebts;
-        ++_debt.activeLoanIndex;
-        ++_debt.collateralNonce;
+        // Set debt fields
+        _debtMaps.push(
+            DebtMap({
+                debtId: ++totalDebts,
+                activeLoanIndex: _activeLoanIndex,
+                collateralNonce: _debtMaps[_debtMaps.length - 1]
+                    .collateralNonce + 1
+            })
+        );
 
         // Add debt to database
-        __setLoanAgreement(_now, _debt.activeLoanIndex, getDebtTerms(_debtId));
+        __setLoanAgreement(
+            _toUint64(block.timestamp),
+            _activeLoanIndex,
+            getDebtTerms(_debtId)
+        );
 
         // Store collateral-debtId mapping in vault
-        _loanCollateralVault.setCollateral(
+        _collateralVault.setCollateral(
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts
@@ -311,7 +351,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
-        (bool _success, ) = _loanTreasurer.call{value: _principal}(
+        (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
                 _borrower,
@@ -325,7 +365,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _lender,
             totalDebts,
             _principal >= _balance ? _balance : _principal,
-            abi.encode(address(_borrower), _debt.rootDebtId)
+            abi.encode(address(_borrower), _debtMaps[0].debtId)
         );
 
         // Emit initialization event
@@ -333,7 +373,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _debt.activeLoanIndex
+            _activeLoanIndex
         );
     }
 

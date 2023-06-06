@@ -78,15 +78,17 @@ contract CollateralVault is
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId
-    ) public returns (bool) {
-        (uint256 __debtId, , , ) = ILoanContract(_loanContract).debts(
-            _collateralAddress,
-            _collateralId
-        );
-
-        return
-            __debtId == _debtId &&
-            __collaterals[_debtId].collateralAddress == address(0);
+    ) public view returns (bool) {
+        try
+            ILoanContract(_loanContract).getLatestDebt(
+                _collateralAddress,
+                _collateralId
+            )
+        returns (ILoanContract.DebtMap memory _debtMap) {
+            return _debtMap.debtId == _debtId;
+        } catch (bytes memory) {
+            return false;
+        }
     }
 
     /**
@@ -132,6 +134,12 @@ contract CollateralVault is
             ""
         );
 
+        emit WithdrawnCollateral(
+            _to,
+            _collateral.collateralAddress,
+            _collateral.collateralId
+        );
+
         return true;
     }
 
@@ -150,6 +158,7 @@ contract CollateralVault is
         bytes memory _data
     ) public override returns (bytes4) {
         uint256 _debtId = uint256(bytes32(_data));
+        console.log("onERC721Received: %s", _debtId);
 
         _deposit(true, _from, msg.sender, _collateralId, _debtId);
 

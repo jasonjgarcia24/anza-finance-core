@@ -7,8 +7,8 @@ import "./domain/LoanNotaryTypeHashes.sol";
 
 import {ILoanNotary, IListingNotary} from "./interfaces/ILoanNotary.sol";
 import {LibLoanNotary} from "./libraries/LibLoanNotary.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of
@@ -57,6 +57,12 @@ abstract contract LoanNotary is ILoanNotary {
                 address(this)
             )
         );
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual returns (bool) {
+        return _interfaceId == type(ILoanNotary).interfaceId;
     }
 
     /**
@@ -196,6 +202,12 @@ abstract contract ListingNotary is IListingNotary {
                 address(this)
             )
         );
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual returns (bool) {
+        return _interfaceId == type(IListingNotary).interfaceId;
     }
 
     /**

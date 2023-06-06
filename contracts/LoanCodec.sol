@@ -34,6 +34,12 @@ abstract contract LoanCodec is ILoanCodec {
      */
     mapping(uint256 => bytes32) private __packedDebtTerms;
 
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual returns (bool) {
+        return _interfaceId == type(ILoanCodec).interfaceId;
+    }
+
     function getDebtTerms(uint256 _debtId) public view returns (bytes32) {
         return __packedDebtTerms[_debtId];
     }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../lib/forge-std/src/console.sol";
+import {console} from "../lib/forge-std/src/console.sol";
 
 import {ListingNotary} from "./LoanNotary.sol";
 import "./interfaces/IAnzaToken.sol";
@@ -35,26 +35,6 @@ contract AnzaDebtStorefront is
     }
 
     function buyDebt(
-        address _collateralAddress,
-        uint256 _collateralId,
-        uint256 _termsExpiry,
-        bytes calldata _sellerSignature
-    ) external payable {
-        (bool success, ) = address(this).call{value: msg.value}(
-            abi.encodeWithSignature(
-                "buyDebt(uint256,uint256,bytes)",
-                ILoanContract(loanContract).getCollateralDebtId(
-                    _collateralAddress,
-                    _collateralId
-                ),
-                _termsExpiry,
-                _sellerSignature
-            )
-        );
-        require(success);
-    }
-
-    function buyDebt(
         uint256 _debtId,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
@@ -66,26 +46,6 @@ contract AnzaDebtStorefront is
             _sellerSignature,
             "executeDebtPurchase(uint256,address,address)"
         );
-    }
-
-    function buySponsorship(
-        address _collateralAddress,
-        uint256 _collateralId,
-        uint256 _termsExpiry,
-        bytes calldata _sellerSignature
-    ) external payable {
-        (bool success, ) = address(this).call{value: msg.value}(
-            abi.encodeWithSignature(
-                "buySponsorship(uint256,uint256,bytes)",
-                ILoanContract(loanContract).getCollateralDebtId(
-                    _collateralAddress,
-                    _collateralId
-                ),
-                _termsExpiry,
-                _sellerSignature
-            )
-        );
-        require(success);
     }
 
     function buySponsorship(

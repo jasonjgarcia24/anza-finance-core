@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractRoles.sol";
 
-import "../interfaces/IManagerAccessController.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import {IManagerAccessController, IAnzaToken, ICollateralVault} from "../interfaces/IManagerAccessController.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 abstract contract ManagerAccessController is
     IManagerAccessController,
     AccessControl
 {
-    address internal _collateralVault;
-    address internal _loanTreasurer;
+    address internal _loanTreasurerAddress;
 
     IAnzaToken internal _anzaToken;
+    ICollateralVault internal _collateralVault;
 
     constructor() {
         _setRoleAdmin(_ADMIN_, _ADMIN_);
@@ -24,16 +24,24 @@ abstract contract ManagerAccessController is
         _grantRole(_ADMIN_, msg.sender);
     }
 
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            _interfaceId == type(IManagerAccessController).interfaceId ||
+            super.supportsInterface(_interfaceId);
+    }
+
     function anzaToken() external view returns (address) {
         return address(_anzaToken);
     }
 
     function loanTreasurer() external view returns (address) {
-        return _loanTreasurer;
+        return _loanTreasurerAddress;
     }
 
     function collateralVault() external view returns (address) {
-        return _collateralVault;
+        return address(_collateralVault);
     }
 
     function setAnzaToken(
@@ -43,15 +51,15 @@ abstract contract ManagerAccessController is
     }
 
     function setLoanTreasurer(
-        address _loanTreasurerAddress
+        address _loanTreasurerAddress_
     ) external onlyRole(_ADMIN_) {
-        __setLoanTreasurer(_loanTreasurerAddress);
+        __setLoanTreasurer(_loanTreasurerAddress_);
     }
 
     function setCollateralVault(
         address _collateralVaultAddress
     ) external onlyRole(_ADMIN_) {
-        _collateralVault = _collateralVaultAddress;
+        _collateralVault = ICollateralVault(_collateralVaultAddress);
     }
 
     function _grantRole(
@@ -63,10 +71,10 @@ abstract contract ManagerAccessController is
             : super._grantRole(_role, _account);
     }
 
-    function __setLoanTreasurer(address _loanTreasurerAddress) private {
-        _revokeRole(_TREASURER_, _loanTreasurer);
-        super._grantRole(_TREASURER_, _loanTreasurerAddress);
+    function __setLoanTreasurer(address _loanTreasurerAddress_) private {
+        _revokeRole(_TREASURER_, _loanTreasurerAddress_);
+        super._grantRole(_TREASURER_, _loanTreasurerAddress_);
 
-        _loanTreasurer = _loanTreasurerAddress;
+        _loanTreasurerAddress = _loanTreasurerAddress_;
     }
 }

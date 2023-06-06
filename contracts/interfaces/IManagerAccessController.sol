@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.20;
 
-import "./IAnzaToken.sol";
-import "./ILoanTreasurey.sol";
+import {IAnzaToken} from "./IAnzaToken.sol";
+import {ILoanTreasurey} from "./ILoanTreasurey.sol";
+import {ICollateralVault} from "./ICollateralVault.sol";
 
 interface IManagerAccessController {
     function anzaToken() external returns (address);
