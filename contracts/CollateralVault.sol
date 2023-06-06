@@ -18,7 +18,7 @@ contract CollateralVault is
     ERC721Holder
 {
     uint256 public totalCollateral;
-    mapping(uint256 => Collateral) private __collaterals;
+    mapping(uint256 debtId => Collateral) private __collaterals;
 
     constructor(
         address _anzaTokenAddress
@@ -28,7 +28,7 @@ contract CollateralVault is
         __collaterals[0] = Collateral(
             0x000000000000000000000000000000000000D3ad,
             0,
-            false
+            type(uint256).max
         );
     }
 
@@ -56,9 +56,16 @@ contract CollateralVault is
     function setCollateral(
         address _collateralAddress,
         uint256 _collateralId,
-        uint256 _debtId
+        uint256 _debtId,
+        uint256 _activeLoanIndex
     ) external onlyRole(_LOAN_CONTRACT_) {
-        _deposit(false, msg.sender, _collateralAddress, _collateralId, _debtId);
+        _record(
+            msg.sender,
+            _collateralAddress,
+            _collateralId,
+            _debtId,
+            _activeLoanIndex
+        );
     }
 
     /**
@@ -80,9 +87,10 @@ contract CollateralVault is
         uint256 _debtId
     ) public view returns (bool) {
         try
-            ILoanContract(_loanContract).getLatestDebt(
+            ILoanContract(_loanContract).getCollateralDebtAt(
                 _collateralAddress,
-                _collateralId
+                _collateralId,
+                type(uint256).max
             )
         returns (ILoanContract.DebtMap memory _debtMap) {
             return _debtMap.debtId == _debtId;
@@ -106,9 +114,9 @@ contract CollateralVault is
         uint256 _debtId
     ) public view returns (bool) {
         return
-            __collaterals[_debtId].vault &&
-            ILoanCodec(_loanContract).loanState(_debtId) == _PAID_STATE_ &&
-            IAnzaToken(anzaToken).borrowerOf(_debtId) == _to;
+            __collaterals[_debtId].activeLoanIndex == 0 && // Is vault?
+            ILoanCodec(_loanContract).loanState(_debtId) == _PAID_STATE_ && // Is paid?
+            IAnzaToken(anzaToken).borrowerOf(_debtId) == _to; // Is borrower?
     }
 
     function withdraw(
@@ -158,30 +166,29 @@ contract CollateralVault is
         bytes memory _data
     ) public override returns (bytes4) {
         uint256 _debtId = uint256(bytes32(_data));
-        console.log("onERC721Received: %s", _debtId);
 
-        _deposit(true, _from, msg.sender, _collateralId, _debtId);
+        _record(_from, msg.sender, _collateralId, _debtId, 0);
 
         // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
         return 0x150b7a02;
     }
 
-    function _deposit(
-        bool _vault,
+    function _record(
         address _from,
         address _collateralAddress,
         uint256 _collateralId,
-        uint256 _debtId
+        uint256 _debtId,
+        uint256 _activeLoanIndex
     ) internal onlyUniqueDeposit(_collateralAddress, _collateralId, _debtId) {
         // Add collateral to inventory
         ++totalCollateral;
         __collaterals[_debtId] = Collateral(
             _collateralAddress,
             _collateralId,
-            _vault
+            _activeLoanIndex
         );
 
-        if (_vault)
+        if (_activeLoanIndex == 0)
             emit DepositedCollateral(_from, _collateralAddress, _collateralId);
     }
 }

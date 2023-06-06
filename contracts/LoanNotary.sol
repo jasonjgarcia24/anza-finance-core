@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../lib/forge-std/src/console.sol";
+import {console} from "../lib/forge-std/src/console.sol";
 
 import "./domain/LoanNotaryTypeHashes.sol";
 

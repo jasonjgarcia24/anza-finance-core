@@ -17,6 +17,8 @@ contract LoanCollateralVaultUnitTest is
         super.setUp();
     }
 
+    function testCollateralVault__Pass() public {}
+
     /*
      * @note CollateralVault should be the current owner
      * of the collateralized token.

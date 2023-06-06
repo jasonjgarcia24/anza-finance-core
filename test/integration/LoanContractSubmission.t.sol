@@ -117,7 +117,11 @@ abstract contract LoanContractSubmitFunctions is
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
         uint256 __debtId = _loanContract
-            .getLatestDebt(_collateralAddress, collateralId)
+            .getCollateralDebtAt(
+                _collateralAddress,
+                collateralId,
+                type(uint256).max
+            )
             .debtId;
 
         assertEq(
@@ -224,12 +228,6 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
         assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 1);
 
-        // // Mint replica token
-        // vm.deal(borrower, 1 ether);
-        // vm.startPrank(borrower);
-        // loanContract.mintReplica(_debtId);
-        // vm.stopPrank();
-
         // Verify debt ID for collateral
         verifyLatestDebtId(address(loanContract), address(demoToken), _debtId);
 
@@ -250,7 +248,7 @@ abstract contract LoanContractSubmitFunctions is
         );
 
         // Verify total debt balance
-        assertEq(loanContract.debtBalanceOf(_debtId), _contractTerms.principal);
+        assertEq(loanContract.debtBalance(_debtId), _contractTerms.principal);
 
         // Verify token balances
         verifyTokenBalances(_debtId, _contractTerms.principal);

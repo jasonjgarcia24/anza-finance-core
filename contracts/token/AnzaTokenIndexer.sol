@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
 
-import "../interfaces/IAnzaTokenIndexer.sol";
+import {IAnzaTokenIndexer} from "../interfaces/IAnzaTokenIndexer.sol";
 
 abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     /* ------------------------------------------------ *
@@ -12,6 +12,12 @@ abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     // Mapping from token ID to owner address
     mapping(uint256 => address) private __owners;
     mapping(uint256 => uint256) internal __totalSupply;
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual returns (bool) {
+        return _interfaceId == type(IAnzaTokenIndexer).interfaceId;
+    }
 
     function ownerOf(uint256 _tokenId) public view returns (address) {
         return __owners[_tokenId];

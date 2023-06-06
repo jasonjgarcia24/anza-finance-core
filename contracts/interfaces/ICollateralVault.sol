@@ -23,7 +23,7 @@ interface ICollateralVault {
     struct Collateral {
         address collateralAddress;
         uint256 collateralId;
-        bool vault;
+        uint256 activeLoanIndex;
     }
 
     function totalCollateral() external view returns (uint256);
@@ -35,7 +35,8 @@ interface ICollateralVault {
     function setCollateral(
         address _collateralAddress,
         uint256 _collateralId,
-        uint256 _debtId
+        uint256 _debtId,
+        uint256 _activeLoanIndex
     ) external;
 
     function depositAllowed(

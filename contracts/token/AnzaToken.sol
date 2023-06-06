@@ -1,20 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/AnzaTokenTransferTypes.sol";
 
-import "./AnzaBaseToken.sol";
-import "./AnzaTokenIndexer.sol";
-import "../interfaces/IAnzaTokenLite.sol";
+import {IAnzaTokenLite} from "../interfaces/IAnzaTokenLite.sol";
+import {AnzaBaseToken, _LOAN_CONTRACT_, _TREASURER_, _COLLATERAL_VAULT_} from "./AnzaBaseToken.sol";
+import {AnzaTokenIndexer} from "./AnzaTokenIndexer.sol";
 
 contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
     constructor(
         string memory _name,
         string memory _symbol,
         string memory _baseURI
-    ) AnzaBaseToken(_name, _symbol, _baseURI) AnzaTokenAccessController() {}
+    ) AnzaBaseToken(_name, _symbol, _baseURI) {}
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    )
+        public
+        view
+        virtual
+        override(AnzaBaseToken, AnzaTokenIndexer)
+        returns (bool)
+    {
+        return
+            _interfaceId == type(IAnzaTokenLite).interfaceId ||
+            AnzaBaseToken.supportsInterface(_interfaceId) ||
+            AnzaTokenIndexer.supportsInterface(_interfaceId);
+    }
 
     modifier onlyValidMint(uint256 _amount) {
         if (_amount == 0) revert IllegalMint();
@@ -70,7 +85,6 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         bytes memory _data
     ) external onlyRole(_LOAN_CONTRACT_) {
         // Mint ALC debt tokens
-        console.log("_amount", _amount);
         _mint(_to, lenderTokenId(_debtId), _amount, "");
 
         // Mint ALC replica token

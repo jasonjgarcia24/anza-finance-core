@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractRoles.sol";
 
-import "../interfaces/IAnzaTokenAccessController.sol";
+import {IAnzaTokenAccessController} from "../interfaces/IAnzaTokenAccessController.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 abstract contract AnzaTokenAccessController is
@@ -22,11 +22,11 @@ abstract contract AnzaTokenAccessController is
         _grantRole(_ADMIN_, msg.sender);
     }
 
-    // function checkBorrowerOf(
-    //     address _account,
-    //     uint256 _debtId
-    // ) external view returns (bool) {
-    //     return
-    //         hasRole(keccak256(abi.encodePacked(_account, _debtId)), _account);
-    // }
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            _interfaceId == type(IAnzaTokenAccessController).interfaceId ||
+            AccessControl.supportsInterface(_interfaceId);
+    }
 }

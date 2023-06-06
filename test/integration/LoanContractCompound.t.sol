@@ -94,7 +94,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
         );
 
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _contractTerms.principal * 2,
             "6 :: debt balance should be doubled."
         );
@@ -172,7 +172,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
         //     "5 :: loan last checked should be greater than before."
         // );
         // assertEq(
-        //     loanContract.debtBalanceOf(_debtId),
+        //     loanContract.debtBalance(_debtId),
         //     _contractTerms.principal * 2,
         //     "6 :: debt balance should be doubled."
         // );

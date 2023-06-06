@@ -90,7 +90,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
             "1 :: AnzaToken owner should be borrower"
         );
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _PRINCIPAL_,
             "2 :: Debt balance should be _PRINCIPAL_"
         );
@@ -130,7 +130,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
             "5 :: lender account should still be lender"
         );
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _PRINCIPAL_ - _price,
             "6 :: Debt balance should be _PRINCIPAL_ - _price"
         );
@@ -140,7 +140,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
         uint256 _debtId = loanContract.totalDebts();
         uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(_debtId);
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
-        uint256 _balance = loanContract.debtBalanceOf(_debtId);
+        uint256 _balance = loanContract.debtBalance(_debtId);
         uint256 _price = _balance - 1;
 
         bytes memory _signature = createListingSignature(
@@ -165,7 +165,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
             "1 :: AnzaToken owner should be lender"
         );
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _balance,
             "2 :: Debt balance should be _balance"
         );
@@ -219,12 +219,12 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
             "8 :: borrower account should be borrower for new debt ID"
         );
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             1,
             "9 :: Debt balance should be 1 for original debt ID"
         );
         assertEq(
-            loanContract.debtBalanceOf(_newDebtId),
+            loanContract.debtBalance(_newDebtId),
             _price >= _balance ? _balance : _price,
             "10 :: Debt balance should be min(_price, _balance) for new debt ID"
         );
@@ -424,7 +424,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
             "1 :: AnzaToken owner should be borrower"
         );
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _PRINCIPAL_,
             "2 :: Debt balance should be _PRINCIPAL_"
         );
@@ -464,7 +464,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
             "6 :: AnzaToken owner should be unchanged"
         );
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _PRINCIPAL_,
             "7 :: Debt balance should be unchanged"
         );

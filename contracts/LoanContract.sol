@@ -15,7 +15,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
     // Mapping from collateral to debt ID
     mapping(address collateralAddress => mapping(uint256 collateralId => DebtMap[]))
-        public debtMaps;
+        public __debtMaps;
 
     constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 
@@ -32,40 +32,51 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      * This should report back only the total debt tokens, not the ALC NFTs.
      * TODO: Test
      */
-    function debtBalanceOf(uint256 _debtId) public view returns (uint256) {
+    function debtBalance(uint256 _debtId) public view returns (uint256) {
         return _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId));
+    }
+
+    function getCollateralDebtCount(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) external view returns (uint256) {
+        return __debtMaps[_collateralAddress][_collateralId].length;
+    }
+
+    function getCollateralDebtAt(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _index
+    ) public view returns (DebtMap memory) {
+        DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
+            _collateralId
+        ];
+
+        // If no debt to collateral, revert
+        if (_debtMaps.length == 0) revert InvalidCollateral();
+
+        // Allow an easy way to return the latest debt
+        if (_index == type(uint256).max) return _debtMaps[_debtMaps.length - 1];
+
+        // If index is out of bounds, revert
+        if (_debtMaps.length < _index) revert InvalidIndex();
+
+        // Return the debt at the index
+        return _debtMaps[_index];
     }
 
     function getCollateralNonce(
         address _collateralAddress,
         uint256 _collateralId
-    ) public view returns (uint256) {
-        return debtMaps[_collateralAddress][_collateralId].length + 1;
-    }
-
-    function getLatestDebt(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) public view returns (DebtMap memory) {
-        uint256 _length = debtMaps[_collateralAddress][_collateralId].length;
-
-        if (_length == 0)
-            return DebtMap({debtId: 0, activeLoanIndex: 0, collateralNonce: 0});
-
-        return debtMaps[_collateralAddress][_collateralId][_length - 1];
-    }
-
-    function getActiveLoanIndex(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) public view returns (uint256) {
-        uint256 _length = debtMaps[_collateralAddress][_collateralId].length;
-
-        if (_length == 0) return 0;
+    ) external view returns (uint256) {
+        if (__debtMaps[_collateralAddress][_collateralId].length == 0) return 1;
 
         return
-            debtMaps[_collateralAddress][_collateralId][_length - 1]
-                .activeLoanIndex;
+            getCollateralDebtAt(
+                _collateralAddress,
+                _collateralId,
+                type(uint256).max
+            ).collateralNonce + 1;
     }
 
     /**
@@ -94,7 +105,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
 
         // Set debt
-        DebtMap[] storage _debtMaps = debtMaps[_collateralAddress][
+        DebtMap[] storage _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
         ];
 
@@ -104,15 +115,11 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             : _debtMaps[_debtMaps.length - 1].collateralNonce + 1;
 
         // Clear previous debts
-        delete debtMaps[_collateralAddress][_collateralId];
+        delete __debtMaps[_collateralAddress][_collateralId];
 
         // Set debt fields
         _debtMaps.push(
-            DebtMap({
-                debtId: ++totalDebts,
-                activeLoanIndex: 1,
-                collateralNonce: _collateralNonce
-            })
+            DebtMap({debtId: ++totalDebts, collateralNonce: _collateralNonce})
         );
 
         // Verify borrower participation
@@ -132,7 +139,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
 
         // Add debt to database
-        __setLoanAgreement(_toUint64(block.timestamp), 0, _contractTerms);
+        __setLoanAgreement(_toUint64(block.timestamp), 1, _contractTerms);
 
         // The collateral ID and address will be mapped within
         // the loan collateral vault to the debt ID.
@@ -199,18 +206,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             .getCollateral(_debtId);
 
         // Set debt
-        DebtMap[] storage _debtMaps = debtMaps[_collateral.collateralAddress][
+        DebtMap[] storage _debtMaps = __debtMaps[_collateral.collateralAddress][
             _collateral.collateralId
         ];
-
-        // Record new active loan index
-        uint256 _activeLoanIndex = _debtMaps.length + 1;
 
         // Set debt fields
         _debtMaps.push(
             DebtMap({
                 debtId: ++totalDebts,
-                activeLoanIndex: _activeLoanIndex,
                 collateralNonce: _debtMaps[_debtMaps.length - 1]
                     .collateralNonce + 1
             })
@@ -237,7 +240,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Add debt to database
         __setLoanAgreement(
             _toUint64(block.timestamp),
-            _activeLoanIndex,
+            _debtMaps.length,
             _contractTerms
         );
 
@@ -245,7 +248,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         _collateralVault.setCollateral(
             _collateral.collateralAddress,
             _collateral.collateralId,
-            totalDebts
+            totalDebts,
+            _debtMaps.length
         );
 
         // Replace or reduce previous debt. Any excess funds will
@@ -273,7 +277,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _activeLoanIndex
+            _debtMaps.length
         );
     }
 
@@ -310,18 +314,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             .getCollateral(_debtId);
 
         // Set debt
-        DebtMap[] storage _debtMaps = debtMaps[_collateral.collateralAddress][
+        DebtMap[] storage _debtMaps = __debtMaps[_collateral.collateralAddress][
             _collateral.collateralId
         ];
-
-        // Record new active loan index
-        uint256 _activeLoanIndex = _debtMaps.length + 1;
 
         // Set debt fields
         _debtMaps.push(
             DebtMap({
                 debtId: ++totalDebts,
-                activeLoanIndex: _activeLoanIndex,
                 collateralNonce: _debtMaps[_debtMaps.length - 1]
                     .collateralNonce + 1
             })
@@ -330,7 +330,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         // Add debt to database
         __setLoanAgreement(
             _toUint64(block.timestamp),
-            _activeLoanIndex,
+            _debtMaps.length,
             getDebtTerms(_debtId)
         );
 
@@ -338,7 +338,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         _collateralVault.setCollateral(
             _collateral.collateralAddress,
             _collateral.collateralId,
-            totalDebts
+            totalDebts,
+            _debtMaps.length
         );
 
         // Record balance for redistribution of debt.
@@ -373,7 +374,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _activeLoanIndex
+            _debtMaps.length
         );
     }
 

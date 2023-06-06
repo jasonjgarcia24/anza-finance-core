@@ -45,15 +45,10 @@ abstract contract LoanContractSubmitted is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        createLoanContract(collateralId);
+        bool _success = createLoanContract(collateralId);
+        assertTrue(_success, "Contract creation failed.");
+        _debtId = loanContract.totalDebts();
     }
-
-    // function mintReplica(uint256 _debtId) public virtual {
-    //     vm.deal(borrower, 1 ether);
-    //     vm.startPrank(borrower);
-    //     loanContract.mintReplica(_debtId);
-    //     vm.stopPrank();
-    // }
 }
 
 contract LoanContractConstantsTest is Test {
@@ -487,7 +482,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = 0;
 
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             0,
             "0 :: Debt balance for token 0 should be zero"
         );
@@ -497,7 +492,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         ++_debtId;
 
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _PRINCIPAL_,
             "1 :: Debt balance for token 0 should be _PRINCIPAL_"
         );
@@ -507,7 +502,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         ++_debtId;
 
         assertEq(
-            loanContract.debtBalanceOf(_debtId),
+            loanContract.debtBalance(_debtId),
             _PRINCIPAL_,
             "Debt balance for token 2 should be _PRINCIPAL_"
         );
@@ -540,16 +535,24 @@ contract LoanContractViewsUnitTest is LoanSigned {
     }
 
     function testLoanContract__GetCollateralDebtId() public {
-        ILoanContract.DebtMap memory _debtMap = loanContract.getLatestDebt(
-            address(demoToken),
-            collateralId
+        vm.expectRevert(
+            abi.encodeWithSelector(ILoanContract.InvalidCollateral.selector)
         );
-        assertEq(_debtMap.debtId, 0, "0 :: Collateral debt ID should be zero");
+        ILoanContract.DebtMap memory _debtMap = loanContract
+            .getCollateralDebtAt(
+                address(demoToken),
+                collateralId,
+                type(uint256).max
+            );
 
         // Create loan contract
         createLoanContract(collateralId);
 
-        _debtMap = loanContract.getLatestDebt(address(demoToken), collateralId);
+        _debtMap = loanContract.getCollateralDebtAt(
+            address(demoToken),
+            collateralId,
+            type(uint256).max
+        );
 
         assertEq(_debtMap.debtId, 1, "1 :: Collateral debt ID should be one");
     }
@@ -632,7 +635,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         assertEq(
             Terms.activeLoanCount(_contractTerms),
-            0,
+            1,
             "11 :: active loan count should be 0"
         );
     }
@@ -826,13 +829,16 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
     }
 
-    function testLoanContract__ActiveLoanCount() public {
+    function testLoanContract__CollateralDebtCount() public {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
+            loanContract.getCollateralDebtCount(
+                address(demoToken),
+                collateralId
+            ),
             0,
-            "0 :: active loan count should be 0"
+            "0 :: collateral debt count should be 0"
         );
 
         // Create loan contract
@@ -840,9 +846,12 @@ contract LoanContractViewsUnitTest is LoanSigned {
         _debtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
+            loanContract.getCollateralDebtCount(
+                address(demoToken),
+                collateralId
+            ),
             1,
-            "1 :: active loan count should be 1"
+            "1 :: collateral debt count should be 1"
         );
 
         // Create loan contract partial refinance
@@ -851,9 +860,12 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
+            loanContract.getCollateralDebtCount(
+                address(demoToken),
+                collateralId
+            ),
             2,
-            "3 :: active loan count should be 2"
+            "3 :: collateral debt count should be 2"
         );
 
         // Create loan contract partial refinance
@@ -862,9 +874,12 @@ contract LoanContractViewsUnitTest is LoanSigned {
         _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
+            loanContract.getCollateralDebtCount(
+                address(demoToken),
+                collateralId
+            ),
             3,
-            "5 :: active loan count should be 3"
+            "5 :: collateral debt count should be 3"
         );
 
         // Create loan contract partial refinance
@@ -873,9 +888,12 @@ contract LoanContractViewsUnitTest is LoanSigned {
         _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getActiveLoanIndex(address(demoToken), collateralId),
+            loanContract.getCollateralDebtCount(
+                address(demoToken),
+                collateralId
+            ),
             4,
-            "7 :: active loan count should be 4"
+            "7 :: collateral debt count should be 4"
         );
     }
 

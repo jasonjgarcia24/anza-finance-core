@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "hardhat/console.sol";
+import {console} from "../lib/forge-std/src/console.sol";
 
 import "./domain/LoanContractFIRIntervals.sol";
 import "./domain/LoanContractRoles.sol";
@@ -10,7 +10,7 @@ import "./domain/AnzaTokenTransferTypes.sol";
 
 import "./interfaces/ILoanTreasurey.sol";
 import "./interfaces/ICollateralVault.sol";
-import "./access/TreasureyAccessController.sol";
+import {TreasureyAccessController} from "./access/TreasureyAccessController.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -167,7 +167,7 @@ contract LoanTreasurey is
         // Increment nonce
         ++__debtSaleNonces[_debtId];
 
-        uint256 _debtBalance = _loanContract.debtBalanceOf(_debtId);
+        uint256 _debtBalance = _loanContract.debtBalance(_debtId);
         uint256 _payment = msg.value;
 
         // Transfer collateral

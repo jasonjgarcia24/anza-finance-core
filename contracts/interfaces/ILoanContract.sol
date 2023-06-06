@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 interface ILoanContract {
+    error InvalidIndex();
     error InvalidCollateral();
     error FailedFundsTransfer();
     error ExceededRefinanceLimit();
 
     struct DebtMap {
         uint256 debtId;
-        uint256 activeLoanIndex;
         uint256 collateralNonce;
     }
 
@@ -34,22 +34,23 @@ interface ILoanContract {
 
     function totalDebts() external returns (uint256);
 
-    function debtBalanceOf(uint256 _debtId) external view returns (uint256);
+    function debtBalance(uint256 _debtId) external view returns (uint256);
+
+    function getCollateralDebtCount(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) external view returns (uint256);
 
     function getCollateralNonce(
         address _collateralAddress,
         uint256 _collateralId
     ) external view returns (uint256);
 
-    function getLatestDebt(
+    function getCollateralDebtAt(
         address _collateralAddress,
-        uint256 _collateralId
+        uint256 _collateralId,
+        uint256 _index
     ) external view returns (DebtMap memory);
-
-    function getActiveLoanIndex(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) external view returns (uint256);
 
     function initLoanContract(
         bytes32 _contractTerms,
