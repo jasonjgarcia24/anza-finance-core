@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.20;
 
 interface ILoanContract {
     error InvalidIndex();
@@ -36,33 +36,34 @@ interface ILoanContract {
 
     function debtBalance(uint256 _debtId) external view returns (uint256);
 
-    function getCollateralDebtCount(
+    function collateralDebtCount(
         address _collateralAddress,
         uint256 _collateralId
     ) external view returns (uint256);
 
-    function getCollateralNonce(
+    function collateralNonce(
         address _collateralAddress,
         uint256 _collateralId
     ) external view returns (uint256);
 
-    function getCollateralDebtAt(
+    function collateralDebtAt(
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _index
     ) external view returns (DebtMap memory);
 
     function initLoanContract(
-        bytes32 _contractTerms,
         address _collateralAddress,
         uint256 _collateralId,
+        bytes32 _contractTerms,
         bytes calldata _borrowerSignature
     ) external payable;
 
     function initLoanContract(
-        bytes32 _contractTerms,
         uint256 _debtId,
-        bytes calldata _borrowerSignature
+        address _borrower,
+        address _lender,
+        bytes32 _contractTerms
     ) external payable;
 
     function initLoanContract(

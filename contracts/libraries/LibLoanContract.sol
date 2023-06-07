@@ -6,16 +6,6 @@ import "../domain/LoanContractTermMaps.sol";
 
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 
-library LibLoanContractIndexer {
-    function getBorrowerTokenId(uint256 _debtId) public pure returns (uint256) {
-        return (2 * _debtId) + 1;
-    }
-
-    function getLenderTokenId(uint256 _debtId) public pure returns (uint256) {
-        return (2 * _debtId);
-    }
-}
-
 library LibLoanContractTerms {
     struct ContractTerms {
         uint256 loanState;

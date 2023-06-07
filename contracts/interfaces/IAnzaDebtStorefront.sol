@@ -2,13 +2,21 @@
 pragma solidity 0.8.20;
 
 interface IAnzaDebtStorefront {
-    error InvalidDebtOwner(address debtOwner);
-    error InvalidListingTerms();
-    error InsufficientPayment(uint256 payment);
-    error InsufficientProceeds(address payee);
-    error ExistingListing(uint256 debtId);
-    error NonExistingListing(uint256 debtId);
-    error NotApprovedForMarketplace();
+    error InvalidDebtOwner();
+    error InvalidListingType();
+    error LockedNonce();
+
+    enum ListingType {
+        UNDEFINED,
+        DEBT,
+        REFINANCE,
+        SPONSORSHIP
+    }
+
+    struct Nonce {
+        ListingType listingType;
+        bool locked;
+    }
 
     event DebtListed(
         address indexed seller,
@@ -16,11 +24,19 @@ interface IAnzaDebtStorefront {
         uint256 indexed price
     );
 
+    event ListingRegistered(
+        address indexed seller,
+        uint256 indexed debtId,
+        uint8 indexed listingType,
+        uint256 nonce
+    );
+
     event ListingCancelled(address indexed seller, uint256 indexed debtId);
 
-    event DebtPurchased(
+    event ListingPurchased(
         address indexed buyer,
         uint256 indexed debtId,
+        uint8 indexed listingType,
         uint256 price
     );
 

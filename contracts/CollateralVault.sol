@@ -97,7 +97,7 @@ contract CollateralVault is
         uint256 _debtId
     ) public view returns (bool) {
         try
-            ILoanContract(_loanContract).getCollateralDebtAt(
+            ILoanContract(_loanContract).collateralDebtAt(
                 _collateralAddress,
                 _collateralId,
                 type(uint256).max

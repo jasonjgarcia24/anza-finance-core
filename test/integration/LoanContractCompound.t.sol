@@ -8,7 +8,6 @@ import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {Setup} from "../Setup.t.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractSubmitFunctions} from "./LoanContractSubmission.t.sol";
-import {LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
 
 contract LoanContractCompounding is LoanContractSubmitFunctions {
     function setUp() public virtual override {
@@ -34,20 +33,24 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
             lenderRoyalties: _LENDER_ROYALTIES_
         });
 
-        uint256 _collateralNonce = loanContract.getCollateralNonce(
+        uint256 _collateralNonce = loanContract.collateralNonce(
             address(demoToken),
             collateralId
         );
 
-        bool _expectedSuccess = initLoanContractExpectations(_contractTerms);
+        (, bytes memory _expectedData) = initLoanContractExpectations(
+            _contractTerms
+        );
 
-        bool _success = createLoanContract(
+        (bool _success, bytes memory _data) = createLoanContract(
             collateralId,
             _collateralNonce,
             _contractTerms
         );
-        if (!_success && !_expectedSuccess) return;
-        require(_success, "1 :: loan contract creation failed.");
+
+        compareInitLoanContractError(_data, _expectedData);
+
+        require(_success, "2 :: loan contract creation failed.");
 
         _debtId = loanContract.totalDebts();
 
@@ -121,7 +124,7 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
         //     termsExpiry: _TERMS_EXPIRY_,
         //     lenderRoyalties: _LENDER_ROYALTIES_
         // });
-        // uint256 _collateralNonce = loanContract.getCollateralNonce(
+        // uint256 _collateralNonce = loanContract.collateralNonce(
         //     address(demoToken),
         //     collateralId
         // );
@@ -199,19 +202,23 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
             lenderRoyalties: _LENDER_ROYALTIES_
         });
 
-        uint256 _collateralNonce = loanContract.getCollateralNonce(
+        uint256 _collateralNonce = loanContract.collateralNonce(
             address(demoToken),
             collateralId
         );
 
-        bool _expectedSuccess = initLoanContractExpectations(_contractTerms);
+        (, bytes memory _expectedData) = initLoanContractExpectations(
+            _contractTerms
+        );
 
-        bool _success = createLoanContract(
+        (bool _success, bytes memory _data) = createLoanContract(
             collateralId,
             _collateralNonce,
             _contractTerms
         );
-        if (!_success && !_expectedSuccess) return;
+
+        compareInitLoanContractError(_data, _expectedData);
+
         require(_success, "1 :: loan contract creation failed.");
 
         _debtId = loanContract.totalDebts();

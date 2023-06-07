@@ -5,10 +5,11 @@ import {console} from "../lib/forge-std/src/console.sol";
 
 import "./domain/LoanNotaryTypeHashes.sol";
 
-import {ILoanNotary, IListingNotary} from "./interfaces/ILoanNotary.sol";
+import {ILoanNotary, IListingNotary, IRefinanceNotary} from "./interfaces/ILoanNotary.sol";
 import {LibLoanNotary} from "./libraries/LibLoanNotary.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {_TYPE_HASH_} from "./domain/LoanNotaryTypeHashes.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of
@@ -42,15 +43,12 @@ abstract contract LoanNotary is ILoanNotary {
     bytes32 private immutable __domainSeparator;
 
     constructor(string memory _contractName, string memory _contractVersion) {
-        bytes32 typeHash = keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
         __domainSeparator = keccak256(
             abi.encode(
-                typeHash,
+                _TYPE_HASH_,
                 nameHash,
                 versionHash,
                 block.chainid,
@@ -187,15 +185,12 @@ abstract contract ListingNotary is IListingNotary {
     bytes32 private immutable __domainSeparator;
 
     constructor(string memory _contractName, string memory _contractVersion) {
-        bytes32 typeHash = keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
         __domainSeparator = keccak256(
             abi.encode(
-                typeHash,
+                _TYPE_HASH_,
                 nameHash,
                 versionHash,
                 block.chainid,
@@ -211,7 +206,7 @@ abstract contract ListingNotary is IListingNotary {
     }
 
     /**
-     * @dev Returns the verified borrower of a signed set of loan contract
+     * @dev Returns the verified signer of a signed set of loan contract
      * terms.
      *
      * @param _assetId the debt ID of the asset.
@@ -293,6 +288,141 @@ abstract contract ListingNotary is IListingNotary {
                     _listingParams.debtId,
                     _listingParams.listingNonce,
                     _listingParams.termsExpiry
+                )
+            );
+    }
+}
+
+/**
+ * This contract implements the EIP 712 type-specific encoding of signed loan contract terms.
+ *
+ * This contract implements the EIP 712 V4 domain separator part of the encoding scheme:
+ *   keccak256(abi.encode(_TYPE_HASH, _hashedName, _hashedVersion, block.chainid, address(this)))
+ *
+ * The final step of the encoding is the message digest that is then signed via ECDSA.
+ *
+ * The implementation of the domain separator was designed to be as efficient as possible while
+ * still properly updating the chain id to protect against replay attacks on an eventual fork of
+ * the chain.
+ *
+ * NOTE: This contract implements the version of the encoding known as "v4", as implemented by the
+ * JSON RPC method https://docs.metamask.io/guide/signing-data.html[`eth_signTypedDataV4` in
+ * MetaMask].
+ */
+abstract contract RefinanceNotary is IRefinanceNotary {
+    /**
+     * @dev Returns the value that is unique to each contract that uses EIP-712.
+     * This hashed value is used to prevent replay attacks from malicious actors
+     * attempting to use a signed message to execute the same action multiple
+     * times.
+     */
+    bytes32 private immutable __domainSeparator;
+
+    constructor(string memory _contractName, string memory _contractVersion) {
+        bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
+        bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
+
+        __domainSeparator = keccak256(
+            abi.encode(
+                _TYPE_HASH_,
+                nameHash,
+                versionHash,
+                block.chainid,
+                address(this)
+            )
+        );
+    }
+
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual returns (bool) {
+        return _interfaceId == type(IRefinanceNotary).interfaceId;
+    }
+
+    /**
+     * @dev Returns the verified borrower of a signed set of loan contract
+     * terms.
+     *
+     * @param _assetId the debt ID of the asset.
+     * @param _refinanceParams the debt refinance listing terms.
+     * @param _sellerSignature the signed debt refinance listing terms.
+     * @param ownerOf the function used to identify the recorded borrower.
+     */
+    function _getBorrower(
+        uint256 _assetId,
+        RefinanceParams memory _refinanceParams,
+        bytes memory _sellerSignature,
+        function(uint256) external view returns (address) ownerOf
+    ) internal view returns (address) {
+        address _borrower = ownerOf(_assetId);
+
+        if (
+            _borrower == msg.sender ||
+            _borrower != __recoverSigner(_refinanceParams, _sellerSignature)
+        ) revert InvalidParticipant();
+
+        return _borrower;
+    }
+
+    /**
+     * @dev Returns the address that signed a hashed message (`hash`) with
+     * `_signature`. This address can then be used for verification purposes.
+     *
+     * {see ECDSA-recover}
+     */
+    function __recoverSigner(
+        RefinanceParams memory _refinanceParams,
+        bytes memory _signature
+    ) internal view returns (address) {
+        bytes32 _message = __typeDataHash(_refinanceParams);
+
+        (uint8 v, bytes32 r, bytes32 s) = LibLoanNotary.splitSignature(
+            _signature
+        );
+
+        return ECDSA.recover(_message, v, r, s);
+    }
+
+    /**
+     * @dev Returns an Ethereum Signed Typed Data, created from a
+     * `domainSeparator` and a `structHash`. This produces hash corresponding
+     * to the one signed with the
+     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
+     * JSON-RPC method as part of EIP-712.
+     */
+    function __typeDataHash(
+        RefinanceParams memory _refinanceParams
+    ) private view returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    __domainSeparator,
+                    __structHash(_refinanceParams)
+                )
+            );
+    }
+
+    /**
+     * @dev Returns the hash of a structured message. This hash shall be
+     * combined with the `domainSeparator` and signed by the signer using their
+     * private key to produce a signature. The signature is then used to verify
+     * that the structured message originated
+     * from the signer.
+     * https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+     */
+    function __structHash(
+        RefinanceParams memory _refinanceParams
+    ) private pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    _REFINANCE_PARAMS_ENCODE_TYPE_HASH_,
+                    _refinanceParams.price,
+                    _refinanceParams.debtId,
+                    _refinanceParams.contractTerms,
+                    _refinanceParams.listingNonce,
+                    _refinanceParams.termsExpiry
                 )
             );
     }

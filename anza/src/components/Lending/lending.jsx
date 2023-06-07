@@ -177,11 +177,11 @@ export default function LendingPage() {
         let tx;
         try {
             tx = await LoanContract.connect(signer)[
-                "initLoanContract(bytes32,address,uint256,bytes)"
+                "initLoanContract(address,uint256,bytes32,bytes)"
             ](
-                response["packed_contract_terms"],
                 collateralAddress,
                 collateralId,
+                response["packed_contract_terms"],
                 response["signed_message"],
                 { value: response["principal"], gasLimit: 1000000 }
             );

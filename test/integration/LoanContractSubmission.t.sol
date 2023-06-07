@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import "../../contracts/domain/LoanContractErrorCodes.sol";
 import "../../contracts/domain/LoanContractNumbers.sol";
 import "../../contracts/domain/LoanContractStates.sol";
+import "../../contracts/domain/LoanCodecErrorCodes.sol";
 
 import {IAnzaToken} from "../../contracts/interfaces/IAnzaToken.sol";
 import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
@@ -13,7 +14,7 @@ import {ILoanCodec} from "../../contracts/interfaces/ILoanCodec.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Test, console, LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractHarness} from "../Setup.t.sol";
-import {LibLoanContractIndexer as Indexer, LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
+import {LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
 
 abstract contract LoanContractSubmitFunctions is
     IERC721Events,
@@ -22,30 +23,40 @@ abstract contract LoanContractSubmitFunctions is
 {
     function initLoanContractExpectations(
         ContractTerms memory _contractTerms
-    ) public returns (bool) {
+    ) public returns (bool, bytes memory) {
         LoanContractHarness _loanContractHarness = new LoanContractHarness();
 
+        // Principal revert check
+        if (_contractTerms.principal == 0) {
+            return (
+                false,
+                abi.encodePacked(
+                    _INVALID_LOAN_PARAMETER_SELECTOR_,
+                    _PRINCIPAL_ERROR_ID_
+                )
+            );
+        }
         // Lender royalties revert check
-        if (_contractTerms.lenderRoyalties > 100) {
-            // vm.expectRevert(
-            //     abi.encodeWithSelector(
-            //         ILoanCodec.InvalidLoanParameter.selector,
-            //         _LENDER_ROYALTIES_ERROR_ID_
-            //     )
-            // );
-            return false;
+        else if (_contractTerms.lenderRoyalties > 100) {
+            return (
+                false,
+                abi.encodePacked(
+                    _INVALID_LOAN_PARAMETER_SELECTOR_,
+                    _LENDER_ROYALTIES_ERROR_ID_
+                )
+            );
         }
         // Time expiry revert check
         else if (
             _contractTerms.termsExpiry < _SECONDS_PER_24_MINUTES_RATIO_SCALED_
         ) {
-            // vm.expectRevert(
-            //     abi.encodeWithSelector(
-            //         ILoanCodec.InvalidLoanParameter.selector,
-            //         _TIME_EXPIRY_ERROR_ID_
-            //     )
-            // );
-            return false;
+            return (
+                false,
+                abi.encodePacked(
+                    _INVALID_LOAN_PARAMETER_SELECTOR_,
+                    _TIME_EXPIRY_ERROR_ID_
+                )
+            );
         }
         // Duration revert check
         else if (
@@ -55,33 +66,23 @@ abstract contract LoanContractSubmitFunctions is
                 uint256(_contractTerms.gracePeriod)) >
             type(uint32).max
         ) {
-            // vm.expectRevert(
-            //     abi.encodeWithSelector(
-            //         ILoanCodec.InvalidLoanParameter.selector,
-            //         _DURATION_ERROR_ID_
-            //     )
-            // );
-            return false;
-        }
-        // Principal revert check
-        else if (_contractTerms.principal == 0) {
-            // vm.expectRevert(
-            //     abi.encodeWithSelector(
-            //         ILoanCodec.InvalidLoanParameter.selector,
-            //         _PRINCIPAL_ERROR_ID_
-            //     )
-            // );
-            return false;
+            return (
+                false,
+                abi.encodePacked(
+                    _INVALID_LOAN_PARAMETER_SELECTOR_,
+                    _DURATION_ERROR_ID_
+                )
+            );
         }
         // FIR interval revert check
         else if (_contractTerms.firInterval > 15) {
-            // vm.expectRevert(
-            //     abi.encodeWithSelector(
-            //         ILoanCodec.InvalidLoanParameter.selector,
-            //         _FIR_INTERVAL_ERROR_ID_
-            //     )
-            // );
-            return false;
+            return (
+                false,
+                abi.encodePacked(
+                    _INVALID_LOAN_PARAMETER_SELECTOR_,
+                    _FIR_INTERVAL_ERROR_ID_
+                )
+            );
         }
         // Fixed interest rate revert check
         else {
@@ -94,20 +95,30 @@ abstract contract LoanContractSubmitFunctions is
                         _contractTerms.duration
                     )
                 )
-            returns (uint256) {
-                return true;
-            } catch (bytes memory) {
-                // console.logBytes(err);
-
-                // vm.expectRevert(
-                //     abi.encodeWithSelector(
-                //         ILoanCodec.InvalidLoanParameter.selector,
-                //         _FIXED_INTEREST_RATE_ERROR_ID_
-                //     )
-                // );
-                return false;
+            returns (uint256) {} catch (bytes memory) {
+                if (_contractTerms.firInterval != 0)
+                    return (
+                        false,
+                        abi.encodePacked(
+                            _INVALID_LOAN_PARAMETER_SELECTOR_,
+                            _FIXED_INTEREST_RATE_ERROR_ID_
+                        )
+                    );
             }
         }
+
+        return (true, abi.encodePacked());
+    }
+
+    function compareInitLoanContractError(
+        bytes memory _error,
+        bytes memory _expectedError
+    ) public {
+        assertEq(
+            bytes8(_error),
+            bytes8(_expectedError),
+            "0 :: compareInitLoanContractError :: expected fail type mismatch."
+        );
     }
 
     function verifyLatestDebtId(
@@ -117,7 +128,7 @@ abstract contract LoanContractSubmitFunctions is
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
         uint256 __debtId = _loanContract
-            .getCollateralDebtAt(
+            .collateralDebtAt(
                 _collateralAddress,
                 collateralId,
                 type(uint256).max
@@ -166,8 +177,8 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         IAnzaToken _anzaToken = IAnzaToken(_anzaTokenAddress);
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
 
         assertEq(
             _anzaToken.borrowerTokenId(_debtId),
@@ -193,8 +204,8 @@ abstract contract LoanContractSubmitFunctions is
 
     function verifyTokenBalances(uint256 _debtId, uint256 _principal) public {
         // Verify token balances
-        uint256 borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        uint256 lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        uint256 borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        uint256 lenderTokenId = anzaToken.lenderTokenId(_debtId);
 
         address[] memory accounts = new address[](2);
         accounts[0] = lender;
@@ -225,7 +236,7 @@ abstract contract LoanContractSubmitFunctions is
         }
 
         // Verify balance of borrower token is 1
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
+        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
         assertEq(anzaToken.balanceOf(borrower, _borrowerTokenId), 1);
 
         // Verify debt ID for collateral
@@ -254,7 +265,7 @@ abstract contract LoanContractSubmitFunctions is
         verifyTokenBalances(_debtId, _contractTerms.principal);
 
         // Minted lender NFT should have debt token URI
-        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
         assertEq(anzaToken.uri(_lenderTokenId), getTokenURI(_lenderTokenId));
 
         // Verify debtId is updated at end
@@ -286,20 +297,26 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
             lenderRoyalties: _LENDER_ROYALTIES_
         });
 
-        uint256 _collateralNonce = loanContract.getCollateralNonce(
+        uint256 _collateralNonce = loanContract.collateralNonce(
             address(demoToken),
             collateralId
         );
 
-        bool _expectedSuccess = initLoanContractExpectations(_contractTerms);
+        (
+            bool _expectedSuccess,
+            bytes memory _expectedData
+        ) = initLoanContractExpectations(_contractTerms);
 
-        bool _success = createLoanContract(
+        (bool _success, bytes memory _data) = createLoanContract(
             collateralId,
             _collateralNonce,
             _contractTerms
         );
-        if (!_success && !_expectedSuccess) return;
-        require(_success, "1 :: loan contract creation failed.");
+
+        compareInitLoanContractError(_data, _expectedData);
+        if (!_expectedSuccess) return;
+
+        require(_success, "2 :: loan contract creation failed.");
 
         _debtId = loanContract.totalDebts();
         verifyPostContractInit(_debtId, _contractTerms);
@@ -451,19 +468,25 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0, "0 :: no debts should exist.");
 
-        uint256 _collateralNonce = loanContract.getCollateralNonce(
+        uint256 _collateralNonce = loanContract.collateralNonce(
             address(demoToken),
             collateralId
         );
 
-        bool _expectedSuccess = initLoanContractExpectations(_contractTerms);
+        (
+            bool _expectedSuccess,
+            bytes memory _expectedData
+        ) = initLoanContractExpectations(_contractTerms);
 
-        bool _success = createLoanContract(
+        (bool _success, bytes memory _data) = createLoanContract(
             collateralId,
             _collateralNonce,
             _contractTerms
         );
-        if (!_success && !_expectedSuccess) return;
+
+        compareInitLoanContractError(_data, _expectedData);
+        if (!_expectedSuccess) return;
+
         require(_success, "1 :: loan contract creation failed.");
 
         _debtId = loanContract.totalDebts();

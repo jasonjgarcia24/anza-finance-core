@@ -51,6 +51,71 @@ abstract contract AnzaDebtStorefrontUnitTest is
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_sellerPrivateKey, _message);
         _signature = abi.encodePacked(r, s, v);
     }
+
+    function _testAnzaDebtStorefront__FuzzFailBuyDebt(
+        IListingNotary.ListingParams memory _debtListingParams,
+        bytes memory _signature,
+        bytes4 _expectedError
+    ) internal {
+        uint256 _debtId = loanContract.totalDebts();
+
+        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        assertEq(
+            anzaToken.borrowerOf(_debtId),
+            borrower,
+            "0 :: borrower should be borrower"
+        );
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            borrower,
+            "1 :: AnzaToken owner should be borrower"
+        );
+        assertEq(
+            loanContract.debtBalance(_debtId),
+            _PRINCIPAL_,
+            "2 :: Debt balance should be _PRINCIPAL_"
+        );
+
+        vm.deal(alt_account, 4 ether);
+        vm.startPrank(alt_account);
+
+        (bool _success, bytes memory _data) = address(anzaDebtStorefront).call{
+            value: _debtListingParams.price
+        }(
+            abi.encodeWithSignature(
+                "buyDebt(uint256,uint256,bytes)",
+                _debtListingParams.debtId,
+                _debtListingParams.termsExpiry,
+                _signature
+            )
+        );
+        vm.stopPrank();
+
+        assertTrue(_success == false, "3 :: buyDebt test should fail.");
+
+        assertEq(
+            bytes4(_data),
+            _expectedError,
+            "4 :: buyDebt test error type incorrect"
+        );
+
+        _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        assertEq(
+            anzaToken.borrowerOf(_debtId),
+            borrower,
+            "5 :: borrower should be unchanged"
+        );
+        assertEq(
+            anzaToken.ownerOf(_borrowerTokenId),
+            borrower,
+            "6 :: AnzaToken owner should be unchanged"
+        );
+        assertEq(
+            loanContract.debtBalance(_debtId),
+            _PRINCIPAL_,
+            "7 :: Debt balance should be unchanged"
+        );
+    }
 }
 
 contract AnzaDebtStorefrontTest is AnzaDebtStorefrontUnitTest {
@@ -368,27 +433,19 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     }
 
     function testAnzaDebtStorefront__FuzzFailAllBuyDebt(
-        uint256 _price,
-        uint256 _debtId,
-        uint256 _debtListingNonce,
-        uint256 _termsExpiry
+        IListingNotary.ListingParams memory _listingParams
     ) public {
-        vm.assume(_price != _PRINCIPAL_ - 1);
-        vm.assume(_debtId != loanContract.totalDebts());
+        vm.assume(_listingParams.price != _PRINCIPAL_ - 1);
+        vm.assume(_listingParams.debtId != loanContract.totalDebts());
         vm.assume(
-            _debtListingNonce !=
+            _listingParams.listingNonce !=
                 loanTreasurer.getDebtSaleNonce(loanContract.totalDebts())
         );
-        vm.assume(_termsExpiry > uint256(_TERMS_EXPIRY_));
+        vm.assume(_listingParams.termsExpiry > uint256(_TERMS_EXPIRY_));
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            IListingNotary.ListingParams({
-                price: _price,
-                debtId: _debtId,
-                listingNonce: _debtListingNonce,
-                termsExpiry: _termsExpiry
-            })
+            _listingParams
         );
 
         _testAnzaDebtStorefront__FuzzFailBuyDebt(
@@ -405,68 +462,134 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         );
     }
 
-    function _testAnzaDebtStorefront__FuzzFailBuyDebt(
-        IListingNotary.ListingParams memory _debtListingParams,
-        bytes memory _signature,
-        bytes4 _expectedError
-    ) internal {
+    // function testAnzaDebtStorefront__FuzzFailLoanStateDebt(
+    //     uint256 _debtId
+    // ) public {
+    //     vm.assume(_price != _PRINCIPAL_ - 1);
+    //     vm.assume(_debtId != loanContract.totalDebts());
+    //     vm.assume(
+    //         _debtListingNonce !=
+    //             loanTreasurer.getDebtSaleNonce(loanContract.totalDebts())
+    //     );
+    //     vm.assume(_termsExpiry > uint256(_TERMS_EXPIRY_));
+
+    //     bytes memory _signature = createListingSignature(
+    //         borrowerPrivKey,
+    //         IListingNotary.ListingParams({
+    //             price: _price,
+    //             debtId: _debtId,
+    //             listingNonce: _debtListingNonce,
+    //             termsExpiry: _termsExpiry
+    //         })
+    //     );
+
+    //     _testAnzaDebtStorefront__FuzzFailBuyDebt(
+    //         IListingNotary.ListingParams({
+    //             price: _PRINCIPAL_ - 1,
+    //             debtId: loanContract.totalDebts(),
+    //             listingNonce: loanTreasurer.getDebtSaleNonce(
+    //                 loanContract.totalDebts()
+    //             ),
+    //             termsExpiry: uint256(_TERMS_EXPIRY_)
+    //         }),
+    //         _signature,
+    //         _INVALID_PARTICIPANT_SELECTOR_
+    //     );
+    // }
+}
+
+contract AnzaDebtStorefront__BasicBuyLoanStateTest is
+    AnzaDebtStorefrontUnitTest
+{
+    function testAnzaDebtStorefront__BasicBuyLoanState() public {
         uint256 _debtId = loanContract.totalDebts();
+        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(
+            loanContract.totalDebts()
+        );
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
-        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
-        assertEq(
-            anzaToken.borrowerOf(_debtId),
-            borrower,
-            "0 :: borrower should be borrower"
-        );
-        assertEq(
-            anzaToken.ownerOf(_borrowerTokenId),
-            borrower,
-            "1 :: AnzaToken owner should be borrower"
-        );
-        assertEq(
-            loanContract.debtBalance(_debtId),
-            _PRINCIPAL_,
-            "2 :: Debt balance should be _PRINCIPAL_"
+        bytes memory _signature = createListingSignature(
+            borrowerPrivKey,
+            IListingNotary.ListingParams({
+                price: _PRINCIPAL_,
+                debtId: _debtId,
+                listingNonce: _debtListingNonce,
+                termsExpiry: _termsExpiry
+            })
         );
 
-        vm.deal(alt_account, 4 ether);
-        vm.startPrank(alt_account);
-
-        (bool _success, bytes memory _data) = address(anzaDebtStorefront).call{
-            value: _debtListingParams.price
-        }(
-            abi.encodeWithSignature(
-                "buyDebt(uint256,uint256,bytes)",
-                _debtListingParams.debtId,
-                _debtListingParams.termsExpiry,
-                _signature
-            )
-        );
-        vm.stopPrank();
-
-        assertTrue(_success == false, "3 :: buyDebt test should fail.");
-
-        assertEq(
-            bytes4(_data),
-            _expectedError,
-            "4 :: buyDebt test error type incorrect"
-        );
-
-        _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
-        assertEq(
-            anzaToken.borrowerOf(_debtId),
-            borrower,
-            "5 :: borrower should be unchanged"
-        );
-        assertEq(
-            anzaToken.ownerOf(_borrowerTokenId),
-            borrower,
-            "6 :: AnzaToken owner should be unchanged"
-        );
-        assertEq(
-            loanContract.debtBalance(_debtId),
-            _PRINCIPAL_,
-            "7 :: Debt balance should be unchanged"
-        );
+        // _testAnzaDebtStorefront__BasicBuyLoanSateDebt(
+        //     IListingNotary.ListingParams({
+        //         price: _PRINCIPAL_,
+        //         debtId: _debtId,
+        //         listingNonce: _debtListingNonce,
+        //         termsExpiry: _termsExpiry
+        //     }),
+        //     _signature
+        // );
     }
+
+    // function _testAnzaDebtStorefront__BasicBuyLoanSateDebt(
+    //     IListingNotary.ListingParams memory _debtListingParams,
+    //     bytes memory _signature
+    // ) internal {
+    //     uint256 _debtId = loanContract.totalDebts();
+
+    //     uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+    //     assertEq(
+    //         anzaToken.borrowerOf(_debtId),
+    //         borrower,
+    //         "0 :: borrower should be borrower"
+    //     );
+    //     assertEq(
+    //         anzaToken.ownerOf(_borrowerTokenId),
+    //         borrower,
+    //         "1 :: AnzaToken owner should be borrower"
+    //     );
+    //     assertEq(
+    //         loanContract.debtBalance(_debtId),
+    //         _PRINCIPAL_,
+    //         "2 :: Debt balance should be _PRINCIPAL_"
+    //     );
+
+    //     vm.deal(alt_account, 4 ether);
+    //     vm.startPrank(alt_account);
+
+    //     (bool _success, bytes memory _data) = address(anzaDebtStorefront).call{
+    //         value: _debtListingParams.price
+    //     }(
+    //         abi.encodeWithSignature(
+    //             "buyDebt(uint256,uint256,bytes)",
+    //             _debtListingParams.debtId,
+    //             _debtListingParams.termsExpiry,
+    //             _signature
+    //         )
+    //     );
+    //     vm.stopPrank();
+
+    //     assertTrue(_success == false, "3 :: buyDebt test should fail.");
+
+    //     assertEq(
+    //         bytes4(_data),
+    //         _expectedError,
+    //         "4 :: buyDebt test error type incorrect"
+    //     );
+
+    //     _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+    //     assertEq(
+    //         anzaToken.borrowerOf(_debtId),
+    //         borrower,
+    //         "5 :: borrower should be unchanged"
+    //     );
+    //     assertEq(
+    //         anzaToken.ownerOf(_borrowerTokenId),
+    //         borrower,
+    //         "6 :: AnzaToken owner should be unchanged"
+    //     );
+    //     assertEq(
+    //         loanContract.debtBalance(_debtId),
+    //         _PRINCIPAL_,
+    //         "7 :: Debt balance should be unchanged"
+    //     );
+    // }
 }

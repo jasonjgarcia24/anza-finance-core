@@ -15,7 +15,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
     // Mapping from collateral to debt ID
     mapping(address collateralAddress => mapping(uint256 collateralId => DebtMap[]))
-        public __debtMaps;
+        private __debtMaps;
 
     constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 
@@ -36,14 +36,41 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         return _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId));
     }
 
-    function getCollateralDebtCount(
+    function collateralDebtBalance(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) public view returns (uint256) {
+        DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
+            _collateralId
+        ];
+        uint256 _debtBalance;
+
+        for (uint256 i; i < _debtMaps.length; ) {
+            unchecked {
+                _debtBalance += _anzaToken.totalSupply(
+                    _anzaToken.lenderTokenId(_debtMaps[i].debtId)
+                );
+
+                ++i;
+            }
+        }
+
+        return
+            _anzaToken.totalSupply(
+                _anzaToken.borrowerTokenId(
+                    __debtMaps[_collateralAddress][_collateralId][0].debtId
+                )
+            );
+    }
+
+    function collateralDebtCount(
         address _collateralAddress,
         uint256 _collateralId
     ) external view returns (uint256) {
         return __debtMaps[_collateralAddress][_collateralId].length;
     }
 
-    function getCollateralDebtAt(
+    function collateralDebtAt(
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _index
@@ -65,14 +92,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         return _debtMaps[_index];
     }
 
-    function getCollateralNonce(
+    function collateralNonce(
         address _collateralAddress,
         uint256 _collateralId
     ) external view returns (uint256) {
         if (__debtMaps[_collateralAddress][_collateralId].length == 0) return 1;
 
         return
-            getCollateralDebtAt(
+            collateralDebtAt(
                 _collateralAddress,
                 _collateralId,
                 type(uint256).max
@@ -80,6 +107,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     }
 
     /**
+     * Initialize a loan contract for an uncollateralized ERC721 token.
+     *
      * Input _contractTerms:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
@@ -91,9 +120,9 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      *  > 008 - [244..255] `lenderRoyalties`
      */
     function initLoanContract(
-        bytes32 _contractTerms,
         address _collateralAddress,
         uint256 _collateralId,
+        bytes32 _contractTerms,
         bytes calldata _borrowerSignature
     ) external payable {
         // Validate loan terms
@@ -175,6 +204,15 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     }
 
     /**
+     * Refinance fractions of debt with a new loan. This will alter and/or
+     * create new debt agreements for the collateralized ERC721 token.
+     *
+     * @notice This function does not verify the loan contract with the
+     * borrower. It should never be used to alter existing contract terms
+     * and shall only be callable by the treasurer. It is required that the
+     * treasurer verifies the loan contract with the borrower before calling
+     * this function.
+     *
      * Input _contractTerms:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
@@ -186,10 +224,11 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      *  > 008 - [244..255] `lenderRoyalties`
      */
     function initLoanContract(
-        bytes32 _contractTerms,
         uint256 _debtId,
-        bytes calldata _borrowerSignature
-    ) external payable {
+        address _borrower,
+        address _lender,
+        bytes32 _contractTerms
+    ) external payable onlyRole(_TREASURER_) {
         // Verify existing loan is in good standing
         if (checkLoanDefault(_debtId)) revert InvalidCollateral();
 
@@ -224,19 +263,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress
         );
 
-        address _borrower = _getBorrower(
-            _debtId,
-            ContractParams({
-                principal: _principal,
-                contractTerms: _contractTerms,
-                collateralAddress: _collateral.collateralAddress,
-                collateralId: _collateral.collateralId,
-                collateralNonce: _debtMaps[_debtMaps.length - 1].collateralNonce
-            }),
-            _borrowerSignature,
-            _anzaToken.borrowerOf
-        );
-
         // Add debt to database
         __setLoanAgreement(
             _toUint64(block.timestamp),
@@ -265,7 +291,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
         // Mint debt ALC debt tokens for lender.
         _anzaToken.mint(
-            msg.sender,
+            _lender,
             totalDebts,
             _principal,
             _collateralToken.tokenURI(_collateral.collateralId),
@@ -282,9 +308,13 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     }
 
     /**
+     * Transfer debt to a new lender. This will not alter existing loan terms.
+     *
      * @notice This function does not verify the loan contract with the
      * borrower. It should never be used to alter existing contract terms
-     * and shall only be callable by the treasurer.
+     * and shall only be callable by the treasurer. It is required that the
+     * treasurer verifies the loan contract with the borrower before calling
+     * this function.
      *
      * Input _contractTerms:
      *  > 004 - [0..3]     `firInterval`

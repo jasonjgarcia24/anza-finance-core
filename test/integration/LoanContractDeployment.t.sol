@@ -6,7 +6,6 @@ import "../../lib/forge-std/src/Test.sol";
 import "../../contracts/domain/LoanContractRoles.sol";
 
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {LibLoanContractIndexer as Indexer} from "../../contracts/libraries/LibLoanContract.sol";
 import {Test, LoanContractDeployer, LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractTestDeployment is LoanContractDeployer {
@@ -99,8 +98,8 @@ contract LoanContractTestERC1155URIStorage is LoanContractSubmitted {
         // URI for collateralized token should be the collateralized
         // token's URI.
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _borrowerTokenId = Indexer.getBorrowerTokenId(_debtId);
-        uint256 _lenderTokenId = Indexer.getLenderTokenId(_debtId);
+        uint256 _borrowerTokenId = anzaToken.borrowerTokenId(_debtId);
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
 
         assertEq(
             anzaToken.uri(_borrowerTokenId),

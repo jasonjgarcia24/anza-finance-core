@@ -24,3 +24,13 @@ interface IListingNotary is ILoanNotaryErrors {
         uint256 termsExpiry;
     }
 }
+
+interface IRefinanceNotary is ILoanNotaryErrors {
+    struct RefinanceParams {
+        uint256 price;
+        uint256 debtId;
+        bytes32 contractTerms;
+        uint256 listingNonce;
+        uint256 termsExpiry;
+    }
+}

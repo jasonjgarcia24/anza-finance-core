@@ -24,8 +24,6 @@ contract LoanTreasurey is
 
     uint256 public poolBalance;
     mapping(address account => uint256) public withdrawableBalance;
-    mapping(uint256 debtId => uint256) private __debtSaleNonces;
-    mapping(uint256 debtId => uint256) private __sponsorshipSaleNonces;
 
     constructor() TreasureyAccessController() {}
 
@@ -48,16 +46,6 @@ contract LoanTreasurey is
         return
             _interfaceId == type(ILoanTreasurey).interfaceId ||
             TreasureyAccessController.supportsInterface(_interfaceId);
-    }
-
-    function getDebtSaleNonce(uint256 _debtId) public view returns (uint256) {
-        return __debtSaleNonces[_debtId] + 1;
-    }
-
-    function getSponsorshipSaleNonce(
-        uint256 _debtId
-    ) public view returns (uint256) {
-        return __sponsorshipSaleNonces[_debtId] + 1;
     }
 
     function depositFunds(
@@ -172,9 +160,6 @@ contract LoanTreasurey is
         nonReentrant
         returns (bool _results)
     {
-        // Increment nonce
-        ++__debtSaleNonces[_debtId];
-
         uint256 _debtBalance = _loanContract.debtBalance(_debtId);
         uint256 _payment = msg.value;
 
@@ -202,6 +187,35 @@ contract LoanTreasurey is
         _results = true;
     }
 
+    function executeRefinancePurchase(
+        uint256 _debtId,
+        address _borrower,
+        address _purchaser
+        bytes32 _contracTerms,
+    )
+        external
+        payable
+        onlyRole(_DEBT_STOREFRONT_)
+        onlyActiveLoan(_debtId)
+        debtUpdater(_debtId)
+        nonReentrant
+        returns (bool _results)
+    {
+        // Create loan contract for new lender
+        (bool _success, ) = address(_loanContract).call{value: msg.value}(
+            abi.encodeWithSignature(
+                "initLoanContract(uint256,address,address,bytes32)",
+                _debtId,
+                _borrower,
+                _purchaser,
+                _contracTerms
+            )
+        );
+        if (!_success) revert FailedPurchase();
+
+        _results = true;
+    }
+
     /*
      * A full transfer of debt responsibilities of the current borrower
      * to the purchaser.
@@ -221,7 +235,7 @@ contract LoanTreasurey is
      */
     function executeSponsorshipPurchase(
         uint256 _debtId,
-        address /* _lender */,
+        address /* _seller */,
         address _purchaser
     )
         external

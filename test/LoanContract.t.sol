@@ -31,7 +31,7 @@ abstract contract LoanSigned is LoanContractDeployer {
     function setUp() public virtual override {
         super.setUp();
 
-        collateralNonce = loanContract.getCollateralNonce(
+        collateralNonce = loanContract.collateralNonce(
             address(demoToken),
             collateralId
         );
@@ -45,7 +45,7 @@ abstract contract LoanContractSubmitted is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        bool _success = createLoanContract(collateralId);
+        (bool _success, ) = createLoanContract(collateralId);
         assertTrue(_success, "Contract creation failed.");
         _debtId = loanContract.totalDebts();
     }
@@ -510,7 +510,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
     function testLoanContract__GetCollateralNonce() public {
         assertEq(
-            loanContract.getCollateralNonce(address(demoToken), collateralId),
+            loanContract.collateralNonce(address(demoToken), collateralId),
             1,
             "0 :: Collateral nonce should be one"
         );
@@ -519,16 +519,13 @@ contract LoanContractViewsUnitTest is LoanSigned {
         createLoanContract(collateralId);
 
         assertEq(
-            loanContract.getCollateralNonce(address(demoToken), collateralId),
+            loanContract.collateralNonce(address(demoToken), collateralId),
             2,
             "1 :: Collateral nonce should be two"
         );
 
         assertEq(
-            loanContract.getCollateralNonce(
-                address(demoToken),
-                collateralId + 1
-            ),
+            loanContract.collateralNonce(address(demoToken), collateralId + 1),
             1,
             "2 :: Collateral nonce should be one"
         );
@@ -538,17 +535,16 @@ contract LoanContractViewsUnitTest is LoanSigned {
         vm.expectRevert(
             abi.encodeWithSelector(ILoanContract.InvalidCollateral.selector)
         );
-        ILoanContract.DebtMap memory _debtMap = loanContract
-            .getCollateralDebtAt(
-                address(demoToken),
-                collateralId,
-                type(uint256).max
-            );
+        ILoanContract.DebtMap memory _debtMap = loanContract.collateralDebtAt(
+            address(demoToken),
+            collateralId,
+            type(uint256).max
+        );
 
         // Create loan contract
         createLoanContract(collateralId);
 
-        _debtMap = loanContract.getCollateralDebtAt(
+        _debtMap = loanContract.collateralDebtAt(
             address(demoToken),
             collateralId,
             type(uint256).max
@@ -711,7 +707,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         uint256 _now = block.timestamp;
-        bool _success = createLoanContract(collateralId);
+        (bool _success, ) = createLoanContract(collateralId);
         require(_success, "0 :: loan contract creation failed.");
         ++_debtId;
 
@@ -833,10 +829,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getCollateralDebtCount(
-                address(demoToken),
-                collateralId
-            ),
+            loanContract.collateralDebtCount(address(demoToken), collateralId),
             0,
             "0 :: collateral debt count should be 0"
         );
@@ -846,52 +839,40 @@ contract LoanContractViewsUnitTest is LoanSigned {
         _debtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getCollateralDebtCount(
-                address(demoToken),
-                collateralId
-            ),
+            loanContract.collateralDebtCount(address(demoToken), collateralId),
             1,
             "1 :: collateral debt count should be 1"
         );
 
         // Create loan contract partial refinance
-        bool _success = refinanceDebt(_debtId);
+        (bool _success, ) = refinanceDebt(_debtId);
         require(_success, "2 :: Refinance failed.");
         uint256 _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getCollateralDebtCount(
-                address(demoToken),
-                collateralId
-            ),
+            loanContract.collateralDebtCount(address(demoToken), collateralId),
             2,
             "3 :: collateral debt count should be 2"
         );
 
         // Create loan contract partial refinance
-        _success = refinanceDebt(_debtId);
+        (_success, ) = refinanceDebt(_debtId);
         require(_success, "4 :: Refinance failed.");
         _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getCollateralDebtCount(
-                address(demoToken),
-                collateralId
-            ),
+            loanContract.collateralDebtCount(address(demoToken), collateralId),
             3,
             "5 :: collateral debt count should be 3"
         );
 
         // Create loan contract partial refinance
-        _success = refinanceDebt(_debtId);
+        (_success, ) = refinanceDebt(_debtId);
         require(_success, "6 :: Refinance failed.");
         _refDebtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getCollateralDebtCount(
-                address(demoToken),
-                collateralId
-            ),
+            loanContract.collateralDebtCount(address(demoToken), collateralId),
             4,
             "7 :: collateral debt count should be 4"
         );
@@ -904,7 +885,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         uint256 _debtId = loanContract.totalDebts();
 
-        bool _success = createLoanContract(
+        (bool _success, ) = createLoanContract(
             collateralId,
             ContractTerms({
                 firInterval: _SECONDLY_,
@@ -928,7 +909,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 1,
             ContractTerms({
                 firInterval: _MINUTELY_,
@@ -957,7 +938,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 2,
             ContractTerms({
                 firInterval: _HOURLY_,
@@ -986,7 +967,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 3,
             ContractTerms({
                 firInterval: _DAILY_,
@@ -1015,7 +996,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 4,
             ContractTerms({
                 firInterval: _WEEKLY_,
@@ -1044,7 +1025,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 5,
             ContractTerms({
                 firInterval: _2_WEEKLY_,
@@ -1073,7 +1054,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 6,
             ContractTerms({
                 firInterval: _4_WEEKLY_,
@@ -1102,7 +1083,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 7,
             ContractTerms({
                 firInterval: _6_WEEKLY_,
@@ -1131,7 +1112,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 8,
             ContractTerms({
                 firInterval: _8_WEEKLY_,
@@ -1160,7 +1141,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(
+        (_success, ) = createLoanContract(
             collateralId + 9,
             ContractTerms({
                 firInterval: _360_DAILY_,
@@ -1198,14 +1179,14 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract
-        bool _success = createLoanContract(collateralId);
+        (bool _success, ) = createLoanContract(collateralId);
         require(_success, "0 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract partial refinance
-        _success = refinanceDebt(
+        (_success, ) = refinanceDebt(
             _debtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1226,7 +1207,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_refDebtId);
 
         // Create loan contract partial refinance
-        _success = refinanceDebt(
+        (_success, ) = refinanceDebt(
             _refDebtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1260,7 +1241,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        bool _success = createLoanContract(collateralId);
+        (bool _success, ) = createLoanContract(collateralId);
         require(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1271,7 +1252,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract partial refinance
-        _success = refinanceDebt(
+        (_success, ) = refinanceDebt(
             _debtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1300,7 +1281,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract partial refinance
-        _success = refinanceDebt(
+        (_success, ) = refinanceDebt(
             _refDebtId,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
@@ -1345,7 +1326,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        bool _success = createLoanContract(localCollateralId++);
+        (bool _success, ) = createLoanContract(localCollateralId++);
         require(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1374,7 +1355,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(localCollateralId++);
+        (_success, ) = createLoanContract(localCollateralId++);
         require(_success, "5 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1412,7 +1393,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        bool _success = createLoanContract(localCollateralId++);
+        (bool _success, ) = createLoanContract(localCollateralId++);
         require(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1441,7 +1422,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        _success = createLoanContract(localCollateralId++);
+        (_success, ) = createLoanContract(localCollateralId++);
         require(_success, "4 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
