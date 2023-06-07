@@ -186,11 +186,13 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         if (!_success) revert FailedFundsTransfer();
 
         // Mint debt ALC debt tokens for lender
+        string memory _collateralURI = _collateralToken.tokenURI(_collateralId);
+
         _anzaToken.mint(
             msg.sender,
             totalDebts,
             _principal,
-            _collateralToken.tokenURI(_collateralId),
+            _collateralURI,
             abi.encodePacked(_borrower)
         );
 

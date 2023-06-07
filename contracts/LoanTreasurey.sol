@@ -190,8 +190,8 @@ contract LoanTreasurey is
     function executeRefinancePurchase(
         uint256 _debtId,
         address _borrower,
-        address _purchaser
-        bytes32 _contracTerms,
+        address _purchaser,
+        bytes32 _contracTerms
     )
         external
         payable

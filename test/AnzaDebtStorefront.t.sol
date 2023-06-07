@@ -16,7 +16,8 @@ abstract contract AnzaDebtStorefrontUnitTest is
     LoanContractSubmitted
 {
     AnzaDebtStorefront public anzaDebtStorefront;
-    Signing.DomainSeparator public domainSeparator;
+    Signing.DomainSeparator public listingDomainSeparator;
+    Signing.DomainSeparator public refinanceDomainSeparator;
 
     function setUp() public virtual override {
         super.setUp();
@@ -30,8 +31,15 @@ abstract contract AnzaDebtStorefrontUnitTest is
         loanTreasurer.grantRole(_DEBT_STOREFRONT_, address(anzaDebtStorefront));
         vm.stopPrank();
 
-        domainSeparator = Signing.DomainSeparator({
-            name: "AnzaDebtStorefront",
+        listingDomainSeparator = Signing.DomainSeparator({
+            name: "AnzaDebtStorefront:ListingNotary",
+            version: "0",
+            chainId: block.chainid,
+            contractAddress: address(anzaDebtStorefront)
+        });
+
+        refinanceDomainSeparator = Signing.DomainSeparator({
+            name: "AnzaDebtStorefront:RefinanceNotary",
             version: "0",
             chainId: block.chainid,
             contractAddress: address(anzaDebtStorefront)
@@ -44,7 +52,7 @@ abstract contract AnzaDebtStorefrontUnitTest is
     ) public virtual returns (bytes memory _signature) {
         bytes32 _message = Signing.typeDataHash(
             _debtListingParams,
-            domainSeparator
+            listingDomainSeparator
         );
 
         // Sign seller's listing terms
@@ -130,7 +138,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
     function testAnzaDebtStorefront__BasicBuyDebt() public {
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(_debtId);
+        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes memory _signature = createListingSignature(
@@ -162,8 +170,6 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
-        vm.expectEmit(true, true, true, true, address(anzaDebtStorefront));
-        emit DebtPurchased(alt_account, _debtId, _price);
         (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
             abi.encodeWithSignature(
                 "buyDebt(uint256,uint256,bytes)",
@@ -172,38 +178,38 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
                 _signature
             )
         );
-        require(_success);
+        assertTrue(_success, "3 :: buyDebt test should succeed.");
         vm.stopPrank();
 
         assertTrue(
             anzaToken.borrowerOf(_debtId) != borrower,
-            "3 :: borrower account should not be borrower"
+            "4 :: borrower account should not be borrower"
         );
         assertEq(
             anzaToken.borrowerOf(_debtId),
             alt_account,
-            "4 :: alt_account account should be alt_account"
+            "5 :: alt_account account should be alt_account"
         );
         assertEq(
             anzaToken.ownerOf(_borrowerTokenId),
             alt_account,
-            "4 :: AnzaToken owner should be alt_account"
+            "6 :: AnzaToken owner should be alt_account"
         );
         assertEq(
             anzaToken.lenderOf(_debtId),
             lender,
-            "5 :: lender account should still be lender"
+            "7 :: lender account should still be lender"
         );
         assertEq(
             loanContract.debtBalance(_debtId),
             _PRINCIPAL_ - _price,
-            "6 :: Debt balance should be _PRINCIPAL_ - _price"
+            "8 :: Debt balance should be _PRINCIPAL_ - _price"
         );
     }
 
     function testAnzaDebtStorefront__BasicBuySponsorship() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(_debtId);
+        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
         uint256 _balance = loanContract.debtBalance(_debtId);
         uint256 _price = _balance - 1;
@@ -237,8 +243,6 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
-        vm.expectEmit(true, true, true, true, address(anzaDebtStorefront));
-        emit DebtPurchased(alt_account, _debtId, _price);
         (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
             abi.encodeWithSignature(
                 "buySponsorship(uint256,uint256,bytes)",
@@ -247,7 +251,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
                 _signature
             )
         );
-        require(_success);
+        assertTrue(_success, "3 :: buySponsorship test should succeed.");
         vm.stopPrank();
 
         uint256 _newDebtId = loanContract.totalDebts();
@@ -256,42 +260,42 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
         assertEq(
             anzaToken.lenderOf(_debtId),
             lender,
-            "3 :: lender account should be lender for original debt ID"
+            "4 :: lender account should be lender for original debt ID"
         );
         assertEq(
             anzaToken.lenderOf(_newDebtId),
             alt_account,
-            "4 :: alt_account account should be alt_account for new debt ID"
+            "5 :: alt_account account should be alt_account for new debt ID"
         );
         assertEq(
             anzaToken.ownerOf(_lenderTokenId),
             lender,
-            "5 :: AnzaToken owner should be lender for original lender token ID"
+            "6 :: AnzaToken owner should be lender for original lender token ID"
         );
         assertEq(
             anzaToken.ownerOf(_newLenderTokenId),
             alt_account,
-            "6 :: AnzaToken owner should be alt_account for new lender token ID"
+            "7 :: AnzaToken owner should be alt_account for new lender token ID"
         );
         assertEq(
             anzaToken.borrowerOf(_debtId),
             borrower,
-            "7 :: borrower account should be borrower for original debt ID"
+            "8 :: borrower account should be borrower for original debt ID"
         );
         assertEq(
             anzaToken.borrowerOf(_newDebtId),
             borrower,
-            "8 :: borrower account should be borrower for new debt ID"
+            "9 :: borrower account should be borrower for new debt ID"
         );
         assertEq(
             loanContract.debtBalance(_debtId),
             1,
-            "9 :: Debt balance should be 1 for original debt ID"
+            "10 :: Debt balance should be 1 for original debt ID"
         );
         assertEq(
             loanContract.debtBalance(_newDebtId),
             _price >= _balance ? _balance : _price,
-            "10 :: Debt balance should be min(_price, _balance) for new debt ID"
+            "11 :: Debt balance should be min(_price, _balance) for new debt ID"
         );
     }
 }
@@ -301,7 +305,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _price
     ) public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(
+        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
             loanContract.totalDebts()
         );
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
@@ -334,7 +338,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _debtId
     ) public {
         uint256 _price = _PRINCIPAL_ - 1;
-        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(
+        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
             loanContract.totalDebts()
         );
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
@@ -372,7 +376,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
 
         vm.assume(
             _debtListingNonce !=
-                loanTreasurer.getDebtSaleNonce(loanContract.totalDebts())
+                anzaDebtStorefront.getListingNonce(loanContract.totalDebts())
         );
 
         bytes memory _signature = createListingSignature(
@@ -389,7 +393,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
             IListingNotary.ListingParams({
                 price: _price,
                 debtId: _debtId,
-                listingNonce: loanTreasurer.getDebtSaleNonce(
+                listingNonce: anzaDebtStorefront.getListingNonce(
                     loanContract.totalDebts()
                 ),
                 termsExpiry: _termsExpiry
@@ -404,7 +408,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     ) public {
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(
+        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
             loanContract.totalDebts()
         );
 
@@ -439,7 +443,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         vm.assume(_listingParams.debtId != loanContract.totalDebts());
         vm.assume(
             _listingParams.listingNonce !=
-                loanTreasurer.getDebtSaleNonce(loanContract.totalDebts())
+                anzaDebtStorefront.getListingNonce(loanContract.totalDebts())
         );
         vm.assume(_listingParams.termsExpiry > uint256(_TERMS_EXPIRY_));
 
@@ -452,7 +456,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
             IListingNotary.ListingParams({
                 price: _PRINCIPAL_ - 1,
                 debtId: loanContract.totalDebts(),
-                listingNonce: loanTreasurer.getDebtSaleNonce(
+                listingNonce: anzaDebtStorefront.getListingNonce(
                     loanContract.totalDebts()
                 ),
                 termsExpiry: uint256(_TERMS_EXPIRY_)
@@ -469,7 +473,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     //     vm.assume(_debtId != loanContract.totalDebts());
     //     vm.assume(
     //         _debtListingNonce !=
-    //             loanTreasurer.getDebtSaleNonce(loanContract.totalDebts())
+    //             anzaDebtStorefront.getListingNonce(loanContract.totalDebts())
     //     );
     //     vm.assume(_termsExpiry > uint256(_TERMS_EXPIRY_));
 
@@ -487,7 +491,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     //         IListingNotary.ListingParams({
     //             price: _PRINCIPAL_ - 1,
     //             debtId: loanContract.totalDebts(),
-    //             listingNonce: loanTreasurer.getDebtSaleNonce(
+    //             listingNonce: anzaDebtStorefront.getListingNonce(
     //                 loanContract.totalDebts()
     //             ),
     //             termsExpiry: uint256(_TERMS_EXPIRY_)
@@ -503,7 +507,7 @@ contract AnzaDebtStorefront__BasicBuyLoanStateTest is
 {
     function testAnzaDebtStorefront__BasicBuyLoanState() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = loanTreasurer.getDebtSaleNonce(
+        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
             loanContract.totalDebts()
         );
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);

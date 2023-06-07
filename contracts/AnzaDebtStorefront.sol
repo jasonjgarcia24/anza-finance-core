@@ -41,11 +41,6 @@ contract AnzaDebtStorefront is
         _anzaTokenIndexer = IAnzaTokenIndexer(_anzaToken);
     }
 
-    modifier onlyDebtOwner(uint256 _debtId) {
-        _verifyDebtOwner(_debtId);
-        _;
-    }
-
     function supportsInterface(
         bytes4 interfaceId
     )
@@ -61,12 +56,34 @@ contract AnzaDebtStorefront is
             RefinanceNotary.supportsInterface(interfaceId);
     }
 
+    /**
+     * Returns the address of the loan contract.
+     */
     function loanContract() public view returns (address) {
         return address(_loanManager);
     }
 
+    /**
+     * Returns the address of the AnzaTokenIndexer.
+     */
     function anzaToken() public view returns (address) {
         return address(_anzaTokenIndexer);
+    }
+
+    /**
+     * Returns the next listing nonce for a given debt ID.
+     *
+     * The listing nonce is used to verify the listing when a buyer
+     * attempts to purchase the debt {see LoanNotary:LoanNotary-__structHash}.
+     *
+     * @notice The listing nonce is incremented each time a listing is published,
+     * therefore the listing nonce provided by this function is the next listing
+     * available and can be locked out by publishing a listing.
+     *
+     * @param _debtId The debt ID to get the listing nonce for.
+     */
+    function getListingNonce(uint256 _debtId) external view returns (uint256) {
+        return __listingNonces[_debtId].length;
     }
 
     /**
@@ -93,13 +110,25 @@ contract AnzaDebtStorefront is
     function publishListing(
         uint256 _debtId,
         ListingType _listingType
-    ) external onlyDebtOwner(_debtId) returns (bool _success) {
+    ) external returns (bool _success) {
+        // Verify the debt ID is active
         _loanManager.verifyLoanActive(_debtId);
 
+        // Validate the listing type
         if (_listingType == ListingType.UNDEFINED) revert InvalidListingType();
 
+        // Validate the caller with the listing type
+        _listingType == ListingType.DEBT
+            ? _verifyDebtBorrower(_debtId)
+            : _verifyDebtLender(_debtId);
+
+        // Increment the listing nonce
         __listingNonces[_debtId].push(
-            Nonce({listingType: _listingType, locked: false})
+            Nonce({
+                listingType: _listingType,
+                publisher: msg.sender,
+                locked: false
+            })
         );
 
         emit ListingRegistered(
@@ -350,9 +379,21 @@ contract AnzaDebtStorefront is
      *
      * @dev Reverts if the caller is not the borrower of the debt ID.
      */
-    function _verifyDebtOwner(uint256 _debtId) internal view {
+    function _verifyDebtBorrower(uint256 _debtId) internal view {
         if (_anzaTokenIndexer.borrowerOf(_debtId) != msg.sender)
-            revert InvalidDebtOwner();
+            revert InvalidParticipant();
+    }
+
+    /**
+     * Verifies the caller is the lender of a given debt ID.
+     *
+     * @param _debtId The debt ID to verify.
+     *
+     * @dev Reverts if the caller is not the lender of the debt ID.
+     */
+    function _verifyDebtLender(uint256 _debtId) internal view {
+        if (_anzaTokenIndexer.lenderOf(_debtId) != msg.sender)
+            revert InvalidParticipant();
     }
 
     /**
@@ -395,7 +436,11 @@ contract AnzaDebtStorefront is
 
         // Update listing nonce
         __listingNonces[_debtId].push(
-            Nonce({listingType: _listingType, locked: true})
+            Nonce({
+                listingType: _listingType,
+                publisher: msg.sender,
+                locked: true
+            })
         );
 
         // Emit refinance purchase event
@@ -549,7 +594,7 @@ contract AnzaDebtStorefront is
             _anzaTokenIndexer.ownerOf
         );
 
-        // Transfer debt
+        // Transfer debtIAnzaDebtStorefrontEvents
         _transferDebt(
             _debtId,
             _contractTerms,
@@ -646,13 +691,19 @@ contract AnzaDebtStorefront is
      * Private function for verifying the listing nonce has not been used
      * and locking it in the same call.
      *
+     * This function is used to prevent reentrancy attacks.
+     *
+     * @notice It's important to check the msg.sender here to prevent any one
+     * loan participant from blocking another's unpublished listings.
+     *
      * @param _nonce The nonce to lock.
      *
      * @dev Reverts if the nonce was locked prior.
      */
     function __nonceLocker(Nonce storage _nonce) private {
         // Verify nonce is unused
-        if (_nonce.locked) revert LockedNonce();
+        if (_nonce.locked && msg.sender == _nonce.publisher)
+            revert LockedNonce();
 
         // Lock nonce
         _nonce.locked = true;

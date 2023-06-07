@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 interface IAnzaDebtStorefront {
-    error InvalidDebtOwner();
     error InvalidListingType();
     error LockedNonce();
 
@@ -15,6 +14,7 @@ interface IAnzaDebtStorefront {
 
     struct Nonce {
         ListingType listingType;
+        address publisher;
         bool locked;
     }
 
