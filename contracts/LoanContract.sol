@@ -19,6 +19,13 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
     constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 
+    /**
+     * Returns the support status of an interface.
+     *
+     * @param _interfaceId The interface ID to check for support.
+     *
+     * @return True if the interface is supported, false otherwise.
+     */
     function supportsInterface(
         bytes4 _interfaceId
     ) public view override(LoanManager, LoanNotary) returns (bool) {
@@ -28,14 +35,26 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             LoanNotary.supportsInterface(_interfaceId);
     }
 
-    /*
-     * This should report back only the total debt tokens, not the ALC NFTs.
-     * TODO: Test
+    /**
+     * Returns the total debt balance for a debt ID.
+     *
+     * @param _debtId The debt ID to find the balance for.
+     *
+     * @return The total debt balance for the debt ID.
      */
     function debtBalance(uint256 _debtId) public view returns (uint256) {
         return _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId));
     }
 
+    /**
+     * Returns the full count of the debt balance for a given collateral
+     * token (i.e. the number of ADT held by lenders for this collateral).
+     *
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     * @param _collateralId The ID of the ERC721 collateral token.
+     *
+     * @return The full count of the debt balance for the collateral.
+     */
     function collateralDebtBalance(
         address _collateralAddress,
         uint256 _collateralId
@@ -63,6 +82,31 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             );
     }
 
+    /**
+     * Returns the originating debt ID.
+     *
+     * @param _debtId The debt ID to find the root debt for.
+     *
+     * @return The originating debt ID.
+     */
+    function rootDebtId(uint256 _debtId) public view returns (uint256) {
+        ICollateralVault.Collateral memory _collateral = _collateralVault
+            .getCollateral(_debtId);
+
+        return
+            __debtMaps[_collateral.collateralAddress][_collateral.collateralId][
+                0
+            ].debtId;
+    }
+
+    /**
+     * Returns the number of debt maps for a collateral.
+     *
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     * @param _collateralId The ID of the ERC721 collateral token.
+     *
+     * @return The number of debt maps for the collateral.
+     */
     function collateralDebtCount(
         address _collateralAddress,
         uint256 _collateralId
@@ -70,6 +114,15 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         return __debtMaps[_collateralAddress][_collateralId].length;
     }
 
+    /**
+     * Returns the debt map for a collateral at a given index.
+     *
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     * @param _collateralId The ID of the ERC721 collateral token.
+     * @param _index The index of the debt map to return.
+     *
+     * @return The debt map at the given index.
+     */
     function collateralDebtAt(
         address _collateralAddress,
         uint256 _collateralId,
@@ -92,6 +145,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         return _debtMaps[_index];
     }
 
+    /**
+     * Returns the nonce of the next loan contract for a collateral.
+     *
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     * @param _collateralId The ID of the ERC721 collateral token.
+     *
+     * @return The nonce of the next loan contract for a collateral.
+     */
     function collateralNonce(
         address _collateralAddress,
         uint256 _collateralId
@@ -109,7 +170,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     /**
      * Initialize a loan contract for an uncollateralized ERC721 token.
      *
-     * Input _contractTerms:
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     * @param _collateralId The ID of the ERC721 collateral token.
+     * @param _contractTerms The loan contract terms.
+     * @param _borrowerSignature The borrower's signature of the loan contract
+     * terms.
+     *
+     * @dev The `_contractTerms` parameter is a packed bytes32 array of the
+     * following values:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
      *  > 008 - [12..19]   `isFixed` and `commital`
@@ -118,6 +186,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      *  > 032 - [180..211] `duration`
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
+     *
+     * Emits a {LoanContractInitialized} event.
      */
     function initLoanContract(
         address _collateralAddress,
@@ -185,7 +255,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
         if (!_success) revert FailedFundsTransfer();
 
-        // Mint debt ALC debt tokens for lender
+        // Mint debt ADT for lender
         string memory _collateralURI = _collateralToken.tokenURI(_collateralId);
 
         _anzaToken.mint(
@@ -215,7 +285,13 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      * treasurer verifies the loan contract with the borrower before calling
      * this function.
      *
-     * Input _contractTerms:
+     * @param _debtId The ID of the debt to refinance.
+     * @param _borrower The address of the borrower.
+     * @param _lender The address of the new lender.
+     * @param _contractTerms The new loan contract terms.
+     *
+     * @dev The `_contractTerms` parameter is a packed bytes32 array of the
+     * following values:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
      *  > 008 - [12..19]   unused space
@@ -224,6 +300,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      *  > 032 - [180..211] `duration`
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
+     *
+     * Emits a {LoanContractRefinanced} event.
      */
     function initLoanContract(
         uint256 _debtId,
@@ -291,7 +369,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
         if (!_success) revert FailedFundsTransfer();
 
-        // Mint debt ALC debt tokens for lender.
+        // Mint debt ADT for lender.
         _anzaToken.mint(
             _lender,
             totalDebts,
@@ -318,7 +396,12 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      * treasurer verifies the loan contract with the borrower before calling
      * this function.
      *
-     * Input _contractTerms:
+     * @param _debtId The ID of the debt to refinance.
+     * @param _borrower The address of the borrower.
+     * @param _lender The address of the new lender.
+     *
+     * @dev The `_contractTerms` parameter is a packed bytes32 array of the
+     * following values:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
      *  > 008 - [12..19]   unused space
@@ -327,6 +410,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      *  > 032 - [180..211] `duration`
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
+     *
+     * Emits a {LoanContractRefinanced} event.
      */
     function initLoanContract(
         uint256 _debtId,
@@ -393,7 +478,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
         if (!_success) revert FailedFundsTransfer();
 
-        // Mint debt ALC debt tokens for lender.
+        // Mint debt ADT for lender.
         _anzaToken.mint(
             _lender,
             totalDebts,

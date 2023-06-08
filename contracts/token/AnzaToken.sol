@@ -11,10 +11,8 @@ import {AnzaTokenIndexer} from "./AnzaTokenIndexer.sol";
 
 contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
     constructor(
-        string memory _name,
-        string memory _symbol,
         string memory _baseURI
-    ) AnzaBaseToken(_name, _symbol, _baseURI) {}
+    ) AnzaBaseToken("Anza Debt Token", "ADT", _baseURI) {}
 
     function supportsInterface(
         bytes4 _interfaceId
@@ -74,7 +72,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256 _debtId,
         uint256 _amount
     ) external onlyRole(_TREASURER_) {
-        // Mint ALC debt tokens
+        // Mint ADT for lender
         _mint(lenderOf(_debtId), lenderTokenId(_debtId), _amount, "");
     }
 
@@ -84,10 +82,10 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256 _amount,
         bytes memory _data
     ) external onlyRole(_LOAN_CONTRACT_) {
-        // Mint ALC debt tokens
+        // Mint ADT for lender
         _mint(_to, lenderTokenId(_debtId), _amount, "");
 
-        // Mint ALC replica token
+        // Mint ADT for borrower
         (address _borrower, uint256 _rootDebtId) = abi.decode(
             _data,
             (address, uint256)
@@ -103,10 +101,10 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         string calldata _collateralURI,
         bytes memory _data
     ) external onlyRole(_LOAN_CONTRACT_) {
-        // Mint ALC debt tokens
+        // Mint ADT for lender
         _mint(_to, lenderTokenId(_debtId), _amount, "");
 
-        // Mint ALC replica token
+        // Mint ADT for borrower
         _mint(address(bytes20(_data)), borrowerTokenId(_debtId), 1, "");
         _setURI(borrowerTokenId(_debtId), _collateralURI);
     }
@@ -133,9 +131,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         _burnBatch(_address, _ids, _values);
     }
 
-    function burnBorrowerToken(
-        uint256 _debtId
-    ) external onlyRole(_COLLATERAL_VAULT_) {
+    function burnBorrowerToken(uint256 _debtId) external onlyRole(_TREASURER_) {
         uint256 _borrowerTokenId = borrowerTokenId(_debtId);
 
         _burn(borrowerOf(_debtId), _borrowerTokenId, 1);

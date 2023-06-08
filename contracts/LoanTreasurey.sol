@@ -116,7 +116,7 @@ contract LoanTreasurey is
     function withdrawCollateral(
         uint256 _debtId
     ) external nonReentrant returns (bool) {
-        return _loanCollateralVault.withdraw(msg.sender, _debtId);
+        return _collateralVault.withdraw(msg.sender, _debtId);
     }
 
     /*
@@ -170,7 +170,7 @@ contract LoanTreasurey is
         if (_payment >= _debtBalance) {
             _depositPayment(_purchaser, _debtId, _debtBalance);
 
-            _loanCollateralVault.withdraw(_purchaser, _debtId);
+            _collateralVault.withdraw(_purchaser, _debtId);
 
             withdrawableBalance[_borrower] += _payment - _debtBalance;
         }
@@ -304,14 +304,17 @@ contract LoanTreasurey is
         if (_balance > _payment) {
             withdrawableBalance[_lender] += _payment;
 
-            // Burn ALC debt token
+            // Burn ADT of lender
             _anzaToken.burnLenderToken(_debtId, _payment);
         } else {
             withdrawableBalance[_lender] += _balance;
             withdrawableBalance[_payer] += _payment - _balance;
 
-            // Burn ALC debt token
+            // Burn ADT of lender
             _anzaToken.burnLenderToken(_debtId, _balance);
+
+            // Burn ADT of borrower
+            _anzaToken.burnBorrowerToken(_debtId);
         }
     }
 }

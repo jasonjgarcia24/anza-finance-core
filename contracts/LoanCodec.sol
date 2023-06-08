@@ -14,12 +14,6 @@ import {ILoanCodec} from "./interfaces/ILoanCodec.sol";
 import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
 
 abstract contract LoanCodec is ILoanCodec {
-    event LoanStateChanged(
-        uint256 indexed debtId,
-        uint8 indexed newLoanState,
-        uint8 indexed oldLoanState
-    );
-
     /**
      *  > 004 - [0..3]     `loanState`
      *  > 004 - [4..7]     `firInterval`
@@ -157,13 +151,13 @@ abstract contract LoanCodec is ILoanCodec {
         }
     }
 
-    function activeLoanCount(
+    function debtSpawnId(
         uint256 _debtId
-    ) public view returns (uint256 _activeLoanCount) {
+    ) public view returns (uint256 _debtSpawnId) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
 
         assembly {
-            _activeLoanCount := shr(
+            _debtSpawnId := shr(
                 _LOAN_COUNT_POS_,
                 and(_contractTerms, _LOAN_COUNT_MAP_)
             )

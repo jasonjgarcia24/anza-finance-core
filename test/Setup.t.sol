@@ -140,7 +140,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         vm.startPrank(admin);
 
         // Deploy AnzaToken
-        anzaToken = new AnzaToken("Anza Debt Token", "ADT", "www.anza.io");
+        anzaToken = new AnzaToken("www.anza.io");
 
         // Deploy LoanContract
         loanContract = new LoanContract();

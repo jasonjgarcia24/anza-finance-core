@@ -20,7 +20,7 @@ abstract contract TreasureyAccessController is
     ILoanContract internal _loanContract;
     ILoanCodec internal _loanCodec;
     ILoanManager internal _loanManager;
-    ICollateralVault internal _loanCollateralVault;
+    ICollateralVault internal _collateralVault;
     IAnzaToken internal _anzaToken;
 
     constructor() {
@@ -48,7 +48,7 @@ abstract contract TreasureyAccessController is
     }
 
     function collateralVault() external view returns (address) {
-        return address(_loanCollateralVault);
+        return address(_collateralVault);
     }
 
     function setAnzaToken(
@@ -66,7 +66,7 @@ abstract contract TreasureyAccessController is
     function setCollateralVault(
         address _collateralVaultAddress
     ) external onlyRole(_ADMIN_) {
-        _loanCollateralVault = ICollateralVault(_collateralVaultAddress);
+        _collateralVault = ICollateralVault(_collateralVaultAddress);
     }
 
     function _grantRole(

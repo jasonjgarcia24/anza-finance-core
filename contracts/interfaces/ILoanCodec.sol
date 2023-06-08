@@ -5,6 +5,12 @@ interface ILoanCodec {
     error InactiveLoanState();
     error InvalidLoanParameter(bytes4 parameter);
 
+    event LoanStateChanged(
+        uint256 indexed debtId,
+        uint8 indexed newLoanState,
+        uint8 indexed oldLoanState
+    );
+
     function getDebtTerms(uint256 _debtId) external view returns (bytes32);
 
     function loanState(uint256 _debtId) external view returns (uint256);
@@ -27,7 +33,7 @@ interface ILoanCodec {
 
     function lenderRoyalties(uint256 _debtId) external view returns (uint256);
 
-    function activeLoanCount(uint256 _debtId) external view returns (uint256);
+    function debtSpawnId(uint256 _debtId) external view returns (uint256);
 
     function totalFirIntervals(
         uint256 _debtId,

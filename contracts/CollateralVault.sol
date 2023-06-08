@@ -141,9 +141,6 @@ contract CollateralVault is
         Collateral storage _collateral = __collaterals[_debtId];
         totalCollateral -= 1;
 
-        // Burn replica
-        IAnzaToken(anzaToken).burnBorrowerToken(_debtId);
-
         // Transfer collateral to borrower
         IERC721(_collateral.collateralAddress).safeTransferFrom(
             address(this),
