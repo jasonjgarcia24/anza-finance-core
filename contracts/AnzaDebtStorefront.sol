@@ -241,7 +241,7 @@ contract AnzaDebtStorefront is
         bytes calldata _borrowerSignature
     ) public payable {
         _buyRefinance(
-            _anzaTokenIndexer.lenderTokenId(_debtId),
+            _anzaTokenIndexer.borrowerTokenId(_debtId),
             _contractTerms,
             _termsExpiry,
             msg.value,
@@ -283,7 +283,7 @@ contract AnzaDebtStorefront is
         bytes calldata _borrowerSignature
     ) public payable {
         _buyRefinance(
-            _anzaTokenIndexer.lenderTokenId(_debtId),
+            _anzaTokenIndexer.borrowerTokenId(_debtId),
             _contractTerms,
             _listingNonce,
             _termsExpiry,

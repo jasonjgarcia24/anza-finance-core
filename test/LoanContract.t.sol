@@ -831,7 +831,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.collateralDebtCount(address(demoToken), collateralId),
             0,
-            "0 :: collateral debt count should be 0"
+            "0 :: Collateral debt count should be 0."
         );
 
         // Create loan contract
@@ -841,40 +841,82 @@ contract LoanContractViewsUnitTest is LoanSigned {
         assertEq(
             loanContract.collateralDebtCount(address(demoToken), collateralId),
             1,
-            "1 :: collateral debt count should be 1"
+            "1 :: Collateral debt count should be 1."
         );
 
         // Create loan contract partial refinance
-        (bool _success, ) = refinanceDebt(_debtId);
-        require(_success, "2 :: Refinance failed.");
+        (bool _success, ) = refinanceDebt(
+            _debtId,
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isFixed: _IS_FIXED_,
+                commital: _COMMITAL_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+        assertTrue(_success, "2 :: Refinance failed.");
+
         uint256 _refDebtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.collateralDebtCount(address(demoToken), collateralId),
             2,
-            "3 :: collateral debt count should be 2"
+            "3 :: Collateral debt count should be 2."
         );
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(_debtId);
-        require(_success, "4 :: Refinance failed.");
+        (_success, ) = refinanceDebt(
+            _debtId,
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isFixed: _IS_FIXED_,
+                commital: _COMMITAL_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+        assertTrue(_success, "4 :: Refinance failed.");
+
         _refDebtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.collateralDebtCount(address(demoToken), collateralId),
             3,
-            "5 :: collateral debt count should be 3"
+            "5 :: Collateral debt count should be 3."
         );
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(_debtId);
-        require(_success, "6 :: Refinance failed.");
+        (_success, ) = refinanceDebt(
+            _refDebtId,
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isFixed: _IS_FIXED_,
+                commital: _COMMITAL_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+        assertTrue(_success, "6 :: Refinance failed.");
+
         _refDebtId = loanContract.totalDebts();
 
         assertEq(
             loanContract.collateralDebtCount(address(demoToken), collateralId),
             4,
-            "7 :: collateral debt count should be 4"
+            "7 :: Collateral debt count should be 4."
         );
     }
 

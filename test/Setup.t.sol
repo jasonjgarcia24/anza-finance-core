@@ -7,7 +7,7 @@ import "../lib/forge-std/src/console.sol";
 import "../contracts/domain/LoanContractRoles.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {ILoanNotary} from "../contracts/interfaces/ILoanNotary.sol";
+import {ILoanNotary, IListingNotary, IRefinanceNotary} from "../contracts/interfaces/ILoanNotary.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 import {ICollateralVault} from "../contracts/interfaces/ICollateralVault.sol";
@@ -16,6 +16,7 @@ import {CollateralVault} from "../contracts/CollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
+import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
 import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
 
 error TryCatchErr(bytes err);
@@ -118,6 +119,10 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     bytes32 public contractTerms;
     bytes public signature;
 
+    AnzaDebtStorefront public anzaDebtStorefront;
+    Signing.DomainSeparator public listingDomainSeparator;
+    Signing.DomainSeparator public refinanceDomainSeparator;
+
     struct ContractTerms {
         uint8 firInterval;
         uint8 fixedInterestRate;
@@ -174,6 +179,30 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         demoToken.setApprovalForAll(address(loanContract), true);
 
         vm.stopPrank();
+
+        anzaDebtStorefront = new AnzaDebtStorefront(
+            address(loanContract),
+            address(loanTreasurer),
+            address(anzaToken)
+        );
+
+        vm.startPrank(admin);
+        loanTreasurer.grantRole(_DEBT_STOREFRONT_, address(anzaDebtStorefront));
+        vm.stopPrank();
+
+        listingDomainSeparator = Signing.DomainSeparator({
+            name: "AnzaDebtStorefront:ListingNotary",
+            version: "0",
+            chainId: block.chainid,
+            contractAddress: address(anzaDebtStorefront)
+        });
+
+        refinanceDomainSeparator = Signing.DomainSeparator({
+            name: "AnzaDebtStorefront:RefinanceNotary",
+            version: "0",
+            chainId: block.chainid,
+            contractAddress: address(anzaDebtStorefront)
+        });
     }
 
     function createContractTerms()
@@ -320,6 +349,31 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         _data = abi.encodePacked(_data);
     }
 
+    function initRefinanceContract(
+        uint256 _price,
+        uint256 _debtId,
+        uint256 _termsExpiry,
+        bytes32 _contractTerms,
+        bytes memory _signature
+    ) public returns (bool _success, bytes memory _data) {
+        vm.deal(alt_account, 4 ether);
+        vm.startPrank(alt_account);
+        (_success, _data) = address(anzaDebtStorefront).call{value: _price}(
+            abi.encodeWithSignature(
+                "buyRefinance(uint256,uint256,bytes32,bytes)",
+                _debtId,
+                _termsExpiry,
+                _contractTerms,
+                _signature
+            )
+        );
+        assertTrue(
+            _success,
+            "0 :: initRefinanceContract :: buyRefinance test should succeed."
+        );
+        vm.stopPrank();
+    }
+
     function createLoanContract(
         uint256 _collateralId
     ) public virtual returns (bool, bytes memory) {
@@ -383,45 +437,51 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             );
     }
 
+    function createListingSignature(
+        uint256 _sellerPrivateKey,
+        IListingNotary.ListingParams memory _debtListingParams
+    ) public virtual returns (bytes memory _signature) {
+        bytes32 _message = Signing.typeDataHash(
+            _debtListingParams,
+            listingDomainSeparator
+        );
+
+        // Sign seller's listing terms
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_sellerPrivateKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
+    function createRefinanceSignature(
+        uint256 _sellerPrivateKey,
+        IRefinanceNotary.RefinanceParams memory _debtRefinanceParams
+    ) public virtual returns (bytes memory _signature) {
+        bytes32 _message = Signing.typeDataHash(
+            _debtRefinanceParams,
+            refinanceDomainSeparator
+        );
+
+        // Sign seller's listing terms
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_sellerPrivateKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
     function refinanceDebt(
         uint256 _debtId
     ) public virtual returns (bool, bytes memory) {
-        bytes32 _contractTerms = createContractTerms(
-            ContractTerms({
-                firInterval: _ALT_FIR_INTERVAL_,
-                fixedInterestRate: _ALT_FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _ALT_PRINCIPAL_,
-                gracePeriod: _ALT_GRACE_PERIOD_,
-                duration: _ALT_DURATION_,
-                termsExpiry: _ALT_TERMS_EXPIRY_,
-                lenderRoyalties: _ALT_LENDER_ROYALTIES_
-            })
-        );
-
-        ICollateralVault.Collateral memory _collateral = ICollateralVault(
-            collateralVault
-        ).getCollateral(_debtId);
-
-        uint256 _collateralNonce = loanContract.collateralNonce(
-            address(demoToken),
-            _collateral.collateralId
-        );
-
-        bytes memory _signature = createContractSignature(
-            _ALT_PRINCIPAL_,
-            _collateral.collateralId,
-            _collateralNonce,
-            _contractTerms
-        );
-
         return
-            initLoanContract(
+            refinanceDebt(
                 _debtId,
-                _ALT_PRINCIPAL_,
-                _contractTerms,
-                _signature
+                ContractTerms({
+                    firInterval: _FIR_INTERVAL_,
+                    fixedInterestRate: _FIXED_INTEREST_RATE_,
+                    isFixed: _IS_FIXED_,
+                    commital: _COMMITAL_,
+                    principal: _PRINCIPAL_,
+                    gracePeriod: _GRACE_PERIOD_,
+                    duration: _DURATION_,
+                    termsExpiry: _TERMS_EXPIRY_,
+                    lenderRoyalties: _LENDER_ROYALTIES_
+                })
             );
     }
 
@@ -429,32 +489,62 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _debtId,
         ContractTerms memory _terms
     ) public virtual returns (bool, bytes memory) {
+        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
+
         bytes32 _contractTerms = createContractTerms(_terms);
 
-        ICollateralVault.Collateral memory _collateral = ICollateralVault(
-            collateralVault
-        ).getCollateral(_debtId);
-
-        uint256 _collateralNonce = loanContract.collateralNonce(
-            address(demoToken),
-            _collateral.collateralId
-        );
-
-        bytes memory _signature = createContractSignature(
-            _terms.principal,
-            _collateral.collateralId,
-            _collateralNonce,
-            _contractTerms
+        bytes memory _signature = createRefinanceSignature(
+            borrowerPrivKey,
+            IRefinanceNotary.RefinanceParams({
+                price: _terms.principal,
+                debtId: _debtId,
+                contractTerms: _contractTerms,
+                listingNonce: _debtListingNonce,
+                termsExpiry: _termsExpiry
+            })
         );
 
         return
-            initLoanContract(
-                _debtId,
+            initRefinanceContract(
                 _terms.principal,
+                _debtId,
+                _termsExpiry,
                 _contractTerms,
                 _signature
             );
     }
+
+    // function refinanceDebt(
+    //     uint256 _debtId,
+    //     ContractTerms memory _terms
+    // ) public virtual returns (bool, bytes memory) {
+    //     bytes32 _contractTerms = createContractTerms(_terms);
+
+    //     ICollateralVault.Collateral memory _collateral = ICollateralVault(
+    //         collateralVault
+    //     ).getCollateral(_debtId);
+
+    //     uint256 _collateralNonce = loanContract.collateralNonce(
+    //         address(demoToken),
+    //         _collateral.collateralId
+    //     );
+
+    //     bytes memory _signature = createContractSignature(
+    //         _terms.principal,
+    //         _collateral.collateralId,
+    //         _collateralNonce,
+    //         _contractTerms
+    //     );
+
+    //     return
+    //         initLoanContract(
+    //             _debtId,
+    //             _terms.principal,
+    //             _contractTerms,
+    //             _signature
+    //         );
+    // }
 
     function mintDemoTokens(uint256 _amount) public virtual {
         vm.startPrank(borrower);

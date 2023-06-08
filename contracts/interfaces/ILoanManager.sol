@@ -25,4 +25,6 @@ interface ILoanManager {
     function checkLoanDefault(uint256 _debtId) external view returns (bool);
 
     function checkLoanExpired(uint256 _debtId) external view returns (bool);
+
+    function checkLoanClosed(uint256 _debtId) external view returns (bool);
 }

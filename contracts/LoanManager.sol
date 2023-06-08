@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "../lib/forge-std/src/console.sol";
 
 import {ILoanManager} from "./interfaces/ILoanManager.sol";
-import {LoanCodec, _DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_} from "./LoanCodec.sol";
+import {LoanCodec, _DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_, _CLOSE_STATE_} from "./LoanCodec.sol";
 import {ManagerAccessController, ICollateralVault, _ADMIN_, _TREASURER_} from "./access/ManagerAccessController.sol";
 
 abstract contract LoanManager is
@@ -44,6 +44,11 @@ abstract contract LoanManager is
      * @dev Updates loan state.
      */
     function updateLoanState(uint256 _debtId) external onlyRole(_TREASURER_) {
+        if (checkLoanClosed(_debtId)) {
+            console.log("Closed loan: %s", _debtId);
+            return;
+        }
+
         if (!checkLoanActive(_debtId)) {
             console.log("Inactive loan: %s", _debtId);
             revert InactiveLoanState();
@@ -102,6 +107,10 @@ abstract contract LoanManager is
         return
             _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId)) > 0 &&
             loanClose(_debtId) <= block.timestamp;
+    }
+
+    function checkLoanClosed(uint256 _debtid) public view returns (bool) {
+        return loanState(_debtid) >= _CLOSE_STATE_;
     }
 
     function revokeTerms(bytes32 _hashedTerms) public {

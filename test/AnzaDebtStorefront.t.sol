@@ -4,8 +4,7 @@ pragma solidity 0.8.20;
 import "../contracts/domain/LoanContractRoles.sol";
 import "../contracts/domain/LoanTreasureyErrorCodes.sol";
 
-import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
-import {IListingNotary} from "../contracts/interfaces/ILoanNotary.sol";
+import {Setup, AnzaDebtStorefront, ILoanNotary, IListingNotary, IRefinanceNotary} from "./Setup.t.sol";
 import {console, LoanContractSubmitted} from "./LoanContract.t.sol";
 import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
 import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
@@ -15,49 +14,8 @@ abstract contract AnzaDebtStorefrontUnitTest is
     IAnzaDebtStorefrontEvents,
     LoanContractSubmitted
 {
-    AnzaDebtStorefront public anzaDebtStorefront;
-    Signing.DomainSeparator public listingDomainSeparator;
-    Signing.DomainSeparator public refinanceDomainSeparator;
-
     function setUp() public virtual override {
         super.setUp();
-        anzaDebtStorefront = new AnzaDebtStorefront(
-            address(loanContract),
-            address(loanTreasurer),
-            address(anzaToken)
-        );
-
-        vm.startPrank(admin);
-        loanTreasurer.grantRole(_DEBT_STOREFRONT_, address(anzaDebtStorefront));
-        vm.stopPrank();
-
-        listingDomainSeparator = Signing.DomainSeparator({
-            name: "AnzaDebtStorefront:ListingNotary",
-            version: "0",
-            chainId: block.chainid,
-            contractAddress: address(anzaDebtStorefront)
-        });
-
-        refinanceDomainSeparator = Signing.DomainSeparator({
-            name: "AnzaDebtStorefront:RefinanceNotary",
-            version: "0",
-            chainId: block.chainid,
-            contractAddress: address(anzaDebtStorefront)
-        });
-    }
-
-    function createListingSignature(
-        uint256 _sellerPrivateKey,
-        IListingNotary.ListingParams memory _debtListingParams
-    ) public virtual returns (bytes memory _signature) {
-        bytes32 _message = Signing.typeDataHash(
-            _debtListingParams,
-            listingDomainSeparator
-        );
-
-        // Sign seller's listing terms
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_sellerPrivateKey, _message);
-        _signature = abi.encodePacked(r, s, v);
     }
 
     function _testAnzaDebtStorefront__FuzzFailBuyDebt(
@@ -297,6 +255,57 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
             _price >= _balance ? _balance : _price,
             "11 :: Debt balance should be min(_price, _balance) for new debt ID"
         );
+    }
+
+    function testAnzaDebtStorefront__BasicBuyRefinance() public {
+        uint256 _debtId = loanContract.totalDebts();
+        (bool _success, ) = refinanceDebt(_debtId);
+        require(_success, "0 :: refinanceDebt test should succeed.");
+
+        // uint256 _debtId = loanContract.totalDebts();
+        // uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
+        // uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
+        // uint256 _balance = loanContract.debtBalance(_debtId);
+        // uint256 _price = _balance - 1;
+
+        // bytes32 _contractTerms = createContractTerms(
+        //     ContractTerms({
+        //         firInterval: _FIR_INTERVAL_,
+        //         fixedInterestRate: _FIXED_INTEREST_RATE_,
+        //         isFixed: _IS_FIXED_,
+        //         commital: _COMMITAL_,
+        //         principal: _price,
+        //         gracePeriod: _GRACE_PERIOD_,
+        //         duration: _DURATION_,
+        //         termsExpiry: _TERMS_EXPIRY_,
+        //         lenderRoyalties: _LENDER_ROYALTIES_
+        //     })
+        // );
+
+        // bytes memory _signature = createRefinanceSignature(
+        //     borrowerPrivKey,
+        //     IRefinanceNotary.RefinanceParams({
+        //         price: _price,
+        //         debtId: _debtId,
+        //         contractTerms: _contractTerms,
+        //         listingNonce: _debtListingNonce,
+        //         termsExpiry: _termsExpiry
+        //     })
+        // );
+
+        // vm.deal(alt_account, 4 ether);
+        // vm.startPrank(alt_account);
+        // (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
+        //     abi.encodeWithSignature(
+        //         "buyRefinance(uint256,uint256,bytes32,bytes)",
+        //         _debtId,
+        //         _termsExpiry,
+        //         _contractTerms,
+        //         _signature
+        //     )
+        // );
+        // assertTrue(_success, "3 :: buyRefinance test should succeed.");
+        // vm.stopPrank();
     }
 }
 

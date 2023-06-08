@@ -7,7 +7,7 @@ import "../domain/LoanContractFIRIntervals.sol";
 import "../domain/LoanContractTermMaps.sol";
 import "../domain/LoanNotaryTypeHashes.sol";
 
-import {ILoanNotaryErrors, ILoanNotary, IListingNotary} from "../interfaces/ILoanNotary.sol";
+import {ILoanNotaryErrors, ILoanNotary, IListingNotary, IRefinanceNotary} from "../interfaces/ILoanNotary.sol";
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -87,6 +87,21 @@ library LibLoanNotary {
     }
 
     /**
+     * {see LoanNotary:RefinanceNotary-__recoverSigner}
+     */
+    function recoverSigner(
+        IRefinanceNotary.RefinanceParams memory _refinanceParams,
+        DomainSeparator memory _domainSeparator,
+        bytes memory _signature
+    ) public pure returns (address) {
+        bytes32 _message = typeDataHash(_refinanceParams, _domainSeparator);
+
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
+
+        return ECDSA.recover(_message, v, r, s);
+    }
+
+    /**
      * {see LoanNotary:LoanNotary-__domainSeparator}
      */
     function domainSeparator(
@@ -138,6 +153,23 @@ library LibLoanNotary {
             );
     }
 
+    /**
+     * {see LoanNotary:RefinanceNotary-__typeDataHash}
+     */
+    function typeDataHash(
+        IRefinanceNotary.RefinanceParams memory _refinanceParams,
+        DomainSeparator memory _domainSeparator
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    domainSeparator(_domainSeparator),
+                    structHash(_refinanceParams)
+                )
+            );
+    }
+
     function structHash(
         ILoanNotary.ContractParams memory _contractParams
     ) public pure returns (bytes32) {
@@ -165,6 +197,22 @@ library LibLoanNotary {
                     _listingParams.debtId,
                     _listingParams.listingNonce,
                     _listingParams.termsExpiry
+                )
+            );
+    }
+
+    function structHash(
+        IRefinanceNotary.RefinanceParams memory _refinanceParams
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    _REFINANCE_PARAMS_ENCODE_TYPE_HASH_,
+                    _refinanceParams.price,
+                    _refinanceParams.debtId,
+                    _refinanceParams.contractTerms,
+                    _refinanceParams.listingNonce,
+                    _refinanceParams.termsExpiry
                 )
             );
     }

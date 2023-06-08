@@ -29,7 +29,10 @@ contract LoanTreasurey is
 
     modifier debtUpdater(uint256 _debtId) {
         updateDebt(_debtId);
-        if (!_loanManager.checkLoanExpired(_debtId)) {
+        if (
+            !_loanManager.checkLoanExpired(_debtId) &&
+            !_loanManager.checkLoanClosed(_debtId)
+        ) {
             _;
             _loanManager.updateLoanState(_debtId);
         }
