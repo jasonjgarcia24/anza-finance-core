@@ -89,7 +89,7 @@ abstract contract LoanNotary is ILoanNotary {
 
         if (
             _borrower == msg.sender ||
-            _borrower != __recoverSigner(_contractParams, _borrowerSignature)
+            _borrower != _recoverSigner(_contractParams, _borrowerSignature)
         ) revert InvalidParticipant();
 
         return _borrower;
@@ -101,7 +101,7 @@ abstract contract LoanNotary is ILoanNotary {
      *
      * {see ECDSA-recover}
      */
-    function __recoverSigner(
+    function _recoverSigner(
         ContractParams memory _contractParams,
         bytes memory _signature
     ) internal view returns (address) {
@@ -224,7 +224,7 @@ abstract contract ListingNotary is IListingNotary {
 
         if (
             _borrower == msg.sender ||
-            _borrower != __recoverSigner(_listingParams, _sellerSignature)
+            _borrower != _recoverSigner(_listingParams, _sellerSignature)
         ) revert InvalidParticipant();
 
         return _borrower;
@@ -236,7 +236,7 @@ abstract contract ListingNotary is IListingNotary {
      *
      * {see ECDSA-recover}
      */
-    function __recoverSigner(
+    function _recoverSigner(
         ListingParams memory _listingParams,
         bytes memory _signature
     ) internal view returns (address) {
@@ -358,7 +358,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
 
         if (
             _borrower == msg.sender ||
-            _borrower != __recoverSigner(_refinanceParams, _sellerSignature)
+            _borrower != _recoverSigner(_refinanceParams, _sellerSignature)
         ) revert InvalidParticipant();
 
         return _borrower;
@@ -370,7 +370,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      *
      * {see ECDSA-recover}
      */
-    function __recoverSigner(
+    function _recoverSigner(
         RefinanceParams memory _refinanceParams,
         bytes memory _signature
     ) internal view returns (address) {

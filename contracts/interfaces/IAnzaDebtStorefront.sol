@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 interface IAnzaDebtStorefront {
     error InvalidListingType();
+    error CanceledListing();
     error LockedNonce();
 
     enum ListingType {

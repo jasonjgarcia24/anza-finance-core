@@ -26,6 +26,7 @@ contract AnzaDebtStorefront is
 
     mapping(address beneficiary => uint256) private __proceeds;
     mapping(uint256 debtId => Nonce[]) private __listingNonces;
+    mapping(bytes32 signatureHash => bool) private __canceledListings;
 
     constructor(
         address _loanContract,
@@ -39,6 +40,11 @@ contract AnzaDebtStorefront is
 
         _loanManager = ILoanManager(_loanContract);
         _anzaTokenIndexer = IAnzaTokenIndexer(_anzaToken);
+    }
+
+    modifier onlyActiveListing(bytes calldata _signature) {
+        if (__canceledListings[keccak256(_signature)]) revert CanceledListing();
+        _;
     }
 
     function supportsInterface(
@@ -141,6 +147,62 @@ contract AnzaDebtStorefront is
         _success = true;
     }
 
+    function cancelListing(
+        uint256 _price,
+        uint256 _debtId,
+        uint256 _listingNonce,
+        uint256 _termsExpiry,
+        bytes calldata _signature
+    ) external returns (bool _success) {
+        // Verify the caller originated the listing
+        if (
+            msg.sender !=
+            _recoverSigner(
+                ListingParams({
+                    price: _price,
+                    debtId: _debtId,
+                    listingNonce: _listingNonce,
+                    termsExpiry: _termsExpiry
+                }),
+                _signature
+            )
+        ) revert InvalidParticipant();
+
+        // Set the listing as canceled
+        __canceledListings[keccak256(_signature)] = true;
+
+        _success = true;
+    }
+
+    function cancelRefinance(
+        uint256 _price,
+        uint256 _debtId,
+        bytes32 _contractTerms,
+        uint256 _listingNonce,
+        uint256 _termsExpiry,
+        bytes calldata _signature
+    ) external returns (bool _success) {
+        // Verify the caller originated the listing
+        if (
+            msg.sender !=
+            _recoverSigner(
+                RefinanceParams({
+                    price: _price,
+                    debtId: _debtId,
+                    contractTerms: _contractTerms,
+                    listingNonce: _listingNonce,
+                    termsExpiry: _termsExpiry
+                }),
+                _signature
+            )
+        ) revert InvalidParticipant();
+
+        // Set the listing as canceled
+        __canceledListings[keccak256(_signature)] = true;
+
+        _success = true;
+    }
+
     /**
      * Executes a debt purchase for a given debt ID.
      *
@@ -153,6 +215,7 @@ contract AnzaDebtStorefront is
      * @param _termsExpiry The expiry of the terms signature.
      * @param _sellerSignature The signature of the seller {see LoanNotary:ListingNotary-__typeDataHash}.
      *
+     * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the debt ID is owned by the caller.
@@ -163,7 +226,7 @@ contract AnzaDebtStorefront is
         uint256 _debtId,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
-    ) public payable {
+    ) public payable onlyActiveListing(_sellerSignature) {
         _buyListing(
             _anzaTokenIndexer.borrowerTokenId(_debtId),
             _termsExpiry,
@@ -187,6 +250,7 @@ contract AnzaDebtStorefront is
      * @param _sellerSignature The signature of the seller
      * {see LoanNotary:ListingNotary-__typeDataHash}.
      *
+     * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the caller is the borrower of the debt ID.
@@ -200,7 +264,7 @@ contract AnzaDebtStorefront is
         uint256 _listingNonce,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
-    ) public payable {
+    ) public payable onlyActiveListing(_sellerSignature) {
         _buyListing(
             _anzaTokenIndexer.borrowerTokenId(_debtId),
             _termsExpiry,
@@ -228,6 +292,7 @@ contract AnzaDebtStorefront is
      * @param _borrowerSignature The signature of the borrower
      * {see LoanNotary:LoanNotary-__typeDataHash}.
      *
+     * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the caller is the borrower of the debt ID.
@@ -239,7 +304,7 @@ contract AnzaDebtStorefront is
         uint256 _termsExpiry,
         bytes32 _contractTerms,
         bytes calldata _borrowerSignature
-    ) public payable {
+    ) public payable onlyActiveListing(_borrowerSignature) {
         _buyRefinance(
             _anzaTokenIndexer.borrowerTokenId(_debtId),
             _contractTerms,
@@ -267,6 +332,7 @@ contract AnzaDebtStorefront is
      * @param _contractTerms The terms of the new loan contract.
      * @param _borrowerSignature The signature of the borrower
      *
+     * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the caller is the borrower of the debt ID.
@@ -281,7 +347,7 @@ contract AnzaDebtStorefront is
         uint256 _termsExpiry,
         bytes32 _contractTerms,
         bytes calldata _borrowerSignature
-    ) public payable {
+    ) public payable onlyActiveListing(_borrowerSignature) {
         _buyRefinance(
             _anzaTokenIndexer.borrowerTokenId(_debtId),
             _contractTerms,
@@ -310,6 +376,7 @@ contract AnzaDebtStorefront is
      * @param _termsExpiry The expiry of the terms signature.
      * @param _sellerSignature The signature of the seller.
      *
+     * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the caller is the lender of the debt ID.
@@ -320,7 +387,7 @@ contract AnzaDebtStorefront is
         uint256 _debtId,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
-    ) public payable {
+    ) public payable onlyActiveListing(_sellerSignature) {
         _buyListing(
             _anzaTokenIndexer.lenderTokenId(_debtId),
             _termsExpiry,
@@ -349,6 +416,7 @@ contract AnzaDebtStorefront is
      * @param _termsExpiry The expiry of the terms signature.
      * @param _sellerSignature The signature of the seller.
      *
+     * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the caller is the lender of the debt ID.
@@ -362,7 +430,7 @@ contract AnzaDebtStorefront is
         uint256 _listingNonce,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
-    ) public payable {
+    ) public payable onlyActiveListing(_sellerSignature) {
         _buyListing(
             _anzaTokenIndexer.lenderTokenId(_debtId),
             _listingNonce,

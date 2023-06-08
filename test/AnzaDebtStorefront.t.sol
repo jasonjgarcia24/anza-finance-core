@@ -261,51 +261,6 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
         uint256 _debtId = loanContract.totalDebts();
         (bool _success, ) = refinanceDebt(_debtId);
         require(_success, "0 :: refinanceDebt test should succeed.");
-
-        // uint256 _debtId = loanContract.totalDebts();
-        // uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
-        // uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
-        // uint256 _balance = loanContract.debtBalance(_debtId);
-        // uint256 _price = _balance - 1;
-
-        // bytes32 _contractTerms = createContractTerms(
-        //     ContractTerms({
-        //         firInterval: _FIR_INTERVAL_,
-        //         fixedInterestRate: _FIXED_INTEREST_RATE_,
-        //         isFixed: _IS_FIXED_,
-        //         commital: _COMMITAL_,
-        //         principal: _price,
-        //         gracePeriod: _GRACE_PERIOD_,
-        //         duration: _DURATION_,
-        //         termsExpiry: _TERMS_EXPIRY_,
-        //         lenderRoyalties: _LENDER_ROYALTIES_
-        //     })
-        // );
-
-        // bytes memory _signature = createRefinanceSignature(
-        //     borrowerPrivKey,
-        //     IRefinanceNotary.RefinanceParams({
-        //         price: _price,
-        //         debtId: _debtId,
-        //         contractTerms: _contractTerms,
-        //         listingNonce: _debtListingNonce,
-        //         termsExpiry: _termsExpiry
-        //     })
-        // );
-
-        // vm.deal(alt_account, 4 ether);
-        // vm.startPrank(alt_account);
-        // (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
-        //     abi.encodeWithSignature(
-        //         "buyRefinance(uint256,uint256,bytes32,bytes)",
-        //         _debtId,
-        //         _termsExpiry,
-        //         _contractTerms,
-        //         _signature
-        //     )
-        // );
-        // assertTrue(_success, "3 :: buyRefinance test should succeed.");
-        // vm.stopPrank();
     }
 }
 
