@@ -151,13 +151,13 @@ abstract contract LoanCodec is ILoanCodec {
         }
     }
 
-    function debtSpawnId(
+    function activeLoanCount(
         uint256 _debtId
-    ) public view returns (uint256 _debtSpawnId) {
+    ) public view returns (uint256 _activeLoanCount) {
         bytes32 _contractTerms = __packedDebtTerms[_debtId];
 
         assembly {
-            _debtSpawnId := shr(
+            _activeLoanCount := shr(
                 _LOAN_COUNT_POS_,
                 and(_contractTerms, _LOAN_COUNT_MAP_)
             )

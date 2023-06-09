@@ -630,7 +630,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         assertEq(
-            Terms.debtSpawnId(_contractTerms),
+            Terms.activeLoanCount(_contractTerms),
             1,
             "11 :: active loan count should be 0"
         );

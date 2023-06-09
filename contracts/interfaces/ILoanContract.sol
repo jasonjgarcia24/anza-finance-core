@@ -36,7 +36,10 @@ interface ILoanContract {
 
     function debtBalance(uint256 _debtId) external view returns (uint256);
 
-    function rootDebtId(uint256 _debtId) external view returns (uint256);
+    function collateralDebtBalance(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) external view returns (uint256);
 
     function collateralDebtCount(
         address _collateralAddress,

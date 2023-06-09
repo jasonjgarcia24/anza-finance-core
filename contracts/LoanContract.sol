@@ -53,50 +53,25 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
      * @param _collateralAddress The address of the ERC721 collateral token.
      * @param _collateralId The ID of the ERC721 collateral token.
      *
-     * @return The full count of the debt balance for the collateral.
+     * @return _debtBalance The full count of the debt balance for the collateral.
      */
     function collateralDebtBalance(
         address _collateralAddress,
         uint256 _collateralId
-    ) public view returns (uint256) {
+    ) public view returns (uint256 _debtBalance) {
         DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
         ];
-        uint256 _debtBalance;
 
         for (uint256 i; i < _debtMaps.length; ) {
-            unchecked {
-                _debtBalance += _anzaToken.totalSupply(
-                    _anzaToken.lenderTokenId(_debtMaps[i].debtId)
-                );
+            _debtBalance += _anzaToken.totalSupply(
+                _anzaToken.lenderTokenId(_debtMaps[i].debtId)
+            );
 
+            unchecked {
                 ++i;
             }
         }
-
-        return
-            _anzaToken.totalSupply(
-                _anzaToken.borrowerTokenId(
-                    __debtMaps[_collateralAddress][_collateralId][0].debtId
-                )
-            );
-    }
-
-    /**
-     * Returns the originating debt ID.
-     *
-     * @param _debtId The debt ID to find the root debt for.
-     *
-     * @return The originating debt ID.
-     */
-    function rootDebtId(uint256 _debtId) public view returns (uint256) {
-        ICollateralVault.Collateral memory _collateral = _collateralVault
-            .getCollateral(_debtId);
-
-        return
-            __debtMaps[_collateral.collateralAddress][_collateral.collateralId][
-                0
-            ].debtId;
     }
 
     /**
@@ -112,6 +87,21 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         uint256 _collateralId
     ) external view returns (uint256) {
         return __debtMaps[_collateralAddress][_collateralId].length;
+    }
+
+    function collateralDebtAt(
+        uint256 _debtId,
+        uint256 _index
+    ) public view returns (DebtMap memory) {
+        ICollateralVault.Collateral memory _collateral = _collateralVault
+            .getCollateral(_debtId);
+
+        return
+            collateralDebtAt(
+                _collateral.collateralAddress,
+                _collateral.collateralId,
+                _index
+            );
     }
 
     /**
@@ -329,7 +319,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralId
         ];
 
-        // Set debt fields
         _debtMaps.push(
             DebtMap({
                 debtId: ++totalDebts,
@@ -375,7 +364,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             totalDebts,
             _principal,
             _collateralToken.tokenURI(_collateral.collateralId),
-            abi.encodePacked(_borrower)
+            abi.encode(_borrower)
         );
 
         // Emit initialization event
@@ -483,7 +472,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _lender,
             totalDebts,
             _principal >= _balance ? _balance : _principal,
-            abi.encode(address(_borrower), _debtMaps[0].debtId)
+            abi.encode(_borrower, _debtMaps[0].debtId)
         );
 
         // Emit initialization event

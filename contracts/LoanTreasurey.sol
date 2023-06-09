@@ -314,7 +314,7 @@ contract LoanTreasurey is
             _anzaToken.burnLenderToken(_debtId, _balance);
 
             // Burn ADT of borrower
-            _anzaToken.burnBorrowerToken(_debtId);
+            try _anzaToken.burnBorrowerToken(_debtId) {} catch {}
         }
     }
 }

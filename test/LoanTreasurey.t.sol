@@ -291,7 +291,7 @@ contract LoanTreasureyUnitTest is
         vm.expectEmit(true, true, true, true, address(collateralVault));
         emit WithdrawnCollateral(borrower, address(demoToken), collateralId);
         bool _success = loanTreasurer.withdrawCollateral(_debtId);
-        require(_success, "1 :: collateral withdrawal should succeed.");
+        assertTrue(_success, "1 :: collateral withdrawal should succeed.");
         vm.stopPrank();
 
         assertEq(demoToken.ownerOf(collateralId), borrower);

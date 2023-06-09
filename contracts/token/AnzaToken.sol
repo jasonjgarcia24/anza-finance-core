@@ -109,28 +109,6 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         _setURI(borrowerTokenId(_debtId), _collateralURI);
     }
 
-    function burn(address _address, uint256 _id, uint256 _amount) external {
-        require(
-            _address == msg.sender || isApprovedForAll(_address, msg.sender),
-            "ERC1155: caller is not token owner nor approved"
-        );
-
-        _burn(_address, _id, _amount);
-    }
-
-    function burnBatch(
-        address _address,
-        uint256[] memory _ids,
-        uint256[] memory _values
-    ) public virtual {
-        require(
-            _address == msg.sender || isApprovedForAll(_address, msg.sender),
-            "ERC1155: caller is not token owner nor approved"
-        );
-
-        _burnBatch(_address, _ids, _values);
-    }
-
     function burnBorrowerToken(uint256 _debtId) external onlyRole(_TREASURER_) {
         uint256 _borrowerTokenId = borrowerTokenId(_debtId);
 
@@ -163,7 +141,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256[] memory _amounts,
         bytes memory /* _data */
     ) internal virtual override {
-        for (uint256 i = 0; i < _ids.length; ++i) {
+        for (uint256 i = 0; i < _ids.length; ) {
             uint256 _id = _ids[i];
             uint256 _amount = _amounts[i];
 
@@ -206,10 +184,14 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
                     // ID by 1 to account for the replica token.
                     _decrementTotalSupply(_id, 1);
 
-                    // Ownership: the replica token's owner shall be set to the zero
-                    // address when the borrower withdraws the collateral.
-                    _setOwner(_id, address(0));
+                    // // Ownership: the replica token's owner shall be set to the zero
+                    // // address when the borrower withdraws the collateral.
+                    // _setOwner(_id, address(0));
                 }
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }
@@ -234,12 +216,16 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256[] memory _ids;
         uint256[] memory _amounts;
 
-        for (uint256 i = 0; i < _debtIds.length; ++i) {
+        for (uint256 i = 0; i < _debtIds.length; ) {
             uint256 _id = borrowerTokenId(_debtIds[i]);
 
             if (!exists(_id)) {
                 _ids[i] = _ids[_ids.length - 1];
                 delete _ids[_ids.length - 1];
+            }
+
+            unchecked {
+                ++i;
             }
         }
 

@@ -18,7 +18,7 @@ library LibLoanContractTerms {
         uint256 loanClose;
         uint256 isFixed;
         uint256 lenderRoyalties;
-        uint256 debtSpawnId;
+        uint256 activeLoanCount;
     }
 
     function loanState(
@@ -188,20 +188,20 @@ library LibLoanContractTerms {
         }
     }
 
-    function debtSpawnId(
+    function activeLoanCount(
         bytes32 _contractTerms
-    ) public pure returns (uint256 _debtSpawnId) {
-        uint8 __debtSpawnId;
+    ) public pure returns (uint256 _activeLoanCount) {
+        uint8 __activeLoanCount;
 
         assembly {
-            __debtSpawnId := shr(
+            __activeLoanCount := shr(
                 _LOAN_COUNT_POS_,
                 and(_contractTerms, _LOAN_COUNT_MAP_)
             )
         }
 
         unchecked {
-            _debtSpawnId = __debtSpawnId;
+            _activeLoanCount = __activeLoanCount;
         }
     }
 }

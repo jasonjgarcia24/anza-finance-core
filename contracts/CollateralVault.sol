@@ -123,9 +123,14 @@ contract CollateralVault is
         address _to,
         uint256 _debtId
     ) public view returns (bool) {
+        Collateral memory _collateral = __collaterals[_debtId];
+
         return
-            __collaterals[_debtId].activeLoanIndex == 0 && // Is vault?
-            ILoanCodec(_loanContract).loanState(_debtId) == _PAID_STATE_ && // Is paid?
+            ILoanContract(_loanContract).collateralDebtBalance(
+                _collateral.collateralAddress,
+                _collateral.collateralId
+            ) ==
+            0 && // Is debt balance 0?
             IAnzaToken(anzaToken).borrowerOf(_debtId) == _to; // Is borrower?
     }
 

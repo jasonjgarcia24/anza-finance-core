@@ -52,20 +52,6 @@ interface IAnzaTokenLite {
         bytes memory _data
     ) external;
 
-    /// @param _account argument MUST be the address of the owner/operator whose balance is decreased.
-    /// @param _id argument MUST be the token being burned.
-    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by.
-    function burn(address _account, uint256 _id, uint256 _amount) external;
-
-    /// @param _address argument MUST be the address of the owner/operator whose balance is decreased.
-    /// @param _ids argument MUST be the tokens being burned.
-    /// @param _amounts argument MUST be the number of tokens the holder balance is decreased by.
-    function burnBatch(
-        address _address,
-        uint256[] memory _ids,
-        uint256[] memory _amounts
-    ) external;
-
     /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
     function burnBorrowerToken(uint256 _debtId) external;
 
