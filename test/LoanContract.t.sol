@@ -316,7 +316,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success, "Payment was unsuccessful");
+        assertTrue(_success, "Payment was unsuccessful");
         assertEq(
             loanContract.loanState(_debtId),
             _PAID_STATE_,
@@ -373,7 +373,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         (_success, _data) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_isExpired || _success, "0 :: Payment was unsuccessful");
+        assertTrue(_isExpired || _success, "0 :: Payment was unsuccessful");
         vm.stopPrank();
 
         // Set state payoff flag
@@ -708,7 +708,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         uint256 _now = block.timestamp;
         (bool _success, ) = createLoanContract(collateralId);
-        require(_success, "0 :: loan contract creation failed.");
+        assertTrue(_success, "0 :: loan contract creation failed.");
         ++_debtId;
 
         assertGt(
@@ -847,6 +847,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract partial refinance
         (bool _success, ) = refinanceDebt(
             _debtId,
+            borrowerPrivKey,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -872,6 +873,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract partial refinance
         (_success, ) = refinanceDebt(
             _debtId,
+            borrowerPrivKey,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -897,6 +899,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract partial refinance
         (_success, ) = refinanceDebt(
             _refDebtId,
+            borrowerPrivKey,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -941,7 +944,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "0 :: loan contract creation failed.");
+        assertTrue(_success, "0 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -965,7 +968,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "2 :: loan contract creation failed.");
+        assertTrue(_success, "2 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -994,7 +997,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "5 :: loan contract creation failed.");
+        assertTrue(_success, "5 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1023,7 +1026,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "8 :: loan contract creation failed.");
+        assertTrue(_success, "8 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1052,7 +1055,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "11 :: loan contract creation failed.");
+        assertTrue(_success, "11 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1081,7 +1084,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "14 :: loan contract creation failed.");
+        assertTrue(_success, "14 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1110,7 +1113,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "17 :: loan contract creation failed.");
+        assertTrue(_success, "17 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1139,7 +1142,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "20 :: loan contract creation failed.");
+        assertTrue(_success, "20 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1168,7 +1171,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "23 :: loan contract creation failed.");
+        assertTrue(_success, "23 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1197,7 +1200,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
-        require(_success, "26 :: loan contract creation failed.");
+        assertTrue(_success, "26 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1222,7 +1225,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (bool _success, ) = createLoanContract(collateralId);
-        require(_success, "0 :: loan contract creation failed.");
+        assertTrue(_success, "0 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         loanContract.verifyLoanActive(_debtId);
@@ -1230,6 +1233,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract partial refinance
         (_success, ) = refinanceDebt(
             _debtId,
+            borrowerPrivKey,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -1242,7 +1246,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
-        require(_success, "1 :: loan contract refinance failed.");
+        assertTrue(_success, "1 :: loan contract refinance failed.");
         uint256 _refDebtId = loanContract.totalDebts();
 
         loanContract.verifyLoanActive(_debtId);
@@ -1251,6 +1255,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract partial refinance
         (_success, ) = refinanceDebt(
             _refDebtId,
+            borrowerPrivKey,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -1263,7 +1268,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
-        require(_success, "2 :: loan contract refinance failed.");
+        assertTrue(_success, "2 :: loan contract refinance failed.");
 
         loanContract.verifyLoanActive(_debtId);
 
@@ -1284,7 +1289,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (bool _success, ) = createLoanContract(collateralId);
-        require(_success, "1 :: loan contract creation failed.");
+        assertTrue(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1296,6 +1301,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract partial refinance
         (_success, ) = refinanceDebt(
             _debtId,
+            borrowerPrivKey,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -1308,7 +1314,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
-        require(_success, "3 :: loan contract refinance failed.");
+        assertTrue(_success, "3 :: loan contract refinance failed.");
         uint256 _refDebtId = loanContract.totalDebts();
 
         assertEq(
@@ -1325,6 +1331,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract partial refinance
         (_success, ) = refinanceDebt(
             _refDebtId,
+            borrowerPrivKey,
             ContractTerms({
                 firInterval: _FIR_INTERVAL_,
                 fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -1337,7 +1344,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: _LENDER_ROYALTIES_
             })
         );
-        require(_success, "6 :: loan contract refinance failed.");
+        assertTrue(_success, "6 :: loan contract refinance failed.");
 
         assertEq(
             loanContract.checkLoanActive(_debtId),
@@ -1369,7 +1376,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (bool _success, ) = createLoanContract(localCollateralId++);
-        require(_success, "1 :: loan contract creation failed.");
+        assertTrue(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1398,7 +1405,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(localCollateralId++);
-        require(_success, "5 :: loan contract creation failed.");
+        assertTrue(_success, "5 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         // Pay off loan
@@ -1407,7 +1414,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         (_success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success, "6 :: Payment was unsuccessful");
+        assertTrue(_success, "6 :: Payment was unsuccessful");
         vm.stopPrank();
 
         assertEq(
@@ -1436,7 +1443,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (bool _success, ) = createLoanContract(localCollateralId++);
-        require(_success, "1 :: loan contract creation failed.");
+        assertTrue(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -1465,7 +1472,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(localCollateralId++);
-        require(_success, "4 :: loan contract creation failed.");
+        assertTrue(_success, "4 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         // Pay off loan
@@ -1474,7 +1481,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         (_success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success, "5 :: Payment was unsuccessful");
+        assertTrue(_success, "5 :: Payment was unsuccessful");
         vm.stopPrank();
 
         assertEq(

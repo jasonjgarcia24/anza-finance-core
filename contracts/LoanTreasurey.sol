@@ -131,10 +131,10 @@ contract LoanTreasurey is
      * Scenario #1:
      *   Should the payment cover the cost of the debt, the payment less
      *   the excess funds is used to close out the loan, the excess funds
-     *   from the payment, if any, will be transferred to the borrower's
-     *   account and the purchaser will be able to withdraw the collateral
-     *   to their account. In this case, the borrower will forfeit the
-     *   collateral to the purchaser at the debt's value.
+     *   from the payment, if any, will be transferred to the original borrower's
+     *   account and the purchaser will be able to withdraw the collateral to
+     *   their account. In this case, the borrower will forfeit the collateral to
+     *   the purchaser at the debt's value.
      *
      * Scenario #2:
      *   Should the payment not cover the entirety of the debt, the
@@ -238,7 +238,6 @@ contract LoanTreasurey is
      */
     function executeSponsorshipPurchase(
         uint256 _debtId,
-        address /* _seller */,
         address _purchaser
     )
         external

@@ -62,13 +62,13 @@ interface IAnzaToken {
     /// - After the above conditions are met, this function MUST check if `_to` is a smart contract (e.g. code size > 0). If so, it MUST call `onERC1155Received` on `_to` and act appropriately (see "Safe Transfer Rules" section of the standard).
     /// @param _from Source address
     /// @param _to Target address
-    /// @param _id ID of the token type
+    /// @param _debtId ID of the token type
     /// @param _amount Transfer amount
     /// @param _data Additional data with no specified format, MUST be sent unaltered in call to `onERC1155Received` on `_to`
     function safeTransferFrom(
         address _from,
         address _to,
-        uint256 _id,
+        uint256 _debtId,
         uint256 _amount,
         bytes calldata _data
     ) external;
@@ -98,6 +98,20 @@ interface IAnzaToken {
         uint256 _amount,
         string calldata _collateralURI,
         bytes memory _data
+    ) external;
+
+    /// @param _account argument MUST be the address of the owner/operator whose balance is decreased.
+    /// @param _id argument MUST be the token being burned.
+    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by.
+    function burn(address _account, uint256 _id, uint256 _amount) external;
+
+    /// @param _address argument MUST be the address of the owner/operator whose balance is decreased.
+    /// @param _ids argument MUST be the tokens being burned.
+    /// @param _amounts argument MUST be the number of tokens the holder balance is decreased by.
+    function burnBatch(
+        address _address,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
     ) external;
 
     /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.

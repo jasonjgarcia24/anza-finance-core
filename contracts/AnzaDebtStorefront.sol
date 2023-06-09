@@ -210,10 +210,14 @@ contract AnzaDebtStorefront is
      * a borrower to a purchaser. Following a successfull execution of this
      * function, the debt will be owned by the purchaser and the proceeds will
      * be sent to the loan treasurer for distribution to the borrower and lender.
+     * The transfer of debt is conducted through the transfer of the borrower's
+     * AnzaToken, which is minted to the borrower upon loan origination. Therefore,
+     * no new loan contract is required.
      *
      * @param _debtId The debt ID to purchase.
      * @param _termsExpiry The expiry of the terms signature.
-     * @param _sellerSignature The signature of the seller {see LoanNotary:ListingNotary-__typeDataHash}.
+     * @param _sellerSignature The signature of the seller
+     * {see LoanNotary:ListingNotary-__typeDataHash}.
      *
      * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
@@ -242,7 +246,7 @@ contract AnzaDebtStorefront is
      * @notice This function is the primary entrypoint for transfer of debt from
      * a borrower to a purchaser. Following a successfull execution of this
      * function, the debt will be owned by the purchaser and the proceeds will
-     * be sent to the loan treasurer for distribution to the borrower and lender.
+     * be sent to the loan treasurer for distribution to the borrower and lender(s).
      *
      * @param _debtId The debt ID to purchase.
      * @param _listingNonce The nonce of the published listing to purchase.
@@ -611,6 +615,15 @@ contract AnzaDebtStorefront is
             ListingType.REFINANCE
         );
 
+        // Update listing nonce
+        __listingNonces[_debtId].push(
+            Nonce({
+                listingType: ListingType.REFINANCE,
+                publisher: msg.sender,
+                locked: true
+            })
+        );
+
         // Emit refinance purchase event
         emit ListingPurchased(
             msg.sender,
@@ -732,9 +745,8 @@ contract AnzaDebtStorefront is
         } else if (_listingType == ListingType.SPONSORSHIP) {
             (bool _success, ) = loanTreasurer.call{value: _price}(
                 abi.encodeWithSignature(
-                    "executeSponsorshipPurchase(uint256,address,address)",
+                    "executeSponsorshipPurchase(uint256,address)",
                     _debtId,
-                    _seller,
                     msg.sender
                 )
             );

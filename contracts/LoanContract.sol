@@ -266,8 +266,12 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     }
 
     /**
-     * Refinance fractions of debt with a new loan. This will alter and/or
-     * create new debt agreements for the collateralized ERC721 token.
+     * Refinance fractions of debt with a new loan. This will alter and create
+     * a new debt agreement for the collateralized ERC721 token.
+     *
+     * @dev The call stack of this function is:
+     * > AnzaDebtStorefront:buyRefinance(uint256,uint256,{uint256},bytes)
+     * > LoanTreasurey:executeRefinancePurchase(uint256,address,address,bytes32)
      *
      * @notice This function does not verify the loan contract with the
      * borrower. It should never be used to alter existing contract terms
@@ -363,8 +367,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _lender,
             totalDebts,
             _principal,
-            _collateralToken.tokenURI(_collateral.collateralId),
-            abi.encode(_borrower)
+            abi.encode(address(_borrower), _debtId)
         );
 
         // Emit initialization event
@@ -378,6 +381,10 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
     /**
      * Transfer debt to a new lender. This will not alter existing loan terms.
+     *
+     * @dev The call stack of this function is:
+     * > AnzaDebtStorefront:buySponsorship(uint256,uint256,{uint256},bytes)
+     * > LoanTreasurey:executeSponsorshipPurchase(uint256,address)
      *
      * @notice This function does not verify the loan contract with the
      * borrower. It should never be used to alter existing contract terms
@@ -472,7 +479,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _lender,
             totalDebts,
             _principal >= _balance ? _balance : _principal,
-            abi.encode(_borrower, _debtMaps[0].debtId)
+            abi.encode(address(_borrower), _debtId)
         );
 
         // Emit initialization event

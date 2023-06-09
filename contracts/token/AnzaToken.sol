@@ -61,8 +61,6 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
     ) public override onlyRole(_TREASURER_) {
         if (bytes32(_data) == _DEBT_TRANSFER_) {
             __debtBatchTransferFrom(_from, _to, _debtIds, _amounts, "");
-        } else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
-            // __sponsorshipBatchTransferFrom(_from, _to, _debtIds, _amounts, "");
         } else {
             revert IllegalTransfer();
         }
@@ -91,7 +89,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
             (address, uint256)
         );
         _mint(_borrower, borrowerTokenId(_debtId), 1, "");
-        _setURI(borrowerTokenId(_debtId), uri(_rootDebtId));
+        _setURI(borrowerTokenId(_debtId), uri(borrowerTokenId(_rootDebtId)));
     }
 
     function mint(
@@ -217,12 +215,8 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256[] memory _amounts;
 
         for (uint256 i = 0; i < _debtIds.length; ) {
-            uint256 _id = borrowerTokenId(_debtIds[i]);
-
-            if (!exists(_id)) {
-                _ids[i] = _ids[_ids.length - 1];
-                delete _ids[_ids.length - 1];
-            }
+            _ids[i] = borrowerTokenId(_debtIds[i]);
+            _amounts[i] = 1;
 
             unchecked {
                 ++i;

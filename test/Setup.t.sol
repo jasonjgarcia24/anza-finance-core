@@ -108,6 +108,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     uint256 public borrowerPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_0");
     uint256 public lenderPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_5");
+    uint256 public altAccountPrivKey = vm.envUint("DEAD_ACCOUNT_PRIVATE_KEY_9");
 
     CollateralVault public collateralVault;
     LoanContract public loanContract;
@@ -466,11 +467,13 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     }
 
     function refinanceDebt(
-        uint256 _debtId
+        uint256 _debtId,
+        uint256 _borrowerPrivKey
     ) public virtual returns (bool, bytes memory) {
         return
             refinanceDebt(
                 _debtId,
+                _borrowerPrivKey,
                 ContractTerms({
                     firInterval: _FIR_INTERVAL_,
                     fixedInterestRate: _FIXED_INTEREST_RATE_,
@@ -487,6 +490,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     function refinanceDebt(
         uint256 _debtId,
+        uint256 _borrowerPrivKey,
         ContractTerms memory _terms
     ) public virtual returns (bool, bytes memory) {
         uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
@@ -495,7 +499,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes32 _contractTerms = createContractTerms(_terms);
 
         bytes memory _signature = createRefinanceSignature(
-            borrowerPrivKey,
+            _borrowerPrivKey,
             IRefinanceNotary.RefinanceParams({
                 price: _terms.principal,
                 debtId: _debtId,
@@ -514,37 +518,6 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 _signature
             );
     }
-
-    // function refinanceDebt(
-    //     uint256 _debtId,
-    //     ContractTerms memory _terms
-    // ) public virtual returns (bool, bytes memory) {
-    //     bytes32 _contractTerms = createContractTerms(_terms);
-
-    //     ICollateralVault.Collateral memory _collateral = ICollateralVault(
-    //         collateralVault
-    //     ).getCollateral(_debtId);
-
-    //     uint256 _collateralNonce = loanContract.collateralNonce(
-    //         address(demoToken),
-    //         _collateral.collateralId
-    //     );
-
-    //     bytes memory _signature = createContractSignature(
-    //         _terms.principal,
-    //         _collateral.collateralId,
-    //         _collateralNonce,
-    //         _contractTerms
-    //     );
-
-    //     return
-    //         initLoanContract(
-    //             _debtId,
-    //             _terms.principal,
-    //             _contractTerms,
-    //             _signature
-    //         );
-    // }
 
     function mintDemoTokens(uint256 _amount) public virtual {
         vm.startPrank(borrower);

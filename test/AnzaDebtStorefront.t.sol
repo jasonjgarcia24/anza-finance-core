@@ -259,7 +259,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
     function testAnzaDebtStorefront__BasicBuyRefinance() public {
         uint256 _debtId = loanContract.totalDebts();
-        (bool _success, ) = refinanceDebt(_debtId);
+        (bool _success, ) = refinanceDebt(_debtId, borrowerPrivKey);
         require(_success, "0 :: refinanceDebt test should succeed.");
     }
 }
