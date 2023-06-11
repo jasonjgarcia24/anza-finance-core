@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "../contracts/domain/LoanContractRoles.sol";
 import "../contracts/domain/LoanTreasureyErrorCodes.sol";
 
-import {Setup, AnzaDebtStorefront, ILoanNotary, IDebtNotary, IRefinanceNotary} from "./Setup.t.sol";
+import {Setup, AnzaDebtStorefront, ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "./Setup.t.sol";
 import {console, LoanContractSubmitted} from "./LoanContract.t.sol";
 import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
 import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
@@ -133,9 +133,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
-        (bool _success, ) = address(anzaDebtMarket).call{
-            value: _price
-        }(
+        (bool _success, ) = address(anzaDebtMarket).call{value: _price}(
             abi.encodePacked(
                 address(anzaDebtStorefront),
                 abi.encodeWithSignature(
@@ -179,18 +177,17 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
     function testAnzaDebtStorefront__BasicBuySponsorship() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
+        uint256 _sponsorshipListingNonce = anzaSponsorshipStorefront.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
         uint256 _balance = loanContract.debtBalance(_debtId);
         uint256 _price = _balance - 1;
 
         bytes memory _signature = createListingSignature(
             lenderPrivKey,
-            IDebtNotary.DebtParams({
+            ISponsorshipNotary.SponsorshipParams({
                 price: _price,
-                collateralAddress: address(demoToken),
-                collateralId: collateralId,
-                listingNonce: _debtListingNonce,
+                debtId: _debtId,
+                listingNonce: _sponsorshipListingNonce,
                 termsExpiry: _termsExpiry
             })
         );
@@ -214,12 +211,15 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
-        (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
-            abi.encodeWithSignature(
-                "buySponsorship(uint256,uint256,bytes)",
-                _debtId,
-                _termsExpiry,
-                _signature
+        (bool _success, ) = address(anzaDebtMarket).call{value: _price}(
+            abi.encodePacked(
+                address(anzaSponsorshipStorefront),
+                abi.encodeWithSignature(
+                    "buySponsorship(uint256,uint256,bytes)",
+                    _debtId,
+                    _termsExpiry,
+                    _signature
+                )
             )
         );
         assertTrue(_success, "3 :: buySponsorship test should succeed.");

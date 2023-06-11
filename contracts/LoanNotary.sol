@@ -219,14 +219,14 @@ abstract contract DebtNotary is IDebtNotary {
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
-        address _borrower = ownerOf(_assetId);
+        address _seller = ownerOf(_assetId);
 
         if (
-            _borrower == msg.sender ||
-            _borrower != _recoverSigner(_debtParams, _sellerSignature)
+            _seller == msg.sender ||
+            _seller != _recoverSigner(_debtParams, _sellerSignature)
         ) revert InvalidParticipant();
 
-        return _borrower;
+        return _seller;
     }
 
     /**
@@ -354,14 +354,14 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
-        address _borrower = ownerOf(_assetId);
+        address _seller = ownerOf(_assetId);
 
         if (
-            _borrower == msg.sender ||
-            _borrower != _recoverSigner(_sponsorshipParams, _sellerSignature)
+            _seller == msg.sender ||
+            _seller != _recoverSigner(_sponsorshipParams, _sellerSignature)
         ) revert InvalidParticipant();
 
-        return _borrower;
+        return _seller;
     }
 
     /**

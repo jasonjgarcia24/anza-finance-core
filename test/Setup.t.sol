@@ -8,7 +8,7 @@ import "../contracts/domain/LoanContractRoles.sol";
 import "../contracts/domain/AnzaDebtMarketRoles.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {ILoanNotary, IDebtNotary, IRefinanceNotary} from "../contracts/interfaces/ILoanNotary.sol";
+import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "../contracts/interfaces/ILoanNotary.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 import {ICollateralVault} from "../contracts/interfaces/ICollateralVault.sol";
@@ -19,6 +19,7 @@ import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
 import {AnzaDebtMarket} from "../contracts/AnzaDebtMarket.sol";
 import {AnzaDebtStorefront} from "../contracts/storefronts/AnzaDebtStorefront.sol";
+import {AnzaSponsorshipStorefront} from "../contracts/storefronts/AnzaSponsorshipStorefront.sol";
 import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
 
 error TryCatchErr(bytes err);
@@ -124,7 +125,9 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     AnzaDebtMarket public anzaDebtMarket;
     AnzaDebtStorefront public anzaDebtStorefront;
+    AnzaSponsorshipStorefront public anzaSponsorshipStorefront;
     Signing.DomainSeparator public debtDomainSeparator;
+    Signing.DomainSeparator public sponsorshipDomainSeparator;
     Signing.DomainSeparator public refinanceDomainSeparator;
 
     struct ContractTerms {
@@ -192,10 +195,21 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             address(loanTreasurer)
         );
 
+        anzaSponsorshipStorefront = new AnzaSponsorshipStorefront(
+            address(anzaToken),
+            address(loanContract),
+            address(loanTreasurer)
+        );
+
         // Set Anza Debt Marketplace access control roles
         anzaDebtMarket.grantRole(
             _DEBT_STOREFRONT_,
             address(anzaDebtStorefront)
+        );
+
+        anzaDebtMarket.grantRole(
+            _SPONSORSHIP_STOREFRONT_,
+            address(anzaSponsorshipStorefront)
         );
 
         // Set access control roles for debt storefront
@@ -209,11 +223,11 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
             contractAddress: address(anzaDebtStorefront)
         });
 
-        refinanceDomainSeparator = Signing.DomainSeparator({
-            name: "AnzaRefinanceStorefront",
+        sponsorshipDomainSeparator = Signing.DomainSeparator({
+            name: "AnzaSponsorshipStorefront",
             version: "0",
             chainId: block.chainid,
-            contractAddress: address(anzaDebtMarket)
+            contractAddress: address(anzaSponsorshipStorefront)
         });
     }
 
@@ -456,6 +470,20 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes32 _message = Signing.typeDataHash(
             _debtParams,
             debtDomainSeparator
+        );
+
+        // Sign seller's listing terms
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_sellerPrivateKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
+    function createListingSignature(
+        uint256 _sellerPrivateKey,
+        ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams
+    ) public virtual returns (bytes memory _signature) {
+        bytes32 _message = Signing.typeDataHash(
+            _sponsorshipParams,
+            sponsorshipDomainSeparator
         );
 
         // Sign seller's listing terms

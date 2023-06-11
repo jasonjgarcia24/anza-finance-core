@@ -159,22 +159,16 @@ contract LoanTreasurey is
         nonReentrant
         returns (bool _results)
     {
-        console.log("executeDebtPurchase");
-        console.log(_borrower);
-
         uint256 _payment = msg.value;
         uint256 _collateralDebtCount = _loanContract.collateralDebtCount(
             _collateralAddress,
             _collateralId
         );
-        console.log(_collateralDebtCount);
 
         uint256[] memory _debtIds = new uint256[](_collateralDebtCount);
         uint256[] memory _amounts = new uint256[](_collateralDebtCount);
 
         for (uint256 i = 0; i < _collateralDebtCount; ) {
-            console.log(i);
-
             (uint256 _debtId, ) = _loanContract.collateralDebtAt(
                 _collateralAddress,
                 _collateralId,
@@ -203,10 +197,8 @@ contract LoanTreasurey is
                 if (_payment > 0)
                     _depositPayment(_purchaser, _debtId, _payment);
 
-                console.log("start");
                 _debtIds[i] = _anzaToken.borrowerTokenId(_debtId);
                 _amounts[i] = 1;
-                console.log("end");
             }
 
             unchecked {

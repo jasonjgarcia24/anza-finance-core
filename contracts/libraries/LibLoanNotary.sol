@@ -7,7 +7,7 @@ import "../domain/LoanContractFIRIntervals.sol";
 import "../domain/LoanContractTermMaps.sol";
 import "../domain/LoanNotaryTypeHashes.sol";
 
-import {ILoanNotaryErrors, ILoanNotary, IDebtNotary, IRefinanceNotary} from "../interfaces/ILoanNotary.sol";
+import {ILoanNotaryErrors, ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "../interfaces/ILoanNotary.sol";
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -72,7 +72,7 @@ library LibLoanNotary {
     }
 
     /**
-     * {see LoanNotary:ListingNotary-__recoverSigner}
+     * {see LoanNotary:DebtNotary-__recoverSigner}
      */
     function recoverSigner(
         IDebtNotary.DebtParams memory _debtParams,
@@ -95,6 +95,21 @@ library LibLoanNotary {
         bytes memory _signature
     ) public pure returns (address) {
         bytes32 _message = typeDataHash(_refinanceParams, _domainSeparator);
+
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
+
+        return ECDSA.recover(_message, v, r, s);
+    }
+
+    /**
+     * {see LoanNotary:SponsorshipNotary-__recoverSigner}
+     */
+    function recoverSigner(
+        ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams,
+        DomainSeparator memory _domainSeparator,
+        bytes memory _signature
+    ) public pure returns (address) {
+        bytes32 _message = typeDataHash(_sponsorshipParams, _domainSeparator);
 
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
@@ -137,7 +152,7 @@ library LibLoanNotary {
     }
 
     /**
-     * {see LoanNotary:ListingNotary-__typeDataHash}
+     * {see LoanNotary:DebtNotary-__typeDataHash}
      */
     function typeDataHash(
         IDebtNotary.DebtParams memory _debtParams,
@@ -166,6 +181,23 @@ library LibLoanNotary {
                     "\x19\x01",
                     domainSeparator(_domainSeparator),
                     structHash(_refinanceParams)
+                )
+            );
+    }
+
+    /**
+     * {see LoanNotary:SponsorshipNotary-__typeDataHash}
+     */
+    function typeDataHash(
+        ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams,
+        DomainSeparator memory _domainSeparator
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    domainSeparator(_domainSeparator),
+                    structHash(_sponsorshipParams)
                 )
             );
     }
@@ -214,6 +246,21 @@ library LibLoanNotary {
                     _refinanceParams.contractTerms,
                     _refinanceParams.listingNonce,
                     _refinanceParams.termsExpiry
+                )
+            );
+    }
+
+    function structHash(
+        ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    _SPONSORSHIP_PARAMS_ENCODE_TYPE_HASH_,
+                    _sponsorshipParams.price,
+                    _sponsorshipParams.debtId,
+                    _sponsorshipParams.listingNonce,
+                    _sponsorshipParams.termsExpiry
                 )
             );
     }
