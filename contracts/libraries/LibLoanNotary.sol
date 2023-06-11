@@ -7,7 +7,7 @@ import "../domain/LoanContractFIRIntervals.sol";
 import "../domain/LoanContractTermMaps.sol";
 import "../domain/LoanNotaryTypeHashes.sol";
 
-import {ILoanNotaryErrors, ILoanNotary, IListingNotary, IRefinanceNotary} from "../interfaces/ILoanNotary.sol";
+import {ILoanNotaryErrors, ILoanNotary, IDebtNotary, IRefinanceNotary} from "../interfaces/ILoanNotary.sol";
 import "../abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -75,11 +75,11 @@ library LibLoanNotary {
      * {see LoanNotary:ListingNotary-__recoverSigner}
      */
     function recoverSigner(
-        IListingNotary.ListingParams memory _listingParams,
+        IDebtNotary.DebtParams memory _debtParams,
         DomainSeparator memory _domainSeparator,
         bytes memory _signature
     ) public pure returns (address) {
-        bytes32 _message = typeDataHash(_listingParams, _domainSeparator);
+        bytes32 _message = typeDataHash(_debtParams, _domainSeparator);
 
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
@@ -140,7 +140,7 @@ library LibLoanNotary {
      * {see LoanNotary:ListingNotary-__typeDataHash}
      */
     function typeDataHash(
-        IListingNotary.ListingParams memory _listingParams,
+        IDebtNotary.DebtParams memory _debtParams,
         DomainSeparator memory _domainSeparator
     ) public pure returns (bytes32) {
         return
@@ -148,7 +148,7 @@ library LibLoanNotary {
                 abi.encodePacked(
                     "\x19\x01",
                     domainSeparator(_domainSeparator),
-                    structHash(_listingParams)
+                    structHash(_debtParams)
                 )
             );
     }
@@ -187,16 +187,17 @@ library LibLoanNotary {
     }
 
     function structHash(
-        IListingNotary.ListingParams memory _listingParams
+        IDebtNotary.DebtParams memory _debtParams
     ) public pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    _LISTING_PARAMS_ENCODE_TYPE_HASH_,
-                    _listingParams.price,
-                    _listingParams.debtId,
-                    _listingParams.listingNonce,
-                    _listingParams.termsExpiry
+                    _DEBT_PARAMS_ENCODE_TYPE_HASH_,
+                    _debtParams.price,
+                    _debtParams.collateralAddress,
+                    _debtParams.collateralId,
+                    _debtParams.listingNonce,
+                    _debtParams.termsExpiry
                 )
             );
     }

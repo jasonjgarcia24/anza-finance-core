@@ -18,8 +18,11 @@ bytes32 constant _CONTRACT_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
 /* ------------------------------------------------ *
  *        Anza Debt Storefront Type Hashes          *
  * ------------------------------------------------ */
-bytes32 constant _LISTING_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
-    "ListingParams(uint256 price,uint256 debtId,uint256 listingNonce,uint256 termsExpiry)"
+bytes32 constant _DEBT_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
+    "DebtParams(uint256 price,address collateralAddress,uint256 collateralId,uint256 listingNonce,uint256 termsExpiry)"
+);
+bytes32 constant _SPONSORSHIP_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
+    "SponsorshipParams(uint256 price,uint256 debtId,uint256 listingNonce,uint256 termsExpiry)"
 );
 bytes32 constant _REFINANCE_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
     "RefinanceParams(uint256 price,uint256 debtId,bytes32 contractTerms,uint256 listingNonce,uint256 termsExpiry)"

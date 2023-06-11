@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractRoles.sol";
+import {_DEBT_MARKET_} from "../domain/AnzaDebtMarketRoles.sol";
 
 import {ITreasureyAccessController} from "../interfaces/ITreasureyAccessController.sol";
 import {ILoanContract} from "../interfaces/ILoanContract.sol";
@@ -18,15 +19,15 @@ abstract contract TreasureyAccessController is
     AccessControl
 {
     ILoanContract internal _loanContract;
-    ILoanCodec internal _loanCodec;
     ILoanManager internal _loanManager;
+    ILoanCodec internal _loanCodec;
     ICollateralVault internal _collateralVault;
     IAnzaToken internal _anzaToken;
 
     constructor() {
         _setRoleAdmin(_ADMIN_, _ADMIN_);
         _setRoleAdmin(_LOAN_CONTRACT_, _ADMIN_);
-        _setRoleAdmin(_DEBT_STOREFRONT_, _ADMIN_);
+        _setRoleAdmin(_DEBT_MARKET_, _ADMIN_);
 
         _grantRole(_ADMIN_, msg.sender);
     }

@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "../contracts/domain/LoanContractRoles.sol";
 import "../contracts/domain/LoanTreasureyErrorCodes.sol";
 
-import {Setup, AnzaDebtStorefront, ILoanNotary, IListingNotary, IRefinanceNotary} from "./Setup.t.sol";
+import {Setup, AnzaDebtStorefront, ILoanNotary, IDebtNotary, IRefinanceNotary} from "./Setup.t.sol";
 import {console, LoanContractSubmitted} from "./LoanContract.t.sol";
 import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
 import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
@@ -19,7 +19,7 @@ abstract contract AnzaDebtStorefrontUnitTest is
     }
 
     function _testAnzaDebtStorefront__FuzzFailBuyDebt(
-        IListingNotary.ListingParams memory _debtListingParams,
+        IDebtNotary.DebtParams memory _debtParams,
         bytes memory _signature,
         bytes4 _expectedError
     ) internal {
@@ -45,13 +45,14 @@ abstract contract AnzaDebtStorefrontUnitTest is
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
 
-        (bool _success, bytes memory _data) = address(anzaDebtStorefront).call{
-            value: _debtListingParams.price
+        (bool _success, bytes memory _data) = address(anzaDebtMarket).call{
+            value: _debtParams.price
         }(
             abi.encodeWithSignature(
-                "buyDebt(uint256,uint256,bytes)",
-                _debtListingParams.debtId,
-                _debtListingParams.termsExpiry,
+                "buyDebt(address,uint256,uint256,bytes)",
+                _debtParams.collateralAddress,
+                _debtParams.collateralId,
+                _debtParams.termsExpiry,
                 _signature
             )
         );
@@ -87,7 +88,10 @@ abstract contract AnzaDebtStorefrontUnitTest is
 contract AnzaDebtStorefrontTest is AnzaDebtStorefrontUnitTest {
     function testAnzaDebtStorefront__StorefrontStateVars() public {
         assertEq(anzaDebtStorefront.loanContract(), address(loanContract));
-        assertEq(anzaDebtStorefront.loanTreasurer(), address(loanTreasurer));
+        assertEq(
+            anzaDebtStorefront.loanTreasurerAddress(),
+            address(loanTreasurer)
+        );
         assertEq(anzaDebtStorefront.anzaToken(), address(anzaToken));
     }
 }
@@ -96,14 +100,15 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
     function testAnzaDebtStorefront__BasicBuyDebt() public {
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
+        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             })
@@ -128,15 +133,22 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
-        (bool _success, ) = address(anzaDebtStorefront).call{value: _price}(
-            abi.encodeWithSignature(
-                "buyDebt(uint256,uint256,bytes)",
-                _debtId,
-                _termsExpiry,
-                _signature
+        (bool _success, ) = address(anzaDebtMarket).call{
+            value: _price
+        }(
+            abi.encodePacked(
+                address(anzaDebtStorefront),
+                abi.encodeWithSignature(
+                    "buyDebt(address,uint256,uint256,bytes)",
+                    address(demoToken),
+                    collateralId,
+                    _termsExpiry,
+                    _signature
+                )
             )
         );
         assertTrue(_success, "3 :: buyDebt test should succeed.");
+
         vm.stopPrank();
 
         assertTrue(
@@ -167,16 +179,17 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
     function testAnzaDebtStorefront__BasicBuySponsorship() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
+        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
         uint256 _balance = loanContract.debtBalance(_debtId);
         uint256 _price = _balance - 1;
 
         bytes memory _signature = createListingSignature(
             lenderPrivKey,
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             })
@@ -269,27 +282,27 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _price
     ) public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
-            loanContract.totalDebts()
-        );
+        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         vm.assume(_price != _PRINCIPAL_ - 1);
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             })
         );
 
         _testAnzaDebtStorefront__FuzzFailBuyDebt(
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _PRINCIPAL_ - 1,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             }),
@@ -302,27 +315,27 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _debtId
     ) public {
         uint256 _price = _PRINCIPAL_ - 1;
-        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
-            loanContract.totalDebts()
-        );
+        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         vm.assume(_debtId != loanContract.totalDebts());
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             })
         );
 
         _testAnzaDebtStorefront__FuzzFailBuyDebt(
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: loanContract.totalDebts(),
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             }),
@@ -338,28 +351,25 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _debtId = loanContract.totalDebts();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
-        vm.assume(
-            _debtListingNonce !=
-                anzaDebtStorefront.getListingNonce(loanContract.totalDebts())
-        );
+        vm.assume(_debtListingNonce != anzaDebtStorefront.nonce());
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             })
         );
 
         _testAnzaDebtStorefront__FuzzFailBuyDebt(
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
-                listingNonce: anzaDebtStorefront.getListingNonce(
-                    loanContract.totalDebts()
-                ),
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
+                listingNonce: anzaDebtStorefront.nonce(),
                 termsExpiry: _termsExpiry
             }),
             _signature,
@@ -372,26 +382,26 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     ) public {
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
-            loanContract.totalDebts()
-        );
+        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
 
         vm.assume(_termsExpiry > uint256(_TERMS_EXPIRY_));
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             })
         );
 
         _testAnzaDebtStorefront__FuzzFailBuyDebt(
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _price,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: uint256(_TERMS_EXPIRY_)
             }),
@@ -401,28 +411,25 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     }
 
     function testAnzaDebtStorefront__FuzzFailAllBuyDebt(
-        IListingNotary.ListingParams memory _listingParams
+        IDebtNotary.DebtParams memory _debtParams
     ) public {
-        vm.assume(_listingParams.price != _PRINCIPAL_ - 1);
-        vm.assume(_listingParams.debtId != loanContract.totalDebts());
-        vm.assume(
-            _listingParams.listingNonce !=
-                anzaDebtStorefront.getListingNonce(loanContract.totalDebts())
-        );
-        vm.assume(_listingParams.termsExpiry > uint256(_TERMS_EXPIRY_));
+        vm.assume(_debtParams.price != _PRINCIPAL_ - 1);
+        vm.assume(_debtParams.collateralAddress != address(demoToken));
+        vm.assume(_debtParams.collateralId != collateralId);
+        vm.assume(_debtParams.listingNonce != anzaDebtStorefront.nonce());
+        vm.assume(_debtParams.termsExpiry > uint256(_TERMS_EXPIRY_));
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            _listingParams
+            _debtParams
         );
 
         _testAnzaDebtStorefront__FuzzFailBuyDebt(
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _PRINCIPAL_ - 1,
-                debtId: loanContract.totalDebts(),
-                listingNonce: anzaDebtStorefront.getListingNonce(
-                    loanContract.totalDebts()
-                ),
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
+                listingNonce: anzaDebtStorefront.nonce(),
                 termsExpiry: uint256(_TERMS_EXPIRY_)
             }),
             _signature,
@@ -437,13 +444,13 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     //     vm.assume(_debtId != loanContract.totalDebts());
     //     vm.assume(
     //         _debtListingNonce !=
-    //             anzaDebtStorefront.getListingNonce(loanContract.totalDebts())
+    //             anzaDebtStorefront.nonce()
     //     );
     //     vm.assume(_termsExpiry > uint256(_TERMS_EXPIRY_));
 
     //     bytes memory _signature = createListingSignature(
     //         borrowerPrivKey,
-    //         IListingNotary.ListingParams({
+    //         IDebtNotary.DebtParams({
     //             price: _price,
     //             debtId: _debtId,
     //             listingNonce: _debtListingNonce,
@@ -452,12 +459,10 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     //     );
 
     //     _testAnzaDebtStorefront__FuzzFailBuyDebt(
-    //         IListingNotary.ListingParams({
+    //         IDebtNotary.DebtParams({
     //             price: _PRINCIPAL_ - 1,
     //             debtId: loanContract.totalDebts(),
-    //             listingNonce: anzaDebtStorefront.getListingNonce(
-    //                 loanContract.totalDebts()
-    //             ),
+    //             listingNonce: anzaDebtStorefront.nonce(),
     //             termsExpiry: uint256(_TERMS_EXPIRY_)
     //         }),
     //         _signature,
@@ -471,23 +476,22 @@ contract AnzaDebtStorefront__BasicBuyLoanStateTest is
 {
     function testAnzaDebtStorefront__BasicBuyLoanState() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(
-            loanContract.totalDebts()
-        );
+        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
-            IListingNotary.ListingParams({
+            IDebtNotary.DebtParams({
                 price: _PRINCIPAL_,
-                debtId: _debtId,
+                collateralAddress: address(demoToken),
+                collateralId: collateralId,
                 listingNonce: _debtListingNonce,
                 termsExpiry: _termsExpiry
             })
         );
 
         // _testAnzaDebtStorefront__BasicBuyLoanSateDebt(
-        //     IListingNotary.ListingParams({
+        //     IDebtNotary.DebtParams({
         //         price: _PRINCIPAL_,
         //         debtId: _debtId,
         //         listingNonce: _debtListingNonce,
@@ -498,7 +502,7 @@ contract AnzaDebtStorefront__BasicBuyLoanStateTest is
     }
 
     // function _testAnzaDebtStorefront__BasicBuyLoanSateDebt(
-    //     IListingNotary.ListingParams memory _debtListingParams,
+    //     IDebtNotary.DebtParams memory _debtParams,
     //     bytes memory _signature
     // ) internal {
     //     uint256 _debtId = loanContract.totalDebts();
@@ -524,12 +528,12 @@ contract AnzaDebtStorefront__BasicBuyLoanStateTest is
     //     vm.startPrank(alt_account);
 
     //     (bool _success, bytes memory _data) = address(anzaDebtStorefront).call{
-    //         value: _debtListingParams.price
+    //         value: _debtParams.price
     //     }(
     //         abi.encodeWithSignature(
     //             "buyDebt(uint256,uint256,bytes)",
-    //             _debtListingParams.debtId,
-    //             _debtListingParams.termsExpiry,
+    //             _debtParams.debtId,
+    //             _debtParams.termsExpiry,
     //             _signature
     //         )
     //     );

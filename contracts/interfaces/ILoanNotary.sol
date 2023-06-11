@@ -16,8 +16,18 @@ interface ILoanNotary is ILoanNotaryErrors {
     }
 }
 
-interface IListingNotary is ILoanNotaryErrors {
-    struct ListingParams {
+interface IDebtNotary is ILoanNotaryErrors {
+    struct DebtParams {
+        uint256 price;
+        address collateralAddress;
+        uint256 collateralId;
+        uint256 listingNonce;
+        uint256 termsExpiry;
+    }
+}
+
+interface ISponsorshipNotary is ILoanNotaryErrors {
+    struct SponsorshipParams {
         uint256 price;
         uint256 debtId;
         uint256 listingNonce;
@@ -29,8 +39,8 @@ interface IRefinanceNotary is ILoanNotaryErrors {
     struct RefinanceParams {
         uint256 price;
         uint256 debtId;
-        bytes32 contractTerms;
         uint256 listingNonce;
         uint256 termsExpiry;
+        bytes32 contractTerms;
     }
 }

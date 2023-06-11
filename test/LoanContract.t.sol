@@ -535,7 +535,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         vm.expectRevert(
             abi.encodeWithSelector(ILoanContract.InvalidCollateral.selector)
         );
-        ILoanContract.DebtMap memory _debtMap = loanContract.collateralDebtAt(
+        // ILoanContract.DebtMap memory _debtMap = loanContract.collateralDebtAt(
+        (uint256 _debtId, ) = loanContract.collateralDebtAt(
             address(demoToken),
             collateralId,
             type(uint256).max
@@ -544,13 +545,13 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         createLoanContract(collateralId);
 
-        _debtMap = loanContract.collateralDebtAt(
+        (_debtId,) = loanContract.collateralDebtAt(
             address(demoToken),
             collateralId,
             type(uint256).max
         );
 
-        assertEq(_debtMap.debtId, 1, "1 :: Collateral debt ID should be one");
+        assertEq(_debtId, 1, "1 :: Collateral debt ID should be one");
     }
 
     function testLoanContract__GetDebtTerms() public {

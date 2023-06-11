@@ -5,9 +5,10 @@ import "../lib/forge-std/src/Test.sol";
 import "../lib/forge-std/src/console.sol";
 
 import "../contracts/domain/LoanContractRoles.sol";
+import "../contracts/domain/AnzaDebtMarketRoles.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {ILoanNotary, IListingNotary, IRefinanceNotary} from "../contracts/interfaces/ILoanNotary.sol";
+import {ILoanNotary, IDebtNotary, IRefinanceNotary} from "../contracts/interfaces/ILoanNotary.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 import {ICollateralVault} from "../contracts/interfaces/ICollateralVault.sol";
@@ -16,7 +17,8 @@ import {CollateralVault} from "../contracts/CollateralVault.sol";
 import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
 import {DemoToken} from "../contracts/utils/DemoToken.sol";
 import {AnzaToken} from "../contracts/token/AnzaToken.sol";
-import {AnzaDebtStorefront} from "../contracts/AnzaDebtStorefront.sol";
+import {AnzaDebtMarket} from "../contracts/AnzaDebtMarket.sol";
+import {AnzaDebtStorefront} from "../contracts/storefronts/AnzaDebtStorefront.sol";
 import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
 
 error TryCatchErr(bytes err);
@@ -120,8 +122,9 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     bytes32 public contractTerms;
     bytes public signature;
 
+    AnzaDebtMarket public anzaDebtMarket;
     AnzaDebtStorefront public anzaDebtStorefront;
-    Signing.DomainSeparator public listingDomainSeparator;
+    Signing.DomainSeparator public debtDomainSeparator;
     Signing.DomainSeparator public refinanceDomainSeparator;
 
     struct ContractTerms {
@@ -175,34 +178,42 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
         vm.startPrank(borrower);
         demoToken = new DemoToken();
-        // demoToken = DemoToken(0x3aAde2dCD2Df6a8cAc689EE797591b2913658659);
         demoToken.approve(address(loanContract), collateralId);
         demoToken.setApprovalForAll(address(loanContract), true);
-
         vm.stopPrank();
+
+        // Set Anza Debt Marketplace and Storefronts
+        vm.startPrank(admin);
+        anzaDebtMarket = new AnzaDebtMarket();
 
         anzaDebtStorefront = new AnzaDebtStorefront(
+            address(anzaToken),
             address(loanContract),
-            address(loanTreasurer),
-            address(anzaToken)
+            address(loanTreasurer)
         );
 
-        vm.startPrank(admin);
-        loanTreasurer.grantRole(_DEBT_STOREFRONT_, address(anzaDebtStorefront));
+        // Set Anza Debt Marketplace access control roles
+        anzaDebtMarket.grantRole(
+            _DEBT_STOREFRONT_,
+            address(anzaDebtStorefront)
+        );
+
+        // Set access control roles for debt storefront
+        loanTreasurer.grantRole(_DEBT_MARKET_, address(anzaDebtMarket));
         vm.stopPrank();
 
-        listingDomainSeparator = Signing.DomainSeparator({
-            name: "AnzaDebtStorefront:ListingNotary",
+        debtDomainSeparator = Signing.DomainSeparator({
+            name: "AnzaDebtStorefront",
             version: "0",
             chainId: block.chainid,
             contractAddress: address(anzaDebtStorefront)
         });
 
         refinanceDomainSeparator = Signing.DomainSeparator({
-            name: "AnzaDebtStorefront:RefinanceNotary",
+            name: "AnzaRefinanceStorefront",
             version: "0",
             chainId: block.chainid,
-            contractAddress: address(anzaDebtStorefront)
+            contractAddress: address(anzaDebtMarket)
         });
     }
 
@@ -359,7 +370,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     ) public returns (bool _success, bytes memory _data) {
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
-        (_success, _data) = address(anzaDebtStorefront).call{value: _price}(
+        (_success, _data) = address(anzaDebtMarket).call{value: _price}(
             abi.encodeWithSignature(
                 "buyRefinance(uint256,uint256,bytes32,bytes)",
                 _debtId,
@@ -440,11 +451,11 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
 
     function createListingSignature(
         uint256 _sellerPrivateKey,
-        IListingNotary.ListingParams memory _debtListingParams
+        IDebtNotary.DebtParams memory _debtParams
     ) public virtual returns (bytes memory _signature) {
         bytes32 _message = Signing.typeDataHash(
-            _debtListingParams,
-            listingDomainSeparator
+            _debtParams,
+            debtDomainSeparator
         );
 
         // Sign seller's listing terms
@@ -493,7 +504,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _borrowerPrivKey,
         ContractTerms memory _terms
     ) public virtual returns (bool, bytes memory) {
-        uint256 _debtListingNonce = anzaDebtStorefront.getListingNonce(_debtId);
+        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes32 _contractTerms = createContractTerms(_terms);

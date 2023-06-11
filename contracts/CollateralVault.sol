@@ -102,8 +102,8 @@ contract CollateralVault is
                 _collateralId,
                 type(uint256).max
             )
-        returns (ILoanContract.DebtMap memory _debtMap) {
-            return _debtMap.debtId == _debtId;
+        returns (uint256 _debtId_, uint256 /* _collateralNonce */) {
+            return _debtId_ == _debtId;
         } catch (bytes memory) {
             return false;
         }

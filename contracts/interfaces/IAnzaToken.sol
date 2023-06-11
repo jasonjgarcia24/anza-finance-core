@@ -73,6 +73,15 @@ interface IAnzaToken {
         bytes calldata _data
     ) external;
 
+    /// @notice Send multiple types of Tokens from the `_from` address to the `_to` address (with safety call).
+    function safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] calldata _debtIds,
+        uint256[] calldata _amounts,
+        bytes calldata _data
+    ) external;
+
     /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
     /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
     function mint(uint256 _debtId, uint256 _amount) external;

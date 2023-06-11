@@ -7,6 +7,7 @@ import "../domain/LoanContractNumbers.sol";
 import "../domain/LoanContractTermMaps.sol";
 import "../domain/LoanContractRoles.sol";
 import "../domain/LoanContractStates.sol";
+import "../domain/AnzaDebtMarketRoles.sol";
 
 library LibLoanContractStandardErrors {
     bytes4 public constant LOAN_STATE_ERROR_ID = _LOAN_STATE_ERROR_ID_;
@@ -93,7 +94,7 @@ library LibLoanContractRoles {
     bytes32 public constant LOAN_CONTRACT = _LOAN_CONTRACT_;
     bytes32 public constant TREASURER = _TREASURER_;
     bytes32 public constant COLLECTOR = _COLLECTOR_;
-    bytes32 public constant DEBT_STOREFRONT = _DEBT_STOREFRONT_;
+    bytes32 public constant DEBT_MARKET = _DEBT_MARKET_;
 }
 
 library LibLoanContractStates {

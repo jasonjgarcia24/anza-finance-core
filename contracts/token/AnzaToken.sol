@@ -55,13 +55,24 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
     function safeBatchTransferFrom(
         address _from,
         address _to,
-        uint256[] memory _debtIds,
+        uint256[] memory _ids,
         uint256[] memory _amounts,
         bytes memory _data
-    ) public override onlyRole(_TREASURER_) {
+    ) public override {
+        // Debt transfers are only allowed by the treasurer
         if (bytes32(_data) == _DEBT_TRANSFER_) {
-            __debtBatchTransferFrom(_from, _to, _debtIds, _amounts, "");
-        } else {
+            _checkRole(_TREASURER_, _msgSender());
+
+            super._safeBatchTransferFrom(_from, _to, _ids, _amounts, "");
+        }
+        // Sponsorship batch transfers are allowed by owners and approved as
+        // allowed in the ERC1155 standard
+        else if (bytes32(_data) == _SPONSORSHIP_TRANSFER_) {
+            super.safeBatchTransferFrom(_from, _to, _ids, _amounts, "");
+        }
+        // Disallow all batch transfers that do not specify the transfer type
+        // as either debt or sponsorship within the `data` field
+        else {
             revert IllegalTransfer();
         }
     }
@@ -207,22 +218,10 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
     function __debtBatchTransferFrom(
         address _from,
         address _to,
-        uint256[] memory _debtIds,
-        uint256[] memory /* _amounts */,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
         bytes memory /* _data */
     ) private {
-        uint256[] memory _ids;
-        uint256[] memory _amounts;
-
-        for (uint256 i = 0; i < _debtIds.length; ) {
-            _ids[i] = borrowerTokenId(_debtIds[i]);
-            _amounts[i] = 1;
-
-            unchecked {
-                ++i;
-            }
-        }
-
         if (_ids.length > 0)
             super.safeBatchTransferFrom(_from, _to, _ids, _amounts, "");
     }

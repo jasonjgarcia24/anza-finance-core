@@ -3,6 +3,9 @@ pragma solidity 0.8.20;
 
 import {console} from "../../lib/forge-std/src/console.sol";
 
+import {_MAX_DEBT_ID_} from "../domain/LoanContractNumbers.sol";
+import "../domain/AnzaTokenIndexerErrorCodes.sol";
+
 import {IAnzaTokenIndexer} from "../interfaces/IAnzaTokenIndexer.sol";
 
 abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
@@ -24,7 +27,9 @@ abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     }
 
     function debtId(uint256 _tokenId) public pure returns (uint256) {
-        return _tokenId / 2;
+        unchecked {
+            return _tokenId / 2;
+        }
     }
 
     function borrowerOf(uint256 _debtId) public view returns (address) {
@@ -35,12 +40,30 @@ abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
         return __owners[lenderTokenId(_debtId)];
     }
 
-    function borrowerTokenId(uint256 _debtId) public pure returns (uint256) {
-        return (_debtId * 2) + 1;
+    function borrowerTokenId(
+        uint256 _debtId
+    ) public pure returns (uint256 _tokenId) {
+        assembly {
+            if gt(_debtId, _MAX_DEBT_ID_) {
+                mstore(0x20, _INVALID_TOKEN_ID_SELECTOR_)
+                revert(0x20, 0x04)
+            }
+
+            _tokenId := add(mul(_debtId, 2), 1)
+        }
     }
 
-    function lenderTokenId(uint256 _debtId) public pure returns (uint256) {
-        return _debtId * 2;
+    function lenderTokenId(
+        uint256 _debtId
+    ) public pure returns (uint256 _tokenId) {
+        assembly {
+            if gt(_debtId, _MAX_DEBT_ID_) {
+                mstore(0x20, _INVALID_TOKEN_ID_SELECTOR_)
+                revert(0x20, 0x04)
+            }
+
+            _tokenId := mul(_debtId, 2)
+        }
     }
 
     /**
@@ -54,7 +77,9 @@ abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
      * @dev Indicates whether any token exist with a given id, or not.
      */
     function exists(uint256 id) public view returns (bool) {
-        return totalSupply(id) > 0;
+        unchecked {
+            return totalSupply(id) > 0;
+        }
     }
 
     function _setOwner(uint256 _tokenId, address _owner) internal {

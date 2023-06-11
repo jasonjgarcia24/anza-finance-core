@@ -7,6 +7,7 @@ import "./domain/LoanContractFIRIntervals.sol";
 import "./domain/LoanContractRoles.sol";
 import "./domain/LoanContractStates.sol";
 import "./domain/AnzaTokenTransferTypes.sol";
+import "./domain/AnzaDebtMarketRoles.sol";
 
 import {ILoanTreasurey} from "./interfaces/ILoanTreasurey.sol";
 import {ICollateralVault} from "./interfaces/ICollateralVault.sol";
@@ -28,11 +29,7 @@ contract LoanTreasurey is
     constructor() TreasureyAccessController() {}
 
     modifier debtUpdater(uint256 _debtId) {
-        updateDebt(_debtId);
-        if (
-            !_loanManager.checkLoanExpired(_debtId) &&
-            !_loanManager.checkLoanClosed(_debtId)
-        ) {
+        if (updateDebt(_debtId)) {
             _;
             _loanManager.updateLoanState(_debtId);
         }
@@ -151,41 +148,84 @@ contract LoanTreasurey is
      *  - The debt's collateral must be in the vault.
      */
     function executeDebtPurchase(
-        uint256 _debtId,
+        address _collateralAddress,
+        uint256 _collateralId,
         address _borrower,
         address _purchaser
     )
         external
         payable
-        onlyRole(_DEBT_STOREFRONT_)
-        onlyActiveLoan(_debtId)
-        debtUpdater(_debtId)
+        onlyRole(_DEBT_MARKET_)
         nonReentrant
         returns (bool _results)
     {
-        uint256 _debtBalance = _loanContract.debtBalance(_debtId);
+        console.log("executeDebtPurchase");
+        console.log(_borrower);
+
         uint256 _payment = msg.value;
+        uint256 _collateralDebtCount = _loanContract.collateralDebtCount(
+            _collateralAddress,
+            _collateralId
+        );
+        console.log(_collateralDebtCount);
 
-        // Transfer collateral
-        if (_payment >= _debtBalance) {
-            _depositPayment(_purchaser, _debtId, _debtBalance);
+        uint256[] memory _debtIds = new uint256[](_collateralDebtCount);
+        uint256[] memory _amounts = new uint256[](_collateralDebtCount);
 
-            _collateralVault.withdraw(_purchaser, _debtId);
+        for (uint256 i = 0; i < _collateralDebtCount; ) {
+            console.log(i);
 
-            withdrawableBalance[_borrower] += _payment - _debtBalance;
-        }
-        // Transfer debt
-        else {
-            _depositPayment(_purchaser, _debtId, _payment);
-
-            _anzaToken.safeTransferFrom(
-                _borrower,
-                _purchaser,
-                _debtId,
-                _payment,
-                abi.encodePacked(_DEBT_TRANSFER_)
+            (uint256 _debtId, ) = _loanContract.collateralDebtAt(
+                _collateralAddress,
+                _collateralId,
+                i
             );
+
+            // Verify debt is active
+            _loanManager.verifyLoanActive(_debtId);
+
+            // Update debt
+            if (!updateDebt(_debtId)) revert InactiveLoanState();
+
+            // Transfer collateral
+            uint256 _debtBalance = _loanContract.debtBalance(_debtId);
+
+            // Transfer collateral
+            if (_payment >= _debtBalance) {
+                _depositPayment(_purchaser, _debtId, _debtBalance);
+
+                _collateralVault.withdraw(_purchaser, _debtId);
+
+                _payment -= _debtBalance;
+            }
+            // Setup debt transfer
+            else {
+                if (_payment > 0)
+                    _depositPayment(_purchaser, _debtId, _payment);
+
+                console.log("start");
+                _debtIds[i] = _anzaToken.borrowerTokenId(_debtId);
+                _amounts[i] = 1;
+                console.log("end");
+            }
+
+            unchecked {
+                ++i;
+            }
+
+            // Update loan state
+            _loanManager.updateLoanState(_debtId);
         }
+
+        withdrawableBalance[_borrower] += _payment;
+
+        _anzaToken.safeBatchTransferFrom(
+            _borrower,
+            _purchaser,
+            _debtIds,
+            _amounts,
+            abi.encodePacked(_DEBT_TRANSFER_)
+        );
 
         _results = true;
     }
@@ -198,7 +238,7 @@ contract LoanTreasurey is
     )
         external
         payable
-        onlyRole(_DEBT_STOREFRONT_)
+        onlyRole(_DEBT_MARKET_)
         onlyActiveLoan(_debtId)
         debtUpdater(_debtId)
         nonReentrant
@@ -242,7 +282,7 @@ contract LoanTreasurey is
     )
         external
         payable
-        onlyRole(_DEBT_STOREFRONT_)
+        onlyRole(_DEBT_MARKET_)
         onlyActiveLoan(_debtId)
         debtUpdater(_debtId)
         nonReentrant
@@ -264,7 +304,7 @@ contract LoanTreasurey is
 
     // TODO: Need to revisit to ensure accuracy at larger total debt values
     // (e.g. 10000 * 10**18).
-    function updateDebt(uint256 _debtId) public {
+    function updateDebt(uint256 _debtId) public returns (bool) {
         uint256 _prevCheck = _loanCodec.loanLastChecked(_debtId);
 
         // Find time intervals passed
@@ -287,6 +327,10 @@ contract LoanTreasurey is
 
             _anzaToken.mint(_debtId, _updatedDebt - _totalDebt);
         }
+
+        return
+            !_loanManager.checkLoanExpired(_debtId) &&
+            !_loanManager.checkLoanClosed(_debtId);
     }
 
     function _depositPayment(

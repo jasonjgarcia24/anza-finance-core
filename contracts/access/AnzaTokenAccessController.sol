@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractRoles.sol";
+import "../domain/AnzaDebtMarketRoles.sol";
 
 import {IAnzaTokenAccessController} from "../interfaces/IAnzaTokenAccessController.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";

@@ -127,13 +127,11 @@ abstract contract LoanContractSubmitFunctions is
         uint256 _debtId
     ) public {
         ILoanContract _loanContract = ILoanContract(_loanContractAddress);
-        uint256 __debtId = _loanContract
-            .collateralDebtAt(
-                _collateralAddress,
-                collateralId,
-                type(uint256).max
-            )
-            .debtId;
+        (uint256 __debtId, ) = _loanContract.collateralDebtAt(
+            _collateralAddress,
+            collateralId,
+            type(uint256).max
+        );
 
         assertEq(
             __debtId,

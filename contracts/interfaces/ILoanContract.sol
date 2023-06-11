@@ -52,10 +52,15 @@ interface ILoanContract {
     ) external view returns (uint256);
 
     function collateralDebtAt(
+        uint256 _debtId,
+        uint256 _index
+    ) external view returns (uint256, uint256);
+
+    function collateralDebtAt(
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _index
-    ) external view returns (DebtMap memory);
+    ) external view returns (uint256, uint256);
 
     function initLoanContract(
         address _collateralAddress,

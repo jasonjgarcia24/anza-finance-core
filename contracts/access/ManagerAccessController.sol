@@ -5,7 +5,9 @@ import {console} from "../../lib/forge-std/src/console.sol";
 
 import "../domain/LoanContractRoles.sol";
 
-import {IManagerAccessController, IAnzaToken, ICollateralVault} from "../interfaces/IManagerAccessController.sol";
+import {IManagerAccessController} from "../interfaces/IManagerAccessController.sol";
+import {IAnzaToken} from "../interfaces/IAnzaToken.sol";
+import {ICollateralVault} from "../interfaces/ICollateralVault.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 abstract contract ManagerAccessController is

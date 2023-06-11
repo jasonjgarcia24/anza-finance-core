@@ -92,7 +92,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     function collateralDebtAt(
         uint256 _debtId,
         uint256 _index
-    ) public view returns (DebtMap memory) {
+    ) public view returns (uint256, uint256) {
         ICollateralVault.Collateral memory _collateral = _collateralVault
             .getCollateral(_debtId);
 
@@ -117,7 +117,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _index
-    ) public view returns (DebtMap memory) {
+    ) public view returns (uint256, uint256) {
         DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
         ];
@@ -126,13 +126,17 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         if (_debtMaps.length == 0) revert InvalidCollateral();
 
         // Allow an easy way to return the latest debt
-        if (_index == type(uint256).max) return _debtMaps[_debtMaps.length - 1];
+        if (_index == type(uint256).max)
+            return (
+                _debtMaps[_debtMaps.length - 1].debtId,
+                _debtMaps[_debtMaps.length - 1].collateralNonce
+            );
 
         // If index is out of bounds, revert
         if (_debtMaps.length < _index) revert InvalidIndex();
 
         // Return the debt at the index
-        return _debtMaps[_index];
+        return (_debtMaps[_index].debtId, _debtMaps[_index].collateralNonce);
     }
 
     /**
@@ -149,12 +153,13 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
     ) external view returns (uint256) {
         if (__debtMaps[_collateralAddress][_collateralId].length == 0) return 1;
 
-        return
-            collateralDebtAt(
-                _collateralAddress,
-                _collateralId,
-                type(uint256).max
-            ).collateralNonce + 1;
+        (, uint256 _collateralNonce) = collateralDebtAt(
+            _collateralAddress,
+            _collateralId,
+            type(uint256).max
+        );
+
+        return _collateralNonce + 1;
     }
 
     /**

@@ -94,7 +94,7 @@ const deployLoanContracts: DeployFunction = async function (
     const LOAN_CONTRACT_ROLE = await libLoanContractRoles.LOAN_CONTRACT();
     const TREASURER_ROLE = await libLoanContractRoles.TREASURER();
     const COLLECTOR_ROLE = await libLoanContractRoles.COLLECTOR();
-    const DEBT_STOREFRONT_ROLE = await libLoanContractRoles.DEBT_STOREFRONT();
+    const DEBT_STOREFRONT_ROLE = await libLoanContractRoles.DEBT_MARKET();
     let tx: any;
 
     // AnzaToken roles
