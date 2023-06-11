@@ -72,11 +72,11 @@ contract AnzaDebtMarket is
     /**
      * Anza Marketplace router to Anza Storefront implementations.
      *
-     * This function is the entry point for all Anza Storefronts
-     * implementations. All calls to Anza Storefronts must be made through this
-     * function. By performing a delegatecall to the Anza Storefront
-     * implementations, the Loan Treasurey validates that all calls are through
-     * the Anza Marketplace.
+     * This function is the entry point for all Anza Storefronts implementations.
+     * Its modular design allows for the addition of community driven storefronts.
+     * All calls to Anza Storefronts must be made through this function. By
+     * performing a delegatecall to the storefront implementations, the Loan
+     * Treasurey validates that all calls are through the Anza Marketplace.
      *
      * @dev The calldata passed to this function must be constructed as follows:
      *  abi.encodePacked(
@@ -87,9 +87,12 @@ contract AnzaDebtMarket is
      *      )
      *  )
      *
-     * @notice Only approved and registered Anza Storefronts can be exercised
-     * through this process. See {_validateStorefrontRegistration} for the
-     * Storefront validation process.
+     * @notice Only approved, registered Anza Storefronts can be exercised through
+     * this process. See {_validateStorefrontRegistration} for the Storefront
+     * validation process.
+     *
+     * @notice All Anza Storefronts must inherit and implement the IAnzaStorefront
+     * interface and AnzaBaseStorefront abstract contract.
      */
     fallback() external payable {
         // Pop contract address from calldata
