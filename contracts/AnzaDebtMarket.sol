@@ -20,8 +20,10 @@ contract AnzaDebtMarket is
         _setRoleAdmin(_ADMIN_, _ADMIN_);
         _setRoleAdmin(_DEBT_MARKET_, _ADMIN_);
         _setRoleAdmin(_DEBT_STOREFRONT_, _ADMIN_);
-        _setRoleAdmin(_SPONSORSHIP_STOREFRONT_, _ADMIN_);
         _setRoleAdmin(_REFINANCE_STOREFRONT_, _ADMIN_);
+        _setRoleAdmin(_CONSOLIDATION_STOREFRONT_, _ADMIN_);
+        _setRoleAdmin(_SPONSORSHIP_STOREFRONT_, _ADMIN_);
+        _setRoleAdmin(_OTHER_APPROVED_STOREFRONT_, _ADMIN_);
 
         _grantRole(_ADMIN_, msg.sender);
     }
