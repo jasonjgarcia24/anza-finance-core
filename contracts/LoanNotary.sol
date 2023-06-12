@@ -490,6 +490,12 @@ abstract contract RefinanceNotary is IRefinanceNotary {
     ) internal view returns (address) {
         address _borrower = ownerOf(_assetId);
 
+        console.log(
+            _borrower,
+            msg.sender,
+            _recoverSigner(_refinanceParams, _sellerSignature)
+        );
+
         if (
             _borrower == msg.sender ||
             _borrower != _recoverSigner(_refinanceParams, _sellerSignature)

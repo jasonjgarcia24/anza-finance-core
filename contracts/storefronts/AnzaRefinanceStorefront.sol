@@ -84,28 +84,27 @@ contract AnzaRefinanceStorefront is
     }
 
     /**
-     * Executes a refinance purchase for a given debt ID.
+     * Executes a debt refinance for a given debt ID.
      *
-     * @notice This function is the primary entrypoint for purchasing a refinance
-     * for a given debt ID. Following a successfull execution of this function, a
-     * new loan contract will be created and the amount of debt in the agreement will
-     * be reallocated from the original loan contract to the new loan contract. The
-     * lender of the original loan contract will be paid out the amount of the debt
-     * that was reallocated and the borrower will be issued a new loan for the same
-     * amount. This will result in the borrower having an additional loan and a new
-     * lender being introduced into the borrower's loan conditions for a given
-     * collateral. Note, the new loan contract will be created with the same contract
-     * terms as the original loan contract.
+     * @notice This function is the primary entrypoint for refinancing a of debt.
+     * Following a successfull execution of this function, a new loan contract will
+     * be created and the amount of debt in the agreement will be reallocated from
+     * the original loan contract to the new loan contract. The lender of the
+     * original loan contract will be paid out the amount of the debt that was
+     * reallocated and the borrower will be issued a new loan for the same amount.
+     * This will result in the borrower having an additional loan and a new lender
+     * being introduced into the borrower's loan conditions for a given collateral.
      *
-     * @param _debtId The debt ID to sponsor.
+     * @param _debtId The debt ID to refinance.
      * @param _termsExpiry The expiry of the terms signature.
-     * @param _contractTerms The contract terms of the loan contract.
-     * @param _sellerSignature The signature of the lender.
+     * @param _contractTerms The terms of the new loan contract.
+     * @param _sellerSignature The signature of the borrower
+     * {see LoanNotary:LoanNotary-__typeDataHash}.
      *
      * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
-     * @dev Reverts if the caller is the lender of the debt ID.
+     * @dev Reverts if the caller is the borrower of the debt ID.
      *
      * @dev See {LibLoanNotary:LibLoanNotary-typeDataHash} for signature construction.
      */
@@ -125,29 +124,27 @@ contract AnzaRefinanceStorefront is
     }
 
     /**
-     * Executes a published refinance purchase for a given debt ID.
+     * Executes a published debt refinance for a given debt ID.
      *
-     * @notice This function is the primary entrypoint for purchasing a refinance
-     * for a given debt ID. Following a successfull execution of this function, a
-     * new loan contract will be created and the amount of debt in the agreement will
-     * be reallocated from the original loan contract to the new loan contract. The
-     * lender of the original loan contract will be paid out the amount of the debt
-     * that was reallocated and the borrower will be issued a new loan for the same
-     * amount. This will result in the borrower having an additional loan and a new
-     * lender being introduced into the borrower's loan conditions for a given
-     * collateral. Note, the new loan contract will be created with the same contract
-     * terms as the original loan contract.
+     * @notice This function is the primary entrypoint for refinancing a of debt.
+     * Following a successfull execution of this function, a new loan contract will
+     * be created and the amount of debt in the agreement will be reallocated from
+     * the original loan contract to the new loan contract. The lender of the
+     * original loan contract will be paid out the amount of the debt that was
+     * reallocated and the borrower will be issued a new loan for the same amount.
+     * This will result in the borrower having an additional loan and a new lender
+     * being introduced into the borrower's loan conditions for a given collateral.
      *
-     * @param _debtId The debt ID to sponsor.
+     * @param _debtId The debt ID to refinance.
      * @param _listingNonce The nonce of the published listing to purchase.
      * @param _termsExpiry The expiry of the terms signature.
-     * @param _contractTerms The contract terms of the loan contract.
-     * @param _sellerSignature The signature of the lender.
+     * @param _contractTerms The terms of the new loan contract.
+     * @param _sellerSignature The signature of the borrower
      *
      * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
-     * @dev Reverts if the caller is the lender of the debt ID.
+     * @dev Reverts if the caller is the borrower of the debt ID.
      * @dev Reverts if the listing nonce listing type is invalid.
      * @dev Reverts if the listing nonce is invalid.
      *
@@ -201,7 +198,7 @@ contract AnzaRefinanceStorefront is
                 contractTerms: _contractTerms
             }),
             _sellerSignature,
-            _anzaTokenIndexer.lenderOf
+            _anzaTokenIndexer.borrowerOf
         );
 
         // Update listing nonce
@@ -217,7 +214,7 @@ contract AnzaRefinanceStorefront is
             msg.sender,
             uint8(ListingType.REFINANCE),
             address(_anzaTokenIndexer),
-            _anzaTokenIndexer.lenderTokenId(_debtId)
+            _anzaTokenIndexer.borrowerTokenId(_debtId)
         );
     }
 
@@ -257,7 +254,7 @@ contract AnzaRefinanceStorefront is
                 contractTerms: _contractTerms
             }),
             _sellerSignature,
-            _anzaTokenIndexer.lenderOf
+            _anzaTokenIndexer.borrowerOf
         );
 
         // Transfer debt
@@ -268,7 +265,7 @@ contract AnzaRefinanceStorefront is
             msg.sender,
             uint8(ListingType.REFINANCE),
             address(_anzaTokenIndexer),
-            _anzaTokenIndexer.lenderTokenId(_debtId)
+            _anzaTokenIndexer.borrowerTokenId(_debtId)
         );
     }
 
@@ -291,9 +288,7 @@ contract AnzaRefinanceStorefront is
         address _seller,
         bytes32 _contractTerms
     ) internal {
-        (bool _success,) = loanTreasurerAddress.call{
-            value: _price
-        }(
+        (bool _success, ) = loanTreasurerAddress.call{value: _price}(
             abi.encodeWithSignature(
                 "executeRefinancePurchase(uint256,address,address,bytes32)",
                 _debtId,

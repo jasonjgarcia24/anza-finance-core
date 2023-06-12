@@ -272,8 +272,113 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
     function testAnzaDebtStorefront__BasicBuyRefinance() public {
         uint256 _debtId = loanContract.totalDebts();
-        (bool _success, ) = refinanceDebt(_debtId, borrowerPrivKey);
-        require(_success, "0 :: refinanceDebt test should succeed.");
+        uint256 _sponsorshipListingNonce = anzaSponsorshipStorefront.nonce();
+        uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
+        uint256 _balance = loanContract.debtBalance(_debtId);
+        uint256 _price = _balance - 1;
+
+        bytes32 _contractTerms = createContractTerms(
+            ContractTerms({
+                firInterval: _FIR_INTERVAL_,
+                fixedInterestRate: _FIXED_INTEREST_RATE_,
+                isFixed: _IS_FIXED_,
+                commital: _COMMITAL_,
+                principal: _PRINCIPAL_ / 2,
+                gracePeriod: _GRACE_PERIOD_,
+                duration: _DURATION_,
+                termsExpiry: _TERMS_EXPIRY_,
+                lenderRoyalties: _LENDER_ROYALTIES_
+            })
+        );
+
+        bytes memory _signature = createListingSignature(
+            borrowerPrivKey,
+            IRefinanceNotary.RefinanceParams({
+                price: _price,
+                debtId: _debtId,
+                listingNonce: _sponsorshipListingNonce,
+                termsExpiry: _termsExpiry,
+                contractTerms: _contractTerms
+            })
+        );
+
+        uint256 _lenderTokenId = anzaToken.lenderTokenId(_debtId);
+        assertEq(
+            anzaToken.lenderOf(_debtId),
+            lender,
+            "0 :: lender should be lender"
+        );
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "1 :: AnzaToken owner should be lender"
+        );
+        assertEq(
+            loanContract.debtBalance(_debtId),
+            _balance,
+            "2 :: Debt balance should be _balance"
+        );
+
+        vm.deal(alt_account, 4 ether);
+        vm.startPrank(alt_account);
+        (bool _success, ) = address(anzaDebtMarket).call{value: _price}(
+            abi.encodePacked(
+                address(anzaRefinanceStorefront),
+                abi.encodeWithSignature(
+                    "buyRefinance(uint256,uint256,bytes32,bytes)",
+                    _debtId,
+                    _termsExpiry,
+                    _contractTerms,
+                    _signature
+                )
+            )
+        );
+        assertTrue(_success, "3 :: buyRefinance test should succeed.");
+        vm.stopPrank();
+
+        uint256 _newDebtId = loanContract.totalDebts();
+        uint256 _newLenderTokenId = anzaToken.lenderTokenId(_newDebtId);
+
+        assertEq(
+            anzaToken.lenderOf(_debtId),
+            lender,
+            "4 :: lender account should be lender for original debt ID"
+        );
+        assertEq(
+            anzaToken.lenderOf(_newDebtId),
+            alt_account,
+            "5 :: alt_account account should be alt_account for new debt ID"
+        );
+        assertEq(
+            anzaToken.ownerOf(_lenderTokenId),
+            lender,
+            "6 :: AnzaToken owner should be lender for original lender token ID"
+        );
+        assertEq(
+            anzaToken.ownerOf(_newLenderTokenId),
+            alt_account,
+            "7 :: AnzaToken owner should be alt_account for new lender token ID"
+        );
+        assertEq(
+            anzaToken.borrowerOf(_debtId),
+            borrower,
+            "8 :: borrower account should be borrower for original debt ID"
+        );
+        assertEq(
+            anzaToken.borrowerOf(_newDebtId),
+            borrower,
+            "9 :: borrower account should be borrower for new debt ID"
+        );
+        assertEq(
+            loanContract.debtBalance(_debtId),
+            1,
+            "10 :: Debt balance should be 1 for original debt ID"
+        );
+        assertEq(
+            loanContract.debtBalance(_newDebtId),
+            _price,
+            "11 :: Debt balance should be _price for new debt ID"
+        );
     }
 }
 
