@@ -104,7 +104,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
     function testAnzaDebtStorefront__BasicBuyDebt() public {
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
+        uint256 _debtListingNonce = anzaDebtMarket.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes memory _signature = createListingSignature(
@@ -181,7 +181,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
     function testAnzaDebtStorefront__BasicBuySponsorship() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _sponsorshipListingNonce = anzaSponsorshipStorefront.nonce();
+        uint256 _sponsorshipListingNonce = anzaDebtMarket.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
         uint256 _balance = loanContract.debtBalance(_debtId);
         uint256 _price = _balance - 1;
@@ -276,7 +276,7 @@ contract AnzaDebtStorefront__BasicBuyDebtTest is AnzaDebtStorefrontUnitTest {
 
     function testAnzaDebtStorefront__BasicBuyRefinance() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _sponsorshipListingNonce = anzaSponsorshipStorefront.nonce();
+        uint256 _sponsorshipListingNonce = anzaDebtMarket.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
         uint256 _balance = loanContract.debtBalance(_debtId);
         uint256 _price = _balance - 1;
@@ -391,7 +391,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _price
     ) public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
+        uint256 _debtListingNonce = anzaDebtMarket.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         vm.assume(_price != _PRINCIPAL_ - 1);
@@ -424,7 +424,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _debtId
     ) public {
         uint256 _price = _PRINCIPAL_ - 1;
-        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
+        uint256 _debtListingNonce = anzaDebtMarket.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         vm.assume(_debtId != loanContract.totalDebts());
@@ -460,7 +460,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         uint256 _debtId = loanContract.totalDebts();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
-        vm.assume(_debtListingNonce != anzaDebtStorefront.nonce());
+        vm.assume(_debtListingNonce != anzaDebtMarket.nonce());
 
         bytes memory _signature = createListingSignature(
             borrowerPrivKey,
@@ -478,7 +478,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
                 price: _price,
                 collateralAddress: address(demoToken),
                 collateralId: collateralId,
-                listingNonce: anzaDebtStorefront.nonce(),
+                listingNonce: anzaDebtMarket.nonce(),
                 termsExpiry: _termsExpiry
             }),
             _signature,
@@ -491,7 +491,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     ) public {
         uint256 _price = _PRINCIPAL_ - 1;
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
+        uint256 _debtListingNonce = anzaDebtMarket.nonce();
 
         vm.assume(_termsExpiry > uint256(_TERMS_EXPIRY_));
 
@@ -525,7 +525,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
         vm.assume(_debtParams.price != _PRINCIPAL_ - 1);
         vm.assume(_debtParams.collateralAddress != address(demoToken));
         vm.assume(_debtParams.collateralId != collateralId);
-        vm.assume(_debtParams.listingNonce != anzaDebtStorefront.nonce());
+        vm.assume(_debtParams.listingNonce != anzaDebtMarket.nonce());
         vm.assume(_debtParams.termsExpiry > uint256(_TERMS_EXPIRY_));
 
         bytes memory _signature = createListingSignature(
@@ -538,7 +538,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
                 price: _PRINCIPAL_ - 1,
                 collateralAddress: address(demoToken),
                 collateralId: collateralId,
-                listingNonce: anzaDebtStorefront.nonce(),
+                listingNonce: anzaDebtMarket.nonce(),
                 termsExpiry: uint256(_TERMS_EXPIRY_)
             }),
             _signature,
@@ -553,7 +553,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     //     vm.assume(_debtId != loanContract.totalDebts());
     //     vm.assume(
     //         _debtListingNonce !=
-    //             anzaDebtStorefront.nonce()
+    //             anzaDebtMarket.nonce()
     //     );
     //     vm.assume(_termsExpiry > uint256(_TERMS_EXPIRY_));
 
@@ -571,7 +571,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
     //         IDebtNotary.DebtParams({
     //             price: _PRINCIPAL_ - 1,
     //             debtId: loanContract.totalDebts(),
-    //             listingNonce: anzaDebtStorefront.nonce(),
+    //             listingNonce: anzaDebtMarket.nonce(),
     //             termsExpiry: uint256(_TERMS_EXPIRY_)
     //         }),
     //         _signature,
@@ -585,7 +585,7 @@ contract AnzaDebtStorefront__BasicBuyLoanStateTest is
 {
     function testAnzaDebtStorefront__BasicBuyLoanState() public {
         uint256 _debtId = loanContract.totalDebts();
-        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
+        uint256 _debtListingNonce = anzaDebtMarket.nonce();
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes memory _signature = createListingSignature(

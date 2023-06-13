@@ -8,6 +8,9 @@ import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
 import "@token-constants/AnzaTokenTransferTypes.sol";
 import "@market-constants/AnzaDebtMarketRoles.sol";
+import "@custom-errors/StdTreasureyErrors.sol";
+import {InvalidParticipant} from "@custom-errors/StdManagerErrors.sol";
+import {InactiveLoanState} from "@custom-errors/StdCodecErrors.sol";
 
 import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";

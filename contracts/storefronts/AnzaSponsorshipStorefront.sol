@@ -3,8 +3,10 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
+import {CanceledListing} from "@custom-errors/StdBaseMarketErrors.sol";
+
 import {IAnzaSponsorshipStorefront} from "@market-interfaces/IAnzaSponsorshipStorefront.sol";
-import {AnzaBaseMarketParticipant, NonceLocker} from "@base/storefronts/AnzaBaseMarketParticipant.sol";
+import {AnzaBaseMarketParticipant, NonceLocker} from "@market-databases/AnzaBaseMarketParticipant.sol";
 import {AnzaSponsorshipStorefrontAccessController} from "@market-access/AnzaSponsorshipStorefrontAccessController.sol";
 import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
 

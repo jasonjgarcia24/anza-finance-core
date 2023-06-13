@@ -2,12 +2,6 @@
 pragma solidity 0.8.20;
 
 interface ILoanTreasurey {
-    error InvalidParticipant();
-    error InvalidFundsTransfer();
-    error InactiveLoanState();
-    error InvalidLoanState();
-    error FailedPurchase();
-
     event Deposited(
         uint256 indexed debtId,
         address indexed payer,

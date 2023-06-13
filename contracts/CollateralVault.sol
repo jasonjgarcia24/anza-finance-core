@@ -5,11 +5,12 @@ import {console} from "forge-std/console.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
+import "@custom-errors/StdVaultErrors.sol";
 
 import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
-import {IDebtBook} from "@lending-interfaces/IDebtBook.sol";
+import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {VaultAccessController} from "@lending-access/VaultAccessController.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";

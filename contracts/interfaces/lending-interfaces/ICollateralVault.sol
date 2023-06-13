@@ -3,10 +3,6 @@
 pragma solidity 0.8.20;
 
 interface ICollateralVault {
-    error UnallowedDeposit();
-    error UnallowedWithdrawal();
-    error IllegalDebtId();
-
     event DepositedCollateral(
         address indexed from,
         address indexed collateralAddress,

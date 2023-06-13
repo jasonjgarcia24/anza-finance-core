@@ -2,9 +2,6 @@
 pragma solidity 0.8.20;
 
 interface IAnzaBaseMarketParticipant {
-    error CanceledListing();
-    error LockedNonce();
-
     enum ListingType {
         UNDEFINED,
         DEBT,

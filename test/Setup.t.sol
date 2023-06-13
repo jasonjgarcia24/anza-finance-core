@@ -408,12 +408,15 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         vm.deal(alt_account, 4 ether);
         vm.startPrank(alt_account);
         (_success, _data) = address(anzaDebtMarket).call{value: _price}(
-            abi.encodeWithSignature(
-                "buyRefinance(uint256,uint256,bytes32,bytes)",
-                _debtId,
-                _termsExpiry,
-                _contractTerms,
-                _signature
+            abi.encodePacked(
+                address(anzaRefinanceStorefront),
+                abi.encodeWithSignature(
+                    "buyRefinance(uint256,uint256,bytes32,bytes)",
+                    _debtId,
+                    _termsExpiry,
+                    _contractTerms,
+                    _signature
+                )
             )
         );
         assertTrue(
@@ -569,7 +572,9 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _borrowerPrivKey,
         ContractTerms memory _terms
     ) public virtual returns (bool, bytes memory) {
-        uint256 _debtListingNonce = anzaDebtStorefront.nonce();
+        uint256 _debtListingNonce = anzaDebtMarket.nonce();
+        console.log(_debtListingNonce);
+
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
 
         bytes32 _contractTerms = createContractTerms(_terms);

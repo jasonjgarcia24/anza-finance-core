@@ -7,7 +7,7 @@ import "@lending-constants/LoanContractRoles.sol";
 import {_DEBT_MARKET_} from "@market-constants/AnzaDebtMarketRoles.sol";
 
 import {ITreasureyAccessController} from "@lending-access/interfaces/ITreasureyAccessController.sol";
-import {IDebtBook} from "@lending-interfaces/IDebtBook.sol";
+import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";

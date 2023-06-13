@@ -7,7 +7,7 @@ import {InvalidParticipant} from "@custom-errors/StdManagerErrors.sol";
 
 import {IAnzaDebtStorefrontAccessController} from "@market-interfaces/IAnzaDebtStorefrontAccessController.sol";
 import {IAnzaTokenIndexer} from "@token-interfaces/IAnzaTokenIndexer.sol";
-import {IDebtBook} from "@lending-interfaces/IDebtBook.sol";
+import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
 import {DebtNotary} from "@base/LoanNotary.sol";
 

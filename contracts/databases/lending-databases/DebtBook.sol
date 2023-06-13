@@ -5,7 +5,7 @@ import {console} from "forge-std/console.sol";
 
 import {InvalidCollateral} from "@custom-errors/StdLoanErrors.sol";
 
-import {IDebtBook} from "@lending-interfaces/IDebtBook.sol";
+import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 import {DebtBookAccessController} from "@lending-access/DebtBookAccessController.sol";
 
