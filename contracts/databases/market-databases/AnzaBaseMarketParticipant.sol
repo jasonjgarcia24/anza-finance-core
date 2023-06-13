@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {IAnzaBaseMarketParticipant} from "./interfaces/IAnzaBaseMarketParticipant.sol";
-import {NonceLocker} from "@base/utils/NonceLocker.sol";
+import {NonceLocker} from "@base/libraries/NonceLocker.sol";
 
 abstract contract AnzaBaseMarketParticipant is IAnzaBaseMarketParticipant {
     /* ------------------------------------------------ *

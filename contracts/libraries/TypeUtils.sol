@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-abstract contract TypeUtils {
+library TypeUtils {
     /**
      * @dev Returns the downcasted uint64 from uint256, reverting on
      * overflow (when the input is greater than largest uint64).

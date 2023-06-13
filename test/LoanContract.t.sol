@@ -13,7 +13,6 @@ import {InactiveLoanState} from "@custom-errors/StdCodecErrors.sol";
 import {LoanContract} from "@base/LoanContract.sol";
 import {CollateralVault} from "@base/CollateralVault.sol";
 import {LoanTreasurey} from "@base/LoanTreasurey.sol";
-import {DemoToken} from "@base/utils/DemoToken.sol";
 import {AnzaToken} from "@base/token/AnzaToken.sol";
 import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
@@ -22,6 +21,7 @@ import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIn
 import {LibLoanContractTerms as Terms} from "@lending-libraries/LibLoanContract.sol";
 
 import {Utils, Setup} from "./Setup.t.sol";
+import {DemoToken} from "./DemoToken.sol";
 import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
 
 abstract contract LoanContractDeployer is Setup, ILoanContractEvents {

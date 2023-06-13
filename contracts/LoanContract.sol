@@ -11,11 +11,13 @@ import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 import {LoanManager} from "./LoanManager.sol";
 import {LoanNotary} from "./LoanNotary.sol";
-import {TypeUtils} from "./utils/TypeUtils.sol";
+import {TypeUtils} from "./libraries/TypeUtils.sol";
 
 import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
-contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
+contract LoanContract is ILoanContract, LoanManager, LoanNotary {
+    using TypeUtils for uint256;
+
     constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 
     /**
@@ -66,7 +68,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         uint256 _principal = msg.value;
         _validateLoanTerms(
             _contractTerms,
-            _toUint64(block.timestamp),
+            block.timestamp._toUint64(),
             _principal
         );
 
@@ -93,7 +95,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
 
         // Add debt to database
-        __sealLoanContract(_toUint64(block.timestamp), 1, _contractTerms);
+        __sealLoanContract(block.timestamp._toUint64(), 1, _contractTerms);
 
         // The collateral ID and address will be mapped within
         // the loan collateral vault to the debt ID.
@@ -175,7 +177,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         uint256 _principal = msg.value;
         _validateLoanTerms(
             _contractTerms,
-            _toUint64(block.timestamp),
+            block.timestamp._toUint64(),
             _principal
         );
 
@@ -191,7 +193,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
         // Add debt to database
         __sealLoanContract(
-            _toUint64(block.timestamp),
+            block.timestamp._toUint64(),
             _debtMapLength,
             _contractTerms
         );
@@ -287,7 +289,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
 
         // Add debt to database
         __sealLoanContract(
-            _toUint64(block.timestamp),
+            block.timestamp._toUint64(),
             _debtMapLength,
             getDebtTerms(_debtId)
         );

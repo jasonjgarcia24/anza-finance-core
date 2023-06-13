@@ -10,7 +10,6 @@ import "@market-constants/AnzaDebtMarketRoles.sol";
 import {LoanContract} from "@base/LoanContract.sol";
 import {CollateralVault} from "@base/CollateralVault.sol";
 import {LoanTreasurey} from "@base/LoanTreasurey.sol";
-import {DemoToken} from "@base/utils/DemoToken.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
 import {AnzaToken} from "@base/token/AnzaToken.sol";
@@ -20,6 +19,7 @@ import {AnzaSponsorshipStorefront} from "@base/storefronts/AnzaSponsorshipStoref
 import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront.sol";
 import {LibLoanNotary as Signing} from "@lending-libraries/LibLoanNotary.sol";
 
+import {DemoToken} from "./DemoToken.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
 
