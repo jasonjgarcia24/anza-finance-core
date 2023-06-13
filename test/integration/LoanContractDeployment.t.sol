@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "../../lib/forge-std/src/Test.sol";
+import "forge-std/Test.sol";
 
-import "../../contracts/domain/LoanContractRoles.sol";
+import "../../contracts/globals/lending-constants/LoanContractRoles.sol";
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 import {Test, LoanContractDeployer, LoanContractSubmitted} from "../LoanContract.t.sol";

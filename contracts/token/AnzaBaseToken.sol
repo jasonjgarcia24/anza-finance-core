@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import "../domain/AnzaTokenTransferTypes.sol";
+import "@token-constants/AnzaTokenTransferTypes.sol";
 
-import {IAnzaBase} from "../interfaces/IAnzaBase.sol";
-import {AnzaTokenAccessController, _LOAN_CONTRACT_, _TREASURER_, _COLLATERAL_VAULT_} from "../access/AnzaTokenAccessController.sol";
+import {IAnzaBase} from "@token-interfaces/IAnzaBase.sol";
+import {AnzaTokenAccessController} from "@token-access/AnzaTokenAccessController.sol";
 import {AnzaTokenURIStorage, ERC1155} from "./AnzaTokenURIStorage.sol";
 
 abstract contract AnzaBaseToken is
@@ -36,13 +36,7 @@ abstract contract AnzaBaseToken is
 
     function supportsInterface(
         bytes4 _interfaceId
-    )
-        public
-        view
-        virtual
-        override(ERC1155, AnzaTokenAccessController)
-        returns (bool)
-    {
+    ) public view virtual override(AnzaTokenAccessController, ERC1155) returns (bool) {
         return
             _interfaceId == type(IAnzaBase).interfaceId ||
             ERC1155.supportsInterface(_interfaceId) ||

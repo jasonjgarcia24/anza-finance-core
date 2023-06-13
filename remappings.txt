@@ -2,5 +2,31 @@
     forge-std/=lib/forge-std/src/
     solmate/=lib/solmate/src/
     weird-erc20/=lib/weird-erc20/src/
-    @openzeppelin/=node_modules/@openzeppelin/
     hardhat/=node_modules/hardhat/
+
+    @openzeppelin/=node_modules/@openzeppelin/
+    @abdk-libraries=contracts/abdk-libraries-solidity/
+
+    @base=contracts/
+    @helper-libraries=contracts/libraries/helper-libraries/
+    @custom-errors=contracts/globals/custom-errors/
+    @universal-numbers=contracts/globals/universal-numbers/
+
+    @lending-access=contracts/access/lending-access/
+    @lending-constants=contracts/globals/lending-constants/
+    @lending-databases=contracts/databases/lending-databases/
+    @lending-interfaces=contracts/interfaces/lending-interfaces/
+    @lending-libraries=contracts/libraries/lending-libraries/
+
+    @market-access=contracts/access/market-access/
+    @market-constants=contracts/globals/market-constants/
+    @market-interfaces=contracts/interfaces/market-interfaces/
+    @market-databases=contracts/databases/market-databases/
+    @market-libraries=contracts/libraries/market-libraries/
+
+    @token-access=contracts/access/token-access/
+    @token-constants=contracts/globals/token-constants/
+    @token-databases=contracts/databases/token-databases/
+    @token-interfaces=contracts/interfaces/token-interfaces/
+    @token-libraries=contracts/libraries/token-libraries/
+    

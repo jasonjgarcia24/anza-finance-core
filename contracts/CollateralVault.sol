@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import "./domain/LoanContractRoles.sol";
-import "./domain/LoanContractStates.sol";
+import "@lending-constants/LoanContractRoles.sol";
+import "@lending-constants/LoanContractStates.sol";
 
-import {ICollateralVault} from "./interfaces/ICollateralVault.sol";
-import {IAnzaToken} from "./interfaces/IAnzaToken.sol";
-import {ILoanContract} from "./interfaces/ILoanContract.sol";
-import {ILoanCodec} from "./interfaces/ILoanCodec.sol";
-import {VaultAccessController} from "./access/VaultAccessController.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
+import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {IDebtBook} from "@lending-interfaces/IDebtBook.sol";
+import {VaultAccessController} from "@lending-access/VaultAccessController.sol";
+
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 contract CollateralVault is
     ICollateralVault,
@@ -97,7 +98,7 @@ contract CollateralVault is
         uint256 _debtId
     ) public view returns (bool) {
         try
-            ILoanContract(_loanContract).collateralDebtAt(
+            IDebtBook(_loanContract).collateralDebtAt(
                 _collateralAddress,
                 _collateralId,
                 type(uint256).max
@@ -126,7 +127,7 @@ contract CollateralVault is
         Collateral memory _collateral = __collaterals[_debtId];
 
         return
-            ILoanContract(_loanContract).collateralDebtBalance(
+            IDebtBook(_loanContract).collateralDebtBalance(
                 _collateral.collateralAddress,
                 _collateral.collateralId
             ) ==

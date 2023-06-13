@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import {IAnzaSponsorshipStorefront} from "../interfaces/IAnzaSponsorshipStorefront.sol";
-import {AnzaBaseMarketParticipant, NonceLocker} from "./AnzaBaseMarketParticipant.sol";
-import {AnzaSponsorshipStorefrontAccessController} from "../access/AnzaSponsorshipStorefrontAccessController.sol";
-import {ILoanContract} from "../interfaces/ILoanContract.sol";
+import {IAnzaSponsorshipStorefront} from "@market-interfaces/IAnzaSponsorshipStorefront.sol";
+import {AnzaBaseMarketParticipant, NonceLocker} from "@base/storefronts/AnzaBaseMarketParticipant.sol";
+import {AnzaSponsorshipStorefrontAccessController} from "@market-access/AnzaSponsorshipStorefrontAccessController.sol";
+import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
 
 contract AnzaSponsorshipStorefront is
     IAnzaSponsorshipStorefront,
@@ -261,7 +261,7 @@ contract AnzaSponsorshipStorefront is
      *
      * @param _debtId The debt ID to transfer.
      * @param _price The price of the listing.
-     * @param _seller The seller of the listing.
+     * @param //_seller The seller of the listing.
      *
      * @dev Reverts if the listing type is not a valid.
      *
@@ -270,11 +270,9 @@ contract AnzaSponsorshipStorefront is
     function _transferSponsorship(
         uint256 _debtId,
         uint256 _price,
-        address _seller
+        address /* _seller */
     ) internal {
-        (bool _success, bytes memory _data) = loanTreasurerAddress.call{
-            value: _price
-        }(
+        (bool _success, ) = loanTreasurerAddress.call{value: _price}(
             abi.encodeWithSignature(
                 "executeSponsorshipPurchase(uint256,address)",
                 _debtId,

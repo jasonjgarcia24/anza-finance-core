@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import {_MAX_DEBT_ID_} from "../domain/LoanContractNumbers.sol";
-import "../domain/AnzaTokenIndexerErrorCodes.sol";
+import {_MAX_DEBT_ID_} from "@lending-constants/LoanContractNumbers.sol";
+import {_INVALID_TOKEN_ID_SELECTOR_} from "@custom-errors/StdAnzaTokenErrors.sol";
 
-import {IAnzaTokenIndexer} from "../interfaces/IAnzaTokenIndexer.sol";
+import {IAnzaTokenIndexer} from "@token-interfaces/IAnzaTokenIndexer.sol";
 
 abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     /* ------------------------------------------------ *

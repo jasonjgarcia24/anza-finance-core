@@ -1,27 +1,29 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "../lib/forge-std/src/Test.sol";
-import "../lib/forge-std/src/console.sol";
+import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 
-import "../contracts/domain/LoanContractRoles.sol";
-import "../contracts/domain/AnzaDebtMarketRoles.sol";
+import "@lending-constants/LoanContractRoles.sol";
+import "@market-constants/AnzaDebtMarketRoles.sol";
 
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "../contracts/interfaces/ILoanNotary.sol";
+import {LoanContract} from "@base/LoanContract.sol";
+import {CollateralVault} from "@base/CollateralVault.sol";
+import {LoanTreasurey} from "@base/LoanTreasurey.sol";
+import {DemoToken} from "@base/utils/DemoToken.sol";
+import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
+import {AnzaToken} from "@base/token/AnzaToken.sol";
+import {AnzaDebtMarket} from "@base/AnzaDebtMarket.sol";
+import {AnzaDebtStorefront} from "@base/storefronts/AnzaDebtStorefront.sol";
+import {AnzaSponsorshipStorefront} from "@base/storefronts/AnzaSponsorshipStorefront.sol";
+import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront.sol";
+import {LibLoanNotary as Signing} from "@lending-libraries/LibLoanNotary.sol";
+
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
 import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
-import {ICollateralVault} from "../contracts/interfaces/ICollateralVault.sol";
-import {LoanContract} from "../contracts/LoanContract.sol";
-import {CollateralVault} from "../contracts/CollateralVault.sol";
-import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
-import {DemoToken} from "../contracts/utils/DemoToken.sol";
-import {AnzaToken} from "../contracts/token/AnzaToken.sol";
-import {AnzaDebtMarket} from "../contracts/AnzaDebtMarket.sol";
-import {AnzaDebtStorefront} from "../contracts/storefronts/AnzaDebtStorefront.sol";
-import {AnzaSponsorshipStorefront} from "../contracts/storefronts/AnzaSponsorshipStorefront.sol";
-import {AnzaRefinanceStorefront} from "../contracts/storefronts/AnzaRefinanceStorefront.sol";
-import {LibLoanNotary as Signing} from "../contracts/libraries/LibLoanNotary.sol";
+
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 error TryCatchErr(bytes err);
 

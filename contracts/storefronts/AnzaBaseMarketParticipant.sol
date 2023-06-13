@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {IAnzaBaseParticipant} from "../interfaces/IAnzaBaseParticipant.sol";
+import {IAnzaBaseMarketParticipant} from "@market-interfaces/IAnzaBaseMarketParticipant.sol";
 import {NonceLocker} from "../utils/NonceLocker.sol";
 
-abstract contract AnzaBaseMarketParticipant is IAnzaBaseParticipant {
+abstract contract AnzaBaseMarketParticipant is IAnzaBaseMarketParticipant {
     /* ------------------------------------------------ *
      *                    Databases                     *
      * ------------------------------------------------ */

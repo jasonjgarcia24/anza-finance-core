@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {ILoanNotaryErrors} from "../../contracts/interfaces/ILoanNotary.sol";
+import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
+import {stdError} from "forge-std/StdError.sol";
+
+import {InvalidSigner} from "@custom-errors/StdNotaryErrors.sol";
+
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 import {ILoanTreasureyEvents} from "../interfaces/ILoanTreasureyEvents.t.sol";
-import {Test, console, stdError, LoanContractSubmitted} from "../LoanContract.t.sol";
+import {LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractPayoff is LoanContractSubmitted {
     function setUp() public virtual override {
@@ -41,7 +46,7 @@ contract LoanContractPayoff is LoanContractSubmitted {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ILoanNotaryErrors.InvalidParticipant.selector,
+                InvalidSigner.selector,
                 alt_account
             )
         );

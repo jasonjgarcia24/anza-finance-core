@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import "../domain/AnzaTokenTransferTypes.sol";
+import "@token-constants/AnzaTokenTransferTypes.sol";
+import {_LOAN_CONTRACT_, _TREASURER_, _COLLATERAL_VAULT_} from "@lending-constants/LoanContractRoles.sol";
+import {IllegalMint, IllegalTransfer} from "@custom-errors/StdAnzaTokenErrors.sol";
 
-import {IAnzaTokenLite} from "../interfaces/IAnzaTokenLite.sol";
-import {AnzaBaseToken, _LOAN_CONTRACT_, _TREASURER_, _COLLATERAL_VAULT_} from "./AnzaBaseToken.sol";
+import {IAnzaTokenLite} from "@token-interfaces/IAnzaTokenLite.sol";
+import {AnzaBaseToken} from "./AnzaBaseToken.sol";
 import {AnzaTokenIndexer} from "./AnzaTokenIndexer.sol";
 
 contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {

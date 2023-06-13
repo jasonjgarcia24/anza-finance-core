@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import {ILoanContract} from "./interfaces/ILoanContract.sol";
-import {LoanManager, ICollateralVault, ManagerAccessController, _TREASURER_} from "./LoanManager.sol";
+import {_TREASURER_} from "@lending-constants/LoanContractRoles.sol";
+import {InvalidCollateral} from "@custom-errors/StdLoanErrors.sol";
+import {FailedFundsTransfer, ExceededRefinanceLimit} from "@custom-errors/StdMonetaryErrors.sol";
+
+import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
+import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {LoanManager} from "./LoanManager.sol";
 import {LoanNotary} from "./LoanNotary.sol";
 import {TypeUtils} from "./utils/TypeUtils.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+
+import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
-    // Count of total inactive/active debts
-    uint256 public totalDebts;
-
-    // Mapping from collateral to debt ID
-    mapping(address collateralAddress => mapping(uint256 collateralId => DebtMap[]))
-        private __debtMaps;
-
     constructor() LoanManager() LoanNotary("LoanContract", "0") {}
 
     /**
@@ -33,133 +32,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _interfaceId == type(ILoanContract).interfaceId ||
             LoanManager.supportsInterface(_interfaceId) ||
             LoanNotary.supportsInterface(_interfaceId);
-    }
-
-    /**
-     * Returns the total debt balance for a debt ID.
-     *
-     * @param _debtId The debt ID to find the balance for.
-     *
-     * @return The total debt balance for the debt ID.
-     */
-    function debtBalance(uint256 _debtId) public view returns (uint256) {
-        return _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId));
-    }
-
-    /**
-     * Returns the full count of the debt balance for a given collateral
-     * token (i.e. the number of ADT held by lenders for this collateral).
-     *
-     * @param _collateralAddress The address of the ERC721 collateral token.
-     * @param _collateralId The ID of the ERC721 collateral token.
-     *
-     * @return _debtBalance The full count of the debt balance for the collateral.
-     */
-    function collateralDebtBalance(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) public view returns (uint256 _debtBalance) {
-        DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
-            _collateralId
-        ];
-
-        for (uint256 i; i < _debtMaps.length; ) {
-            _debtBalance += _anzaToken.totalSupply(
-                _anzaToken.lenderTokenId(_debtMaps[i].debtId)
-            );
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * Returns the number of debt maps for a collateral.
-     *
-     * @param _collateralAddress The address of the ERC721 collateral token.
-     * @param _collateralId The ID of the ERC721 collateral token.
-     *
-     * @return The number of debt maps for the collateral.
-     */
-    function collateralDebtCount(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) external view returns (uint256) {
-        return __debtMaps[_collateralAddress][_collateralId].length;
-    }
-
-    function collateralDebtAt(
-        uint256 _debtId,
-        uint256 _index
-    ) public view returns (uint256, uint256) {
-        ICollateralVault.Collateral memory _collateral = _collateralVault
-            .getCollateral(_debtId);
-
-        return
-            collateralDebtAt(
-                _collateral.collateralAddress,
-                _collateral.collateralId,
-                _index
-            );
-    }
-
-    /**
-     * Returns the debt map for a collateral at a given index.
-     *
-     * @param _collateralAddress The address of the ERC721 collateral token.
-     * @param _collateralId The ID of the ERC721 collateral token.
-     * @param _index The index of the debt map to return.
-     *
-     * @return The debt map at the given index.
-     */
-    function collateralDebtAt(
-        address _collateralAddress,
-        uint256 _collateralId,
-        uint256 _index
-    ) public view returns (uint256, uint256) {
-        DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
-            _collateralId
-        ];
-
-        // If no debt to collateral, revert
-        if (_debtMaps.length == 0) revert InvalidCollateral();
-
-        // Allow an easy way to return the latest debt
-        if (_index == type(uint256).max)
-            return (
-                _debtMaps[_debtMaps.length - 1].debtId,
-                _debtMaps[_debtMaps.length - 1].collateralNonce
-            );
-
-        // If index is out of bounds, revert
-        if (_debtMaps.length < _index) revert InvalidIndex();
-
-        // Return the debt at the index
-        return (_debtMaps[_index].debtId, _debtMaps[_index].collateralNonce);
-    }
-
-    /**
-     * Returns the nonce of the next loan contract for a collateral.
-     *
-     * @param _collateralAddress The address of the ERC721 collateral token.
-     * @param _collateralId The ID of the ERC721 collateral token.
-     *
-     * @return The nonce of the next loan contract for a collateral.
-     */
-    function collateralNonce(
-        address _collateralAddress,
-        uint256 _collateralId
-    ) external view returns (uint256) {
-        if (__debtMaps[_collateralAddress][_collateralId].length == 0) return 1;
-
-        (, uint256 _collateralNonce) = collateralDebtAt(
-            _collateralAddress,
-            _collateralId,
-            type(uint256).max
-        );
-
-        return _collateralNonce + 1;
     }
 
     /**
@@ -199,21 +71,9 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
 
         // Set debt
-        DebtMap[] storage _debtMaps = __debtMaps[_collateralAddress][
+        (, uint256 _collateralNonce) = _writeDebt(
+            _collateralAddress,
             _collateralId
-        ];
-
-        // Record new collateral nonce
-        uint256 _collateralNonce = _debtMaps.length == 0
-            ? 1
-            : _debtMaps[_debtMaps.length - 1].collateralNonce + 1;
-
-        // Clear previous debts
-        delete __debtMaps[_collateralAddress][_collateralId];
-
-        // Set debt fields
-        _debtMaps.push(
-            DebtMap({debtId: ++totalDebts, collateralNonce: _collateralNonce})
         );
 
         // Verify borrower participation
@@ -233,7 +93,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
         );
 
         // Add debt to database
-        __setLoanAgreement(_toUint64(block.timestamp), 1, _contractTerms);
+        __sealLoanContract(_toUint64(block.timestamp), 1, _contractTerms);
 
         // The collateral ID and address will be mapped within
         // the loan collateral vault to the debt ID.
@@ -324,27 +184,15 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             .getCollateral(_debtId);
 
         // Set debt
-        DebtMap[] storage _debtMaps = __debtMaps[_collateral.collateralAddress][
+        (uint256 _debtMapLength, ) = _appendDebt(
+            _collateral.collateralAddress,
             _collateral.collateralId
-        ];
-
-        _debtMaps.push(
-            DebtMap({
-                debtId: ++totalDebts,
-                collateralNonce: _debtMaps[_debtMaps.length - 1]
-                    .collateralNonce + 1
-            })
-        );
-
-        // Verify borrower participation
-        IERC721Metadata _collateralToken = IERC721Metadata(
-            _collateral.collateralAddress
         );
 
         // Add debt to database
-        __setLoanAgreement(
+        __sealLoanContract(
             _toUint64(block.timestamp),
-            _debtMaps.length,
+            _debtMapLength,
             _contractTerms
         );
 
@@ -353,7 +201,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _debtMaps.length
+            _debtMapLength
         );
 
         // Replace or reduce previous debt. Any excess funds will
@@ -380,7 +228,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _debtMaps.length
+            _debtMapLength
         );
     }
 
@@ -432,23 +280,15 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             .getCollateral(_debtId);
 
         // Set debt
-        DebtMap[] storage _debtMaps = __debtMaps[_collateral.collateralAddress][
+        (uint256 _debtMapLength, ) = _appendDebt(
+            _collateral.collateralAddress,
             _collateral.collateralId
-        ];
-
-        // Set debt fields
-        _debtMaps.push(
-            DebtMap({
-                debtId: ++totalDebts,
-                collateralNonce: _debtMaps[_debtMaps.length - 1]
-                    .collateralNonce + 1
-            })
         );
 
         // Add debt to database
-        __setLoanAgreement(
+        __sealLoanContract(
             _toUint64(block.timestamp),
-            _debtMaps.length,
+            _debtMapLength,
             getDebtTerms(_debtId)
         );
 
@@ -457,16 +297,13 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _debtMaps.length
+            _debtMapLength
         );
 
         // Record balance for redistribution of debt.
         // @note: This is necessary since the debt will be reduced
         // by the sponsorPayment function.
-        uint256 _balance = _anzaToken.balanceOf(
-            _anzaToken.lenderOf(_debtId),
-            _anzaToken.lenderTokenId(_debtId)
-        );
+        uint256 _balance = lenderDebtBalance(_debtId);
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
@@ -492,11 +329,25 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary, TypeUtils {
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
-            _debtMaps.length
+            _debtMapLength
         );
     }
 
-    function __setLoanAgreement(
+    /**
+     * Seal a loan agreement between a borrower and lender.
+     *
+     * @dev This function is called by the initLoanContract functions when a loan
+     * agreement is validated. Following the completion of this function, a new
+     * deb will be added to the `__packedDebtTerms` mapping as specified within
+     * LoanCodec.sol.
+     *
+     * @param _now The current timestamp.
+     * @param _activeLoanIndex The index of the active loan.
+     * @param _contractTerms The contract terms.
+     *
+     * @dev Reverts if the `_activeLoanIndex` exceeds the maximum refinances.
+     */
+    function __sealLoanContract(
         uint64 _now,
         uint256 _activeLoanIndex,
         bytes32 _contractTerms

@@ -7,7 +7,7 @@ out = 'anza/src/artifacts'
 libs = ["node_modules", "lib"]
 remappings = [
     '@optionality.io/=node_modules/@optionality.io/',
-    'eth-gas-reporter/=node_modules/eth-gas-reporter/',
+    'eth-gas-reporter/=node_modules/eth-gas-reporter/'
 ]
 solc = "0.8.20"
 gas_reports = ["LoanContract", "LoanTreasurey", "CollateralVault", "AnzaDebtStorefront"]

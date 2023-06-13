@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../contracts/domain/LoanContractStates.sol";
-import "../../contracts/domain/LoanContractFIRIntervals.sol";
+import {console} from "forge-std/console.sol";
+import {Test} from "forge-std/Test.sol";
 
-import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
+import "@lending-constants/LoanContractStates.sol";
+import "@lending-constants/LoanContractFIRIntervals.sol";
+
 import {Setup} from "../Setup.t.sol";
-import {Test, console, LoanSigned} from "../LoanContract.t.sol";
+import {LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractSubmitFunctions} from "./LoanContractSubmission.t.sol";
+import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
 
 contract LoanContractCompounding is LoanContractSubmitFunctions {
     function setUp() public virtual override {

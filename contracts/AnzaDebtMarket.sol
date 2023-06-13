@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import {_ADMIN_} from "./domain/LoanContractRoles.sol";
-import "./domain/AnzaDebtMarketRoles.sol";
-import "./domain/AnzaDebtStorefrontSelectors.sol";
+import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
+import "@market-constants/AnzaDebtMarketRoles.sol";
+import "@market-constants/AnzaDebtStorefrontSelectors.sol";
 
-import {IAnzaDebtMarket} from "./interfaces/IAnzaDebtMarket.sol";
-import {AnzaBaseMarketParticipant} from "./storefronts/AnzaBaseMarketParticipant.sol";
+import {IAnzaDebtMarket} from "@market-interfaces/IAnzaDebtMarket.sol";
+import {AnzaBaseMarketParticipant} from "@base/storefronts/AnzaBaseMarketParticipant.sol";
+
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract AnzaDebtMarket is

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import "./domain/LoanNotaryTypeHashes.sol";
+import "@lending-constants/LoanNotaryTypeHashes.sol";
+import {InvalidSigner} from "@custom-errors/StdNotaryErrors.sol";
 
-import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "./interfaces/ILoanNotary.sol";
-import {LibLoanNotary} from "./libraries/LibLoanNotary.sol";
+import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
+import {LibLoanNotary} from "@lending-libraries/LibLoanNotary.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {_TYPE_HASH_} from "./domain/LoanNotaryTypeHashes.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of
@@ -89,7 +89,7 @@ abstract contract LoanNotary is ILoanNotary {
         if (
             _borrower == msg.sender ||
             _borrower != _recoverSigner(_contractParams, _borrowerSignature)
-        ) revert InvalidParticipant();
+        ) revert InvalidSigner();
 
         return _borrower;
     }
@@ -224,7 +224,7 @@ abstract contract DebtNotary is IDebtNotary {
         if (
             _seller == msg.sender ||
             _seller != _recoverSigner(_debtParams, _sellerSignature)
-        ) revert InvalidParticipant();
+        ) revert InvalidSigner();
 
         return _seller;
     }
@@ -359,7 +359,7 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
         if (
             _seller == msg.sender ||
             _seller != _recoverSigner(_sponsorshipParams, _sellerSignature)
-        ) revert InvalidParticipant();
+        ) revert InvalidSigner();
 
         return _seller;
     }
@@ -490,16 +490,10 @@ abstract contract RefinanceNotary is IRefinanceNotary {
     ) internal view returns (address) {
         address _borrower = ownerOf(_assetId);
 
-        console.log(
-            _borrower,
-            msg.sender,
-            _recoverSigner(_refinanceParams, _sellerSignature)
-        );
-
         if (
             _borrower == msg.sender ||
             _borrower != _recoverSigner(_refinanceParams, _sellerSignature)
-        ) revert InvalidParticipant();
+        ) revert InvalidSigner();
 
         return _borrower;
     }

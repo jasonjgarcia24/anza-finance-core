@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import "./domain/LoanContractErrorCodes.sol";
-import "./domain/LoanContractFIRIntervals.sol";
-import "./domain/LoanContractNumbers.sol";
-import "./domain/LoanContractTermMaps.sol";
-import "./domain/LoanContractStates.sol";
-import "./domain/LoanCodecErrorCodes.sol";
+import "@universal-numbers/StdNumbers.sol";
+import "@lending-constants/LoanContractFIRIntervals.sol";
+import "@lending-constants/LoanContractNumbers.sol";
+import "@lending-constants/LoanContractTermMaps.sol";
+import "@lending-constants/LoanContractStates.sol";
+import {InvalidLoanParameter, _INVALID_LOAN_PARAMETER_SELECTOR_, _INACTIVE_LOAN_STATE_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
+import {_FIR_INTERVAL_ERROR_ID_, _DURATION_ERROR_ID_, _PRINCIPAL_ERROR_ID_, _FIXED_INTEREST_RATE_ERROR_ID_, _TIME_EXPIRY_ERROR_ID_, _LENDER_ROYALTIES_ERROR_ID_} from "@custom-errors/StdLoanErrors.sol";
 
-import {ILoanCodec} from "./interfaces/ILoanCodec.sol";
-import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
+import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {LibLoanContractInterest as Interest} from "@lending-libraries/LibLoanContract.sol";
 
 abstract contract LoanCodec is ILoanCodec {
     /**

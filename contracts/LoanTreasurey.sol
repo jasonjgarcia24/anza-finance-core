@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import "./domain/LoanContractFIRIntervals.sol";
-import "./domain/LoanContractRoles.sol";
-import "./domain/LoanContractStates.sol";
-import "./domain/AnzaTokenTransferTypes.sol";
-import "./domain/AnzaDebtMarketRoles.sol";
+import "@lending-constants/LoanContractFIRIntervals.sol";
+import "@lending-constants/LoanContractRoles.sol";
+import "@lending-constants/LoanContractStates.sol";
+import "@token-constants/AnzaTokenTransferTypes.sol";
+import "@market-constants/AnzaDebtMarketRoles.sol";
 
-import {ILoanTreasurey} from "./interfaces/ILoanTreasurey.sol";
-import {ICollateralVault} from "./interfaces/ICollateralVault.sol";
-import {TreasureyAccessController} from "./access/TreasureyAccessController.sol";
-import {LibLoanContractInterest as Interest} from "./libraries/LibLoanContract.sol";
+import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
+import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {TreasureyAccessController} from "@lending-access/TreasureyAccessController.sol";
+import {LibLoanContractInterest as Interest} from "@lending-libraries/LibLoanContract.sol";
+
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 

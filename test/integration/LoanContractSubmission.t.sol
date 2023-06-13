@@ -1,20 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../contracts/domain/LoanContractErrorCodes.sol";
-import "../../contracts/domain/LoanContractNumbers.sol";
-import "../../contracts/domain/LoanContractStates.sol";
-import "../../contracts/domain/LoanCodecErrorCodes.sol";
+import {console} from "forge-std/console.sol";
+import {Test} from "forge-std/Test.sol";
 
-import {IAnzaToken} from "../../contracts/interfaces/IAnzaToken.sol";
+import "@lending-constants/LoanContractNumbers.sol";
+import "@lending-constants/LoanContractStates.sol";
+import "@custom-errors/StdLoanErrors.sol";
+import "@custom-errors/StdCodecErrors.sol";
+
+import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
+import {IDebtBook} from "@lending-interfaces/IDebtBook.sol";
+import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {LibLoanContractInterest as Interest} from "@lending-libraries/LibLoanContract.sol";
+
+import {LoanSigned} from "../LoanContract.t.sol";
+import {LoanContractHarness} from "../Setup.t.sol";
 import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
 import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
-import {ILoanContract} from "../../contracts/interfaces/ILoanContract.sol";
-import {ILoanCodec} from "../../contracts/interfaces/ILoanCodec.sol";
+
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {Test, console, LoanSigned} from "../LoanContract.t.sol";
-import {LoanContractHarness} from "../Setup.t.sol";
-import {LibLoanContractInterest as Interest} from "../../contracts/libraries/LibLoanContract.sol";
 
 abstract contract LoanContractSubmitFunctions is
     IERC721Events,
@@ -126,7 +131,7 @@ abstract contract LoanContractSubmitFunctions is
         address _collateralAddress,
         uint256 _debtId
     ) public {
-        ILoanContract _loanContract = ILoanContract(_loanContractAddress);
+        IDebtBook _loanContract = IDebtBook(_loanContractAddress);
         (uint256 __debtId, ) = _loanContract.collateralDebtAt(
             _collateralAddress,
             collateralId,

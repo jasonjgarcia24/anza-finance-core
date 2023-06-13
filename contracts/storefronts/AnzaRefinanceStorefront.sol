@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import {console} from "../../lib/forge-std/src/console.sol";
+import {console} from "forge-std/console.sol";
 
-import {IAnzaRefinanceStorefront} from "../interfaces/IAnzaRefinanceStorefront.sol";
-import {AnzaBaseMarketParticipant, NonceLocker} from "./AnzaBaseMarketParticipant.sol";
-import {AnzaRefinanceStorefrontAccessController} from "../access/AnzaRefinanceStorefrontAccessController.sol";
-import {ILoanContract} from "../interfaces/ILoanContract.sol";
+import {IAnzaRefinanceStorefront} from "@market-interfaces/IAnzaRefinanceStorefront.sol";
+import {AnzaBaseMarketParticipant, NonceLocker} from "@base/storefronts/AnzaBaseMarketParticipant.sol";
+import {AnzaRefinanceStorefrontAccessController} from "@market-access/AnzaRefinanceStorefrontAccessController.sol";
+import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
 
 contract AnzaRefinanceStorefront is
     IAnzaRefinanceStorefront,

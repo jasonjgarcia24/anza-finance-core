@@ -1,25 +1,28 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "../lib/forge-std/src/Test.sol";
-import "../lib/forge-std/src/console.sol";
+import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 
-import "../contracts/domain/LoanContractFIRIntervals.sol";
-import "../contracts/domain/LoanContractRoles.sol";
-import "../contracts/domain/LoanContractStates.sol";
+import "@lending-constants/LoanContractFIRIntervals.sol";
+import "@lending-constants/LoanContractRoles.sol";
+import "@lending-constants/LoanContractStates.sol";
+import {InvalidCollateral} from "@custom-errors/StdLoanErrors.sol";
+import {InactiveLoanState} from "@custom-errors/StdCodecErrors.sol";
 
-import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
-import {LoanContract} from "../contracts/LoanContract.sol";
-import {CollateralVault} from "../contracts/CollateralVault.sol";
-import {LoanTreasurey} from "../contracts/LoanTreasurey.sol";
-import {ILoanContract} from "../contracts/interfaces/ILoanContract.sol";
-import {ILoanCodec} from "../contracts/interfaces/ILoanCodec.sol";
-import {ILoanTreasurey} from "../contracts/interfaces/ILoanTreasurey.sol";
-import {DemoToken} from "../contracts/utils/DemoToken.sol";
-import {AnzaToken} from "../contracts/token/AnzaToken.sol";
-import {LibLoanContractTerms as Terms} from "../contracts/libraries/LibLoanContract.sol";
-import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers} from "../contracts/libraries/LibLoanContractConstants.sol";
+import {LoanContract} from "@base/LoanContract.sol";
+import {CollateralVault} from "@base/CollateralVault.sol";
+import {LoanTreasurey} from "@base/LoanTreasurey.sol";
+import {DemoToken} from "@base/utils/DemoToken.sol";
+import {AnzaToken} from "@base/token/AnzaToken.sol";
+import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
+import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
+import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers} from "@helper-libraries/LibLoanContractConstants.sol";
+import {LibLoanContractTerms as Terms} from "@lending-libraries/LibLoanContract.sol";
+
 import {Utils, Setup} from "./Setup.t.sol";
+import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
 
 abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
     function setUp() public virtual override {
@@ -230,9 +233,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Loan state update should fail because there is no loan
         vm.deal(treasurer, 1 ether);
         vm.startPrank(address(loanTreasurer));
-        vm.expectRevert(
-            abi.encodeWithSelector(ILoanCodec.InactiveLoanState.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(InactiveLoanState.selector));
         loanContract.updateLoanState(_debtId);
         vm.stopPrank();
 
@@ -532,9 +533,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
     }
 
     function testLoanContract__GetCollateralDebtId() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(ILoanContract.InvalidCollateral.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(InvalidCollateral.selector));
         // ILoanContract.DebtMap memory _debtMap = loanContract.collateralDebtAt(
         (uint256 _debtId, ) = loanContract.collateralDebtAt(
             address(demoToken),
@@ -545,7 +544,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         // Create loan contract
         createLoanContract(collateralId);
 
-        (_debtId,) = loanContract.collateralDebtAt(
+        (_debtId, ) = loanContract.collateralDebtAt(
             address(demoToken),
             collateralId,
             type(uint256).max
@@ -1219,9 +1218,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
     function testLoanContract__VerifyLoanActive() public {
         uint256 _debtId = loanContract.totalDebts();
 
-        vm.expectRevert(
-            abi.encodeWithSelector(ILoanCodec.InactiveLoanState.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(InactiveLoanState.selector));
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract
@@ -1273,9 +1270,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         loanContract.verifyLoanActive(_debtId);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(ILoanCodec.InactiveLoanState.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(InactiveLoanState.selector));
         loanContract.verifyLoanActive(_refDebtId);
     }
 
