@@ -10,6 +10,20 @@ import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@l
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
+/**
+ * @title AnzaNotary
+ * @author jjgarcia.eth
+ * @notice The AnzaNotary library provides functions to recovery and validate
+ * debt transaction signatures.
+ *
+ * @dev This library is an interface for using the EIP-1271 standard for
+ * signature validation. Currently, this library supports debt transaction
+ * signature validation for initial Loan terms and Debt, Refinance, and
+ * Sponsorship sales.
+ *
+ * See {LoanNotary:LoanNotary, LoanNotary:DebtNotary,
+ * LoanNotary:RefinanceNotary, LoanNotary:SponsorshipNotary}.
+ */
 library AnzaNotary {
     struct DomainSeparator {
         string name;
