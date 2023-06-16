@@ -5,20 +5,29 @@ import "@lending-constants/LoanContractTermMaps.sol";
 
 import "@abdk-libraries/ABDKMath64x64.sol";
 
+/**
+ * @title DebtTermIndexer
+ * @author jjgarcia.eth
+ * @notice The DebtTermIndexer library provides functions to index and set
+ * the debt terms for a given debt ID.
+ *
+ * @dev The debt terms are packed into a single bytes32 value. The debt terms
+ * are indexed as follows within the DebtTermMap.packedDebtTerms mapping:
+ *  > 004 - [0..3]     `loanState`
+ *  > 004 - [4..7]     `firInterval`
+ *  > 008 - [8..15]    `fixedInterestRate`
+ *  > 064 - [16..79]   `loanStart`
+ *  > 032 - [80..111]  `loanDuration`
+ *  > 004 - [112..115] `isFixed`
+ *  > 008 - [116..123] `commital`
+ *  > 160 - [124..239]  unused space
+ *  > 008 - [240..247] `lenderRoyalties`
+ *  > 008 - [248..255] `activeLoanIndex`
+ *
+ * Alternatively, see {LendingContractTermMaps} for mappings.
+ */
 library DebtTermIndexer {
     struct DebtTermMap {
-        /**
-         *  > 004 - [0..3]     `loanState`
-         *  > 004 - [4..7]     `firInterval`
-         *  > 008 - [8..15]    `fixedInterestRate`
-         *  > 064 - [16..79]   `loanStart`
-         *  > 032 - [80..111]  `loanDuration`
-         *  > 004 - [112..115] `isFixed`
-         *  > 008 - [116..123] `commital`
-         *  > 160 - [124..239]  unused space
-         *  > 008 - [240..247] `lenderRoyalties`
-         *  > 008 - [248..255] `activeLoanIndex`
-         */
         mapping(uint256 debtId => bytes32) packedDebtTerms;
     }
 

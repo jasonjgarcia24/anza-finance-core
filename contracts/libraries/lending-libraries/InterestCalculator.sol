@@ -3,6 +3,17 @@ pragma solidity 0.8.20;
 
 import "@abdk-libraries/ABDKMath64x64.sol";
 
+/**
+ * @title InterestCalculator
+ * @author jjgarcia.eth
+ * @notice The InterestCalculator library provides functions to calculate interest
+ * of a debt account.
+ *
+ * @dev This library is a interface for using the ABDKMath64x64 library for
+ * interest calculations.
+ *
+ * See {ABDKMath64x64}.
+ */
 library InterestCalculator {
     function compoundWithTopoff(
         uint256 _principal,
