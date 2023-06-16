@@ -117,9 +117,6 @@ contract AnzaDebtMarket is
             abi.encodePacked(_calldata)
         );
 
-        console.log("AnzaDebtMarket.fallback() success: %s", _success);
-        console.logBytes(_data);
-
         // Return error if one is present
         if (!_success) _revert(_data);
     }
