@@ -101,8 +101,8 @@ contract AnzaDebtMarket is
      * validation process.
      *
      * @notice All Anza Storefronts must inherit and implement the IAnzaStorefront
-     * interface and AnzaBaseStorefront abstract contract. Note, there shall not
-     * be any implementation of selfdestruct in any Anza Storefront contract.
+     * interface and AnzaBaseMarketParticipant abstract contract. Note, there shall
+     * not be any implementation of selfdestruct in any Anza Storefront contract.
      */
     fallback() external payable {
         // Pop contract address from calldata
