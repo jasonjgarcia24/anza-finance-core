@@ -13,7 +13,7 @@ import {_FIR_INTERVAL_ERROR_ID_, _DURATION_ERROR_ID_, _PRINCIPAL_ERROR_ID_, _FIX
 
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
-import {LibLoanContractInterest as Interest} from "@lending-libraries/LibLoanContract.sol";
+import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 abstract contract LoanCodec is ILoanCodec, DebtTerms {
     function supportsInterface(

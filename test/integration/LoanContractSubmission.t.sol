@@ -12,7 +12,7 @@ import "@custom-errors/StdCodecErrors.sol";
 import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
-import {LibLoanContractInterest as Interest} from "@lending-libraries/LibLoanContract.sol";
+import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 import {LoanSigned} from "../LoanContract.t.sol";
 import {LoanContractHarness} from "../Setup.t.sol";

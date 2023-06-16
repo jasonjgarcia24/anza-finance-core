@@ -104,7 +104,7 @@ contract AnzaDebtStorefront is
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the debt ID is owned by the caller.
      *
-     * @dev See {LibLoanNotary:LibLoanNotary-typeDataHash} for signature
+     * @dev See {AnzaNotary:AnzaNotary-typeDataHash} for signature
      * construction.
      */
     function buyDebt(
@@ -144,7 +144,7 @@ contract AnzaDebtStorefront is
      * @dev Reverts if the listing nonce listing type is invalid.
      * @dev Reverts if the listing nonce is invalid.
      *
-     * @dev See {LibLoanNotary:LibLoanNotary-typeDataHash} for signature construction.
+     * @dev See {AnzaNotary:AnzaNotary-typeDataHash} for signature construction.
      */
     function buyDebt(
         address _collateralAddress,
@@ -293,7 +293,9 @@ contract AnzaDebtStorefront is
         uint256 _price,
         address _seller
     ) internal {
-        (bool _success, ) = loanTreasurerAddress.call{value: _price}(
+        (bool _success, bytes memory _data) = loanTreasurerAddress.call{
+            value: _price
+        }(
             abi.encodeWithSignature(
                 "executeDebtPurchase(address,uint256,address,address)",
                 _collateralAddress,
@@ -302,6 +304,8 @@ contract AnzaDebtStorefront is
                 msg.sender
             )
         );
-        require(_success);
+
+        // Return error if one is present
+        if (!_success) _revert(_data);
     }
 }

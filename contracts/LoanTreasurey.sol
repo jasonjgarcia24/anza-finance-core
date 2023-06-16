@@ -15,7 +15,7 @@ import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 import {TreasureyAccessController} from "@lending-access/TreasureyAccessController.sol";
-import {LibLoanContractInterest as Interest} from "@lending-libraries/LibLoanContract.sol";
+import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";

@@ -10,7 +10,7 @@ import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@l
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-library LibLoanNotary {
+library AnzaNotary {
     struct DomainSeparator {
         string name;
         string version;

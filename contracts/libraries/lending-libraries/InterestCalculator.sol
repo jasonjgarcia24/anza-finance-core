@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "@abdk-libraries/ABDKMath64x64.sol";
 
-library LibLoanContractInterest {
+library InterestCalculator {
     function compoundWithTopoff(
         uint256 _principal,
         uint256 _ratio,

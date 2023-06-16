@@ -118,17 +118,9 @@ contract AnzaDebtMarket is
         );
 
         console.log("AnzaDebtMarket.fallback() success: %s", _success);
+        console.logBytes(_data);
 
-        // Complete if successful
-        if (_success) return;
-
-        // Revert with error message from storefront contract delegatecall
-        uint256 _lenData = _data.length;
-        bytes32 _numData = bytes32(_data);
-
-        assembly {
-            mstore(0x00, _numData)
-            revert(0x00, _lenData)
-        }
+        // Return error if one is present
+        if (!_success) _revert(_data);
     }
 }

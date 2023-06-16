@@ -28,4 +28,20 @@ abstract contract AnzaBaseMarketParticipant is IAnzaBaseMarketParticipant {
     function nonce() external view returns (uint256) {
         return _nonces.length;
     }
+
+    /**
+     * Return an error of unknown length that are no longer than 32 bytes.
+     *
+     * @dev This revert function facilitates Anza Storefronts bubbling up errors
+     * to the Anza Marketplace.
+     */
+    function _revert(bytes memory _error) internal pure {
+        uint256 _lenError = _error.length;
+        bytes32 _numError = bytes32(_error);
+
+        assembly {
+            mstore(0x00, _numError)
+            revert(0x00, _lenError)
+        }
+    }
 }

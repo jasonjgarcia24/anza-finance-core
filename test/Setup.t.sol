@@ -17,7 +17,7 @@ import {AnzaDebtMarket} from "@base/AnzaDebtMarket.sol";
 import {AnzaDebtStorefront} from "@base/storefronts/AnzaDebtStorefront.sol";
 import {AnzaSponsorshipStorefront} from "@base/storefronts/AnzaSponsorshipStorefront.sol";
 import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront.sol";
-import {LibLoanNotary as Signing} from "@lending-libraries/LibLoanNotary.sol";
+import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 
 import {DemoToken} from "./DemoToken.sol";
 import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
@@ -132,9 +132,9 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     AnzaSponsorshipStorefront public anzaSponsorshipStorefront;
     AnzaRefinanceStorefront public anzaRefinanceStorefront;
 
-    Signing.DomainSeparator public debtDomainSeparator;
-    Signing.DomainSeparator public sponsorshipDomainSeparator;
-    Signing.DomainSeparator public refinanceDomainSeparator;
+    Notary.DomainSeparator public debtDomainSeparator;
+    Notary.DomainSeparator public sponsorshipDomainSeparator;
+    Notary.DomainSeparator public refinanceDomainSeparator;
 
     struct ContractTerms {
         uint8 firInterval;
@@ -237,21 +237,21 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         loanTreasurer.grantRole(_DEBT_MARKET_, address(anzaDebtMarket));
         vm.stopPrank();
 
-        debtDomainSeparator = Signing.DomainSeparator({
+        debtDomainSeparator = Notary.DomainSeparator({
             name: "AnzaDebtStorefront",
             version: "0",
             chainId: block.chainid,
             contractAddress: address(anzaDebtStorefront)
         });
 
-        sponsorshipDomainSeparator = Signing.DomainSeparator({
+        sponsorshipDomainSeparator = Notary.DomainSeparator({
             name: "AnzaSponsorshipStorefront",
             version: "0",
             chainId: block.chainid,
             contractAddress: address(anzaSponsorshipStorefront)
         });
 
-        refinanceDomainSeparator = Signing.DomainSeparator({
+        refinanceDomainSeparator = Notary.DomainSeparator({
             name: "AnzaRefinanceStorefront",
             version: "0",
             chainId: block.chainid,
@@ -313,7 +313,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         bytes32 _contractTerms
     ) public virtual returns (bytes memory _signature) {
         // Create message for signing
-        bytes32 _message = Signing.typeDataHash(
+        bytes32 _message = Notary.typeDataHash(
             ILoanNotary.ContractParams({
                 principal: _principal,
                 contractTerms: _contractTerms,
@@ -321,7 +321,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
                 collateralId: _collateralId,
                 collateralNonce: _collateralNonce
             }),
-            Signing.DomainSeparator({
+            Notary.DomainSeparator({
                 name: "LoanContract",
                 version: "0",
                 chainId: block.chainid,
@@ -498,7 +498,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _sellerPrivateKey,
         IDebtNotary.DebtParams memory _debtParams
     ) public virtual returns (bytes memory _signature) {
-        bytes32 _message = Signing.typeDataHash(
+        bytes32 _message = Notary.typeDataHash(
             _debtParams,
             debtDomainSeparator
         );
@@ -512,7 +512,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _sellerPrivateKey,
         ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams
     ) public virtual returns (bytes memory _signature) {
-        bytes32 _message = Signing.typeDataHash(
+        bytes32 _message = Notary.typeDataHash(
             _sponsorshipParams,
             sponsorshipDomainSeparator
         );
@@ -526,7 +526,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _sellerPrivateKey,
         IRefinanceNotary.RefinanceParams memory _refinanceParams
     ) public virtual returns (bytes memory _signature) {
-        bytes32 _message = Signing.typeDataHash(
+        bytes32 _message = Notary.typeDataHash(
             _refinanceParams,
             refinanceDomainSeparator
         );
@@ -540,7 +540,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint256 _sellerPrivateKey,
         IRefinanceNotary.RefinanceParams memory _debtRefinanceParams
     ) public virtual returns (bytes memory _signature) {
-        bytes32 _message = Signing.typeDataHash(
+        bytes32 _message = Notary.typeDataHash(
             _debtRefinanceParams,
             refinanceDomainSeparator
         );

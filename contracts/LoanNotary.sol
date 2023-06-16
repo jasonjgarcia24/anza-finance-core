@@ -7,7 +7,7 @@ import "@lending-constants/LoanNotaryTypeHashes.sol";
 import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 
 import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
-import {LibLoanNotary} from "@lending-libraries/LibLoanNotary.sol";
+import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
@@ -106,9 +106,7 @@ abstract contract LoanNotary is ILoanNotary {
     ) internal view returns (address) {
         bytes32 _message = __typeDataHash(_contractParams);
 
-        (uint8 v, bytes32 r, bytes32 s) = LibLoanNotary.splitSignature(
-            _signature
-        );
+        (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
         return ECDSA.recover(_message, v, r, s);
     }
@@ -241,9 +239,7 @@ abstract contract DebtNotary is IDebtNotary {
     ) internal view returns (address) {
         bytes32 _message = __typeDataHash(_debtParams);
 
-        (uint8 v, bytes32 r, bytes32 s) = LibLoanNotary.splitSignature(
-            _signature
-        );
+        (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
         return ECDSA.recover(_message, v, r, s);
     }
@@ -376,9 +372,7 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
     ) internal view returns (address) {
         bytes32 _message = __typeDataHash(_sponsorshipParams);
 
-        (uint8 v, bytes32 r, bytes32 s) = LibLoanNotary.splitSignature(
-            _signature
-        );
+        (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
         return ECDSA.recover(_message, v, r, s);
     }
@@ -510,9 +504,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
     ) internal view returns (address) {
         bytes32 _message = __typeDataHash(_refinanceParams);
 
-        (uint8 v, bytes32 r, bytes32 s) = LibLoanNotary.splitSignature(
-            _signature
-        );
+        (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
         return ECDSA.recover(_message, v, r, s);
     }

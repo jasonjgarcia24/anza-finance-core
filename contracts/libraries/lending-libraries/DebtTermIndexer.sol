@@ -5,7 +5,7 @@ import "@lending-constants/LoanContractTermMaps.sol";
 
 import "@abdk-libraries/ABDKMath64x64.sol";
 
-library LibLoanCodecIndexer {
+library DebtTermIndexer {
     struct DebtTermMap {
         /**
          *  > 004 - [0..3]     `loanState`
@@ -245,6 +245,8 @@ library LibLoanCodecIndexer {
     /**
      * Returns the loan commital time for a given debt ID.
      *
+     * TODO: This is a nice method, but currently unused. Remove?
+     *
      * @dev The loan commital is the time commitment of the borrower to the
      * lender. Therefore, the if the current timestamp is within the loan
      * commital time, the borrower cannot sale the debt nor refinance it.
@@ -331,8 +333,8 @@ library LibLoanCodecIndexer {
     /**
      * Returns the active loan count of a given collateralized token.
      *
-     * TODO: This is not used anywhere, remove? It is also captured in
-     * the DebtMaps database.
+     * TODO: This is not used anywhere. It is also captured in the DebtMaps
+     * database. Remove?
      *
      * @param _map The debt term map.
      * @param _debtId The debt ID.

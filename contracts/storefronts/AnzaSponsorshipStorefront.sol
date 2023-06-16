@@ -109,7 +109,7 @@ contract AnzaSponsorshipStorefront is
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the caller is the lender of the debt ID.
      *
-     * @dev See {LibLoanNotary:LibLoanNotary-typeDataHash} for signature construction.
+     * @dev See {AnzaNotary:AnzaNotary-typeDataHash} for signature construction.
      */
     function buySponsorship(
         uint256 _debtId,
@@ -145,7 +145,7 @@ contract AnzaSponsorshipStorefront is
      * @dev Reverts if the listing nonce listing type is invalid.
      * @dev Reverts if the listing nonce is invalid.
      *
-     * @dev See {LibLoanNotary:LibLoanNotary-typeDataHash} for signature construction.
+     * @dev See {AnzaNotary:AnzaNotary-typeDataHash} for signature construction.
      */
     function buySponsorship(
         uint256 _debtId,
@@ -275,13 +275,15 @@ contract AnzaSponsorshipStorefront is
         uint256 _price,
         address /* _seller */
     ) internal {
-        (bool _success, ) = loanTreasurerAddress.call{value: _price}(
+        (bool _success, bytes memory _data) = loanTreasurerAddress.call{value: _price}(
             abi.encodeWithSignature(
                 "executeSponsorshipPurchase(uint256,address)",
                 _debtId,
                 msg.sender
             )
         );
-        require(_success);
+
+        // Return error if one is present
+        if (!_success) _revert(_data);
     }
 }

@@ -2,22 +2,15 @@
 pragma solidity 0.8.20;
 
 import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
-import {LibLoanCodecIndexer as Indexer} from "@lending-libraries/LibLoanCodec.sol";
+import {DebtTermIndexer as Indexer} from "@lending-libraries/DebtTermIndexer.sol";
 
 abstract contract DebtTerms is IDebtTerms {
     using Indexer for Indexer.DebtTermMap;
 
     /**
-     *  > 004 - [0..3]     `loanState`
-     *  > 004 - [4..7]     `firInterval`
-     *  > 008 - [8..15]    `fixedInterestRate`
-     *  > 064 - [16..79]   `loanStart`
-     *  > 032 - [80..111]  `loanDuration`
-     *  > 004 - [112..115] `isFixed`
-     *  > 008 - [116..123] `commital`
-     *  > 160 - [124..239]  unused space
-     *  > 008 - [240..247] `lenderRoyalties`
-     *  > 008 - [248..255] `activeLoanIndex`
+     * The packed debt terms for each debt ID.
+     *
+     * See {DebtTermIndexer.packedDebtTerms}.
      */
     Indexer.DebtTermMap private __packedDebtTerms;
 
@@ -32,7 +25,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the packed debt terms for.
      *
-     * See {LibLoanCodecIndexer._debtTerms}.
+     * See {DebtTermIndexer._debtTerms}.
      *
      * @return The packed debt terms for the given debt ID.
      */
@@ -45,7 +38,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to set the packed debt terms for.
      *
-     * See {LibLoanCodecIndexer._setDebtTerms}.
+     * See {DebtTermIndexer._setDebtTerms}.
      */
     function _setDebtTerms(uint256 _debtId, bytes32 _packedDebtTerms) internal {
         __packedDebtTerms._setDebtTerms(_debtId, _packedDebtTerms);
@@ -56,7 +49,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the loan state for.
      *
-     * See {LibLoanCodecIndexer._loanState}.
+     * See {DebtTermIndexer._loanState}.
      *
      * @return The loan state for the given debt ID.
      */
@@ -69,7 +62,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the FIR interval for.
      *
-     * See {LibLoanCodecIndexer._firInterval}.
+     * See {DebtTermIndexer._firInterval}.
      *
      * @return The FIR interval for the given debt ID.
      */
@@ -82,7 +75,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the FIR for.
      *
-     * See {LibLoanCodecIndexer._fixedInterestRate}.
+     * See {DebtTermIndexer._fixedInterestRate}.
      *
      * @return The FIR for the given debt ID.
      */
@@ -95,7 +88,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the is fixed status for.
      *
-     * See {LibLoanCodecIndexer._isFixed}.
+     * See {DebtTermIndexer._isFixed}.
      *
      * @return The is fixed status for the given debt ID.
      */
@@ -109,7 +102,7 @@ abstract contract DebtTerms is IDebtTerms {
      * @param _debtId The debt ID to return the loan last checked
      * timestamp for.
      *
-     * See {LibLoanCodecIndexer._loanLastChecked}.
+     * See {DebtTermIndexer._loanLastChecked}.
      *
      * @return The loan last checked timestamp for the given debt ID.
      */
@@ -122,7 +115,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the loan start timestamp for.
      *
-     * See {LibLoanCodecIndexer._loanStart}.
+     * See {DebtTermIndexer._loanStart}.
      *
      * @return The loan start timestamp for the given debt ID.
      */
@@ -135,7 +128,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the loan duration for.
      *
-     * See {LibLoanCodecIndexer._loanDuration}.
+     * See {DebtTermIndexer._loanDuration}.
      *
      * @return The loan duration for the given debt ID.
      */
@@ -148,7 +141,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the loan commital duration for.
      *
-     * See {LibLoanCodecIndexer._loanCommital}.
+     * See {DebtTermIndexer._loanCommital}.
      *
      * @return The loan commital duration for the given debt ID.
      */
@@ -161,7 +154,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the loan close timestamp for.
      *
-     * See {LibLoanCodecIndexer._loanClose}.
+     * See {DebtTermIndexer._loanClose}.
      *
      * @return The loan close timestamp for the given debt ID.
      */
@@ -174,7 +167,7 @@ abstract contract DebtTerms is IDebtTerms {
      *
      * @param _debtId The debt ID to return the lender royalties for.
      *
-     * See {LibLoanCodecIndexer._lenderRoyalties}.
+     * See {DebtTermIndexer._lenderRoyalties}.
      *
      * @return The lender royalties for the given debt ID.
      */
@@ -184,13 +177,13 @@ abstract contract DebtTerms is IDebtTerms {
 
     /**
      * Returns the active loan count of a given collateralized token.
-     * 
-     * TODO: This is not used anywhere, remove? It is also captured in 
-     * the DebtMaps database.
+     *
+     * TODO: This is not used anywhere. It is also captured in the DebtMaps
+     * database. Remove?
      *
      * @param _debtId The debt ID to return the active loan count for.
      *
-     * See {LibLoanCodecIndexer._activeLoanCount}.
+     * See {DebtTermIndexer._activeLoanCount}.
      *
      * @return The active loan count for the given debt ID.
      */
