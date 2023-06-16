@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
-import {InvalidCollateral} from "@custom-errors/StdLoanErrors.sol";
+import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
 
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
@@ -159,7 +159,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         ];
 
         // If no debt to collateral, revert
-        if (_debtMaps.length == 0) revert InvalidCollateral();
+        if (_debtMaps.length == 0) revert StdLoanErrors.InvalidCollateral();
 
         // Allow an easy way to return the latest debt
         if (_index == type(uint256).max)
@@ -169,7 +169,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
             );
 
         // If index is out of bounds, revert
-        if (_debtMaps.length < _index) revert InvalidCollateral();
+        if (_debtMaps.length < _index) revert StdLoanErrors.InvalidCollateral();
 
         // Return the debt at the index
         return (_debtMaps[_index].debtId, _debtMaps[_index].collateralNonce);

@@ -4,6 +4,8 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 import {stdError} from "forge-std/StdError.sol";
 
+import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
+
 import {ILoanCollateralVaultEvents} from "./interfaces/ILoanCollateralVaultEvents.t.sol";
 import {ILoanTreasureyEvents} from "./interfaces/ILoanTreasureyEvents.t.sol";
 
@@ -255,7 +257,9 @@ contract LoanTreasureyUnitTest is
         vm.startPrank(lender);
         if (_payment == 0) {
             vm.expectRevert(
-                abi.encodeWithSelector(InvalidFundsTransfer.selector)
+                abi.encodeWithSelector(
+                    StdTreasureyErrors.InvalidFundsTransfer.selector
+                )
             );
         } else if (_payment > _PRINCIPAL_) {
             vm.expectRevert(stdError.arithmeticError);

@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
-import {CanceledListing} from "@custom-errors/StdBaseMarketErrors.sol";
+import {StdBaseMarketErrors} from "@custom-errors/StdBaseMarketErrors.sol";
 
 import {IAnzaRefinanceStorefront} from "@market-interfaces/IAnzaRefinanceStorefront.sol";
 import {AnzaBaseMarketParticipant, NonceLocker} from "@market-databases/AnzaBaseMarketParticipant.sol";
@@ -30,7 +30,8 @@ contract AnzaRefinanceStorefront is
     {}
 
     modifier onlyActiveListing(bytes calldata _signature) {
-        if (_canceledListings[keccak256(_signature)]) revert CanceledListing();
+        if (_canceledListings[keccak256(_signature)])
+            revert StdBaseMarketErrors.CanceledListing();
         _;
     }
 

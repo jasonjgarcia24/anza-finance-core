@@ -8,161 +8,20 @@ import "@lending-constants/LoanContractFIRIntervals.sol";
 import "@lending-constants/LoanContractNumbers.sol";
 import "@lending-constants/LoanContractTermMaps.sol";
 import "@lending-constants/LoanContractStates.sol";
-import {InvalidLoanParameter, _INVALID_LOAN_PARAMETER_SELECTOR_, _INACTIVE_LOAN_STATE_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
+import {StdCodecErrors, _INVALID_LOAN_PARAMETER_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
 import {_FIR_INTERVAL_ERROR_ID_, _DURATION_ERROR_ID_, _PRINCIPAL_ERROR_ID_, _FIXED_INTEREST_RATE_ERROR_ID_, _TIME_EXPIRY_ERROR_ID_, _LENDER_ROYALTIES_ERROR_ID_} from "@custom-errors/StdLoanErrors.sol";
 
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {DebtTerms} from "@lending-databases/DebtTerms.sol";
 import {LibLoanContractInterest as Interest} from "@lending-libraries/LibLoanContract.sol";
 
-abstract contract LoanCodec is ILoanCodec {
-    /**
-     *  > 004 - [0..3]     `loanState`
-     *  > 004 - [4..7]     `firInterval`
-     *  > 008 - [8..15]    `fixedInterestRate`
-     *  > 064 - [16..79]   `loanStart`
-     *  > 032 - [80..111]  `loanDuration`
-     *  > 004 - [112..115] `isFixed`
-     *  > 008 - [116..123] `commital`
-     *  > 160 - [124..239]  unused space
-     *  > 008 - [240..247] `lenderRoyalties`
-     *  > 008 - [248..255] `activeLoanIndex`
-     */
-    mapping(uint256 => bytes32) private __packedDebtTerms;
-
+abstract contract LoanCodec is ILoanCodec, DebtTerms {
     function supportsInterface(
         bytes4 _interfaceId
-    ) public view virtual returns (bool) {
-        return _interfaceId == type(ILoanCodec).interfaceId;
-    }
-
-    function getDebtTerms(uint256 _debtId) public view returns (bytes32) {
-        return __packedDebtTerms[_debtId];
-    }
-
-    function loanState(
-        uint256 _debtId
-    ) public view returns (uint256 _loanState) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _loanState := and(_contractTerms, _LOAN_STATE_MAP_)
-        }
-    }
-
-    function firInterval(
-        uint256 _debtId
-    ) public view returns (uint256 _firInterval) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _firInterval := shr(
-                _FIR_INTERVAL_POS_,
-                and(_contractTerms, _FIR_INTERVAL_MAP_)
-            )
-        }
-    }
-
-    function fixedInterestRate(
-        uint256 _debtId
-    ) public view returns (uint256 _fixedInterestRate) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _fixedInterestRate := shr(_FIR_POS_, and(_contractTerms, _FIR_MAP_))
-        }
-    }
-
-    function isFixed(uint256 _debtId) public view returns (uint256 _isFixed) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _isFixed := shr(_IS_FIXED_POS_, and(_contractTerms, _IS_FIXED_MAP_))
-        }
-    }
-
-    function loanLastChecked(uint256 _debtId) external view returns (uint256) {
-        return loanStart(_debtId);
-    }
-
-    function loanStart(
-        uint256 _debtId
-    ) public view returns (uint256 _loanStart) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _loanStart := shr(
-                _LOAN_START_POS_,
-                and(_contractTerms, _LOAN_START_MAP_)
-            )
-        }
-    }
-
-    function loanDuration(
-        uint256 _debtId
-    ) public view returns (uint256 _loanDuration) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _loanDuration := shr(
-                _LOAN_DURATION_POS_,
-                and(_contractTerms, _LOAN_DURATION_MAP_)
-            )
-        }
-    }
-
-    function loanCommital(
-        uint256 _debtId
-    ) public view returns (uint256 _loanCommital) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _loanCommital := shr(
-                _COMMITAL_POS_,
-                and(_contractTerms, _COMMITAL_MAP_)
-            )
-        }
-    }
-
-    function loanClose(
-        uint256 _debtId
-    ) public view returns (uint256 _loanClose) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _loanClose := add(
-                shr(_LOAN_START_POS_, and(_contractTerms, _LOAN_START_MAP_)),
-                shr(
-                    _LOAN_DURATION_POS_,
-                    and(_contractTerms, _LOAN_DURATION_MAP_)
-                )
-            )
-        }
-    }
-
-    function lenderRoyalties(
-        uint256 _debtId
-    ) public view returns (uint256 _lenderRoyalties) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _lenderRoyalties := shr(
-                _LENDER_ROYALTIES_POS_,
-                and(_contractTerms, _LENDER_ROYALTIES_MAP_)
-            )
-        }
-    }
-
-    function activeLoanCount(
-        uint256 _debtId
-    ) public view returns (uint256 _activeLoanCount) {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
-
-        assembly {
-            _activeLoanCount := shr(
-                _LOAN_COUNT_POS_,
-                and(_contractTerms, _LOAN_COUNT_MAP_)
-            )
-        }
+    ) public view virtual override(DebtTerms) returns (bool) {
+        return
+            DebtTerms.supportsInterface(_interfaceId) ||
+            _interfaceId == type(ILoanCodec).interfaceId;
     }
 
     function totalFirIntervals(
@@ -184,7 +43,8 @@ abstract contract LoanCodec is ILoanCodec {
         uint64 _loanStart,
         uint256 _principal
     ) internal pure {
-        if (_principal == 0) revert InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
+        if (_principal == 0)
+            revert StdCodecErrors.InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
 
         uint32 _duration;
         uint8 _fixedInterestRate;
@@ -255,7 +115,9 @@ abstract contract LoanCodec is ILoanCodec {
             )
         returns (uint256) {} catch {
             if (_firInterval != 0)
-                revert InvalidLoanParameter(_FIXED_INTEREST_RATE_ERROR_ID_);
+                revert StdCodecErrors.InvalidLoanParameter(
+                    _FIXED_INTEREST_RATE_ERROR_ID_
+                );
         }
     }
 
@@ -471,11 +333,11 @@ abstract contract LoanCodec is ILoanCodec {
             _loanAgreement := and(_CLEANUP_MASK_, mload(0x20))
         }
 
-        __packedDebtTerms[_debtId] = _loanAgreement;
+        _setDebtTerms(_debtId, _loanAgreement);
     }
 
     function _setLoanState(uint256 _debtId, uint8 _newLoanState) internal {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        bytes32 _contractTerms = debtTerms(_debtId);
         uint8 _oldLoanState;
 
         assembly {
@@ -499,13 +361,13 @@ abstract contract LoanCodec is ILoanCodec {
             _contractTerms := mload(0x20)
         }
 
-        __packedDebtTerms[_debtId] = _contractTerms;
+        _setDebtTerms(_debtId, _contractTerms);
 
         emit LoanStateChanged(_debtId, _newLoanState, _oldLoanState);
     }
 
     function _updateLoanTimes(uint256 _debtId) internal {
-        bytes32 _contractTerms = __packedDebtTerms[_debtId];
+        bytes32 _contractTerms = debtTerms(_debtId);
 
         assembly {
             let _loanState := and(_LOAN_STATE_MAP_, _contractTerms)
@@ -554,6 +416,6 @@ abstract contract LoanCodec is ILoanCodec {
             _contractTerms := mload(0x20)
         }
 
-        __packedDebtTerms[_debtId] = _contractTerms;
+        _setDebtTerms(_debtId, _contractTerms);
     }
 }

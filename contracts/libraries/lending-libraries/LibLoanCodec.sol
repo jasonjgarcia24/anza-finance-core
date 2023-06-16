@@ -1,0 +1,355 @@
+// SPDX-Liscense-Identifier: MIT
+pragma solidity 0.8.20;
+
+import "@lending-constants/LoanContractTermMaps.sol";
+
+import "@abdk-libraries/ABDKMath64x64.sol";
+
+library LibLoanCodecIndexer {
+    struct DebtTermMap {
+        /**
+         *  > 004 - [0..3]     `loanState`
+         *  > 004 - [4..7]     `firInterval`
+         *  > 008 - [8..15]    `fixedInterestRate`
+         *  > 064 - [16..79]   `loanStart`
+         *  > 032 - [80..111]  `loanDuration`
+         *  > 004 - [112..115] `isFixed`
+         *  > 008 - [116..123] `commital`
+         *  > 160 - [124..239]  unused space
+         *  > 008 - [240..247] `lenderRoyalties`
+         *  > 008 - [248..255] `activeLoanIndex`
+         */
+        mapping(uint256 debtId => bytes32) packedDebtTerms;
+    }
+
+    /**
+     * Returns the debt terms for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * @return The debt terms.
+     */
+    function _debtTerms(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (bytes32) {
+        return _map.packedDebtTerms[_debtId];
+    }
+
+    /**
+     * Sets the debt terms for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     * @param _packedDebtTerms The debt terms to set.
+     */
+    function _setDebtTerms(
+        DebtTermMap storage _map,
+        uint256 _debtId,
+        bytes32 _packedDebtTerms
+    ) internal {
+        _map.packedDebtTerms[_debtId] = _packedDebtTerms;
+    }
+
+    /**
+     * Returns the loan state for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for the
+     * `_LOAN_STATE_MAP_`.
+     *
+     * @return _uLoanState The unpacked loan state.
+     */
+    function _loanState(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uLoanState) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uLoanState := and(_contractTerms, _LOAN_STATE_MAP_)
+        }
+    }
+
+    /**
+     * Returns the fixed interest rate (FIR) interval for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_FIR_INTERVAL_POS_`
+     * and `_FIR_INTERVAL_MAP_`.
+     *
+     * @return _uFirInterval The unpacked FIR interval.
+     */
+    function _firInterval(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uFirInterval) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uFirInterval := shr(
+                _FIR_INTERVAL_POS_,
+                and(_contractTerms, _FIR_INTERVAL_MAP_)
+            )
+        }
+    }
+
+    /**
+     * Returns the fixed interest rate (FIR) for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_FIR_POS_` and
+     * `_FIR_MAP_`.
+     *
+     * @return _uFixedInterestRate The unpacked fixed interest rate.
+     */
+    function _fixedInterestRate(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uFixedInterestRate) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uFixedInterestRate := shr(
+                _FIR_POS_,
+                and(_contractTerms, _FIR_MAP_)
+            )
+        }
+    }
+
+    /**
+     * Returns the is fixed status for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_IS_FIXED_POS_` and
+     * `_IS_FIXED_MAP_`.
+     *
+     * @return _uIsFixed The unpacked is fixed status.
+     */
+    function _isFixed(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uIsFixed) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uIsFixed := shr(
+                _IS_FIXED_POS_,
+                and(_contractTerms, _IS_FIXED_MAP_)
+            )
+        }
+    }
+
+    /**
+     * Returns the loan last checked timestamp for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * @return the loan last checked timestamp.
+     */
+    function _loanLastChecked(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) external view returns (uint256) {
+        return _loanStart(_map, _debtId);
+    }
+
+    /**
+     * Returns the loan start timestamp for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_LOAN_START_POS_` and
+     * `_LOAN_START_MAP_`.
+     *
+     * @return _uLoanStart The unpacked loan start timestamp.
+     */
+    function _loanStart(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uLoanStart) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uLoanStart := shr(
+                _LOAN_START_POS_,
+                and(_contractTerms, _LOAN_START_MAP_)
+            )
+        }
+    }
+
+    /**
+     * Returns the loan duration for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_LOAN_DURATION_POS_`
+     * and `_LOAN_DURATION_MAP_`.
+     *
+     * @return _uLoanDuration The unpacked loan duration.
+     */
+    function _loanDuration(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uLoanDuration) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uLoanDuration := shr(
+                _LOAN_DURATION_POS_,
+                and(_contractTerms, _LOAN_DURATION_MAP_)
+            )
+        }
+    }
+
+    /**
+     * Returns the loan commital duration for a given debt id.
+     *
+     * @dev The loan commital is the duration commitment of the borrower to
+     * the lender.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_COMMITAL_POS_` and
+     * `_COMMITAL_MAP_`.
+     *
+     * @return _uLoanCommital The unpacked loan commital duration.
+     */
+    function _loanCommital(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uLoanCommital) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uLoanCommital := shr(
+                _COMMITAL_POS_,
+                and(_contractTerms, _COMMITAL_MAP_)
+            )
+        }
+    }
+
+    /**
+     * Returns the loan commital time for a given debt id.
+     *
+     * @dev The loan commital is the time commitment of the borrower to the
+     * lender. Therefore, the if the current timestamp is within the loan
+     * commital time, the borrower cannot sale the debt nor refinance it.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * @return _uLoanCommitalTime The unpacked loan commital time.
+     */
+    function _loanCommitalTime(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256) {
+        int128 _uLoanStart = ABDKMath64x64.fromUInt(_loanStart(_map, _debtId));
+        int128 _uLoanDuration = ABDKMath64x64.fromUInt(
+            _loanDuration(_map, _debtId)
+        );
+        int128 _ratio = ABDKMath64x64.divu(_loanCommital(_map, _debtId), 100);
+        int128 _commitalPeriod = ABDKMath64x64.mul(_uLoanDuration, _ratio);
+        int128 _commitalTime = ABDKMath64x64.add(_uLoanStart, _commitalPeriod);
+
+        return ABDKMath64x64.toUInt(_commitalTime);
+    }
+
+    /**
+     * Returns the loan close timestamp for a given debt id.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_LOAN_START_POS_`,
+     * `_LOAN_START_MAP_`, `_LOAN_DURATION_POS_`, and `_LOAN_DURATION_MAP_`.
+     *
+     * @return _uLoanClose The unpacked loan close timestamp.
+     */
+    function _loanClose(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uLoanClose) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uLoanClose := add(
+                shr(_LOAN_START_POS_, and(_contractTerms, _LOAN_START_MAP_)),
+                shr(
+                    _LOAN_DURATION_POS_,
+                    and(_contractTerms, _LOAN_DURATION_MAP_)
+                )
+            )
+        }
+    }
+
+    /**
+     * Returns the lender royalties on a refinance transaction to another
+     * lender.
+     *
+     * @dev If the lender royalties is 0, the lender will not receive any
+     * royalties on a refinance transaction. The lender royalties is a
+     * percentage of the interest paid by the borrower to the lender.
+     * Therefore, it must be within the range of 0 - 100.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for
+     * `_LENDER_ROYALTIES_POS_` and `_LENDER_ROYALTIES_MAP_`.
+     *
+     * @return _uLenderRoyalties The unpacked lender royalties.
+     */
+    function _lenderRoyalties(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uLenderRoyalties) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uLenderRoyalties := shr(
+                _LENDER_ROYALTIES_POS_,
+                and(_contractTerms, _LENDER_ROYALTIES_MAP_)
+            )
+        }
+    }
+
+    /**
+     * Returns the active loan count of a given collateralized token.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt id.
+     *
+     * See {lending-constants/LoanContractTermMaps} for `_LOAN_COUNT_POS_` and
+     * `_LOAN_COUNT_MAP_`.
+     *
+     * @return _uActiveLoanCount The unpacked active loan count.
+     */
+    function _activeLoanCount(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (uint256 _uActiveLoanCount) {
+        bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
+
+        assembly {
+            _uActiveLoanCount := shr(
+                _LOAN_COUNT_POS_,
+                and(_contractTerms, _LOAN_COUNT_MAP_)
+            )
+        }
+    }
+}

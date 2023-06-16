@@ -2,7 +2,14 @@
 pragma solidity 0.8.20;
 
 /* ------------------------------------------------ *
- *                 Notary Errors                    *
+ *         Manager Custom Error Selectors           *
  * ------------------------------------------------ */
-error InvalidSigner();
-error InvalidSignatureLength();
+bytes4 constant _INVALID_SIGNER_SELECTOR_ = 0x815e1d64; // bytes4(keccak256("InvalidSigner()"))
+
+library StdNotaryErrors {
+    /* ------------------------------------------------ *
+     *                 Notary Errors                    *
+     * ------------------------------------------------ */
+    error InvalidSigner();
+    error InvalidSignatureLength();
+}

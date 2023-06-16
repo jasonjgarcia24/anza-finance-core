@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
-import {InvalidParticipant} from "@custom-errors/StdManagerErrors.sol";
+import {StdManagerErrors} from "@custom-errors/StdManagerErrors.sol";
 
 import {IAnzaDebtStorefrontAccessController} from "@market-interfaces/IAnzaDebtStorefrontAccessController.sol";
 import {IAnzaTokenIndexer} from "@token-interfaces/IAnzaTokenIndexer.sol";
@@ -73,6 +73,6 @@ abstract contract AnzaDebtStorefrontAccessController is
      */
     function _verifySeller(uint256 _debtId) internal view {
         if (_anzaTokenIndexer.borrowerOf(_debtId) != msg.sender)
-            revert InvalidParticipant();
+            revert StdManagerErrors.InvalidParticipant();
     }
 }

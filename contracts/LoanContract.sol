@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_TREASURER_} from "@lending-constants/LoanContractRoles.sol";
-import {InvalidCollateral} from "@custom-errors/StdLoanErrors.sol";
-import {FailedFundsTransfer, ExceededRefinanceLimit} from "@custom-errors/StdMonetaryErrors.sol";
+import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
+import {StdMonetaryErrors} from "@custom-errors/StdMonetaryErrors.sol";
 
 import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
@@ -110,7 +110,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
             abi.encodeWithSignature("depositFunds(address)", _borrower)
         );
-        if (!_success) revert FailedFundsTransfer();
+        if (!_success) revert StdMonetaryErrors.FailedFundsTransfer();
 
         // Mint debt ADT for lender
         string memory _collateralURI = _collateralToken.tokenURI(_collateralId);
@@ -171,7 +171,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         bytes32 _contractTerms
     ) external payable onlyRole(_TREASURER_) {
         // Verify existing loan is in good standing
-        if (checkLoanDefault(_debtId)) revert InvalidCollateral();
+        if (checkLoanDefault(_debtId)) revert StdLoanErrors.InvalidCollateral();
 
         // Validate loan terms
         uint256 _principal = msg.value;
@@ -215,7 +215,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
                 _debtId
             )
         );
-        if (!_success) revert FailedFundsTransfer();
+        if (!_success) revert StdMonetaryErrors.FailedFundsTransfer();
 
         // Mint debt ADT for lender.
         _anzaToken.mint(
@@ -270,7 +270,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         address _lender
     ) external payable onlyRole(_TREASURER_) {
         // Verify existing loan is in good standing
-        if (checkLoanDefault(_debtId)) revert InvalidCollateral();
+        if (checkLoanDefault(_debtId)) revert StdLoanErrors.InvalidCollateral();
 
         // Validate loan terms
         // Unnecessary since the terms are existing and have already been
@@ -291,7 +291,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         __sealLoanContract(
             block.timestamp._toUint64(),
             _debtMapLength,
-            getDebtTerms(_debtId)
+            debtTerms(_debtId)
         );
 
         // Store collateral-debtId mapping in vault
@@ -316,7 +316,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
                 _debtId
             )
         );
-        if (!_success) revert FailedFundsTransfer();
+        if (!_success) revert StdMonetaryErrors.FailedFundsTransfer();
 
         // Mint debt ADT for lender.
         _anzaToken.mint(
@@ -354,7 +354,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         uint256 _activeLoanIndex,
         bytes32 _contractTerms
     ) private {
-        if (_activeLoanIndex > maxRefinances) revert ExceededRefinanceLimit();
+        if (_activeLoanIndex > maxRefinances)
+            revert StdMonetaryErrors.ExceededRefinanceLimit();
 
         _setLoanAgreement(_now, totalDebts, _activeLoanIndex, _contractTerms);
     }

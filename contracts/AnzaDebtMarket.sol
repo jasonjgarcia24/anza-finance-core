@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
 import "@market-constants/AnzaDebtMarketRoles.sol";
 import "@market-constants/AnzaDebtStorefrontSelectors.sol";
-import "@custom-errors/StdAnzaMarketErrors.sol";
+import {StdAnzaMarketErrors} from "@custom-errors/StdAnzaMarketErrors.sol";
 
 import {IAnzaDebtMarket} from "@market-interfaces/IAnzaDebtMarket.sol";
 import {AnzaBaseMarketParticipant, NonceLocker} from "@market-databases/AnzaBaseMarketParticipant.sol";
@@ -29,8 +29,7 @@ contract AnzaDebtMarket is
 
         _grantRole(_ADMIN_, msg.sender);
 
-        // Use up _nonce 0. This is to help prevent accidental direct nonce
-        // calls on storefronts.
+        // Use up _nonce 0.
         _nonces.push(
             NonceLocker.ruin(address(this), uint8(ListingType.UNDEFINED))
         );
@@ -71,12 +70,12 @@ contract AnzaDebtMarket is
         }
         // Unapproved storefront
         else if (!hasRole(_OTHER_APPROVED_STOREFRONT_, _storefrontAddress)) {
-            revert InvalidStorefront();
+            revert StdAnzaMarketErrors.InvalidStorefront();
         }
     }
 
     receive() external payable {
-        revert ReceiveCallIllegal();
+        revert StdAnzaMarketErrors.ReceiveCallIllegal();
     }
 
     /**
@@ -117,6 +116,8 @@ contract AnzaDebtMarket is
         (bool _success, bytes memory _data) = _storefrontAddress.delegatecall(
             abi.encodePacked(_calldata)
         );
+
+        console.log("AnzaDebtMarket.fallback() success: %s", _success);
 
         // Complete if successful
         if (_success) return;

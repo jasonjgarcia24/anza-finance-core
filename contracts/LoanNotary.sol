@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import "@lending-constants/LoanNotaryTypeHashes.sol";
-import {InvalidSigner} from "@custom-errors/StdNotaryErrors.sol";
+import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 
 import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
 import {LibLoanNotary} from "@lending-libraries/LibLoanNotary.sol";
@@ -89,7 +89,7 @@ abstract contract LoanNotary is ILoanNotary {
         if (
             _borrower == msg.sender ||
             _borrower != _recoverSigner(_contractParams, _borrowerSignature)
-        ) revert InvalidSigner();
+        ) revert StdNotaryErrors.InvalidSigner();
 
         return _borrower;
     }
@@ -224,7 +224,7 @@ abstract contract DebtNotary is IDebtNotary {
         if (
             _seller == msg.sender ||
             _seller != _recoverSigner(_debtParams, _sellerSignature)
-        ) revert InvalidSigner();
+        ) revert StdNotaryErrors.InvalidSigner();
 
         return _seller;
     }
@@ -359,7 +359,7 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
         if (
             _seller == msg.sender ||
             _seller != _recoverSigner(_sponsorshipParams, _sellerSignature)
-        ) revert InvalidSigner();
+        ) revert StdNotaryErrors.InvalidSigner();
 
         return _seller;
     }
@@ -493,7 +493,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
         if (
             _borrower == msg.sender ||
             _borrower != _recoverSigner(_refinanceParams, _sellerSignature)
-        ) revert InvalidSigner();
+        ) revert StdNotaryErrors.InvalidSigner();
 
         return _borrower;
     }

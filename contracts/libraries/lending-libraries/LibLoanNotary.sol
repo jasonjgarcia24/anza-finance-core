@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import "@lending-constants/LoanNotaryTypeHashes.sol";
-import {InvalidSignatureLength} from "@custom-errors/StdNotaryErrors.sol";
+import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 
 import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
 
@@ -261,7 +261,8 @@ library LibLoanNotary {
     function splitSignature(
         bytes memory _signature
     ) public pure returns (uint8 v, bytes32 r, bytes32 s) {
-        if (_signature.length != 65) revert InvalidSignatureLength();
+        if (_signature.length != 65)
+            revert StdNotaryErrors.InvalidSignatureLength();
 
         assembly {
             r := mload(add(_signature, 0x20))

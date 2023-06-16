@@ -8,9 +8,9 @@ import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
 import "@token-constants/AnzaTokenTransferTypes.sol";
 import "@market-constants/AnzaDebtMarketRoles.sol";
-import "@custom-errors/StdTreasureyErrors.sol";
-import {InvalidParticipant} from "@custom-errors/StdManagerErrors.sol";
-import {InactiveLoanState} from "@custom-errors/StdCodecErrors.sol";
+import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
+import {StdManagerErrors} from "@custom-errors/StdManagerErrors.sol";
+import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
@@ -68,7 +68,7 @@ contract LoanTreasurey is
 
         // Overpayments checked when burning lender debt tokens.
         // Therefore, no need to check here.
-        if (_payment == 0) revert InvalidFundsTransfer();
+        if (_payment == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
 
         _depositPayment(_sponsor, _debtId, _payment);
 
@@ -83,10 +83,10 @@ contract LoanTreasurey is
 
         // Overpayments checked when burning lender debt tokens.
         // Therefore, no need to check here.
-        if (_payment == 0) revert InvalidFundsTransfer();
+        if (_payment == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
 
         if (_anzaToken.borrowerOf(_debtId) != _borrower)
-            revert InvalidParticipant();
+            revert StdManagerErrors.InvalidParticipant();
 
         _depositPayment(_borrower, _debtId, _payment);
 
@@ -98,7 +98,7 @@ contract LoanTreasurey is
     ) external nonReentrant returns (bool) {
         address _payee = msg.sender;
 
-        if (_amount == 0) revert InvalidFundsTransfer();
+        if (_amount == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
 
         // Update lender's withdrawable balance. Will revert
         // with arithmetic underflow should amount be greater
@@ -183,7 +183,7 @@ contract LoanTreasurey is
             _loanManager.verifyLoanActive(_debtId);
 
             // Update debt
-            if (!updateDebt(_debtId)) revert InactiveLoanState();
+            if (!updateDebt(_debtId)) revert StdCodecErrors.InactiveLoanState();
 
             // Transfer collateral
             uint256 _debtBalance = _loanContract.debtBalance(_debtId);
@@ -250,7 +250,7 @@ contract LoanTreasurey is
                 _contracTerms
             )
         );
-        if (!_success) revert FailedPurchase();
+        if (!_success) revert StdTreasureyErrors.FailedPurchase();
 
         _results = true;
     }
@@ -293,7 +293,7 @@ contract LoanTreasurey is
                 _purchaser
             )
         );
-        if (!_success) revert FailedPurchase();
+        if (!_success) revert StdTreasureyErrors.FailedPurchase();
 
         _results = true;
     }
@@ -301,14 +301,14 @@ contract LoanTreasurey is
     // TODO: Need to revisit to ensure accuracy at larger total debt values
     // (e.g. 10000 * 10**18).
     function updateDebt(uint256 _debtId) public returns (bool) {
-        uint256 _prevCheck = _loanCodec.loanLastChecked(_debtId);
+        uint256 _prevCheck = _loanDebtTerms.loanLastChecked(_debtId);
 
         // Find time intervals passed
         _loanManager.updateLoanState(_debtId);
 
         uint256 _firIntervals = _loanCodec.totalFirIntervals(
             _debtId,
-            _loanCodec.loanLastChecked(_debtId) - _prevCheck
+            _loanDebtTerms.loanLastChecked(_debtId) - _prevCheck
         );
 
         // Update debt
@@ -317,7 +317,7 @@ contract LoanTreasurey is
 
             uint256 _updatedDebt = Interest.compoundWithTopoff(
                 _totalDebt,
-                _loanCodec.fixedInterestRate(_debtId),
+                _loanDebtTerms.fixedInterestRate(_debtId),
                 _firIntervals
             );
 
@@ -334,7 +334,7 @@ contract LoanTreasurey is
         uint256 _debtId,
         uint256 _payment
     ) internal {
-        if (_payment == 0) revert InvalidFundsTransfer();
+        if (_payment == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
 
         address _lender = _anzaToken.lenderOf(_debtId);
         uint256 _balance = _anzaToken.balanceOf(_lender, _debtId * 2);

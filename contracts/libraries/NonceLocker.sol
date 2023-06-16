@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 /**
  * @title NonceLocker
  *
- * @dev The NonceLocker library is used to prevent reentrancy attacks. The
- * library is used to create a single nonce that can only be accessed once by
+ * @dev The NonceLocker library is used to prevent reentrancy and replay attacks.
+ * The library is used to create a single nonce that can only be accessed once by
  * the nonce publisher for the set category. The contract utilizing this library
  * should use the Nonce struct within an array to have multiple nonces.
  *

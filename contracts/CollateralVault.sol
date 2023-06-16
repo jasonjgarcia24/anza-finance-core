@@ -5,7 +5,7 @@ import {console} from "forge-std/console.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
-import "@custom-errors/StdVaultErrors.sol";
+import {StdVaultErrors} from "@custom-errors/StdVaultErrors.sol";
 
 import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
@@ -42,12 +42,13 @@ contract CollateralVault is
         uint256 _debtId
     ) {
         if (!depositAllowed(_collateralAddress, _collateralId, _debtId))
-            revert UnallowedDeposit();
+            revert StdVaultErrors.UnallowedDeposit();
         _;
     }
 
     modifier onlyWithdrawalAllowed(address _to, uint256 _debtId) {
-        if (!withdrawalAllowed(_to, _debtId)) revert UnallowedWithdrawal();
+        if (!withdrawalAllowed(_to, _debtId))
+            revert StdVaultErrors.UnallowedWithdrawal();
         _;
     }
 
@@ -104,8 +105,8 @@ contract CollateralVault is
                 _collateralId,
                 type(uint256).max
             )
-        returns (uint256 _debtId_, uint256 /* _collateralNonce */) {
-            return _debtId_ == _debtId;
+        returns (uint256 _latestDebtId, uint256 /* _latestCollateralNonce */) {
+            return _latestDebtId == _debtId;
         } catch (bytes memory) {
             return false;
         }

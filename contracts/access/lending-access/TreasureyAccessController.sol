@@ -8,6 +8,7 @@ import {_DEBT_MARKET_} from "@market-constants/AnzaDebtMarketRoles.sol";
 
 import {ITreasureyAccessController} from "@lending-access/interfaces/ITreasureyAccessController.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
+import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
@@ -20,6 +21,7 @@ abstract contract TreasureyAccessController is
     AccessControl
 {
     IDebtBook internal _loanContract;
+    IDebtTerms internal _loanDebtTerms;
     ILoanManager internal _loanManager;
     ILoanCodec internal _loanCodec;
     ICollateralVault internal _collateralVault;
@@ -87,6 +89,7 @@ abstract contract TreasureyAccessController is
         super._grantRole(_LOAN_CONTRACT_, _loanContractAddress);
 
         _loanContract = IDebtBook(_loanContractAddress);
+        _loanDebtTerms = IDebtTerms(_loanContractAddress);
         _loanCodec = ILoanCodec(_loanContractAddress);
         _loanManager = ILoanManager(_loanContractAddress);
     }

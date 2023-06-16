@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
-import {UnallowedDeposit, UnallowedWithdrawal} from "@custom-errors/StdVaultErrors.sol";
+import {StdVaultErrors} from "@custom-errors/StdVaultErrors.sol";
 
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 
@@ -112,7 +112,7 @@ contract LoanCollateralVaultUnitTest is
 
         // DENY :: Try loan treasurer of unpaid loan
         vm.startPrank(address(loanTreasurer));
-        vm.expectRevert(abi.encodeWithSelector(UnallowedWithdrawal.selector));
+        vm.expectRevert(abi.encodeWithSelector(StdVaultErrors.UnallowedWithdrawal.selector));
         emit WithdrawnCollateral(borrower, address(demoToken), collateralId);
         collateralVault.withdraw(borrower, _debtId);
         vm.stopPrank();
@@ -158,7 +158,9 @@ contract LoanCollateralVaultUnitTest is
         vm.stopPrank();
 
         vm.startPrank(admin);
-        vm.expectRevert(abi.encodeWithSelector(UnallowedDeposit.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(StdVaultErrors.UnallowedDeposit.selector)
+        );
         demoToken.safeTransferFrom(
             borrower,
             address(collateralVault),

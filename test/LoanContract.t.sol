@@ -7,8 +7,8 @@ import {console} from "forge-std/console.sol";
 import "@lending-constants/LoanContractFIRIntervals.sol";
 import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
-import {InvalidCollateral} from "@custom-errors/StdLoanErrors.sol";
-import {InactiveLoanState} from "@custom-errors/StdCodecErrors.sol";
+import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
+import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {LoanContract} from "@base/LoanContract.sol";
 import {CollateralVault} from "@base/CollateralVault.sol";
@@ -18,7 +18,6 @@ import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
 import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers} from "@helper-libraries/LibLoanContractConstants.sol";
-import {LibLoanContractTerms as Terms} from "@lending-libraries/LibLoanContract.sol";
 
 import {Utils, Setup} from "./Setup.t.sol";
 import {DemoToken} from "./DemoToken.sol";
@@ -233,7 +232,9 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Loan state update should fail because there is no loan
         vm.deal(treasurer, 1 ether);
         vm.startPrank(address(loanTreasurer));
-        vm.expectRevert(abi.encodeWithSelector(InactiveLoanState.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(StdCodecErrors.InactiveLoanState.selector)
+        );
         loanContract.updateLoanState(_debtId);
         vm.stopPrank();
 
@@ -533,7 +534,9 @@ contract LoanContractViewsUnitTest is LoanSigned {
     }
 
     function testLoanContract__GetCollateralDebtId() public {
-        vm.expectRevert(abi.encodeWithSelector(InvalidCollateral.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(StdLoanErrors.InvalidCollateral.selector)
+        );
         // ILoanContract.DebtMap memory _debtMap = loanContract.collateralDebtAt(
         (uint256 _debtId, ) = loanContract.collateralDebtAt(
             address(demoToken),
@@ -557,7 +560,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
 
         assertEq(
-            loanContract.getDebtTerms(_debtId),
+            loanContract.debtTerms(_debtId),
             bytes32(0),
             "0 :: debt terms should be bytes32(0)"
         );
@@ -567,7 +570,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         createLoanContract(collateralId);
         ++_debtId;
 
-        bytes32 _contractTerms = loanContract.getDebtTerms(_debtId);
+        bytes32 _contractTerms = loanContract.debtTerms(_debtId);
 
         assertTrue(
             _contractTerms != bytes32(0),
@@ -575,62 +578,62 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         assertEq(
-            Terms.loanState(_contractTerms),
+            loanContract.loanState(_debtId),
             uint256(_ACTIVE_GRACE_STATE_),
             "2 :: loan state should be _ACTIVE_GRACE_STATE_"
         );
 
         assertEq(
-            Terms.firInterval(_contractTerms),
+            loanContract.firInterval(_debtId),
             _FIR_INTERVAL_,
             "3 :: fir interval should be _FIR_INTERVAL_"
         );
 
         assertEq(
-            Terms.fixedInterestRate(_contractTerms),
+            loanContract.fixedInterestRate(_debtId),
             _FIXED_INTEREST_RATE_,
             "4 :: fixed interest rate should be _FIXED_INTEREST_RATE_"
         );
 
         assertGt(
-            Terms.loanLastChecked(_contractTerms),
+            loanContract.loanLastChecked(_debtId),
             _now,
             "5 :: loan last checked should be greater than time now"
         );
 
         assertGt(
-            Terms.loanStart(_contractTerms),
+            loanContract.loanStart(_debtId),
             _now,
             "6 :: loan start should be greater than time now"
         );
 
         assertEq(
-            Terms.loanDuration(_contractTerms),
+            loanContract.loanDuration(_debtId),
             _DURATION_,
             "7 :: loan duration should be _DURATION_"
         );
 
         assertEq(
-            Terms.loanClose(_contractTerms),
-            Terms.loanStart(_contractTerms) +
-                Terms.loanDuration(_contractTerms),
+            loanContract.loanClose(_debtId),
+            loanContract.loanStart(_debtId) +
+                loanContract.loanDuration(_debtId),
             "8 :: loan close should be the sum of loan start and loan duration"
         );
 
         assertGt(
-            Terms.loanClose(_contractTerms),
+            loanContract.loanClose(_debtId),
             _now,
             "9 :: loan close should be greater than time now"
         );
 
         assertEq(
-            Terms.lenderRoyalties(_contractTerms),
+            loanContract.lenderRoyalties(_debtId),
             _LENDER_ROYALTIES_,
             "10 :: loan royalties should be _LENDER_ROYALTIES_"
         );
 
         assertEq(
-            Terms.activeLoanCount(_contractTerms),
+            loanContract.activeLoanCount(_debtId),
             1,
             "11 :: active loan count should be 0"
         );
@@ -1218,7 +1221,9 @@ contract LoanContractViewsUnitTest is LoanSigned {
     function testLoanContract__VerifyLoanActive() public {
         uint256 _debtId = loanContract.totalDebts();
 
-        vm.expectRevert(abi.encodeWithSelector(InactiveLoanState.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(StdCodecErrors.InactiveLoanState.selector)
+        );
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract
@@ -1270,7 +1275,9 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         loanContract.verifyLoanActive(_debtId);
 
-        vm.expectRevert(abi.encodeWithSelector(InactiveLoanState.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(StdCodecErrors.InactiveLoanState.selector)
+        );
         loanContract.verifyLoanActive(_refDebtId);
     }
 

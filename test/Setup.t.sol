@@ -121,6 +121,7 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
     LoanTreasurey public loanTreasurer;
     AnzaToken public anzaToken;
     DemoToken public demoToken;
+    DemoToken public alt_demoToken;
 
     uint256 public collateralNonce;
     bytes32 public contractTerms;
@@ -188,6 +189,10 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         demoToken = new DemoToken();
         demoToken.approve(address(loanContract), collateralId);
         demoToken.setApprovalForAll(address(loanContract), true);
+
+        alt_demoToken = new DemoToken();
+        alt_demoToken.approve(address(loanContract), collateralId);
+        alt_demoToken.setApprovalForAll(address(loanContract), true);
         vm.stopPrank();
 
         // Set Anza Debt Marketplace and Storefronts

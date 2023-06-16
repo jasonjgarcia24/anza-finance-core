@@ -5,7 +5,7 @@ import {console} from "forge-std/console.sol";
 
 import {_ADMIN_, _TREASURER_} from "@lending-constants/LoanContractRoles.sol";
 import {_DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_, _CLOSE_STATE_} from "@lending-constants/LoanContractStates.sol";
-import {InactiveLoanState} from "@custom-errors/StdCodecErrors.sol";
+import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
 import {LoanCodec} from "./LoanCodec.sol";
@@ -70,7 +70,7 @@ abstract contract LoanManager is
 
         if (!checkLoanActive(_debtId)) {
             console.log("Inactive loan: %s", _debtId);
-            revert InactiveLoanState();
+            revert StdCodecErrors.InactiveLoanState();
         }
 
         // Loan defaulted
@@ -98,7 +98,8 @@ abstract contract LoanManager is
     }
 
     function verifyLoanActive(uint256 _debtId) public view {
-        if (!checkLoanActive(_debtId)) revert InactiveLoanState();
+        if (!checkLoanActive(_debtId))
+            revert StdCodecErrors.InactiveLoanState();
     }
 
     function checkTermsRevoked(

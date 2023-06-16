@@ -5,7 +5,7 @@ import {console} from "forge-std/console.sol";
 
 import "@token-constants/AnzaTokenTransferTypes.sol";
 import {_LOAN_CONTRACT_, _TREASURER_, _COLLATERAL_VAULT_} from "@lending-constants/LoanContractRoles.sol";
-import {IllegalMint, IllegalTransfer} from "@custom-errors/StdAnzaTokenErrors.sol";
+import {StdAnzaTokenErrors} from "@custom-errors/StdAnzaTokenErrors.sol";
 
 import {IAnzaTokenLite} from "@token-interfaces/IAnzaTokenLite.sol";
 import {AnzaBaseToken} from "./AnzaBaseToken.sol";
@@ -32,7 +32,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
     }
 
     modifier onlyValidMint(uint256 _amount) {
-        if (_amount == 0) revert IllegalMint();
+        if (_amount == 0) revert StdAnzaTokenErrors.IllegalMint();
         _;
     }
 
@@ -75,7 +75,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         // Disallow all batch transfers that do not specify the transfer type
         // as either debt or sponsorship within the `data` field
         else {
-            revert IllegalTransfer();
+            revert StdAnzaTokenErrors.IllegalTransfer();
         }
     }
 
@@ -173,7 +173,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
 
                 // Ownership: set token owners only when the replica token is not
                 // being burned nor minted. Direct lender token transfers are prohibited.
-                if (_id % 2 == 0) revert IllegalTransfer();
+                if (_id % 2 == 0) revert StdAnzaTokenErrors.IllegalTransfer();
                 _setOwner(_id, _to);
             }
             /** Burning */
@@ -189,7 +189,8 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
                 } else {
                     // Do not allow burning of replica token if the current debt balance
                     // is not zero.
-                    if (totalSupply(_id - 1) != 0) revert IllegalTransfer();
+                    if (totalSupply(_id - 1) != 0)
+                        revert StdAnzaTokenErrors.IllegalTransfer();
 
                     // Total Supply: decrement the total supply of the borrower token
                     // ID by 1 to account for the replica token.

@@ -5,10 +5,10 @@ import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 import {stdError} from "forge-std/StdError.sol";
 
-import {InvalidSigner} from "@custom-errors/StdNotaryErrors.sol";
+import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
+import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 
 import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
-import {ILoanTreasureyEvents} from "../interfaces/ILoanTreasureyEvents.t.sol";
 import {LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractPayoff is LoanContractSubmitted {
@@ -46,7 +46,7 @@ contract LoanContractPayoff is LoanContractSubmitted {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                InvalidSigner.selector,
+                StdNotaryErrors.InvalidSigner.selector,
                 alt_account
             )
         );
@@ -294,7 +294,7 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         if (_payment == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanTreasureyEvents.InvalidFundsTransfer.selector
+                    StdTreasureyErrors.InvalidFundsTransfer.selector
                 )
             );
         }
@@ -337,7 +337,7 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         if (_withdrawal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanTreasureyEvents.InvalidFundsTransfer.selector
+                    StdTreasureyErrors.InvalidFundsTransfer.selector
                 )
             );
         } else if (_withdrawal > _payment) {
@@ -393,7 +393,7 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
         if (_withdrawal == 0) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    ILoanTreasureyEvents.InvalidFundsTransfer.selector
+                    StdTreasureyErrors.InvalidFundsTransfer.selector
                 )
             );
         } else if (_withdrawal > _actualPayment) {
