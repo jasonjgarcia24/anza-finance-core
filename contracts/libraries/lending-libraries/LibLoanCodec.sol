@@ -23,12 +23,12 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the debt terms for a given debt id.
+     * Returns the packed debt terms for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
-     * @return The debt terms.
+     * @return The packed debt terms.
      */
     function _debtTerms(
         DebtTermMap storage _map,
@@ -38,10 +38,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Sets the debt terms for a given debt id.
+     * Sets the packed debt terms for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      * @param _packedDebtTerms The debt terms to set.
      */
     function _setDebtTerms(
@@ -53,10 +53,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the loan state for a given debt id.
+     * Returns the loan state for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for the
      * `_LOAN_STATE_MAP_`.
@@ -75,10 +75,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the fixed interest rate (FIR) interval for a given debt id.
+     * Returns the fixed interest rate (FIR) interval for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_FIR_INTERVAL_POS_`
      * and `_FIR_INTERVAL_MAP_`.
@@ -100,10 +100,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the fixed interest rate (FIR) for a given debt id.
+     * Returns the fixed interest rate (FIR) for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_FIR_POS_` and
      * `_FIR_MAP_`.
@@ -125,10 +125,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the is fixed status for a given debt id.
+     * Returns the is fixed status for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_IS_FIXED_POS_` and
      * `_IS_FIXED_MAP_`.
@@ -150,10 +150,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the loan last checked timestamp for a given debt id.
+     * Returns the loan last checked timestamp for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * @return the loan last checked timestamp.
      */
@@ -165,10 +165,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the loan start timestamp for a given debt id.
+     * Returns the loan start timestamp for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_LOAN_START_POS_` and
      * `_LOAN_START_MAP_`.
@@ -190,10 +190,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the loan duration for a given debt id.
+     * Returns the loan duration for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_LOAN_DURATION_POS_`
      * and `_LOAN_DURATION_MAP_`.
@@ -215,13 +215,13 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the loan commital duration for a given debt id.
+     * Returns the loan commital duration for a given debt ID.
      *
      * @dev The loan commital is the duration commitment of the borrower to
      * the lender.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_COMMITAL_POS_` and
      * `_COMMITAL_MAP_`.
@@ -243,14 +243,14 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the loan commital time for a given debt id.
+     * Returns the loan commital time for a given debt ID.
      *
      * @dev The loan commital is the time commitment of the borrower to the
      * lender. Therefore, the if the current timestamp is within the loan
      * commital time, the borrower cannot sale the debt nor refinance it.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * @return _uLoanCommitalTime The unpacked loan commital time.
      */
@@ -270,10 +270,10 @@ library LibLoanCodecIndexer {
     }
 
     /**
-     * Returns the loan close timestamp for a given debt id.
+     * Returns the loan close timestamp for a given debt ID.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_LOAN_START_POS_`,
      * `_LOAN_START_MAP_`, `_LOAN_DURATION_POS_`, and `_LOAN_DURATION_MAP_`.
@@ -307,7 +307,7 @@ library LibLoanCodecIndexer {
      * Therefore, it must be within the range of 0 - 100.
      *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for
      * `_LENDER_ROYALTIES_POS_` and `_LENDER_ROYALTIES_MAP_`.
@@ -331,8 +331,11 @@ library LibLoanCodecIndexer {
     /**
      * Returns the active loan count of a given collateralized token.
      *
+     * TODO: This is not used anywhere, remove? It is also captured in
+     * the DebtMaps database.
+     *
      * @param _map The debt term map.
-     * @param _debtId The debt id.
+     * @param _debtId The debt ID.
      *
      * See {lending-constants/LoanContractTermMaps} for `_LOAN_COUNT_POS_` and
      * `_LOAN_COUNT_MAP_`.

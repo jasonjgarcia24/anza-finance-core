@@ -27,75 +27,174 @@ abstract contract DebtTerms is IDebtTerms {
         return _interfaceId == type(IDebtTerms).interfaceId;
     }
 
+    /**
+     * Returns the packed debt terms for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the packed debt terms for.
+     *
+     * See {LibLoanCodecIndexer._debtTerms}.
+     *
+     * @return The packed debt terms for the given debt ID.
+     */
     function debtTerms(uint256 _debtId) public view returns (bytes32) {
         return __packedDebtTerms._debtTerms(_debtId);
     }
 
+    /**
+     * Sets the packed debt terms for a given debt ID.
+     *
+     * @param _debtId The debt ID to set the packed debt terms for.
+     *
+     * See {LibLoanCodecIndexer._setDebtTerms}.
+     */
     function _setDebtTerms(uint256 _debtId, bytes32 _packedDebtTerms) internal {
         __packedDebtTerms._setDebtTerms(_debtId, _packedDebtTerms);
     }
 
-    function loanState(
-        uint256 _debtId
-    ) public view returns (uint256 _uLoanState) {
+    /**
+     * Returns the loan state for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the loan state for.
+     *
+     * See {LibLoanCodecIndexer._loanState}.
+     *
+     * @return The loan state for the given debt ID.
+     */
+    function loanState(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._loanState(_debtId);
     }
 
-    function firInterval(
-        uint256 _debtId
-    ) public view returns (uint256 _uFirInterval) {
+    /**
+     * Returns the fixed interest rate (FIR) interval for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the FIR interval for.
+     *
+     * See {LibLoanCodecIndexer._firInterval}.
+     *
+     * @return The FIR interval for the given debt ID.
+     */
+    function firInterval(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._firInterval(_debtId);
     }
 
-    function fixedInterestRate(
-        uint256 _debtId
-    ) public view returns (uint256 _uFixedInterestRate) {
+    /**
+     * Returns the fixed interest rate (FIR) for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the FIR for.
+     *
+     * See {LibLoanCodecIndexer._fixedInterestRate}.
+     *
+     * @return The FIR for the given debt ID.
+     */
+    function fixedInterestRate(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._fixedInterestRate(_debtId);
     }
 
-    function isFixed(uint256 _debtId) public view returns (uint256 _isFixed) {
+    /**
+     * Returns the is fixed status for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the is fixed status for.
+     *
+     * See {LibLoanCodecIndexer._isFixed}.
+     *
+     * @return The is fixed status for the given debt ID.
+     */
+    function isFixed(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._isFixed(_debtId);
     }
 
-    function loanLastChecked(
-        uint256 _debtId
-    ) public view returns (uint256 _loanLastChecked) {
+    /**
+     * Returns the loan last checked timestamp for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the loan last checked
+     * timestamp for.
+     *
+     * See {LibLoanCodecIndexer._loanLastChecked}.
+     *
+     * @return The loan last checked timestamp for the given debt ID.
+     */
+    function loanLastChecked(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._loanLastChecked(_debtId);
     }
 
-    function loanStart(
-        uint256 _debtId
-    ) public view returns (uint256 _loanStart) {
+    /**
+     * Returns the loan start timestamp for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the loan start timestamp for.
+     *
+     * See {LibLoanCodecIndexer._loanStart}.
+     *
+     * @return The loan start timestamp for the given debt ID.
+     */
+    function loanStart(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._loanStart(_debtId);
     }
 
-    function loanDuration(
-        uint256 _debtId
-    ) public view returns (uint256 _loanDuration) {
+    /**
+     * Returns the loan duration for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the loan duration for.
+     *
+     * See {LibLoanCodecIndexer._loanDuration}.
+     *
+     * @return The loan duration for the given debt ID.
+     */
+    function loanDuration(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._loanDuration(_debtId);
     }
 
-    function loanCommital(
-        uint256 _debtId
-    ) public view returns (uint256 _commital) {
+    /**
+     * Returns the loan commital duration for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the loan commital duration for.
+     *
+     * See {LibLoanCodecIndexer._loanCommital}.
+     *
+     * @return The loan commital duration for the given debt ID.
+     */
+    function loanCommital(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._loanCommital(_debtId);
     }
 
-    function loanClose(
-        uint256 _debtId
-    ) public view returns (uint256 _loanClose) {
+    /**
+     * Returns the loan close timestamp for a given debt ID.
+     *
+     * @param _debtId The debt ID to return the loan close timestamp for.
+     *
+     * See {LibLoanCodecIndexer._loanClose}.
+     *
+     * @return The loan close timestamp for the given debt ID.
+     */
+    function loanClose(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._loanClose(_debtId);
     }
 
-    function lenderRoyalties(
-        uint256 _debtId
-    ) public view returns (uint256 _lenderRoyalties) {
+    /**
+     * Returns the lender royalties on a refinance transaction to another lender.
+     *
+     * @param _debtId The debt ID to return the lender royalties for.
+     *
+     * See {LibLoanCodecIndexer._lenderRoyalties}.
+     *
+     * @return The lender royalties for the given debt ID.
+     */
+    function lenderRoyalties(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._lenderRoyalties(_debtId);
     }
 
-    function activeLoanCount(
-        uint256 _debtId
-    ) public view returns (uint256 _activeLoanCount) {
+    /**
+     * Returns the active loan count of a given collateralized token.
+     * 
+     * TODO: This is not used anywhere, remove? It is also captured in 
+     * the DebtMaps database.
+     *
+     * @param _debtId The debt ID to return the active loan count for.
+     *
+     * See {LibLoanCodecIndexer._activeLoanCount}.
+     *
+     * @return The active loan count for the given debt ID.
+     */
+    function activeLoanCount(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._activeLoanCount(_debtId);
     }
 }
