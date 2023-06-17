@@ -99,7 +99,10 @@ contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
         if (_anzaToken.borrowerOf(_debtId) != _borrower)
             revert StdManagerErrors.InvalidParticipant();
 
+        // Deposit payment to debt.
         uint256 _excess = _depositPayment(_borrower, _debtId, msg.value);
+
+        // Deposit excess funds to PaymentBook record.
         if (_excess > 0) _depositFunds(_borrower, _excess);
 
         return true;
@@ -122,11 +125,12 @@ contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
     ) external nonReentrant returns (bool) {
         if (_amount == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
 
-        // Update lender's withdrawable balance.
         address _payee = msg.sender;
+
+        // Withdraw funds from PaymentBook record.
         _withdrawFunds(_payee, _amount);
 
-        // Transfer payment funds to lender
+        // Withdraw funds to payee.
         (bool _success, ) = _payee.call{value: _amount}("");
         if (!_success) revert StdTreasureyErrors.FailedWithdrawal();
 
