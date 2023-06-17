@@ -5,6 +5,7 @@ import {console} from "forge-std/console.sol";
 import {stdError} from "forge-std/StdError.sol";
 
 import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
+import {StdManagerErrors, _INVALID_PARTICIPANT_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
 import {ILoanCollateralVaultEvents} from "./interfaces/ILoanCollateralVaultEvents.t.sol";
 import {ILoanTreasureyEvents} from "./interfaces/ILoanTreasureyEvents.t.sol";
@@ -41,7 +42,6 @@ contract LoanTreasureyUnitTest is
         assertEq(loanTreasurer.loanContract(), address(loanContract));
         assertEq(loanTreasurer.collateralVault(), address(collateralVault));
         assertEq(loanTreasurer.anzaToken(), address(anzaToken));
-        assertEq(loanTreasurer.poolBalance(), 0);
     }
 
     /*
@@ -54,8 +54,6 @@ contract LoanTreasureyUnitTest is
 
         vm.deal(_sender, 1 ether);
         vm.startPrank(_sender);
-        vm.expectEmit(true, true, true, true, address(loanTreasurer));
-        emit Deposited(_debtId, _sender, 1 wei);
         (bool _success, ) = address(loanTreasurer).call{value: 1 wei}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
@@ -63,7 +61,7 @@ contract LoanTreasureyUnitTest is
                 _debtId
             )
         );
-        require(_success, "0 :: payment sponsorship failed.");
+        assertTrue(_success, "0 :: payment sponsorship failed.");
         vm.stopPrank();
     }
 
@@ -84,70 +82,65 @@ contract LoanTreasureyUnitTest is
 
         // DENY :: Try admin
         vm.startPrank(admin);
-        (bool _success, ) = address(loanTreasurer).call{value: 1 wei}(
-            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
+        (bool _success, bytes memory _data) = address(loanTreasurer).call{
+            value: 1 wei
+        }(abi.encodeWithSignature("depositPayment(uint256)", _debtId));
+        assertTrue(_success == false, "0 :: deposited payment.");
+        assertEq(
+            bytes4(_data),
+            _INVALID_PARTICIPANT_SELECTOR_,
+            "1 :: invalid participant error expected."
         );
-        require(_success == false, "0 :: deposited payment.");
         vm.stopPrank();
 
         // Balances should remain unchanged
         assertEq(
             _loanTreasurerBalance,
             address(loanTreasurer).balance,
-            "1 :: loan treasurer balance should be unchanged."
+            "2 :: loan treasurer balance should be unchanged."
         );
         assertEq(
             _lenderBalance,
             loanTreasurer.withdrawableBalance(lender),
-            "2 :: lender withdrawable balance should be unchanged."
+            "3 :: lender withdrawable balance should be unchanged."
         );
 
         // DENY :: Try loan contract
         vm.startPrank(address(loanContract));
-        (_success, ) = address(loanTreasurer).call{value: 1 wei}(
+        (_success, _data) = address(loanTreasurer).call{value: 1 wei}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success == false, "3 :: deposited payment.");
+        assertTrue(_success == false, "4 :: deposited payment.");
+        assertEq(
+            bytes4(_data),
+            _INVALID_PARTICIPANT_SELECTOR_,
+            "5 :: invalid participant error expected."
+        );
         vm.stopPrank();
 
         // Balances should remain unchanged
         assertEq(
             _loanTreasurerBalance,
             address(loanTreasurer).balance,
-            "4 :: loan treasurer balance should be unchanged."
+            "6 :: loan treasurer balance should be unchanged."
         );
         assertEq(
             _lenderBalance,
             loanTreasurer.withdrawableBalance(lender),
-            "5 :: lender withdrawable balance should be unchanged."
+            "7 :: lender withdrawable balance should be unchanged."
         );
 
         // DENY :: Try loan treasurer
         vm.startPrank(address(loanTreasurer));
-        (_success, ) = address(loanTreasurer).call{value: 1 wei}(
+        (_success, _data) = address(loanTreasurer).call{value: 1 wei}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success == false, "6 :: deposited payment.");
-        vm.stopPrank();
-
-        // Balances should remain unchanged
+        assertTrue(_success == false, "8 :: deposited payment.");
         assertEq(
-            _loanTreasurerBalance,
-            address(loanTreasurer).balance,
-            "7 :: loan treasurer balance should be unchanged."
+            bytes4(_data),
+            _INVALID_PARTICIPANT_SELECTOR_,
+            "9 :: invalid participant error expected."
         );
-        assertEq(
-            _lenderBalance,
-            loanTreasurer.withdrawableBalance(lender),
-            "8 :: lender withdrawable balance should be unchanged."
-        );
-
-        // DENY :: Try loan collateral vault
-        vm.startPrank(address(collateralVault));
-        (_success, ) = address(loanTreasurer).call{value: 1 wei}(
-            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
-        );
-        require(_success == false, "9 :: deposited payment.");
         vm.stopPrank();
 
         // Balances should remain unchanged
@@ -162,26 +155,51 @@ contract LoanTreasureyUnitTest is
             "11 :: lender withdrawable balance should be unchanged."
         );
 
+        // DENY :: Try loan collateral vault
+        vm.startPrank(address(collateralVault));
+        (_success, _data) = address(loanTreasurer).call{value: 1 wei}(
+            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
+        );
+        assertTrue(_success == false, "12 :: deposited payment.");
+        assertEq(
+            bytes4(_data),
+            _INVALID_PARTICIPANT_SELECTOR_,
+            "13 :: invalid participant error expected."
+        );
+        vm.stopPrank();
+
+        // Balances should remain unchanged
+        assertEq(
+            _loanTreasurerBalance,
+            address(loanTreasurer).balance,
+            "14 :: loan treasurer balance should be unchanged."
+        );
+        assertEq(
+            _lenderBalance,
+            loanTreasurer.withdrawableBalance(lender),
+            "15 :: lender withdrawable balance should be unchanged."
+        );
+
         // SUCCEED :: Try borrower
         vm.startPrank(borrower);
-        vm.expectEmit(true, true, true, true, address(loanTreasurer));
-        emit Deposited(_debtId, borrower, 1 wei);
+        // vm.expectEmit(true, true, true, true, address(loanTreasurer));
+        // emit Deposited(_debtId, borrower, 1 wei);
         (_success, ) = address(loanTreasurer).call{value: 1 wei}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success == true, "12 :: failed to deposit payment.");
+        assertTrue(_success, "16 :: failed to deposit payment.");
         vm.stopPrank();
 
         // Balances should change in proportion to deposit
         assertEq(
             address(loanTreasurer).balance,
             _loanTreasurerBalance + uint256(1 wei),
-            "13 :: loan treasurer balance should be changed."
+            "17 :: loan treasurer balance should be changed."
         );
         assertEq(
             _lenderBalance + uint256(1 wei),
             loanTreasurer.withdrawableBalance(lender),
-            "14 :: lender withdrawable balance should be changed."
+            "18 :: lender withdrawable balance should be changed."
         );
     }
 

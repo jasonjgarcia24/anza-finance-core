@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_, _TREASURER_} from "@lending-constants/LoanContractRoles.sol";
-import {_DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_, _CLOSE_STATE_} from "@lending-constants/LoanContractStates.sol";
+import {_DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_, _PAID_PENDING_STATE_} from "@lending-constants/LoanContractStates.sol";
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
@@ -25,7 +25,7 @@ abstract contract LoanManager is
     // TODO: This should be pulled into a LoanValidator or the LoanCodec contract.
     mapping(address => mapping(bytes32 => bool)) private __revokedTerms;
 
-    constructor() ManagerAccessController() {}
+    // constructor() ManagerAccessController() {}
 
     function supportsInterface(
         bytes4 _interfaceId
@@ -49,23 +49,63 @@ abstract contract LoanManager is
         maxRefinances = _maxRefinances <= 255 ? _maxRefinances : 2008;
     }
 
-    function setAnzaToken(address _anzaToken) external onlyRole(_ADMIN_) {
-        _setAnzaToken(_anzaToken);
+    /**
+     * Checked public call to set the Anza Token address.
+     *
+     * @notice This function fullfills the DebtBook signature.
+     *
+     * @param _anzaToken The Anza Token address.
+     *
+     * @dev This function is only callable by the _ADMIN_ role.
+     */
+    function setAnzaToken(
+        address _anzaToken
+    ) public override onlyRole(_ADMIN_) {
+        super._setAnzaToken(_anzaToken);
     }
 
+    /**
+     * Checked public call to set the Collateral Vault address.
+     *
+     * @notice This function fullfills the DebtBook signature.
+     *
+     * @param _collateralVault The Collateral Vault address.
+     *
+     * @dev This function is only callable by the _ADMIN_ role.
+     */
     function setCollateralVault(
         address _collateralVault
-    ) external onlyRole(_ADMIN_) {
-        _setCollateralVault(_collateralVault);
+    ) public override onlyRole(_ADMIN_) {
+        super._setCollateralVault(_collateralVault);
     }
 
-    /*
-     * @dev Updates loan state.
+    /**
+     * Updates the loan state and times.
+     *
+     * This funcion conducts updates per the following conditions:
+     *  > If the loan is in an expired state, the loan times are updated and
+     *    the loan state is set to _DEFAULT_STATE_.
+     *  > If the loan is fully paid off, the loan state is set to _PAID_STATE_.
+     *  > If the loan is active and interest is accruing, the loan times are
+     *    updated.
+     *  > If the loan is currently in _ACTIVE_GRACE_STATE_ and the grace period
+     *    has expired, the loan state is transitioned to _ACTIVE_STATE_ and the
+     *    loan times are updated.
+     *
+     * @param _debtId The debt id.
+     *
+     * @dev This function is only callable by the _TREASURER_ role.
+     * @dev This function is only callable when the loan is active or closed
+     * (i.e. not in an inactive state).
+     *
+     * @return True if the loan remains active, false otherwise.
      */
-    function updateLoanState(uint256 _debtId) external onlyRole(_TREASURER_) {
+    function updateLoanState(
+        uint256 _debtId
+    ) external onlyRole(_TREASURER_) returns (bool) {
         if (checkLoanClosed(_debtId)) {
             console.log("Closed loan: %s", _debtId);
-            return;
+            return false;
         }
 
         if (!checkLoanActive(_debtId)) {
@@ -78,28 +118,41 @@ abstract contract LoanManager is
             console.log("Defaulted loan: %s", _debtId);
             _updateLoanTimes(_debtId);
             _setLoanState(_debtId, _DEFAULT_STATE_);
+            return false;
         }
         // Loan fully paid off
         else if (debtBalance(_debtId) <= 0) {
             console.log("Paid loan: %s", _debtId);
             _setLoanState(_debtId, _PAID_STATE_);
+            return false;
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
             console.log("Active loan: %s", _debtId);
             _updateLoanTimes(_debtId);
+            return true;
         }
         // Loan no longer in grace period
         else if (!_checkGracePeriod(_debtId)) {
             console.log("Grace period expired: %s", _debtId);
             _setLoanState(_debtId, _ACTIVE_STATE_);
             _updateLoanTimes(_debtId);
+            return true;
+        } else if (_checkGracePeriod(_debtId)) {
+            console.log("Grace period ongoing: %s", _debtId);
+            return true;
         }
+
+        return false;
     }
 
     function verifyLoanActive(uint256 _debtId) public view {
         if (!checkLoanActive(_debtId))
             revert StdCodecErrors.InactiveLoanState();
+    }
+
+    function verifyLoanNotExpired(uint256 _debtId) public view {
+        if (checkLoanExpired(_debtId)) revert StdCodecErrors.ExpriredLoan();
     }
 
     function checkTermsRevoked(
@@ -126,8 +179,8 @@ abstract contract LoanManager is
             debtBalance(_debtId) > 0 && loanClose(_debtId) <= block.timestamp;
     }
 
-    function checkLoanClosed(uint256 _debtid) public view returns (bool) {
-        return loanState(_debtid) >= _CLOSE_STATE_;
+    function checkLoanClosed(uint256 _debtId) public view returns (bool) {
+        return loanState(_debtId) >= _PAID_PENDING_STATE_;
     }
 
     function revokeTerms(bytes32 _hashedTerms) public {

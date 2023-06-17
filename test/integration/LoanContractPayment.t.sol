@@ -98,20 +98,28 @@ contract LoanContractPayment is LoanContractSubmitted {
         (bool _success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success);
+        assertTrue(_success, "0 :: deposit payment should succeed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is equal to payment
-        assertEq(loanTreasurer.withdrawableBalance(lender), _payment);
+        assertEq(
+            loanTreasurer.withdrawableBalance(lender),
+            _payment,
+            "1 :: lender's withdrawable balance should be equal to payment."
+        );
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
         _success = loanTreasurer.withdrawFromBalance(_payment);
-        require(_success);
+        assertTrue(_success, "2 :: withdraw payment should succeed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
-        assertEq(loanTreasurer.withdrawableBalance(lender), 0);
+        assertEq(
+            loanTreasurer.withdrawableBalance(lender),
+            0,
+            "3 :: lender's withdrawable balance should be 0."
+        );
     }
 
     function testLoanContractPayment__Overpayment() public {
@@ -128,7 +136,7 @@ contract LoanContractPayment is LoanContractSubmitted {
         );
 
         bool _success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
-        require(_success == true, "1 :: withdraw payment should succeed.");
+        assertTrue(_success == true, "1 :: withdraw payment should succeed.");
 
         assertEq(
             loanTreasurer.withdrawableBalance(borrower),
@@ -141,7 +149,7 @@ contract LoanContractPayment is LoanContractSubmitted {
         (_success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
-        require(_success == true, "3 :: deposit payment should succeed.");
+        assertTrue(_success == true, "3 :: deposit payment should succeed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is the princial
@@ -161,14 +169,14 @@ contract LoanContractPayment is LoanContractSubmitted {
         vm.startPrank(lender);
         // vm.expectRevert(stdError.arithmeticError);
         _success = loanTreasurer.withdrawFromBalance(_PRINCIPAL_);
-        require(_success == true, "6 :: withdraw payment should succeed.");
+        assertTrue(_success == true, "6 :: withdraw payment should succeed.");
         vm.stopPrank();
 
         // Allow borrower to withdraw payment
         vm.startPrank(borrower);
         // vm.expectRevert(stdError.arithmeticError);
         _success = loanTreasurer.withdrawFromBalance(1 ether);
-        require(_success == true, "7 :: withdraw payment should succeed.");
+        assertTrue(_success == true, "7 :: withdraw payment should succeed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance is 0
@@ -199,25 +207,31 @@ contract LoanContractWithdrawal is LoanContractSubmitted {
         // Pay off loan
         vm.deal(borrower, _PRINCIPAL_);
         vm.startPrank(borrower);
-        (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
-        );
-        require(_success);
+        (bool _success, bytes memory _data) = address(loanTreasurer).call{
+            value: _PRINCIPAL_
+        }(abi.encodeWithSignature("depositPayment(uint256)", _debtId));
+        assertTrue(_success, "0 :: Deposit payment should succeed.");
         vm.stopPrank();
 
+        console.logBytes(_data);
         // Ensure lender's withdrawable balance is equal to payment
-        assertEq(loanTreasurer.withdrawableBalance(lender), _PRINCIPAL_);
+        assertEq(
+            loanTreasurer.withdrawableBalance(lender),
+            _PRINCIPAL_,
+            "1 :: Lender's withdrawable balance should be the principal."
+        );
 
         // Allow lender to withdraw payment
         vm.startPrank(lender);
         _success = loanTreasurer.withdrawFromBalance(_withdrawal);
-        require(_success);
+        assertTrue(_success, "2 :: Withdraw payment should succeed.");
         vm.stopPrank();
 
         // Ensure lender's withdrawable balance reflects withdrawal
         assertEq(
             loanTreasurer.withdrawableBalance(lender),
-            _PRINCIPAL_ - _withdrawal
+            _PRINCIPAL_ - _withdrawal,
+            "3 :: Lender's withdrawable balance should be reduced by the withdrawal."
         );
     }
 

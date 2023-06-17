@@ -106,10 +106,6 @@ library LibLoanContractRoles {
 
 library LibLoanContractStates {
     uint8 public constant UNDEFINED_STATE = _UNDEFINED_STATE_;
-    uint8 public constant NONLEVERAGED_STATE = _NONLEVERAGED_STATE_;
-    uint8 public constant UNSPONSORED_STATE = _UNSPONSORED_STATE_;
-    uint8 public constant SPONSORED_STATE = _SPONSORED_STATE_;
-    uint8 public constant FUNDED_STATE = _FUNDED_STATE_;
     uint8 public constant ACTIVE_GRACE_STATE = _ACTIVE_GRACE_STATE_;
     uint8 public constant ACTIVE_STATE = _ACTIVE_STATE_;
     uint8 public constant DEFAULT_STATE = _DEFAULT_STATE_;

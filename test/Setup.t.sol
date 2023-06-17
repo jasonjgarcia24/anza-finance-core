@@ -99,7 +99,7 @@ contract LoanContractHarness is LoanContract {
     function exposed__getTotalFirIntervals(
         uint256 _firInterval,
         uint256 _seconds
-    ) public pure returns (uint256) {
+    ) public view returns (uint256) {
         return _getTotalFirIntervals(_firInterval, _seconds);
     }
 }

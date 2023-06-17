@@ -28,21 +28,18 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         uint256 _debtId,
         uint256 _seconds
     ) public view returns (uint256) {
-        uint256 _firInterval = firInterval(_debtId);
-        uint256 _duration = loanDuration(_debtId);
-
-        _seconds = (_seconds + _duration) <= loanClose(_debtId)
+        _seconds = (_seconds + loanLastChecked(_debtId)) <= loanClose(_debtId)
             ? _seconds
-            : _duration;
+            : loanDuration(_debtId);
 
-        return _getTotalFirIntervals(_firInterval, _seconds);
+        return _getTotalFirIntervals(firInterval(_debtId), _seconds);
     }
 
     function _validateLoanTerms(
         bytes32 _contractTerms,
         uint64 _loanStart,
         uint256 _principal
-    ) internal pure {
+    ) internal view {
         if (_principal == 0)
             revert StdCodecErrors.InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
 
@@ -124,13 +121,16 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
     function _getTotalFirIntervals(
         uint256 _firInterval,
         uint256 _seconds
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         // _SECONDLY_
         if (_firInterval == 0) {
             return _seconds;
         }
         // _MINUTELY_
         else if (_firInterval == 1) {
+            console.log("Seconds: %s", _seconds);
+            console.log("Minutely Multiplier: %s", _MINUTELY_MULTIPLIER_);
+
             return _seconds / _MINUTELY_MULTIPLIER_;
         }
         // _HOURLY_

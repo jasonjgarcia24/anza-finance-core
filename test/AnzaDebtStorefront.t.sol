@@ -628,7 +628,7 @@ contract AnzaDebtStorefront__FuzzFailBuyDebt is AnzaDebtStorefrontUnitTest {
             }),
             _signature,
             _timeWarp,
-            _INACTIVE_LOAN_STATE_SELECTOR_
+            _EXPIRED_LOAN_SELECTOR_
         );
     }
 }

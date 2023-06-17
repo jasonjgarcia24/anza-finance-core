@@ -3,21 +3,20 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
-import "@lending-constants/LoanContractRoles.sol";
+import {_ADMIN_, _LOAN_CONTRACT_} from "@lending-constants/LoanContractRoles.sol";
 import {_DEBT_MARKET_} from "@market-constants/AnzaDebtMarketRoles.sol";
 
-import {ITreasureyAccessController} from "@lending-access/interfaces/ITreasureyAccessController.sol";
+import {IAccountantAccessController} from "@lending-access/interfaces/IAccountantAccessController.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
-import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-abstract contract TreasureyAccessController is
-    ITreasureyAccessController,
+abstract contract AccountantAccessController is
+    IAccountantAccessController,
     AccessControl
 {
     IDebtBook internal _loanContract;
@@ -25,12 +24,11 @@ abstract contract TreasureyAccessController is
     ILoanManager internal _loanManager;
     ILoanCodec internal _loanCodec;
     ICollateralVault internal _collateralVault;
-    IAnzaToken internal _anzaToken;
 
     constructor() {
         _setRoleAdmin(_ADMIN_, _ADMIN_);
-        _setRoleAdmin(_LOAN_CONTRACT_, _ADMIN_);
         _setRoleAdmin(_DEBT_MARKET_, _ADMIN_);
+        _setRoleAdmin(_LOAN_CONTRACT_, _ADMIN_);
 
         _grantRole(_ADMIN_, msg.sender);
     }
@@ -39,12 +37,8 @@ abstract contract TreasureyAccessController is
         bytes4 _interfaceId
     ) public view virtual override returns (bool) {
         return
-            _interfaceId == type(ITreasureyAccessController).interfaceId ||
+            _interfaceId == type(IAccountantAccessController).interfaceId ||
             AccessControl.supportsInterface(_interfaceId);
-    }
-
-    function anzaToken() external view returns (address) {
-        return address(_anzaToken);
     }
 
     function loanContract() external view returns (address) {
@@ -53,12 +47,6 @@ abstract contract TreasureyAccessController is
 
     function collateralVault() external view returns (address) {
         return address(_collateralVault);
-    }
-
-    function setAnzaToken(
-        address _anzaTokenAddress
-    ) external onlyRole(_ADMIN_) {
-        _anzaToken = IAnzaToken(_anzaTokenAddress);
     }
 
     function setLoanContract(

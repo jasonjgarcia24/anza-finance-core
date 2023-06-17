@@ -235,6 +235,10 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     }
 
     /**
+     * TODO: Revisit to check if we can't just transfer the debt tokens to the
+     * new lender and transfer the payment directly to the previous lender's
+     * withdrawable balance.
+     *
      * Transfer debt to a new lender. This will not alter existing loan terms.
      *
      * @dev The call stack of this function is:

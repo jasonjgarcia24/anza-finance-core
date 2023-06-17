@@ -345,7 +345,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
 
         // Create loan contract
         uint256 _timeLoanCreated = block.timestamp;
-        (bool _success, bytes memory _data) = address(this).call{value: 0}(
+        (bool _success, ) = address(this).call{value: 0}(
             abi.encodeWithSignature(
                 "createLoanContract(uint256)",
                 localCollateralId++
@@ -372,7 +372,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.startPrank(borrower);
         uint256 _loanStart = loanContract.loanStart(_debtId);
 
-        (_success, _data) = address(loanTreasurer).call{value: _payment}(
+        (_success, ) = address(loanTreasurer).call{value: _payment}(
             abi.encodeWithSignature("depositPayment(uint256)", _debtId)
         );
         assertTrue(_isExpired || _success, "0 :: Payment was unsuccessful");
@@ -382,9 +382,11 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         bool _isPayoff = anzaToken.totalSupply(_debtId * 2) <= 0;
 
         vm.startPrank(address(loanTreasurer));
+        try loanContract.updateLoanState(_debtId) returns (bool) {} catch {}
+        vm.stopPrank();
+
         // Loan state should remain unchanged
         if (!_isPayoff && _isGracePeriod) {
-            loanContract.updateLoanState(_debtId);
             assertEq(
                 loanContract.loanState(_debtId),
                 _prevLoanState,
@@ -435,7 +437,6 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
                 "8 :: Loan last checked time should be either loan start or now"
             );
         }
-        vm.stopPrank();
     }
 }
 
@@ -932,9 +933,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         uint256 _debtId = loanContract.totalDebts();
+        uint256 _collateralId = collateralId;
 
         (bool _success, ) = createLoanContract(
-            collateralId,
+            _collateralId++,
             ContractTerms({
                 firInterval: _SECONDLY_,
                 fixedInterestRate: 1,
@@ -958,7 +960,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 1,
+            _collateralId++,
             ContractTerms({
                 firInterval: _MINUTELY_,
                 fixedInterestRate: 1,
@@ -971,6 +973,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
                 lenderRoyalties: 0
             })
         );
+
         assertTrue(_success, "2 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -987,7 +990,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 2,
+            _collateralId++,
             ContractTerms({
                 firInterval: _HOURLY_,
                 fixedInterestRate: 1,
@@ -1016,7 +1019,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 3,
+            _collateralId++,
             ContractTerms({
                 firInterval: _DAILY_,
                 fixedInterestRate: 1,
@@ -1045,7 +1048,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 4,
+            _collateralId++,
             ContractTerms({
                 firInterval: _WEEKLY_,
                 fixedInterestRate: 1,
@@ -1074,7 +1077,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 5,
+            _collateralId++,
             ContractTerms({
                 firInterval: _2_WEEKLY_,
                 fixedInterestRate: 1,
@@ -1103,7 +1106,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 6,
+            _collateralId++,
             ContractTerms({
                 firInterval: _4_WEEKLY_,
                 fixedInterestRate: 1,
@@ -1132,7 +1135,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 7,
+            _collateralId++,
             ContractTerms({
                 firInterval: _6_WEEKLY_,
                 fixedInterestRate: 1,
@@ -1161,7 +1164,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 8,
+            _collateralId++,
             ContractTerms({
                 firInterval: _8_WEEKLY_,
                 fixedInterestRate: 1,
@@ -1190,7 +1193,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         (_success, ) = createLoanContract(
-            collateralId + 9,
+            _collateralId++,
             ContractTerms({
                 firInterval: _360_DAILY_,
                 fixedInterestRate: 1,

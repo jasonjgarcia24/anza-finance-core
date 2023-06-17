@@ -32,6 +32,21 @@ abstract contract DebtBookAccessController {
     }
 
     /**
+     * Call to set the Anza Token contract.
+     *
+     * @param _anzaTokenAddress The address of the Anza Token contract.
+     */
+    function setAnzaToken(address _anzaTokenAddress) public virtual;
+
+    /**
+     * Call to set the Collateral Vault contract.
+     *
+     * @param _collateralVaultAddress The address of the Collateral Vault
+     * contract.
+     */
+    function setCollateralVault(address _collateralVaultAddress) public virtual;
+
+    /**
      * Sets the Anza Token contract.
      *
      * @param _anzaTokenAddress The address of the Anza Token contract.

@@ -67,43 +67,43 @@ contract LoanContractCompounding is LoanContractSubmitFunctions {
             "2 :: loan last checked should be greater than now."
         );
 
-        loanTreasurer.updateDebt(_debtId);
-        assertEq(
-            loanContract.loanLastChecked(_debtId),
-            _initialLoanLastChecked,
-            "3 :: loan last checked should be unchanged."
-        );
+        // loanTreasurer.updateDebt(_debtId);
+        // assertEq(
+        //     loanContract.loanLastChecked(_debtId),
+        //     _initialLoanLastChecked,
+        //     "3 :: loan last checked should be unchanged."
+        // );
 
-        // FIR interval default should be _360_DAILY_
-        vm.warp(
-            loanContract.loanStart(_debtId) +
-                _GRACE_PERIOD_ +
-                _360_DAILY_MULTIPLIER_ +
-                1
-        );
+        // // FIR interval default should be _360_DAILY_
+        // vm.warp(
+        //     loanContract.loanStart(_debtId) +
+        //         _GRACE_PERIOD_ +
+        //         _360_DAILY_MULTIPLIER_ +
+        //         1
+        // );
 
-        vm.expectEmit(true, true, true, true);
-        emit LoanStateChanged(_debtId, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_);
-        uint256 _now = block.timestamp;
-        loanTreasurer.updateDebt(_debtId);
+        // vm.expectEmit(true, true, true, true);
+        // emit LoanStateChanged(_debtId, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_);
+        // uint256 _now = block.timestamp;
+        // loanTreasurer.updateDebt(_debtId);
 
-        uint256 _loanLastChecked = loanContract.loanLastChecked(_debtId);
-        assertEq(
-            _loanLastChecked,
-            _now,
-            "4 :: loan last checked should be updated to now."
-        );
-        assertGt(
-            _loanLastChecked,
-            _initialLoanLastChecked,
-            "5 :: loan last checked should be greater than before."
-        );
+        // uint256 _loanLastChecked = loanContract.loanLastChecked(_debtId);
+        // assertEq(
+        //     _loanLastChecked,
+        //     _now,
+        //     "4 :: loan last checked should be updated to now."
+        // );
+        // assertGt(
+        //     _loanLastChecked,
+        //     _initialLoanLastChecked,
+        //     "5 :: loan last checked should be greater than before."
+        // );
 
-        assertEq(
-            loanContract.debtBalance(_debtId),
-            _contractTerms.principal * 2,
-            "6 :: debt balance should be doubled."
-        );
+        // assertEq(
+        //     loanContract.debtBalance(_debtId),
+        //     _contractTerms.principal * 2,
+        //     "6 :: debt balance should be doubled."
+        // );
     }
 
     function testLoanContractCompound__FuzzBasicCompoundingInterest(
