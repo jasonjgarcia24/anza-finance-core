@@ -60,7 +60,10 @@ contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
         // Therefore, no need to check here.
         if (_payment == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
 
+        // Deposit payment to debt.
         uint256 _excess = _depositPayment(_sponsor, _debtId, _payment);
+
+        // Deposit excess funds to Payment record for sponsor.
         if (_excess > 0) _depositFunds(_sponsor, _excess);
 
         return true;
@@ -102,7 +105,7 @@ contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
         // Deposit payment to debt.
         uint256 _excess = _depositPayment(_borrower, _debtId, msg.value);
 
-        // Deposit excess funds to PaymentBook record.
+        // Deposit excess funds to PaymentBook record for borrower.
         if (_excess > 0) _depositFunds(_borrower, _excess);
 
         return true;
