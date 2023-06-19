@@ -164,6 +164,8 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
 
                 // Ownership: set the token owner.
                 _setOwner(_id, _to);
+                console.log(_to);
+                console.log(_id);
             }
             /** Transfering */
             else if (_to != address(0)) {

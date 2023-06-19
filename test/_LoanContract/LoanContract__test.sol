@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity 0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
@@ -19,9 +19,9 @@ import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
 import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers} from "@helper-libraries/LibLoanContractConstants.sol";
 
-import {Utils, Setup} from "./Setup.t.sol";
-import {DemoToken} from "./DemoToken.sol";
-import {ILoanContractEvents} from "./interfaces/ILoanContractEvents.t.sol";
+import {Utils, Setup} from "@test-base/Setup__test.sol";
+import {DemoToken} from "@test-utils/DemoToken.sol";
+import {ILoanContractEvents} from "@test-contract-interfaces/ILoanContractEvents__test.sol";
 
 abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
     function setUp() public virtual override {
@@ -166,58 +166,6 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
             loanContract.anzaToken() == address(anzaToken),
             "1 :: Should be AnzaToken"
         );
-    }
-
-    function testLoanContract__SetMaxRefinances() public {
-        assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
-
-        // Allow
-        vm.deal(admin, 1 ether);
-        vm.startPrank(admin);
-        loanContract.setMaxRefinances(15);
-
-        assertTrue(loanContract.maxRefinances() == 15, "1 :: Should be 15");
-
-        // Allow
-        loanContract.setMaxRefinances(255);
-        vm.stopPrank();
-
-        assertTrue(loanContract.maxRefinances() == 255, "2 :: Should be 255");
-    }
-
-    function testLoanContract__FuzzSetMaxRefinancesDenyAddress(
-        address _account
-    ) public {
-        vm.assume(_account != admin);
-
-        assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
-
-        // Disallow
-        vm.deal(_account, 1 ether);
-        vm.startPrank(_account);
-        vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
-        );
-        loanContract.setMaxRefinances(15);
-        vm.stopPrank();
-
-        assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
-    }
-
-    function testLoanContract__FuzzSetMaxRefinancesDenyAmount(
-        uint256 _amount
-    ) public {
-        _amount = bound(_amount, 256, type(uint256).max);
-
-        assertTrue(loanContract.maxRefinances() == 2008, "0 :: Should be 2008");
-
-        // Disallow
-        vm.deal(admin, 1 ether);
-        vm.startPrank(admin);
-        loanContract.setMaxRefinances(_amount);
-        vm.stopPrank();
-
-        assertTrue(loanContract.maxRefinances() == 2008, "1 :: Should be 2008");
     }
 
     function testLoanContract__UpdateLoanStateValidate() public {

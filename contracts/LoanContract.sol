@@ -358,7 +358,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         uint256 _activeLoanIndex,
         bytes32 _contractTerms
     ) private {
-        if (_activeLoanIndex > maxRefinances)
+        if (_activeLoanIndex > maxRefinances())
             revert StdMonetaryErrors.ExceededRefinanceLimit();
 
         _setLoanAgreement(_now, totalDebts, _activeLoanIndex, _contractTerms);

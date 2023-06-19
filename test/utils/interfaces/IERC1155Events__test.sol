@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.2;
+pragma solidity 0.8.20;
 
 /// @title ERC-1155 Multi Token Standard
 /// @dev See https://eips.ethereum.org/EIPS/eip-1155

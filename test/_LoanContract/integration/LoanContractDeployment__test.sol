@@ -5,8 +5,9 @@ import {Test} from "forge-std/Test.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
 
+import {Test, LoanContractDeployer, LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
+
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {Test, LoanContractDeployer, LoanContractSubmitted} from "../LoanContract.t.sol";
 
 contract LoanContractTestDeployment is LoanContractDeployer {
     function testDeploymentStateVars() public {

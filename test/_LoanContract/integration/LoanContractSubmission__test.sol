@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
@@ -14,10 +14,10 @@ import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
-import {LoanSigned} from "../LoanContract.t.sol";
-import {LoanContractHarness} from "../Setup.t.sol";
-import {IERC721Events} from "../interfaces/IERC721Events.t.sol";
-import {IERC1155Events} from "../interfaces/IERC1155Events.t.sol";
+import {LoanSigned} from "@test-contract/LoanContract__test.sol";
+import {LoanContractHarness} from "@test-base/Setup__test.sol";
+import {IERC721Events} from "@test-utils-interfaces/IERC721Events__test.sol";
+import {IERC1155Events} from "@test-utils-interfaces/IERC1155Events__test.sol";
 
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
@@ -26,6 +26,10 @@ abstract contract LoanContractSubmitFunctions is
     IERC1155Events,
     LoanSigned
 {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
     function initLoanContractExpectations(
         ContractTerms memory _contractTerms
     ) public returns (bool, bytes memory) {

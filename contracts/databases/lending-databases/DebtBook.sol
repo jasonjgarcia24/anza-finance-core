@@ -96,6 +96,8 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         ];
 
         for (uint256 i; i < _debtMaps.length; ) {
+            console.log("debtId: %s", _debtMaps[i].debtId);
+
             _debtBalance += _anzaToken.totalSupply(
                 _anzaToken.lenderTokenId(_debtMaps[i].debtId)
             );
@@ -169,7 +171,8 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
             );
 
         // If index is out of bounds, revert
-        if (_debtMaps.length < _index) revert StdLoanErrors.InvalidCollateral();
+        if (_debtMaps.length <= _index)
+            revert StdLoanErrors.InvalidCollateral();
 
         // Return the debt at the index
         return (_debtMaps[_index].debtId, _debtMaps[_index].collateralNonce);

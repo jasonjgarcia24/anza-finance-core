@@ -5,10 +5,11 @@ import {console} from "forge-std/console.sol";
 
 import {_ADMIN_, _TREASURER_} from "@lending-constants/LoanContractRoles.sol";
 import {_DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_, _PAID_PENDING_STATE_} from "@lending-constants/LoanContractStates.sol";
+import {_MAX_REFINANCES_} from "@lending-constants/LoanContractNumbers.sol";
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
-import {LoanCodec} from "./LoanCodec.sol";
+import {LoanCodec} from "@base/LoanCodec.sol";
 import {DebtBook} from "@lending-databases/DebtBook.sol";
 import {ManagerAccessController} from "@lending-access/ManagerAccessController.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -19,13 +20,10 @@ abstract contract LoanManager is
     DebtBook,
     ManagerAccessController
 {
-    // Max number of loan refinances (default is unlimited)
-    uint256 public maxRefinances = 2008;
-
     // TODO: This should be pulled into a LoanValidator or the LoanCodec contract.
     mapping(address => mapping(bytes32 => bool)) private __revokedTerms;
 
-    // constructor() ManagerAccessController() {}
+    constructor() ManagerAccessController() {}
 
     function supportsInterface(
         bytes4 _interfaceId
@@ -43,10 +41,8 @@ abstract contract LoanManager is
             ManagerAccessController.supportsInterface(_interfaceId);
     }
 
-    function setMaxRefinances(
-        uint256 _maxRefinances
-    ) external onlyRole(_ADMIN_) {
-        maxRefinances = _maxRefinances <= 255 ? _maxRefinances : 2008;
+    function maxRefinances() public pure returns (uint256) {
+        return _MAX_REFINANCES_;
     }
 
     /**

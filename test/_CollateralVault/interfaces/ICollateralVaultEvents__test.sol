@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-interface ILoanCollateralVaultEvents {
+interface ICollateralVaultEvents {
     event DepositedCollateral(
         address indexed from,
         address indexed collateralAddress,

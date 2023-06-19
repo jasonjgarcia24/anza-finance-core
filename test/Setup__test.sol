@@ -19,9 +19,9 @@ import {AnzaSponsorshipStorefront} from "@base/storefronts/AnzaSponsorshipStoref
 import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront.sol";
 import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 
-import {DemoToken} from "./DemoToken.sol";
-import {IERC1155Events} from "./interfaces/IERC1155Events.t.sol";
-import {IAccessControlEvents} from "./interfaces/IAccessControlEvents.t.sol";
+import {DemoToken} from "@test-utils/DemoToken.sol";
+import {IERC1155Events} from "@test-utils-interfaces/IERC1155Events__test.sol";
+import {IAccessControlEvents} from "@test-utils-interfaces/IAccessControlEvents__test.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -40,16 +40,6 @@ abstract contract Utils {
     uint32 public constant _DURATION_ = 1209600;
     uint32 public constant _TERMS_EXPIRY_ = 86400;
     uint8 public constant _LENDER_ROYALTIES_ = 10;
-    // To calc max price of loan with compounding interest:
-    // principal = 10
-    // fixedInterestRate = 5
-    // duration = 62208000
-    // firInterval = 60 * 60 * 24
-    // compoundingPeriods = 1
-    // timePeriodOfLoan = duration / firInterval
-    //
-    // principal * (1 + (fixedInterestRate/100 / compoundingPeriods)) ^ (compoundingPeriods * timePeriodOfLoan)
-    // 10 * (1 + (0.05 / 1)) ** (1 * 720)
 
     uint8 public constant _ALT_FIR_INTERVAL_ = 14;
     uint8 public constant _ALT_FIXED_INTEREST_RATE_ = 5; // 0.05
@@ -93,18 +83,7 @@ abstract contract Utils {
     }
 }
 
-contract LoanContractHarness is LoanContract {
-    constructor() LoanContract() {}
-
-    function exposed__getTotalFirIntervals(
-        uint256 _firInterval,
-        uint256 _seconds
-    ) public view returns (uint256) {
-        return _getTotalFirIntervals(_firInterval, _seconds);
-    }
-}
-
-abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
+abstract contract Settings is Test {
     address public borrower = vm.envAddress("DEAD_ACCOUNT_KEY_0");
     address public treasurer = vm.envAddress("DEAD_ACCOUNT_KEY_2");
     address public collector = vm.envAddress("DEAD_ACCOUNT_KEY_3");
@@ -147,7 +126,25 @@ abstract contract Setup is Test, Utils, IERC1155Events, IAccessControlEvents {
         uint32 termsExpiry;
         uint8 lenderRoyalties;
     }
+}
 
+contract LoanContractHarness is LoanContract {
+    constructor() LoanContract() {}
+
+    function exposed__getTotalFirIntervals(
+        uint256 _firInterval,
+        uint256 _seconds
+    ) public view returns (uint256) {
+        return _getTotalFirIntervals(_firInterval, _seconds);
+    }
+}
+
+abstract contract Setup is
+    Utils,
+    Settings,
+    IERC1155Events,
+    IAccessControlEvents
+{
     function setUp() public virtual {
         vm.deal(admin, 1 ether);
         vm.startPrank(admin);

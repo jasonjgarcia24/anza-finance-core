@@ -13,9 +13,9 @@ import "@custom-errors/StdCodecErrors.sol";
 import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
 import {LibLoanContractStates as States} from "@helper-libraries/LibLoanContractConstants.sol";
 
-import {Setup, AnzaDebtStorefront} from "./Setup.t.sol";
-import {LoanContractSubmitted} from "./LoanContract.t.sol";
-import {IAnzaDebtStorefrontEvents} from "./interfaces/IAnzaDebtStorefrontEvents.t.sol";
+import {Setup, AnzaDebtStorefront} from "@test-base/Setup__test.sol";
+import {LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
+import {IAnzaDebtStorefrontEvents} from "@test-storefront-interfaces/IAnzaDebtStorefrontEvents__test.sol";
 
 abstract contract AnzaDebtStorefrontUnitTest is
     IAnzaDebtStorefrontEvents,

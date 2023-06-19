@@ -7,10 +7,10 @@ import {Test} from "forge-std/Test.sol";
 import "@lending-constants/LoanContractStates.sol";
 import "@lending-constants/LoanContractFIRIntervals.sol";
 
-import {Setup} from "../Setup.t.sol";
-import {LoanSigned} from "../LoanContract.t.sol";
-import {LoanContractSubmitFunctions} from "./LoanContractSubmission.t.sol";
-import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
+import {Setup} from "@test-base/Setup__test.sol";
+import {LoanSigned} from "@test-contract/LoanContract__test.sol";
+import {LoanContractSubmitFunctions} from "@test-contract-integration/LoanContractSubmission__test.sol";
+import {ILoanContractEvents} from "@test-contract-interfaces/ILoanContractEvents__test.sol";
 
 contract LoanContractCompounding is LoanContractSubmitFunctions {
     function setUp() public virtual override {

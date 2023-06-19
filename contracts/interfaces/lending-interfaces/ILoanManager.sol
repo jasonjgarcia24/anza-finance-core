@@ -12,9 +12,7 @@ interface ILoanManager {
         bytes32 indexed hashedTerms
     );
 
-    function maxRefinances() external returns (uint256);
-
-    function setMaxRefinances(uint256 _maxRefinances) external;
+    function maxRefinances() external pure returns (uint256);
 
     function updateLoanState(uint256 _debtId) external returns (bool);
 

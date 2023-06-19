@@ -29,4 +29,29 @@
     @token-databases=contracts/databases/token-databases/
     @token-interfaces=contracts/interfaces/token-interfaces/
     @token-libraries=contracts/libraries/token-libraries/
+
+    @test-base=test/
+
+    @test-contract=test/_LoanContract/
+    @test-contract-interfaces=test/_LoanContract/interfaces/
+    @test-contract-integration=test/_LoanContract/integration/
+
+    @test-manager=test/_LoanManager/
+    @test-manager-interfaces=test/_LoanManager/interfaces/
+
+    @test-storefront=test/_Storefronts/
+    @test-storefront-interfaces=test/_Storefronts/interfaces/
+
+    @test-tokens=test/tokens/
+
+    @test-treasurey=test/_LoanTreasurey/
+    @test-treasurey-interfaces=test/_LoanTreasurey/interfaces/
+
+    @test-vault=test/_CollateralVault/
+    @test-vault-interfaces=test/_CollateralVault/interfaces/
+
+    @test-databases=test/databases/
+
+    @test-utils=test/utils/
+    @test-utils-interfaces=test/utils/interfaces
     

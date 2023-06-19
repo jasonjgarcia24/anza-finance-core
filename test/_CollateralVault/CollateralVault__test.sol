@@ -8,14 +8,14 @@ import {StdVaultErrors} from "@custom-errors/StdVaultErrors.sol";
 
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 
-import {LoanContractSubmitted} from "./LoanContract.t.sol";
-import {ILoanCollateralVaultEvents} from "./interfaces/ILoanCollateralVaultEvents.t.sol";
+import {LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
+import {ICollateralVaultEvents} from "@test-vault-interfaces/ICollateralVaultEvents__test.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract LoanCollateralVaultUnitTest is
     LoanContractSubmitted,
-    ILoanCollateralVaultEvents
+    ICollateralVaultEvents
 {
     function setUp() public virtual override {
         super.setUp();
@@ -112,7 +112,9 @@ contract LoanCollateralVaultUnitTest is
 
         // DENY :: Try loan treasurer of unpaid loan
         vm.startPrank(address(loanTreasurer));
-        vm.expectRevert(abi.encodeWithSelector(StdVaultErrors.UnallowedWithdrawal.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(StdVaultErrors.UnallowedWithdrawal.selector)
+        );
         emit WithdrawnCollateral(borrower, address(demoToken), collateralId);
         collateralVault.withdraw(borrower, _debtId);
         vm.stopPrank();

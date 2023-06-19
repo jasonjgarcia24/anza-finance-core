@@ -10,7 +10,6 @@ import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
 import {AnzaDebtExchange} from "@base/AnzaDebtExchange.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
     using Address for address payable;

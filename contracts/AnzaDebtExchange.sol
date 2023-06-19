@@ -10,8 +10,6 @@ import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 import {IAnzaDebtExchange} from "@lending-interfaces/IAnzaDebtExchange.sol";
 import {LoanAccountant} from "@base/LoanAccountant.sol";
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
     constructor() LoanAccountant() {}
 

@@ -8,8 +8,8 @@ import {stdError} from "forge-std/StdError.sol";
 import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 
-import {ILoanContractEvents} from "../interfaces/ILoanContractEvents.t.sol";
-import {LoanContractSubmitted} from "../LoanContract.t.sol";
+import {LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
+import {ILoanContractEvents} from "@test-contract-interfaces/ILoanContractEvents__test.sol";
 
 contract LoanContractPayoff is LoanContractSubmitted {
     function setUp() public virtual override {

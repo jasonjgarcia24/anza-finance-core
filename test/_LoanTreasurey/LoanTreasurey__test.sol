@@ -7,17 +7,17 @@ import {stdError} from "forge-std/StdError.sol";
 import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 import {StdManagerErrors, _INVALID_PARTICIPANT_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
-import {ILoanCollateralVaultEvents} from "./interfaces/ILoanCollateralVaultEvents.t.sol";
-import {ILoanTreasureyEvents} from "./interfaces/ILoanTreasureyEvents.t.sol";
+import {ICollateralVaultEvents} from "@test-vault-interfaces/ICollateralVaultEvents__test.sol";
+import {ILoanTreasureyEvents} from "@test-treasurey-interfaces/ILoanTreasureyEvents__test.sol";
 
-import {LoanContractSubmitted} from "./LoanContract.t.sol";
+import {LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
 
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract LoanTreasureyUnitTest is
     ILoanTreasureyEvents,
-    ILoanCollateralVaultEvents,
+    ICollateralVaultEvents,
     LoanContractSubmitted
 {
     function setUp() public virtual override {
