@@ -11,7 +11,7 @@ contract DemoToken is ERC721 {
     mapping(address => uint256[]) public ownedTokens;
 
     constructor() ERC721("Demo Token", "DT") {
-        while (totalSupply < 50) {
+        while (totalSupply < 10) {
             _safeMint(msg.sender, ++totalSupply);
         }
     }

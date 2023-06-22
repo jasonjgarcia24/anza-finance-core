@@ -27,7 +27,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 error TryCatchErr(bytes err);
 
-abstract contract Utils {
+abstract contract Utils is Test {
     /* ------------------------------------------------ *
      *                  Loan Terms                      *
      * ------------------------------------------------ */
@@ -81,9 +81,21 @@ abstract contract Utils {
                 )
             );
     }
+
+    function unexpectedFail(string memory _reason, bytes memory _err) public {
+        emit log(string(abi.encodePacked("Error: ", _reason)));
+        emit log_named_bytes("Unexpected error", _err);
+        assertTrue(false);
+    }
+
+    function unexpectedFail(string memory _reason, string memory _err) public {
+        emit log(string(abi.encodePacked("Error: ", _reason)));
+        emit log_named_string("Unexpected error", _err);
+        assertTrue(false);
+    }
 }
 
-abstract contract Settings is Test {
+abstract contract Settings is Utils {
     address public borrower = vm.envAddress("DEAD_ACCOUNT_KEY_0");
     address public treasurer = vm.envAddress("DEAD_ACCOUNT_KEY_2");
     address public collector = vm.envAddress("DEAD_ACCOUNT_KEY_3");
@@ -139,12 +151,7 @@ contract LoanContractHarness is LoanContract {
     }
 }
 
-abstract contract Setup is
-    Utils,
-    Settings,
-    IERC1155Events,
-    IAccessControlEvents
-{
+abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
     function setUp() public virtual {
         vm.deal(admin, 1 ether);
         vm.startPrank(admin);
@@ -275,7 +282,7 @@ abstract contract Setup is
 
     function createContractTerms(
         ContractTerms memory _terms
-    ) public pure virtual returns (bytes32 _contractTerms) {
+    ) public view virtual returns (bytes32 _contractTerms) {
         uint8 _firInterval = _terms.firInterval;
         uint8 _fixedInterestRate = _terms.fixedInterestRate;
         uint8 _isDirect = _terms.isFixed;

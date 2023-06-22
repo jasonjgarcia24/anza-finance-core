@@ -174,7 +174,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         uint256 _debtId,
         uint256 _activeLoanIndex,
         bytes32 _contractTerms
-    ) internal virtual {
+    ) internal {
         bytes32 _loanAgreement;
 
         assembly {

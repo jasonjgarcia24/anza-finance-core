@@ -24,6 +24,12 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
 
     constructor() DebtBookAccessController() {}
 
+    modifier onlyValidCollateral(address _collateralAddress) {
+        if (_collateralAddress == address(0))
+            revert StdLoanErrors.InvalidCollateral();
+        _;
+    }
+
     function supportsInterface(
         bytes4 _interfaceId
     ) public view virtual override(DebtBookAccessController) returns (bool) {
@@ -90,13 +96,24 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function collateralDebtBalance(
         address _collateralAddress,
         uint256 _collateralId
-    ) public view returns (uint256 _debtBalance) {
+    )
+        public
+        view
+        onlyValidCollateral(_collateralAddress)
+        returns (uint256 _debtBalance)
+    {
         DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
         ];
 
         for (uint256 i; i < _debtMaps.length; ) {
-            console.log("debtId: %s", _debtMaps[i].debtId);
+            console.log("debtMaps debtID: %s", _debtMaps[i].debtId);
+            console.log(
+                _anzaToken.totalSupply(
+                    _anzaToken.lenderTokenId(_debtMaps[i].debtId)
+                )
+            );
+            console.log("i: %s", i);
 
             _debtBalance += _anzaToken.totalSupply(
                 _anzaToken.lenderTokenId(_debtMaps[i].debtId)
@@ -119,7 +136,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function collateralDebtCount(
         address _collateralAddress,
         uint256 _collateralId
-    ) external view returns (uint256) {
+    ) external view onlyValidCollateral(_collateralAddress) returns (uint256) {
         return __debtMaps[_collateralAddress][_collateralId].length;
     }
 
@@ -155,13 +172,15 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _index
-    ) public view returns (uint256, uint256) {
+    )
+        public
+        view
+        onlyValidCollateral(_collateralAddress)
+        returns (uint256, uint256)
+    {
         DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
         ];
-
-        // If no debt to collateral, revert
-        if (_debtMaps.length == 0) revert StdLoanErrors.InvalidCollateral();
 
         // Allow an easy way to return the latest debt
         if (_index == type(uint256).max)
@@ -169,10 +188,6 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
                 _debtMaps[_debtMaps.length - 1].debtId,
                 _debtMaps[_debtMaps.length - 1].collateralNonce
             );
-
-        // If index is out of bounds, revert
-        if (_debtMaps.length <= _index)
-            revert StdLoanErrors.InvalidCollateral();
 
         // Return the debt at the index
         return (_debtMaps[_index].debtId, _debtMaps[_index].collateralNonce);
@@ -189,7 +204,14 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function collateralNonce(
         address _collateralAddress,
         uint256 _collateralId
-    ) external view returns (uint256) {
+    ) external view onlyValidCollateral(_collateralAddress) returns (uint256) {
+        console.log("collateralAddress: %s", _collateralAddress);
+        console.log("collateralId: %s", _collateralId);
+        console.log(
+            "debtMapsLength: %s",
+            __debtMaps[_collateralAddress][_collateralId].length
+        );
+
         if (__debtMaps[_collateralAddress][_collateralId].length == 0) return 1;
 
         (, uint256 _collateralNonce) = collateralDebtAt(
@@ -220,7 +242,11 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function _writeDebt(
         address _collateralAddress,
         uint256 _collateralId
-    ) internal returns (uint256 _debtMapsLength, uint256 _collateralNonce) {
+    )
+        internal
+        onlyValidCollateral(_collateralAddress)
+        returns (uint256 _debtMapsLength, uint256 _collateralNonce)
+    {
         // Set debt
         DebtMap[] storage _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
@@ -256,7 +282,11 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function _appendDebt(
         address _collateralAddress,
         uint256 _collateralId
-    ) internal returns (uint256 _debtMapsLength, uint256 _collateralNonce) {
+    )
+        internal
+        onlyValidCollateral(_collateralAddress)
+        returns (uint256 _debtMapsLength, uint256 _collateralNonce)
+    {
         // Set debt
         DebtMap[] storage _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
