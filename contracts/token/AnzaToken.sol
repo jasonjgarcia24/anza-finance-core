@@ -152,7 +152,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256[] memory _amounts,
         bytes memory /* _data */
     ) internal virtual override {
-        for (uint256 i = 0; i < _ids.length; ) {
+        for (uint256 i; i < _ids.length; ) {
             uint256 _id = _ids[i];
             uint256 _amount = _amounts[i];
 

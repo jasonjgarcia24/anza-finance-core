@@ -50,7 +50,7 @@ contract DemoToken is ERC721 {
             uint256[] storage _ownedTokens = ownedTokens[_from];
             uint256 _idx = _ownedTokens.length;
 
-            for (uint256 i = 0; i < _ownedTokens.length; i++) {
+            for (uint256 i; i < _ownedTokens.length; i++) {
                 if (_ownedTokens[i] == _tokenId) {
                     _idx = i;
                     break;

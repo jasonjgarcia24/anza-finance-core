@@ -45,6 +45,20 @@ abstract contract DebtTerms is IDebtTerms {
     }
 
     /**
+     * Updates the packed debt terms for a given debt ID.
+     *
+     * @param _debtId The debt ID to update the packed debt terms.
+     *
+     * See {DebtTermIndexer._updateDebtTerms}.
+     */
+    function _updateDebtTerms(
+        uint256 _debtId,
+        bytes32 _packedDebtTerms
+    ) internal {
+        __packedDebtTerms._updateDebtTerms(_debtId, _packedDebtTerms);
+    }
+
+    /**
      * Returns the loan state for a given debt ID.
      *
      * @param _debtId The debt ID to return the loan state for.

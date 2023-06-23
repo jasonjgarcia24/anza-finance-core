@@ -5,6 +5,7 @@ import {console} from "forge-std/console.sol";
 import {stdError} from "forge-std/StdError.sol";
 
 import "@lending-constants/LoanContractStates.sol";
+// import "@custom-errors/StdLoanErrors.sol";
 
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
 
@@ -26,7 +27,7 @@ contract DebtTermsHarness is DebtTerms {
     /* ^^^^^^^^^^^^^^^^^^ */
 }
 
-abstract contract DebtBookInit is Setup {
+abstract contract DebtTermsInit is Setup {
     DebtTermsHarness public debtTermsHarness;
     LoanCodecHarness public loanCodecHarness;
 
@@ -41,25 +42,111 @@ abstract contract DebtBookInit is Setup {
     }
 }
 
-contract DebtBookUnitTest is DebtBookInit {
-    struct FuzzCollateralInput {
-        address collateralAddress;
-        uint256 collateralId;
-        uint256[] amounts;
+contract DebtTermsUtils is Setup {
+    function setUp() public virtual override {
+        super.setUp();
     }
 
-    struct FuzzCollateralStorage {
-        uint256[] debtIds;
-        uint256[] collateralNonces;
-        uint256 debtBalance;
-        uint256 debtCount;
+    function checkLoanTerms(
+        LoanCodecHarness _loanCodecHarness,
+        uint256 _debtId,
+        uint256 _activeLoanIndex,
+        uint256 _now,
+        ContractTerms memory _contractTerms
+    ) public {
+        uint8 _expectedLoanState = _contractTerms.gracePeriod == 0
+            ? _ACTIVE_STATE_
+            : _ACTIVE_GRACE_STATE_;
+
+        checkLoanTerms(
+            _loanCodecHarness,
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _expectedLoanState,
+            _contractTerms
+        );
     }
 
-    mapping(address collateralAddress => mapping(uint256 collateralId => FuzzCollateralStorage))
-        public collateralData;
+    function checkLoanTerms(
+        LoanCodecHarness _loanCodecHarness,
+        uint256 _debtId,
+        uint256 _activeLoanIndex,
+        uint256 _now,
+        uint8 _loanState,
+        ContractTerms memory _contractTerms
+    ) public {
+        // Get the unpacked contract terms.
+        assertEq(
+            _loanCodecHarness.loanState(_debtId),
+            _loanState & 0x0f, // Should only be 4 bits.
+            "0 :: loan state does not equal expected loan state."
+        );
+
+        assertEq(
+            _loanCodecHarness.firInterval(_debtId),
+            _contractTerms.firInterval & 0x0f, // Should only be 4 bits.
+            "1 :: fir interval does not equal expected fir interval."
+        );
+
+        assertEq(
+            _loanCodecHarness.fixedInterestRate(_debtId),
+            _contractTerms.fixedInterestRate & 0xff, // Should only be 8 bits.
+            "2 :: fixed interest rate does not equal expected fixed interest rate."
+        );
+
+        assertEq(
+            _loanCodecHarness.isFixed(_debtId),
+            _contractTerms.isFixed == 0x01 ? 1 : 0, // Should only be 4 bits and only 1 or 0.
+            "3 :: is fixed does not equal expected is fixed."
+        );
+
+        assertEq(
+            _loanCodecHarness.loanLastChecked(_debtId),
+            _now + _contractTerms.gracePeriod,
+            "4 :: loan last checked does not equal expected loan last checked."
+        );
+
+        assertEq(
+            _loanCodecHarness.loanStart(_debtId),
+            _now + _contractTerms.gracePeriod,
+            "5 :: loan start does not equal expected loan start."
+        );
+
+        assertEq(
+            _loanCodecHarness.loanCommital(_debtId),
+            _contractTerms.commital,
+            "6 :: loan commital does not equal expected loan commital."
+        );
+
+        assertEq(
+            _loanCodecHarness.loanClose(_debtId),
+            _now + _contractTerms.duration + _contractTerms.gracePeriod,
+            "7 :: loan close does not equal expected loan close."
+        );
+
+        assertEq(
+            _loanCodecHarness.lenderRoyalties(_debtId),
+            _contractTerms.lenderRoyalties & 0xff, // Should only be 8 bits.
+            "8 :: lender royalties does not equal expected lender royalties."
+        );
+
+        assertEq(
+            _loanCodecHarness.activeLoanCount(_debtId),
+            _activeLoanIndex,
+            "9 :: active loan contract does not equal expected active loan contract."
+        );
+    }
+}
+
+contract DebtTermsUnitTest is DebtTermsInit {
+    DebtTermsUtils public debtTermsUtils;
 
     function setUp() public virtual override {
         super.setUp();
+
+        // Deploy DebtTermsUtils
+        debtTermsUtils = new DebtTermsUtils();
     }
 
     /* ----------- DebtTerms.debtTerms() ----------- */
@@ -87,7 +174,6 @@ contract DebtBookUnitTest is DebtBookInit {
     }
 
     /* ----------- DebtTerms getters ----------- */
-
     /**
      * Fuzz test the debt term indexer getters for random debt IDs and contract
      * terms.
@@ -101,6 +187,7 @@ contract DebtBookUnitTest is DebtBookInit {
         uint256 _debtId,
         ContractTerms memory _contractTerms
     ) public {
+        // Test overflows in testLoanCodec__Fuzz_ValidateLoanTerms
         _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
         _contractTerms.lenderRoyalties = uint8(
             bound(_contractTerms.lenderRoyalties, 0, 100)
@@ -118,69 +205,13 @@ contract DebtBookUnitTest is DebtBookInit {
             _packedContractTerms
         );
 
-        uint8 _expectedLoanState = _contractTerms.gracePeriod == 0
-            ? _ACTIVE_STATE_
-            : _ACTIVE_GRACE_STATE_;
-
-        // Get the unpacked contract terms.
-        assertEq(
-            loanCodecHarness.loanState(_debtId),
-            _expectedLoanState,
-            "0 :: loan state does not equal expected loan state."
-        );
-
-        assertEq(
-            loanCodecHarness.firInterval(_debtId),
-            _contractTerms.firInterval & 0x0f, // Should only be 4 bits.
-            "1 :: fir interval does not equal expected fir interval."
-        );
-
-        assertEq(
-            loanCodecHarness.fixedInterestRate(_debtId),
-            _contractTerms.fixedInterestRate & 0xff, // Should only be 8 bits.
-            "2 :: fixed interest rate does not equal expected fixed interest rate."
-        );
-
-        assertEq(
-            loanCodecHarness.isFixed(_debtId),
-            _contractTerms.isFixed == 0x01 ? 1 : 0, // Should only be 4 bits and only 1 or 0.
-            "3 :: is fixed does not equal expected is fixed."
-        );
-
-        assertEq(
-            loanCodecHarness.loanLastChecked(_debtId),
-            _now + _contractTerms.gracePeriod,
-            "4 :: loan last checked does not equal expected loan last checked."
-        );
-
-        assertEq(
-            loanCodecHarness.loanStart(_debtId),
-            _now + _contractTerms.gracePeriod,
-            "5 :: loan start does not equal expected loan start."
-        );
-
-        assertEq(
-            loanCodecHarness.loanCommital(_debtId),
-            _contractTerms.commital,
-            "6 :: loan commital does not equal expected loan commital."
-        );
-
-        assertEq(
-            loanCodecHarness.loanClose(_debtId),
-            _now + _contractTerms.gracePeriod + _contractTerms.duration,
-            "7 :: loan close does not equal expected loan close."
-        );
-
-        assertEq(
-            loanCodecHarness.lenderRoyalties(_debtId),
-            _contractTerms.lenderRoyalties & 0xff,
-            "8 :: lender royalties does not equal expected lender royalties."
-        );
-
-        assertEq(
-            loanCodecHarness.activeLoanCount(_debtId),
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            loanCodecHarness,
+            _debtId,
             _activeLoanIndex,
-            "9 :: active loan contract does not equal expected active loan contract."
+            _now,
+            _contractTerms
         );
     }
 }

@@ -119,14 +119,14 @@ abstract contract LoanContractSubmitFunctions is
         return (true, abi.encodePacked());
     }
 
-    function compareInitLoanContractError(
+    function compareInitLoanCodecError(
         bytes memory _error,
         bytes memory _expectedError
     ) public {
         assertEq(
             bytes8(_error),
             bytes8(_expectedError),
-            "0 :: compareInitLoanContractError :: expected fail type mismatch."
+            "0 :: compareInitLoanCodecError :: expected fail type mismatch."
         );
     }
 
@@ -320,7 +320,7 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        compareInitLoanContractError(_data, _expectedData);
+        compareInitLoanCodecError(_data, _expectedData);
         if (!_expectedSuccess) return;
 
         require(_success, "2 :: loan contract creation failed.");
@@ -491,7 +491,7 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _contractTerms
         );
 
-        compareInitLoanContractError(_data, _expectedData);
+        compareInitLoanCodecError(_data, _expectedData);
         if (!_expectedSuccess) return;
 
         require(_success, "1 :: loan contract creation failed.");

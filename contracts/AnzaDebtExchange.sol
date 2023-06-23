@@ -145,7 +145,7 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
         uint256[] memory _ids = new uint256[](_collateralDebtCount);
         uint256[] memory _amounts = new uint256[](_collateralDebtCount);
 
-        for (uint256 i = 0; i < _collateralDebtCount; ) {
+        for (uint256 i; i < _collateralDebtCount; ) {
             // Get debt ID for collateral at index.
             (uint256 _debtId, ) = _loanContract.collateralDebtAt(
                 _collateralAddress,

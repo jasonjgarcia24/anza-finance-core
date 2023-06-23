@@ -113,13 +113,13 @@ abstract contract LoanManager is
         if (checkLoanExpired(_debtId)) {
             console.log("Defaulted loan: %s", _debtId);
             _updateLoanTimes(_debtId);
-            _setLoanState(_debtId, _DEFAULT_STATE_);
+            _updateLoanState(_debtId, _DEFAULT_STATE_);
             return false;
         }
         // Loan fully paid off
         else if (debtBalance(_debtId) <= 0) {
             console.log("Paid loan: %s", _debtId);
-            _setLoanState(_debtId, _PAID_STATE_);
+            _updateLoanState(_debtId, _PAID_STATE_);
             return false;
         }
         // Loan active and interest compounding
@@ -131,7 +131,7 @@ abstract contract LoanManager is
         // Loan no longer in grace period
         else if (!_checkGracePeriod(_debtId)) {
             console.log("Grace period expired: %s", _debtId);
-            _setLoanState(_debtId, _ACTIVE_STATE_);
+            _updateLoanState(_debtId, _ACTIVE_STATE_);
             _updateLoanTimes(_debtId);
             return true;
         } else if (_checkGracePeriod(_debtId)) {

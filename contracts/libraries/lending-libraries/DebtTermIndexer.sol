@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "@lending-constants/LoanContractTermMaps.sol";
+import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
 import "@abdk-libraries/ABDKMath64x64.sol";
 
@@ -27,8 +28,24 @@ import "@abdk-libraries/ABDKMath64x64.sol";
  * Alternatively, see {LendingContractTermMaps} for mappings.
  */
 library DebtTermIndexer {
+    /**
+     * The packed debt term mapping for each debt ID.
+     *
+     * @param packedDebtTerms The packed debt terms for each debt ID.
+     */
     struct DebtTermMap {
         mapping(uint256 debtId => bytes32) packedDebtTerms;
+    }
+
+    /**
+     * Modifier to ensure that the debt terms map has not been initialized
+     * and can therefore be set.
+     *
+     * @param _packedDebtTerms The initialized debt terms.
+     */
+    modifier onlyUnlocked(bytes32 _packedDebtTerms) {
+        __checkUnlocked(_packedDebtTerms);
+        _;
     }
 
     /**
@@ -54,6 +71,21 @@ library DebtTermIndexer {
      * @param _packedDebtTerms The debt terms to set.
      */
     function _setDebtTerms(
+        DebtTermMap storage _map,
+        uint256 _debtId,
+        bytes32 _packedDebtTerms
+    ) internal onlyUnlocked(_map.packedDebtTerms[_debtId]) {
+        _map.packedDebtTerms[_debtId] = _packedDebtTerms;
+    }
+
+    /**
+     * Updates the packed debt terms for a given debt ID.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt ID.
+     * @param _packedDebtTerms The debt terms to update to.
+     */
+    function _updateDebtTerms(
         DebtTermMap storage _map,
         uint256 _debtId,
         bytes32 _packedDebtTerms
@@ -364,6 +396,21 @@ library DebtTermIndexer {
                 _LOAN_COUNT_POS_,
                 and(_contractTerms, _LOAN_COUNT_MAP_)
             )
+        }
+    }
+
+    /**
+     * Reverts with a illegal terms update error if the debt ID terms are
+     * already in use.
+     *
+     * @param _packedDebtTerms The packed debt terms.
+     */
+    function __checkUnlocked(bytes32 _packedDebtTerms) private pure {
+        assembly {
+            if gt(_packedDebtTerms, 0) {
+                mstore(0x20, _ILLEGAL_TERMS_UPDATE_SELECTOR_)
+                revert(0x20, 0x04)
+            }
         }
     }
 }

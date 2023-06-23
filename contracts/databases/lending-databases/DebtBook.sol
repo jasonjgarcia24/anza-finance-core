@@ -205,13 +205,6 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         address _collateralAddress,
         uint256 _collateralId
     ) external view onlyValidCollateral(_collateralAddress) returns (uint256) {
-        console.log("collateralAddress: %s", _collateralAddress);
-        console.log("collateralId: %s", _collateralId);
-        console.log(
-            "debtMapsLength: %s",
-            __debtMaps[_collateralAddress][_collateralId].length
-        );
-
         if (__debtMaps[_collateralAddress][_collateralId].length == 0) return 1;
 
         (, uint256 _collateralNonce) = collateralDebtAt(

@@ -9,13 +9,17 @@ import "@lending-constants/LoanContractNumbers.sol";
 import "@lending-constants/LoanContractTermMaps.sol";
 import "@lending-constants/LoanContractStates.sol";
 import {StdCodecErrors, _INVALID_LOAN_PARAMETER_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
-import {_FIR_INTERVAL_ERROR_ID_, _DURATION_ERROR_ID_, _PRINCIPAL_ERROR_ID_, _FIXED_INTEREST_RATE_ERROR_ID_, _TIME_EXPIRY_ERROR_ID_, _LENDER_ROYALTIES_ERROR_ID_} from "@custom-errors/StdLoanErrors.sol";
+import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
+import "@custom-errors/StdLoanErrors.sol";
 
 import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
+import {TypeUtils} from "./libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 abstract contract LoanCodec is ILoanCodec, DebtTerms {
+    using TypeUtils for uint256;
+
     function supportsInterface(
         bytes4 _interfaceId
     ) public view virtual override(DebtTerms) returns (bool) {
@@ -28,10 +32,15 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         uint256 _debtId,
         uint256 _seconds
     ) public view returns (uint256) {
+        // Verify _seconds fits into a uint32.
+        _seconds._verifyUint32();
+
+        // Determine the max number of seconds that can be calculated.
         _seconds = (_seconds + loanLastChecked(_debtId)) <= loanClose(_debtId)
             ? _seconds
             : loanDuration(_debtId);
 
+        // Return the total number of FIR intervals.
         return _getTotalFirIntervals(firInterval(_debtId), _seconds);
     }
 
@@ -39,7 +48,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         bytes32 _contractTerms,
         uint64 _loanStart,
         uint256 _principal
-    ) internal view {
+    ) internal pure {
         if (_principal == 0)
             revert StdCodecErrors.InvalidLoanParameter(_PRINCIPAL_ERROR_ID_);
 
@@ -48,14 +57,18 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         uint8 _firInterval;
 
         assembly {
+            function __revert(_errId) {
+                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
+                mstore(0x24, _errId)
+                revert(0x20, 0x08)
+            }
+
             // Get packed lender royalties
             mstore(0x1f, _contractTerms)
             let _lenderRoyalties := and(mload(0), _UINT8_MAX_)
 
-            if gt(_lenderRoyalties, 100) {
-                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
-                mstore(0x24, _LENDER_ROYALTIES_ERROR_ID_)
-                revert(0x20, 0x08)
+            if gt(_lenderRoyalties, 0x64) {
+                __revert(_LENDER_ROYALTIES_ERROR_ID_)
             }
 
             // Get packed terms expiry
@@ -63,9 +76,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             let _termsExpiry := and(mload(0), _UINT32_MAX_)
 
             if lt(_termsExpiry, _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
-                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
-                mstore(0x24, _TIME_EXPIRY_ERROR_ID_)
-                revert(0x20, 0x08)
+                __revert(_TIME_EXPIRY_ERROR_ID_)
             }
 
             // Get packed duration
@@ -73,19 +84,22 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             _duration := and(mload(0), _UINT32_MAX_)
 
             if iszero(_duration) {
-                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
-                mstore(0x24, _DURATION_ERROR_ID_)
-                revert(0x20, 0x08)
+                __revert(_DURATION_ERROR_ID_)
             }
 
             // Get packed grace period
             mstore(0x13, _contractTerms)
             let _gracePeriod := and(mload(0), _UINT32_MAX_)
 
+            // This will effectively eliminate flash loans.
+            // TODO: Consider adding in an acceptable condition where both are
+            // zero for flash loans.
+            if iszero(lt(_gracePeriod, _duration)) {
+                __revert(_GRACE_PERIOD_ERROR_ID_)
+            }
+
             if gt(add(add(_loanStart, _duration), _gracePeriod), _UINT32_MAX_) {
-                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
-                mstore(0x24, _DURATION_ERROR_ID_)
-                revert(0x20, 0x08)
+                __revert(_DURATION_ERROR_ID_)
             }
 
             // Get fixed interest rate
@@ -97,9 +111,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             _firInterval := and(mload(0), _UINT8_MAX_)
 
             if gt(_firInterval, 15) {
-                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
-                mstore(0x24, _FIR_INTERVAL_ERROR_ID_)
-                revert(0x20, 0x08)
+                __revert(_FIR_INTERVAL_ERROR_ID_)
             }
         }
 
@@ -118,55 +130,73 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         }
     }
 
+    /**
+     * Returns the total number of fir intervals in a given duration of seconds.
+     *
+     * @notice This function intentionally uses unsafe division.
+     *
+     * @param _firInterval The fir interval to use.
+     * @param _seconds The duration in seconds.
+     *
+     * @dev Reverts if `_firInterval` is not a valid fir interval.
+     *
+     * See {LoanContractFIRIntervals} for valid fir intervals.
+     *
+     * @return _totalFirIntervals The total number of fir intervals.
+     */
     function _getTotalFirIntervals(
         uint256 _firInterval,
         uint256 _seconds
-    ) internal view returns (uint256) {
-        // _SECONDLY_
-        if (_firInterval == 0) {
-            return _seconds;
+    ) internal pure returns (uint256 _totalFirIntervals) {
+        assembly {
+            switch _firInterval
+            // _SECONDLY_
+            case 0 {
+                _totalFirIntervals := _seconds
+            }
+            // _MINUTELY_
+            case 1 {
+                _totalFirIntervals := div(_seconds, _MINUTELY_MULTIPLIER_)
+            }
+            // _HOURLY_
+            case 2 {
+                _totalFirIntervals := div(_seconds, _HOURLY_MULTIPLIER_)
+            }
+            // _DAILY_
+            case 3 {
+                _totalFirIntervals := div(_seconds, _DAILY_MULTIPLIER_)
+            }
+            // _WEEKLY_
+            case 4 {
+                _totalFirIntervals := div(_seconds, _WEEKLY_MULTIPLIER_)
+            }
+            // _2_WEEKLY_
+            case 5 {
+                _totalFirIntervals := div(_seconds, _2_WEEKLY_MULTIPLIER_)
+            }
+            // _4_WEEKLY_
+            case 6 {
+                _totalFirIntervals := div(_seconds, _4_WEEKLY_MULTIPLIER_)
+            }
+            // _6_WEEKLY_
+            case 7 {
+                _totalFirIntervals := div(_seconds, _6_WEEKLY_MULTIPLIER_)
+            }
+            // _8_WEEKLY_
+            case 8 {
+                _totalFirIntervals := div(_seconds, _8_WEEKLY_MULTIPLIER_)
+            }
+            // _360_DAILY_
+            case 14 {
+                _totalFirIntervals := div(_seconds, _360_DAILY_MULTIPLIER_)
+            }
+            // Invalid fir interval
+            default {
+                mstore(0x20, _INVALID_LOAN_PARAMETER_SELECTOR_)
+                mstore(0x24, _FIR_INTERVAL_ERROR_ID_)
+                revert(0x20, 0x08)
+            }
         }
-        // _MINUTELY_
-        else if (_firInterval == 1) {
-            console.log("Seconds: %s", _seconds);
-            console.log("Minutely Multiplier: %s", _MINUTELY_MULTIPLIER_);
-
-            return _seconds / _MINUTELY_MULTIPLIER_;
-        }
-        // _HOURLY_
-        else if (_firInterval == 2) {
-            return _seconds / _HOURLY_MULTIPLIER_;
-        }
-        // _DAILY_
-        else if (_firInterval == 3) {
-            return _seconds / _DAILY_MULTIPLIER_;
-        }
-        // _WEEKLY_
-        else if (_firInterval == 4) {
-            return _seconds / _WEEKLY_MULTIPLIER_;
-        }
-        // _2_WEEKLY_
-        else if (_firInterval == 5) {
-            return _seconds / _2_WEEKLY_MULTIPLIER_;
-        }
-        // _4_WEEKLY_
-        else if (_firInterval == 6) {
-            return _seconds / _4_WEEKLY_MULTIPLIER_;
-        }
-        // _6_WEEKLY_
-        else if (_firInterval == 7) {
-            return _seconds / _6_WEEKLY_MULTIPLIER_;
-        }
-        // _8_WEEKLY_
-        else if (_firInterval == 8) {
-            return _seconds / _8_WEEKLY_MULTIPLIER_;
-        }
-        // _360_DAILY_
-        else if (_firInterval == 14) {
-            return _seconds / _360_DAILY_MULTIPLIER_;
-        }
-
-        return 0;
     }
 
     function _setLoanAgreement(
@@ -178,6 +208,13 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         bytes32 _loanAgreement;
 
         assembly {
+            function __packTerm(_mask, _map, _pos, _val) {
+                mstore(
+                    0x20,
+                    xor(and(_mask, mload(0x20)), and(_map, shl(_pos, _val)))
+                )
+            }
+
             // Get packed fixed interest rate
             mstore(0x01, _contractTerms)
             let _fixedInterestRate := and(mload(0), _UINT8_MAX_)
@@ -204,23 +241,21 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             mstore(0x20, shl(4, _contractTerms))
 
             // Pack loan state (uint4)
-            switch _gracePeriod
-            case 0 {
-                mstore(
-                    0x20,
-                    xor(
-                        and(_LOAN_STATE_MASK_, mload(0x20)),
-                        and(_LOAN_STATE_MAP_, _ACTIVE_STATE_)
-                    )
+            switch iszero(_gracePeriod)
+            case 1 {
+                __packTerm(
+                    _LOAN_STATE_MASK_,
+                    _LOAN_STATE_MAP_,
+                    _LOAN_STATE_POS_,
+                    _ACTIVE_STATE_
                 )
             }
             default {
-                mstore(
-                    0x20,
-                    xor(
-                        and(_LOAN_STATE_MASK_, mload(0x20)),
-                        and(_LOAN_STATE_MAP_, _ACTIVE_GRACE_STATE_)
-                    )
+                __packTerm(
+                    _LOAN_STATE_MASK_,
+                    _LOAN_STATE_MAP_,
+                    _LOAN_STATE_POS_,
+                    _ACTIVE_GRACE_STATE_
                 )
             }
 
@@ -228,106 +263,74 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             // Already performed and not needed.
 
             // Pack fixed interest rate (uint8)
-            mstore(
-                0x20,
-                xor(
-                    and(_FIR_MASK_, mload(0x20)),
-                    and(_FIR_MAP_, shl(_FIR_POS_, _fixedInterestRate))
-                )
-            )
+            __packTerm(_FIR_MASK_, _FIR_MAP_, _FIR_POS_, _fixedInterestRate)
 
             // Pack loan start time (uint64)
-            mstore(
-                0x20,
-                xor(
-                    and(_LOAN_START_MASK_, mload(0x20)),
-                    and(
-                        _LOAN_START_MAP_,
-                        shl(_LOAN_START_POS_, add(_now, _gracePeriod))
-                    )
-                )
+            __packTerm(
+                _LOAN_START_MASK_,
+                _LOAN_START_MAP_,
+                _LOAN_START_POS_,
+                add(_now, _gracePeriod)
             )
 
             // Pack loan duration time (uint32)
-            mstore(
-                0x20,
-                xor(
-                    and(_LOAN_DURATION_MASK_, mload(0x20)),
-                    and(
-                        _LOAN_DURATION_MAP_,
-                        shl(_LOAN_DURATION_POS_, _duration)
-                    )
-                )
+            __packTerm(
+                _LOAN_DURATION_MASK_,
+                _LOAN_DURATION_MAP_,
+                _LOAN_DURATION_POS_,
+                sub(_duration, _gracePeriod)
             )
 
             switch gt(_isDirect_Commital, 0x64)
             case true {
                 // Pack is direct (uint4) - true
-                mstore(
-                    0x20,
-                    xor(
-                        and(_IS_FIXED_MASK_, mload(0x20)),
-                        and(_IS_FIXED_MAP_, shl(_IS_FIXED_POS_, 0x01))
-                    )
+                __packTerm(
+                    _IS_FIXED_MASK_,
+                    _IS_FIXED_MAP_,
+                    _IS_FIXED_POS_,
+                    0x01
                 )
 
                 // Pack commital (uint8)
-                mstore(
-                    0x20,
-                    xor(
-                        and(_COMMITAL_MASK_, mload(0x20)),
-                        and(
-                            _COMMITAL_MAP_,
-                            shl(_COMMITAL_POS_, sub(_isDirect_Commital, 0x65))
-                        )
-                    )
+                __packTerm(
+                    _COMMITAL_MASK_,
+                    _COMMITAL_MAP_,
+                    _COMMITAL_POS_,
+                    sub(_isDirect_Commital, 0x65)
                 )
             }
             case false {
                 // Pack is direct (uint4) - false
-                mstore(
-                    0x20,
-                    xor(
-                        and(_IS_FIXED_MASK_, mload(0x20)),
-                        and(_IS_FIXED_MAP_, shl(_IS_FIXED_POS_, 0x00))
-                    )
+                __packTerm(
+                    _IS_FIXED_MASK_,
+                    _IS_FIXED_MAP_,
+                    _IS_FIXED_POS_,
+                    0x00
                 )
 
                 // Pack commital (uint8)
-                mstore(
-                    0x20,
-                    xor(
-                        and(_COMMITAL_MASK_, mload(0x20)),
-                        and(
-                            _COMMITAL_MAP_,
-                            shl(_COMMITAL_POS_, _isDirect_Commital)
-                        )
-                    )
+                __packTerm(
+                    _COMMITAL_MASK_,
+                    _COMMITAL_MAP_,
+                    _COMMITAL_POS_,
+                    _isDirect_Commital
                 )
             }
 
             // Pack lender royalties (uint8)
-            mstore(
-                0x20,
-                xor(
-                    and(_LENDER_ROYALTIES_MASK_, mload(0x20)),
-                    and(
-                        _LENDER_ROYALTIES_MAP_,
-                        shl(_LENDER_ROYALTIES_POS_, _lenderRoylaties)
-                    )
-                )
+            __packTerm(
+                _LENDER_ROYALTIES_MASK_,
+                _LENDER_ROYALTIES_MAP_,
+                _LENDER_ROYALTIES_POS_,
+                _lenderRoylaties
             )
 
             // Pack loan count (uint8)
-            mstore(
-                0x20,
-                xor(
-                    and(_LOAN_COUNT_MASK_, mload(0x20)),
-                    and(
-                        _LOAN_COUNT_MAP_,
-                        shl(_LOAN_COUNT_POS_, _activeLoanIndex)
-                    )
-                )
+            __packTerm(
+                _LOAN_COUNT_MASK_,
+                _LOAN_COUNT_MAP_,
+                _LOAN_COUNT_POS_,
+                _activeLoanIndex
             )
 
             _loanAgreement := and(_CLEANUP_MASK_, mload(0x20))
@@ -336,7 +339,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         _setDebtTerms(_debtId, _loanAgreement);
     }
 
-    function _setLoanState(uint256 _debtId, uint8 _newLoanState) internal {
+    function _updateLoanState(uint256 _debtId, uint8 _newLoanState) internal {
         bytes32 _contractTerms = debtTerms(_debtId);
         uint8 _oldLoanState;
 
@@ -345,7 +348,8 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
 
             // If the loan states are the same, do nothing
             if eq(_oldLoanState, _newLoanState) {
-                revert(0, 0)
+                mstore(0x20, _ILLEGAL_TERMS_UPDATE_SELECTOR_)
+                revert(0x20, 0x04)
             }
 
             mstore(0x20, _contractTerms)
@@ -361,61 +365,76 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             _contractTerms := mload(0x20)
         }
 
-        _setDebtTerms(_debtId, _contractTerms);
+        _updateDebtTerms(_debtId, _contractTerms);
 
         emit LoanStateChanged(_debtId, _newLoanState, _oldLoanState);
     }
 
+    /**
+     * Updates the loan times.
+     *
+     * TODO: Need to account for grace periods.
+     *
+     * @param _debtId The debt id.
+     */
     function _updateLoanTimes(uint256 _debtId) internal {
         bytes32 _contractTerms = debtTerms(_debtId);
 
         assembly {
-            let _loanState := and(_LOAN_STATE_MAP_, _contractTerms)
-
-            // If loan state is beyond active, do nothing
-            if gt(_loanState, _ACTIVE_STATE_) {
-                revert(0, 0)
+            // If loan state is beyond active, do nothing.
+            if gt(and(_LOAN_STATE_MAP_, _contractTerms), _ACTIVE_STATE_) {
+                mstore(0x20, _ILLEGAL_TERMS_UPDATE_SELECTOR_)
+                revert(0x20, 0x04)
             }
 
             mstore(0x20, _contractTerms)
 
-            // Store loan close time
-            let _loanClose := add(
-                shr(_LOAN_START_POS_, and(_LOAN_START_MAP_, _contractTerms)),
-                shr(
-                    _LOAN_DURATION_POS_,
-                    and(_LOAN_DURATION_MAP_, _contractTerms)
-                )
+            // Store loan start time
+            let _loanStart := shr(
+                _LOAN_START_POS_,
+                and(_contractTerms, _LOAN_START_MAP_)
             )
 
             let _now := timestamp()
+            if iszero(gt(_now, _loanStart)) {
+                stop()
+            }
+
+            // Store loan close time
+            let _loanClose := add(
+                _loanStart,
+                shr(
+                    _LOAN_DURATION_POS_,
+                    and(_contractTerms, _LOAN_DURATION_MAP_)
+                )
+            )
+
             if gt(_now, _loanClose) {
                 _now := _loanClose
             }
 
-            // Update loan last checked. This could be a transition from
-            // loan start to loan last checked if it is the first time this
-            // condition is executed.
             mstore(
                 0x20,
                 xor(
                     and(_LOAN_START_MASK_, mload(0x20)),
-                    and(_LOAN_START_MAP_, shl(16, _now))
+                    and(_LOAN_START_MAP_, shl(_LOAN_START_POS_, _now))
                 )
             )
 
-            // Update loan duration
             mstore(
                 0x20,
                 xor(
                     and(_LOAN_DURATION_MASK_, mload(0x20)),
-                    and(_LOAN_DURATION_MAP_, shl(48, sub(_loanClose, _now)))
+                    and(
+                        _LOAN_DURATION_MAP_,
+                        shl(_LOAN_DURATION_POS_, sub(_loanClose, _now))
+                    )
                 )
             )
 
             _contractTerms := mload(0x20)
         }
 
-        _setDebtTerms(_debtId, _contractTerms);
+        _updateDebtTerms(_debtId, _contractTerms);
     }
 }
