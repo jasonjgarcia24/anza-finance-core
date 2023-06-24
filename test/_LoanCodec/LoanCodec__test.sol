@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
-import {Test} from "forge-std/Test.sol";
 
 import "@lending-constants/LoanContractNumbers.sol";
 import "@lending-constants/LoanContractStates.sol";
@@ -12,11 +11,14 @@ import "@custom-errors/StdCodecErrors.sol";
 import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
 import {LoanCodec} from "@base/LoanCodec.sol";
+import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
 import {_OVERFLOW_CAST_SELECTOR_} from "@base/libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {DebtTermsUtils} from "@test-databases/DebtTerms__test.sol";
+import {ILoanCodecEvents} from "./interfaces/ILoanCodecEvents__test.sol";
 
 contract LoanCodecHarness is LoanCodec {
     function exposed__validateLoanTerms(
@@ -58,6 +60,33 @@ contract LoanCodecHarness is LoanCodec {
     /* ^^^^^^^^^^^^^^^^^^ */
 }
 
+interface ILoanCodecHarness is ILoanCodec, IDebtTerms {
+    function exposed__validateLoanTerms(
+        bytes32 _contractTerms,
+        uint64 _loanStart,
+        uint256 _principal
+    ) external pure;
+
+    function exposed__getTotalFirIntervals(
+        uint256 _firInterval,
+        uint256 _seconds
+    ) external pure returns (uint256);
+
+    function exposed__setLoanAgreement(
+        uint64 _now,
+        uint256 _debtId,
+        uint256 _activeLoanIndex,
+        bytes32 _contractTerms
+    ) external;
+
+    function exposed__updateLoanState(
+        uint256 _debtId,
+        uint8 _newLoanState
+    ) external;
+
+    function exposed__updateLoanTimes(uint256 _debtId) external;
+}
+
 abstract contract LoanCodecInit is Setup {
     LoanCodecHarness public loanCodecHarness;
     DebtTermsUtils public debtTermsUtils;
@@ -65,10 +94,10 @@ abstract contract LoanCodecInit is Setup {
     function setUp() public virtual override {
         super.setUp();
 
-        // Deploy LoanCodec
+        // Deploy LoanCodecHarness.
         loanCodecHarness = new LoanCodecHarness();
 
-        // Deploy DebtTermsUtils
+        // Deploy DebtTermsUtils.
         debtTermsUtils = new DebtTermsUtils();
     }
 
@@ -270,7 +299,7 @@ contract LoanCodecUtils is Setup {
     }
 }
 
-contract LoanCodecUnitTest is LoanCodecInit {
+contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
     LoanCodecUtils loanCodecUtils;
 
     function setUp() public virtual override {
@@ -382,6 +411,7 @@ contract LoanCodecUnitTest is LoanCodecInit {
                 bytes8(_expectedData),
                 "2 :: expected fail type mismatch."
             );
+            return;
         }
     }
 
@@ -460,6 +490,9 @@ contract LoanCodecUnitTest is LoanCodecInit {
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
+        uint8 _oldLoanState = _contractTerms.gracePeriod == 0
+            ? _ACTIVE_STATE_
+            : _ACTIVE_GRACE_STATE_;
 
         // Pack and store the contract terms.
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
@@ -476,7 +509,7 @@ contract LoanCodecUnitTest is LoanCodecInit {
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
-            loanCodecHarness,
+            address(loanCodecHarness),
             _debtId,
             _activeLoanIndex,
             _now,
@@ -484,10 +517,14 @@ contract LoanCodecUnitTest is LoanCodecInit {
         );
 
         // Set the loan state.
+        if (_oldLoanState != _newLoanState) {
+            vm.expectEmit(true, true, true, true, address(loanCodecHarness));
+            emit LoanStateChanged(_debtId, _newLoanState, _oldLoanState);
+        }
         try loanCodecHarness.exposed__updateLoanState(_debtId, _newLoanState) {
             // Check the updated unpacked contract terms.
             debtTermsUtils.checkLoanTerms(
-                loanCodecHarness,
+                address(loanCodecHarness),
                 _debtId,
                 _activeLoanIndex,
                 _now,
@@ -548,7 +585,7 @@ contract LoanCodecUnitTest is LoanCodecInit {
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
-            loanCodecHarness,
+            address(loanCodecHarness),
             _debtId,
             _activeLoanIndex,
             _now,
@@ -660,7 +697,7 @@ contract LoanCodecUnitTest is LoanCodecInit {
 
         // Check the updated unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
-            loanCodecHarness,
+            address(loanCodecHarness),
             _debtId,
             _activeLoanIndex,
             _now > _loanStart ? _expectedLoanStart : _now,

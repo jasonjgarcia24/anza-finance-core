@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
+import {console} from "forge-std/console.sol";
+import {Test} from "forge-std/Test.sol";
+
 import {AnzaToken} from "@base/token/AnzaToken.sol";
 
 contract AnzaTokenHarness is AnzaToken {
@@ -15,7 +18,7 @@ contract AnzaTokenHarness is AnzaToken {
         _mint(_to, _id, _amount, _data);
     }
 
-    function anzaMintViaHarness(
+    function exposed__mint(
         address _receiver,
         uint256 _id,
         uint256 _amount

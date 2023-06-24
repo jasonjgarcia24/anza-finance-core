@@ -59,10 +59,53 @@ contract DebtBookHarness is DebtBook {
 
 abstract contract DebtBookInit is Setup {
     DebtBookHarness public debtBookHarness;
+    AnzaTokenHarness public anzaTokenHarness;
 
     function setUp() public virtual override {
         // Deploy DebtBook
         debtBookHarness = new DebtBookHarness();
+
+        vm.startPrank(admin);
+
+        // Deploy AnzaToken
+        anzaTokenHarness = new AnzaTokenHarness();
+
+        // Set AnzaToken access control roles
+        anzaTokenHarness.grantRole(_LOAN_CONTRACT_, address(loanContract));
+        anzaTokenHarness.grantRole(_TREASURER_, address(loanTreasurer));
+        anzaTokenHarness.grantRole(
+            _COLLATERAL_VAULT_,
+            address(collateralVault)
+        );
+
+        // Set LoanContract access control roles
+        loanContract.setAnzaToken(address(anzaTokenHarness));
+
+        // Set LoanTreasurey access control roles
+        loanTreasurer.setAnzaToken(address(anzaTokenHarness));
+
+        anzaDebtStorefront = new AnzaDebtStorefront(
+            address(anzaTokenHarness),
+            address(loanContract),
+            address(loanTreasurer)
+        );
+
+        anzaSponsorshipStorefront = new AnzaSponsorshipStorefront(
+            address(anzaTokenHarness),
+            address(loanContract),
+            address(loanTreasurer)
+        );
+
+        anzaRefinanceStorefront = new AnzaRefinanceStorefront(
+            address(anzaTokenHarness),
+            address(loanContract),
+            address(loanTreasurer)
+        );
+
+        // Set harnessed DebtBook access control roles
+        debtBookHarness.exposed__setAnzaToken(address(anzaTokenHarness));
+
+        vm.stopPrank();
 
         super.setUp();
     }
@@ -113,8 +156,6 @@ contract DebtBookAccessControlTest is DebtBookInit {
 }
 
 contract DebtBookUnitTest is DebtBookInit {
-    AnzaTokenHarness public anzaTokenHarness;
-
     struct FuzzCollateralInput {
         address collateralAddress;
         uint256 collateralId;
@@ -133,48 +174,6 @@ contract DebtBookUnitTest is DebtBookInit {
 
     function setUp() public virtual override {
         super.setUp();
-
-        vm.startPrank(admin);
-
-        // Deploy AnzaToken
-        anzaTokenHarness = new AnzaTokenHarness();
-
-        // Set AnzaToken access control roles
-        anzaTokenHarness.grantRole(_LOAN_CONTRACT_, address(loanContract));
-        anzaTokenHarness.grantRole(_TREASURER_, address(loanTreasurer));
-        anzaTokenHarness.grantRole(
-            _COLLATERAL_VAULT_,
-            address(collateralVault)
-        );
-
-        // Set LoanContract access control roles
-        loanContract.setAnzaToken(address(anzaTokenHarness));
-
-        // Set LoanTreasurey access control roles
-        loanTreasurer.setAnzaToken(address(anzaTokenHarness));
-
-        anzaDebtStorefront = new AnzaDebtStorefront(
-            address(anzaTokenHarness),
-            address(loanContract),
-            address(loanTreasurer)
-        );
-
-        anzaSponsorshipStorefront = new AnzaSponsorshipStorefront(
-            address(anzaTokenHarness),
-            address(loanContract),
-            address(loanTreasurer)
-        );
-
-        anzaRefinanceStorefront = new AnzaRefinanceStorefront(
-            address(anzaTokenHarness),
-            address(loanContract),
-            address(loanTreasurer)
-        );
-
-        // Set harnessed DebtBook access control roles
-        debtBookHarness.exposed__setAnzaToken(address(anzaTokenHarness));
-
-        vm.stopPrank();
     }
 
     /* ----------- DebtBook.debtBalance() ----------- */
@@ -196,7 +195,7 @@ contract DebtBookUnitTest is DebtBookInit {
     ) public {
         uint256 _debtId = anzaTokenHarness.debtId(_tokenId);
 
-        try anzaTokenHarness.anzaMintViaHarness(lender, _tokenId, _amount) {
+        try anzaTokenHarness.exposed__mint(lender, _tokenId, _amount) {
             assertEq(
                 loanContract.debtBalance(_debtId),
                 _tokenId % 2 == 0 ? _amount : 0,
@@ -266,7 +265,7 @@ contract DebtBookUnitTest is DebtBookInit {
     ) public {
         uint256 _debtId = anzaTokenHarness.debtId(_tokenId);
 
-        try anzaTokenHarness.anzaMintViaHarness(lender, _tokenId, _amount) {
+        try anzaTokenHarness.exposed__mint(lender, _tokenId, _amount) {
             try loanContract.lenderDebtBalance(_debtId) returns (
                 uint256 _lenderDebtBalance
             ) {
@@ -323,7 +322,7 @@ contract DebtBookUnitTest is DebtBookInit {
     ) public {
         uint256 _debtId = anzaTokenHarness.debtId(_tokenId);
 
-        try anzaTokenHarness.anzaMintViaHarness(borrower, _tokenId, _amount) {
+        try anzaTokenHarness.exposed__mint(borrower, _tokenId, _amount) {
             try loanContract.borrowerDebtBalance(_debtId) returns (
                 uint256 _borrowerDebtBalance
             ) {
@@ -410,7 +409,7 @@ contract DebtBookUnitTest is DebtBookInit {
                     );
 
                     try
-                        anzaTokenHarness.anzaMintViaHarness(
+                        anzaTokenHarness.exposed__mint(
                             lender,
                             _lenderTokenId,
                             _collateral.amounts[i]
@@ -551,7 +550,7 @@ contract DebtBookUnitTest is DebtBookInit {
             _amounts[i] = bound(_amounts[i], 0, _MAX_DEBT_PRINCIPAL_);
 
             try
-                anzaTokenHarness.anzaMintViaHarness(
+                anzaTokenHarness.exposed__mint(
                     lender,
                     _lenderTokenId,
                     _amounts[i]
@@ -723,7 +722,7 @@ contract DebtBookUnitTest is DebtBookInit {
                 _amounts[i] = bound(_amounts[i], 0, _MAX_DEBT_PRINCIPAL_);
 
                 try
-                    anzaTokenHarness.anzaMintViaHarness(
+                    anzaTokenHarness.exposed__mint(
                         lender,
                         _lenderTokenId,
                         _amounts[i]
@@ -917,7 +916,7 @@ contract DebtBookUnitTest is DebtBookInit {
                 );
 
                 try
-                    anzaTokenHarness.anzaMintViaHarness(
+                    anzaTokenHarness.exposed__mint(
                         lender,
                         _lenderTokenId,
                         _collateral.amounts[i]

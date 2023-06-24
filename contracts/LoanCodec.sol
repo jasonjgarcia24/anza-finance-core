@@ -377,7 +377,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
      *
      * @param _debtId The debt id.
      */
-    function _updateLoanTimes(uint256 _debtId) internal {
+    function _updateLoanTimes(uint256 _debtId) internal returns (bool) {
         bytes32 _contractTerms = debtTerms(_debtId);
 
         assembly {
@@ -397,7 +397,8 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
 
             let _now := timestamp()
             if iszero(gt(_now, _loanStart)) {
-                stop()
+                mstore(0x20, 0x01)
+                return(0x20, 0x20)
             }
 
             // Store loan close time
@@ -436,5 +437,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         }
 
         _updateDebtTerms(_debtId, _contractTerms);
+
+        return true;
     }
 }

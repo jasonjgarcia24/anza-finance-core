@@ -233,7 +233,7 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
         // Create loan contract for new lender
         (bool _success, ) = address(_loanContract).call{value: msg.value}(
             abi.encodeWithSignature(
-                "initLoanContract(uint256,address,address,bytes32)",
+                "initContract(uint256,address,address,bytes32)",
                 _debtId,
                 _borrower,
                 _purchaser,
@@ -283,7 +283,7 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
         // Create loan contract for new lender
         (bool _success, ) = address(_loanContract).call{value: msg.value}(
             abi.encodeWithSignature(
-                "initLoanContract(uint256,address,address)",
+                "initContract(uint256,address,address)",
                 _debtId,
                 _anzaToken.borrowerOf(_debtId),
                 _purchaser

@@ -3,14 +3,15 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 import {stdError} from "forge-std/StdError.sol";
+import {Test} from "forge-std/Test.sol";
 
 import "@lending-constants/LoanContractStates.sol";
-// import "@custom-errors/StdLoanErrors.sol";
 
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {StringUtils} from "@test-utils/test-utils/StringUtils.sol";
+import {ILoanCodecHarness} from "@test-base/_LoanCodec/LoanCodec__test.sol";
 import {LoanCodecHarness} from "@test-base/_LoanCodec/LoanCodec__test.sol";
 
 contract DebtTermsHarness is DebtTerms {
@@ -40,26 +41,42 @@ abstract contract DebtTermsInit is Setup {
 
         super.setUp();
     }
+
+    function cleanContractTerms(
+        ContractTerms memory _contractTerms
+    ) public view {
+        // Only allow valid fir intervals.
+        vm.assume(
+            _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
+        );
+
+        // Duration must be greater than grace period.
+        vm.assume(_contractTerms.duration >= _contractTerms.gracePeriod);
+
+        // Commital must be no greater than 100%.
+        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
+
+        // Lender royalties must be no greater than 100%.
+        _contractTerms.lenderRoyalties = uint8(
+            bound(_contractTerms.lenderRoyalties, 0, 100)
+        );
+    }
 }
 
-contract DebtTermsUtils is Setup {
-    function setUp() public virtual override {
-        super.setUp();
-    }
-
+contract DebtTermsUtils is Test {
     function checkLoanTerms(
-        LoanCodecHarness _loanCodecHarness,
+        address _loanCodecHarnessAddress,
         uint256 _debtId,
         uint256 _activeLoanIndex,
         uint256 _now,
-        ContractTerms memory _contractTerms
+        Setup.ContractTerms memory _contractTerms
     ) public {
         uint8 _expectedLoanState = _contractTerms.gracePeriod == 0
             ? _ACTIVE_STATE_
             : _ACTIVE_GRACE_STATE_;
 
         checkLoanTerms(
-            _loanCodecHarness,
+            _loanCodecHarnessAddress,
             _debtId,
             _activeLoanIndex,
             _now,
@@ -69,13 +86,17 @@ contract DebtTermsUtils is Setup {
     }
 
     function checkLoanTerms(
-        LoanCodecHarness _loanCodecHarness,
+        address _loanCodecHarnessAddress,
         uint256 _debtId,
         uint256 _activeLoanIndex,
         uint256 _now,
         uint8 _loanState,
-        ContractTerms memory _contractTerms
+        Setup.ContractTerms memory _contractTerms
     ) public {
+        ILoanCodecHarness _loanCodecHarness = ILoanCodecHarness(
+            _loanCodecHarnessAddress
+        );
+
         // Get the unpacked contract terms.
         assertEq(
             _loanCodecHarness.loanState(_debtId),
@@ -185,13 +206,10 @@ contract DebtTermsUnitTest is DebtTermsInit {
      */
     function testDebtTerm__Fuzz_Getters(
         uint256 _debtId,
-        ContractTerms memory _contractTerms
+        Setup.ContractTerms memory _contractTerms
     ) public {
         // Test overflows in testLoanCodec__Fuzz_ValidateLoanTerms
-        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
-        _contractTerms.lenderRoyalties = uint8(
-            bound(_contractTerms.lenderRoyalties, 0, 100)
-        );
+        cleanContractTerms(_contractTerms);
 
         uint256 _activeLoanIndex = 1;
 
@@ -205,9 +223,13 @@ contract DebtTermsUnitTest is DebtTermsInit {
             _packedContractTerms
         );
 
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
-            loanCodecHarness,
+            address(loanCodecHarness),
             _debtId,
             _activeLoanIndex,
             _now,

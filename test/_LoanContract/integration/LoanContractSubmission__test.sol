@@ -320,6 +320,10 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
             _contractTerms
         );
 
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
         compareInitLoanCodecError(_data, _expectedData);
         if (!_expectedSuccess) return;
 
@@ -490,6 +494,10 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             _collateralNonce,
             _contractTerms
         );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         compareInitLoanCodecError(_data, _expectedData);
         if (!_expectedSuccess) return;

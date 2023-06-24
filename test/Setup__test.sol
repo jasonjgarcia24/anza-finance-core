@@ -338,7 +338,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         _signature = abi.encodePacked(r, s, v);
     }
 
-    function initLoanContract(
+    function initContract(
         uint256 _debtId,
         bytes32 _contractTerms,
         bytes memory _signature
@@ -347,7 +347,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         vm.startPrank(lender);
         (_success, _data) = address(loanContract).call{value: _PRINCIPAL_}(
             abi.encodeWithSignature(
-                "initLoanContract(uint256,bytes32,bytes)",
+                "initContract(uint256,bytes32,bytes)",
                 _debtId,
                 _contractTerms,
                 _signature
@@ -359,7 +359,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         _data = abi.encodePacked(_data);
     }
 
-    function initLoanContract(
+    function initContract(
         uint256 _debtId,
         uint256 _principal,
         bytes32 _contractTerms,
@@ -370,7 +370,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         vm.startPrank(lender);
         (_success, _data) = address(loanContract).call{value: _principal}(
             abi.encodeWithSignature(
-                "initLoanContract(uint256,bytes32,bytes)",
+                "initContract(uint256,bytes32,bytes)",
                 _debtId,
                 _contractTerms,
                 _signature
@@ -381,7 +381,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         _data = abi.encodePacked(_data);
     }
 
-    function initLoanContract(
+    function initContract(
         uint256 _principal,
         address _collateralAddress,
         uint256 _collateralId,
@@ -394,7 +394,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
 
         (_success, _data) = address(loanContract).call{value: _principal}(
             abi.encodeWithSignature(
-                "initLoanContract(address,uint256,bytes32,bytes)",
+                "initContract(address,uint256,bytes32,bytes)",
                 _collateralAddress,
                 _collateralId,
                 _contractTerms,
@@ -453,7 +453,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         );
 
         return
-            initLoanContract(
+            initContract(
                 _PRINCIPAL_,
                 address(demoToken),
                 _collateralId,
@@ -489,7 +489,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         );
 
         return
-            initLoanContract(
+            initContract(
                 _terms.principal,
                 address(demoToken),
                 _collateralId,

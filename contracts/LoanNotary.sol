@@ -82,6 +82,38 @@ abstract contract LoanNotary is ILoanNotary {
     }
 
     /**
+     * @dev Verifies the sender is the owner of the collateral and borrower
+     * of a signed set of loan contract terms.
+     *
+     * @param _assetId the collateral or debt ID of the asset. If this is
+     * called as an original loan contract for a new loan, this should be the
+     * collateral ID. If this is called as a loan contract refinance for
+     * existing debt, this should be the debt ID.
+     * @param _contractParams the loan contract terms.
+     * @param _borrowerSignature the signed loan contract terms.
+     * @param ownerOf the function used to identify the recorded borrower. If
+     * this is called as an original loan contract for a new loan, this should
+     * be a IERC721.ownerOf call on the collateral contract. If this is called
+     * as a loan contract refinance for existing debt, this should be a
+     * IAnzaToken.borrowerOf call on the debt contract.
+     */
+    function _verifyBorrower(
+        uint256 _assetId,
+        ContractParams memory _contractParams,
+        bytes memory _borrowerSignature,
+        function(uint256) external view returns (address) ownerOf
+    ) internal view returns (address) {
+        address _borrower = ownerOf(_assetId);
+
+        if (
+            _borrower != msg.sender ||
+            _borrower != _recoverSigner(_contractParams, _borrowerSignature)
+        ) revert StdNotaryErrors.InvalidSigner();
+
+        return _borrower;
+    }
+
+    /**
      * @dev Returns the address that signed a hashed message (`hash`) with
      * `_signature`. This address can then be used for verification purposes.
      *

@@ -20,9 +20,6 @@ abstract contract LoanManager is
     DebtBook,
     ManagerAccessController
 {
-    // TODO: This should be pulled into a LoanValidator or the LoanCodec contract.
-    mapping(address => mapping(bytes32 => bool)) private __revokedTerms;
-
     constructor() ManagerAccessController() {}
 
     function supportsInterface(
@@ -151,11 +148,17 @@ abstract contract LoanManager is
         if (checkLoanExpired(_debtId)) revert StdCodecErrors.ExpriredLoan();
     }
 
-    function checkTermsRevoked(
-        address _borrower,
-        bytes32 _hashedTerms
+    function checkProposalActive(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _collateralNonce
     ) public view returns (bool) {
-        return __revokedTerms[_borrower][_hashedTerms];
+        uint256 _nextCollateralNonce = collateralNonce(
+            _collateralAddress,
+            _collateralId
+        );
+
+        return _nextCollateralNonce <= _collateralNonce;
     }
 
     function checkLoanActive(uint256 _debtId) public view returns (bool) {
@@ -177,18 +180,6 @@ abstract contract LoanManager is
 
     function checkLoanClosed(uint256 _debtId) public view returns (bool) {
         return loanState(_debtId) >= _PAID_PENDING_STATE_;
-    }
-
-    function revokeTerms(bytes32 _hashedTerms) public {
-        __revokedTerms[msg.sender][_hashedTerms] = true;
-
-        emit LoanTermsRevoked(msg.sender, _hashedTerms);
-    }
-
-    function reinstateTerms(bytes32 _hashedTerms) public {
-        __revokedTerms[msg.sender][_hashedTerms] = false;
-
-        emit LoanTermsReinstated(msg.sender, _hashedTerms);
     }
 
     function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {

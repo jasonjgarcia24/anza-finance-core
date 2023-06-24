@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 interface ILoanContractEvents {
-    event LoanContractInitialized(
+    event ContractInitialized(
         address indexed collateralAddress,
         uint256 indexed collateralId,
         uint256 indexed debtId,

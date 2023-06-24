@@ -58,7 +58,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *
      * Emits a {LoanContractInitialized} event.
      */
-    function initLoanContract(
+    function initContract(
         address _collateralAddress,
         uint256 _collateralId,
         bytes32 _contractTerms,
@@ -95,7 +95,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Add debt to database
-        __sealLoanContract(block.timestamp._toUint64(), 1, _contractTerms);
+        __sealContract(block.timestamp._toUint64(), 1, _contractTerms);
 
         // The collateral ID and address will be mapped within
         // the loan collateral vault to the debt ID.
@@ -124,7 +124,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Emit initialization event
-        emit LoanContractInitialized(
+        emit ContractInitialized(
             _collateralAddress,
             _collateralId,
             totalDebts,
@@ -164,7 +164,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *
      * Emits a {LoanContractRefinanced} event.
      */
-    function initLoanContract(
+    function initContract(
         uint256 _debtId,
         address _borrower,
         address _lender,
@@ -192,7 +192,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Add debt to database
-        __sealLoanContract(
+        __sealContract(
             block.timestamp._toUint64(),
             _debtMapLength,
             _contractTerms
@@ -226,7 +226,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Emit initialization event
-        emit LoanContractInitialized(
+        emit ContractInitialized(
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
@@ -268,7 +268,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *
      * Emits a {LoanContractRefinanced} event.
      */
-    function initLoanContract(
+    function initContract(
         uint256 _debtId,
         address _borrower,
         address _lender
@@ -292,7 +292,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Add debt to database
-        __sealLoanContract(
+        __sealContract(
             block.timestamp._toUint64(),
             _debtMapLength,
             debtTerms(_debtId)
@@ -331,12 +331,77 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Emit initialization event
-        emit LoanContractInitialized(
+        emit ContractInitialized(
             _collateral.collateralAddress,
             _collateral.collateralId,
             totalDebts,
             _debtMapLength
         );
+    }
+
+    /**
+     * Revoke a proposed loan contract.
+     *
+     * @dev This function will only revoke a proposed loan contract if the caller 
+     * is the borrower and the holder of the collateral and if the signed collateral 
+     * nonce is still active.
+     * 
+     * @notice Revoking a proposed loan is performed by using the collateral nonce. 
+     * Therefore all other loan proposals for this collateral with the same nonce will 
+     * also be revoked and require a new offchain proposal.
+     *
+     * @param _collateralAddress The address of the collateral token.
+     * @param _collateralId The ID of the collateral token.
+     * @param _principal The principal amount of the loan.
+     * @param _contractTerms The contract terms.
+     * @param _borrowerSignature The borrower's signature.
+     *
+     * Emits a {ProposalRevoked} event.
+     *
+     * See {DebtBook._writeDebt} for more information.
+     *
+     * Returns a boolean indicating whether the proposal was revoked.
+     */
+    function revokeProposal(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _principal,
+        bytes32 _contractTerms,
+        bytes calldata _borrowerSignature
+    ) external returns (bool) {
+        // Revoke proposed debt
+        (, uint256 _collateralNonce) = _writeDebt(
+            _collateralAddress,
+            _collateralId,
+            type(uint256).max
+        );
+
+        // Verify borrower participation
+        IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
+
+        // If this fails, the whole transaction will revert.
+        _verifyBorrower(
+            _collateralId,
+            ContractParams({
+                principal: _principal,
+                contractTerms: _contractTerms,
+                collateralAddress: _collateralAddress,
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            }),
+            _borrowerSignature,
+            _collateralToken.ownerOf
+        );
+
+        // Emit revoke event
+        emit ProposalRevoked(
+            _collateralAddress,
+            _collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
+
+        return true;
     }
 
     /**
@@ -353,7 +418,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *
      * @dev Reverts if the `_activeLoanIndex` exceeds the maximum refinances.
      */
-    function __sealLoanContract(
+    function __sealContract(
         uint64 _now,
         uint256 _activeLoanIndex,
         bytes32 _contractTerms

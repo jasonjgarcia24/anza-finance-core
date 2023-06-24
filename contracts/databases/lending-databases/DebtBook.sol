@@ -107,14 +107,6 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         ];
 
         for (uint256 i; i < _debtMaps.length; ) {
-            console.log("debtMaps debtID: %s", _debtMaps[i].debtId);
-            console.log(
-                _anzaToken.totalSupply(
-                    _anzaToken.lenderTokenId(_debtMaps[i].debtId)
-                )
-            );
-            console.log("i: %s", i);
-
             _debtBalance += _anzaToken.totalSupply(
                 _anzaToken.lenderTokenId(_debtMaps[i].debtId)
             );
@@ -204,7 +196,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function collateralNonce(
         address _collateralAddress,
         uint256 _collateralId
-    ) external view onlyValidCollateral(_collateralAddress) returns (uint256) {
+    ) public view onlyValidCollateral(_collateralAddress) returns (uint256) {
         if (__debtMaps[_collateralAddress][_collateralId].length == 0) return 1;
 
         (, uint256 _collateralNonce) = collateralDebtAt(
@@ -216,6 +208,25 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         return _collateralNonce + 1;
     }
 
+    /**
+     * Wrapper function for writing a debt to the database.
+     *
+     * @dev This function should be called directly for initializing a loan
+     * contract.
+     *
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     * @param _collateralId The ID of the ERC721 collateral token.
+     *
+     * @return _debtMapsLength The length of the debt maps for the collateral.
+     * @return _collateralNonce The collateral nonce for the debt.
+     */
+    function _writeDebt(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) internal returns (uint256, uint256) {
+        return _writeDebt(_collateralAddress, _collateralId, ++totalDebts);
+    }
+
     /* ------------------------------------------------ *
      *                      Setters                     *
      * ------------------------------------------------ */
@@ -223,23 +234,26 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     /**
      * Writes a debt to the database.
      *
+     * @dev This function should only be called directly for revoking a loan
+     * contract proposal with debt ID type(uint256).max. Revoking a loan
+     * contract proposal is accomplished here by using up the collateral nonce.
+     *
      * @notice This function will clear all previous debts for the collateral.
+     * @notice This function will always increment the collateral nonce by 1.
      *
      * @param _collateralAddress The address of the ERC721 collateral token.
      * @param _collateralId The ID of the ERC721 collateral token.
+     * @param _debtId The ID of the debt.
      *
-     * @return _debtMapsLength The collateral nonce for the debt. Note, this will
-     * always be 1 for this write function.
+     * @return _debtMapsLength The active loan count for this series of loans.
+     * Note, this will always be 1 for this write function.
      * @return _collateralNonce The collateral nonce for the debt.
      */
     function _writeDebt(
         address _collateralAddress,
-        uint256 _collateralId
-    )
-        internal
-        onlyValidCollateral(_collateralAddress)
-        returns (uint256 _debtMapsLength, uint256 _collateralNonce)
-    {
+        uint256 _collateralId,
+        uint256 _debtId
+    ) internal returns (uint256 _debtMapsLength, uint256 _collateralNonce) {
         // Set debt
         DebtMap[] storage _debtMaps = __debtMaps[_collateralAddress][
             _collateralId
@@ -255,7 +269,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
 
         // Set debt fields
         _debtMaps.push(
-            DebtMap({debtId: ++totalDebts, collateralNonce: _collateralNonce})
+            DebtMap({debtId: _debtId, collateralNonce: _collateralNonce})
         );
 
         return (1, _collateralNonce);
@@ -275,11 +289,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function _appendDebt(
         address _collateralAddress,
         uint256 _collateralId
-    )
-        internal
-        onlyValidCollateral(_collateralAddress)
-        returns (uint256 _debtMapsLength, uint256 _collateralNonce)
-    {
+    ) internal returns (uint256 _debtMapsLength, uint256 _collateralNonce) {
         // Set debt
         DebtMap[] storage _debtMaps = __debtMaps[_collateralAddress][
             _collateralId

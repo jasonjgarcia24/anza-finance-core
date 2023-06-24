@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
+import {_INVALID_ADDRESS_ERROR_ID_} from "@custom-errors/StdAccessErrors.sol";
 
 import {IDebtBookAccessController} from "./interfaces/IDebtBookAccessController.sol";
 import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
@@ -52,6 +53,8 @@ abstract contract DebtBookAccessController {
      * @param _anzaTokenAddress The address of the Anza Token contract.
      */
     function _setAnzaToken(address _anzaTokenAddress) internal {
+        __verifyAddress(_anzaTokenAddress);
+
         _anzaToken = IAnzaToken(_anzaTokenAddress);
     }
 
@@ -61,6 +64,17 @@ abstract contract DebtBookAccessController {
      * @param _collateralVaultAddress The address of the Collateral Vault contract.
      */
     function _setCollateralVault(address _collateralVaultAddress) internal {
+        __verifyAddress(_collateralVaultAddress);
+
         _collateralVault = ICollateralVault(_collateralVaultAddress);
+    }
+
+    function __verifyAddress(address _account) private pure {
+        assembly {
+            if iszero(_account) {
+                mstore(0x20, _INVALID_ADDRESS_ERROR_ID_)
+                revert(0x20, 0x04)
+            }
+        }
     }
 }
