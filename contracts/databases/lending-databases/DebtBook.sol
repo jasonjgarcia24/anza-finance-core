@@ -208,6 +208,10 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         return _collateralNonce + 1;
     }
 
+    /* ------------------------------------------------ *
+     *                      Setters                     *
+     * ------------------------------------------------ */
+
     /**
      * Wrapper function for writing a debt to the database.
      *
@@ -226,10 +230,6 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     ) internal returns (uint256, uint256) {
         return _writeDebt(_collateralAddress, _collateralId, ++totalDebts);
     }
-
-    /* ------------------------------------------------ *
-     *                      Setters                     *
-     * ------------------------------------------------ */
 
     /**
      * Writes a debt to the database.
