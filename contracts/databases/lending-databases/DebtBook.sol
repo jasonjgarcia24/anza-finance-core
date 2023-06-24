@@ -211,7 +211,6 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     /* ------------------------------------------------ *
      *                      Setters                     *
      * ------------------------------------------------ */
-
     /**
      * Wrapper function for writing a debt to the database.
      *
