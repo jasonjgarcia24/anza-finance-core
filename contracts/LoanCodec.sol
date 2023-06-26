@@ -346,8 +346,9 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         assembly {
             _oldLoanState := and(_LOAN_STATE_MAP_, _contractTerms)
 
-            // If the loan states are the same, do nothing
-            if eq(_oldLoanState, _newLoanState) {
+            // If the loan states are the same or the new loan state is
+            // greater than the max loan state, revert.
+            if or(eq(_oldLoanState, _newLoanState), gt(_newLoanState, 0x0f)) {
                 mstore(0x20, _ILLEGAL_TERMS_UPDATE_SELECTOR_)
                 revert(0x20, 0x04)
             }
@@ -376,8 +377,13 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
      * TODO: Need to account for grace periods.
      *
      * @param _debtId The debt id.
+     * @param _updateType The type of update. If this is invoked, it will be
+     * returned directly by the caller.
      */
-    function _updateLoanTimes(uint256 _debtId) internal returns (bool) {
+    function _updateLoanTimes(
+        uint256 _debtId,
+        uint256 _updateType
+    ) internal returns (uint256) {
         bytes32 _contractTerms = debtTerms(_debtId);
 
         assembly {
@@ -397,7 +403,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
 
             let _now := timestamp()
             if iszero(gt(_now, _loanStart)) {
-                mstore(0x20, 0x01)
+                mstore(0x20, _updateType)
                 return(0x20, 0x20)
             }
 
@@ -438,6 +444,6 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
 
         _updateDebtTerms(_debtId, _contractTerms);
 
-        return true;
+        return 1;
     }
 }

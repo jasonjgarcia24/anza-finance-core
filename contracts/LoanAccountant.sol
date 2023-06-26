@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
+import {_UINT256_MAX_} from "@universal-numbers/StdNumbers.sol";
 
 import {PaymentBook} from "@lending-databases/PaymentBook.sol";
 import {AccountantAccessController} from "@lending-access/AccountantAccessController.sol";
@@ -111,7 +112,7 @@ abstract contract LoanAccountant is PaymentBook, AccountantAccessController {
         // Update both the loan's state and the last checked timestamp. If
         // an update is performed the result will be true if the loan
         // remains active and false if the loan has expired or been closed.
-        if (!_loanManager.updateLoanState(_debtId)) return;
+        if (_loanManager.updateLoanState(_debtId) != _UINT256_MAX_) return;
 
         // Find time intervals passed
         uint256 _firIntervals = _loanCodec.totalFirIntervals(

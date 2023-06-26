@@ -19,6 +19,7 @@ import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
+import {CollateralVaultHarness} from "@test-base/_CollateralVault/CollateralVault__test.sol";
 import {StringUtils} from "@test-utils/test-utils/StringUtils.sol";
 
 contract DebtBookHarness is DebtBook {
@@ -60,29 +61,43 @@ contract DebtBookHarness is DebtBook {
 abstract contract DebtBookInit is Setup {
     DebtBookHarness public debtBookHarness;
     AnzaTokenHarness public anzaTokenHarness;
+    CollateralVaultHarness public collateralVaultHarness;
 
     function setUp() public virtual override {
-        // Deploy DebtBook
-        debtBookHarness = new DebtBookHarness();
+        super.setUp();
 
         vm.startPrank(admin);
 
+        // Deploy DebtBook
+        debtBookHarness = new DebtBookHarness();
+
         // Deploy AnzaToken
         anzaTokenHarness = new AnzaTokenHarness();
+
+        // Deploy CollateralVault
+        collateralVaultHarness = new CollateralVaultHarness(
+            address(anzaTokenHarness)
+        );
 
         // Set AnzaToken access control roles
         anzaTokenHarness.grantRole(_LOAN_CONTRACT_, address(loanContract));
         anzaTokenHarness.grantRole(_TREASURER_, address(loanTreasurer));
         anzaTokenHarness.grantRole(
             _COLLATERAL_VAULT_,
-            address(collateralVault)
+            address(collateralVaultHarness)
         );
 
         // Set LoanContract access control roles
         loanContract.setAnzaToken(address(anzaTokenHarness));
+        loanContract.setCollateralVault(address(collateralVaultHarness));
 
         // Set LoanTreasurey access control roles
         loanTreasurer.setAnzaToken(address(anzaTokenHarness));
+        loanTreasurer.setCollateralVault(address(collateralVaultHarness));
+
+        // Set CollateralVault access control roles
+        collateralVaultHarness.setLoanContract(address(debtBookHarness));
+        collateralVaultHarness.grantRole(_TREASURER_, address(loanTreasurer));
 
         anzaDebtStorefront = new AnzaDebtStorefront(
             address(anzaTokenHarness),
@@ -104,10 +119,11 @@ abstract contract DebtBookInit is Setup {
 
         // Set harnessed DebtBook access control roles
         debtBookHarness.exposed__setAnzaToken(address(anzaTokenHarness));
+        debtBookHarness.exposed__setCollateralVault(
+            address(collateralVaultHarness)
+        );
 
         vm.stopPrank();
-
-        super.setUp();
     }
 }
 
@@ -1054,6 +1070,169 @@ contract DebtBookUnitTest is DebtBookInit {
                         _err
                     );
                 }
+            }
+        }
+    }
+
+    /**
+     * Fuzz test the collateral debt at function with random debt balances.
+     *
+     * @notice Test Function:
+     *  collateralDebtAt(uint256, uint256)
+     *      public
+     *      view
+     *      returns (uint256, uint256);
+     *
+     * @param _amounts The debt balances.
+     *
+     * @dev Full pass if the debt balance and collateral nonce are the expected
+     * values at the index calls.
+     * @dev Full pass if the debt balance and collateral nonce are the expected
+     * values at the type(uint256).max index call.
+     * @dev Caught fail/pass if the amount is 0 and the function reverts with
+     * the expected error message.
+     * @dev Caught fail/pass if the debt count is 0 and the function reverts with
+     * the expected error message.
+     */
+    function testDebtBook__FuzzDebtId_CollateralDebtAt(
+        uint256[] memory _amounts
+    ) public {
+        vm.assume(_amounts.length > 0);
+
+        uint256 _debtBalance;
+        uint256 _debtCount;
+        uint256[] memory _debtIds = new uint256[](_amounts.length);
+        uint256[] memory _collateralNonces = new uint256[](_amounts.length);
+
+        // Store debt
+        for (uint256 i; i < _amounts.length; ++i) {
+            uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(
+                ++_debtCount
+            );
+            _amounts[i] = bound(_amounts[i], 0, _MAX_DEBT_PRINCIPAL_);
+
+            try
+                anzaTokenHarness.exposed__mint(
+                    lender,
+                    _lenderTokenId,
+                    _amounts[i]
+                )
+            {
+                // Write/append debt to debt book if successful mint.
+                if (_debtBalance == 0) {
+                    debtBookHarness.exposed__writeDebt(
+                        address(anzaTokenHarness),
+                        collateralId
+                    );
+
+                    collateralVaultHarness.exposed__record(
+                        admin,
+                        address(anzaTokenHarness),
+                        collateralId,
+                        debtBookHarness.totalDebts(),
+                        0
+                    );
+                } else {
+                    debtBookHarness.exposed__appendDebt(
+                        address(anzaTokenHarness),
+                        collateralId
+                    );
+
+                    collateralVaultHarness.exposed__record(
+                        admin,
+                        address(anzaTokenHarness),
+                        collateralId,
+                        debtBookHarness.totalDebts(),
+                        _debtCount
+                    );
+                }
+
+                // Accumulate debt balance for later validation.
+                _debtBalance += _amounts[i];
+                _debtIds[_debtCount - 1] = debtBookHarness.totalDebts();
+                _collateralNonces[_debtCount - 1] = _debtCount;
+            } catch (bytes memory _err) {
+                // If fail, revert debt count to previous value.
+                --_debtCount;
+
+                if (_amounts[i] == 0) {
+                    assertTrue(
+                        bytes4(_err) == _ILLEGAL_MINT_SELECTOR_,
+                        "0 :: 'illegal mint selector failure' expected."
+                    );
+                } else {
+                    unexpectedFail(
+                        "not 'illegal mint selector failure', should not fail",
+                        _err
+                    );
+                }
+            }
+        }
+
+        // Test collateral debt at calls with indexes.
+        for (uint256 i; i < _amounts.length; ++i) {
+            try debtBookHarness.collateralDebtAt(_debtIds[i], i) returns (
+                uint256 _debtId,
+                uint256 _collateralNonce
+            ) {
+                assertEq(
+                    _debtId,
+                    _debtIds[i],
+                    "1 :: debt ID does not equal expected value."
+                );
+
+                assertEq(
+                    _collateralNonce,
+                    _collateralNonces[i],
+                    "2 :: collateral nonce does not equal expected value."
+                );
+            } catch (bytes memory _err) {
+                if (_debtCount == 0 || i >= _debtCount) {
+                    assertEq(
+                        _err,
+                        stdError.indexOOBError,
+                        "3 :: 'index out of bounds' expected."
+                    );
+                } else {
+                    unexpectedFail(
+                        "not 'index out of bounds', should not fail",
+                        _err
+                    );
+                }
+            }
+        }
+
+        // Test collateral debt at calls with max uint256.
+        // Should return last collateral debt.
+        try
+            debtBookHarness.collateralDebtAt(
+                _debtIds[_debtCount - 1],
+                type(uint256).max
+            )
+        returns (uint256 _debtId, uint256 _collateralNonce) {
+            assertEq(
+                _debtId,
+                _debtIds[_debtCount - 1],
+                "4 :: debt ID does not equal expected value."
+            );
+
+            assertEq(
+                _collateralNonce,
+                _collateralNonces[_debtCount - 1],
+                "5 :: collateral nonce does not equal expected value."
+            );
+        } catch (bytes memory _err) {
+            if (_debtCount == 0) {
+                assertEq(
+                    _err,
+                    stdError.arithmeticError,
+                    "6 :: 'arithmetic over/underflow' expected."
+                );
+            } else {
+                unexpectedFail(
+                    "not 'arithmetic over/underflow'', should not fail",
+                    _err
+                );
             }
         }
     }

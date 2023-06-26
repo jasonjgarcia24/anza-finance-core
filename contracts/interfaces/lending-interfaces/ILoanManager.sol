@@ -14,7 +14,7 @@ interface ILoanManager {
 
     function maxRefinances() external pure returns (uint256);
 
-    function updateLoanState(uint256 _debtId) external returns (bool);
+    function updateLoanState(uint256 _debtId) external returns (uint256);
 
     function verifyLoanActive(uint256 _debtId) external view;
 

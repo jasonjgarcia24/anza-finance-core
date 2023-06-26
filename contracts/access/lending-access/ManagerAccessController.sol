@@ -37,10 +37,11 @@ abstract contract ManagerAccessController is
         return _loanTreasurerAddress;
     }
 
-    function setLoanTreasurer(
-        address _loanTreasurerAddress_
-    ) external onlyRole(_ADMIN_) {
-        __setLoanTreasurer(_loanTreasurerAddress_);
+    /**
+     * See {__setLoanTreasurer} for more information.
+     */
+    function setLoanTreasurer(address _treasurer) external onlyRole(_ADMIN_) {
+        __setLoanTreasurer(_treasurer);
     }
 
     /**
@@ -64,12 +65,12 @@ abstract contract ManagerAccessController is
      * previous Loan Treasurer, and grants the _TREASURER_ role to the new loan
      * treasurer address.
      *
-     * @param _loanTreasurerAddress_ The address of the new Loan Treasurer.
+     * @param _treasurer The address of the new loan treasurer.
      */
-    function __setLoanTreasurer(address _loanTreasurerAddress_) private {
-        _revokeRole(_TREASURER_, _loanTreasurerAddress_);
-        super._grantRole(_TREASURER_, _loanTreasurerAddress_);
+    function __setLoanTreasurer(address _treasurer) private {
+        _revokeRole(_TREASURER_, _loanTreasurerAddress);
+        super._grantRole(_TREASURER_, _treasurer);
 
-        _loanTreasurerAddress = _loanTreasurerAddress_;
+        _loanTreasurerAddress = _treasurer;
     }
 }

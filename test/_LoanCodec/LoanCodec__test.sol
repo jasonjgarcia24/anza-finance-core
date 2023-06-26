@@ -52,8 +52,11 @@ contract LoanCodecHarness is LoanCodec {
         _updateLoanState(_debtId, _newLoanState);
     }
 
-    function exposed__updateLoanTimes(uint256 _debtId) public {
-        _updateLoanTimes(_debtId);
+    function exposed__updateLoanTimes(
+        uint256 _debtId,
+        uint256 _updateType
+    ) public {
+        _updateLoanTimes(_debtId, _updateType);
     }
 
     /* Abstract functions */
@@ -84,7 +87,10 @@ interface ILoanCodecHarness is ILoanCodec, IDebtTerms {
         uint8 _newLoanState
     ) external;
 
-    function exposed__updateLoanTimes(uint256 _debtId) external;
+    function exposed__updateLoanTimes(
+        uint256 _debtId,
+        uint256 _updateType
+    ) external;
 }
 
 abstract contract LoanCodecInit is Setup {
@@ -517,7 +523,7 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         );
 
         // Set the loan state.
-        if (_oldLoanState != _newLoanState) {
+        if (_oldLoanState != _newLoanState && _newLoanState <= 0x0f) {
             vm.expectEmit(true, true, true, true, address(loanCodecHarness));
             emit LoanStateChanged(_debtId, _newLoanState, _oldLoanState);
         }
@@ -534,7 +540,10 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         } catch (bytes memory _err) {
             // Check if the updated loan state is illegal due to the current loan
             // state and the new loan state being the same.
-            if ((_newLoanState & 0x0f) == loanCodecHarness.loanState(_debtId)) {
+            if (
+                _newLoanState == loanCodecHarness.loanState(_debtId) ||
+                _newLoanState > 0x0f
+            ) {
                 assertEq(
                     bytes4(_err),
                     _ILLEGAL_TERMS_UPDATE_SELECTOR_,
@@ -603,7 +612,7 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         vm.warp(uint256(_now));
 
         // Update the loan times.
-        loanCodecHarness.exposed__updateLoanTimes(_debtId);
+        loanCodecHarness.exposed__updateLoanTimes(_debtId, 0);
 
         // Loan close should remain unchanged.
         assertEq(

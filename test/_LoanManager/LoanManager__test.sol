@@ -6,7 +6,8 @@ import {console} from "forge-std/console.sol";
 import "@lending-constants/LoanContractStates.sol";
 import "@lending-constants/LoanContractRoles.sol";
 import {_MAX_DEBT_ID_, _MAX_REFINANCES_} from "@lending-constants/LoanContractNumbers.sol";
-import {_INACTIVE_LOAN_STATE_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
+import {_UINT256_MAX_} from "@universal-numbers/StdNumbers.sol";
+import {_INACTIVE_LOAN_STATE_SELECTOR_, _EXPIRED_LOAN_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
 import {_INVALID_ADDRESS_ERROR_ID_} from "@custom-errors/StdAccessErrors.sol";
 
 import {LoanManager} from "@base/LoanManager.sol";
@@ -22,10 +23,10 @@ import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
 contract LoanManagerHarness is LoanManager {
     constructor() LoanManager() {}
 
-    function exposed__checkGracePeriod(
+    function exposed__checkLoanGracePeriod(
         uint256 _debtId
     ) public view returns (bool) {
-        return _checkGracePeriod(_debtId);
+        return _checkLoanGracePeriod(_debtId);
     }
 
     /* ----- LoanCodec Expose Functions ----- */
@@ -36,6 +37,28 @@ contract LoanManagerHarness is LoanManager {
         bytes32 _contractTerms
     ) public {
         _setLoanAgreement(_now, _debtId, _activeLoanIndex, _contractTerms);
+    }
+
+    function exposed__updateLoanState(
+        uint256 _debtId,
+        uint8 _newLoanState
+    ) public {
+        _updateLoanState(_debtId, _newLoanState);
+    }
+
+    /* ----- DebtBook Expose Functions ----- */
+    function exposed__writeDebt(
+        address _collateralAddres,
+        uint256 _collateralId
+    ) public returns (uint256 _debtMapsLength, uint256 _collateralNonce) {
+        return _writeDebt(_collateralAddres, _collateralId);
+    }
+
+    function exposed__appendDebt(
+        address _collateralAddress,
+        uint256 _collateralId
+    ) public returns (uint256 _debtMapsLength, uint256 _collateralNonce) {
+        return _appendDebt(_collateralAddress, _collateralId);
     }
 }
 
@@ -109,6 +132,7 @@ abstract contract LoanManagerInit is Setup {
         );
 
         // Duration must be greater than grace period.
+        // TODO: Need to check if there are test cases missed by not using >=.
         vm.assume(_contractTerms.duration > _contractTerms.gracePeriod);
 
         // Commital must be no greater than 100%.
@@ -126,7 +150,7 @@ contract LoanManagerUtils is LoanManagerInit {
         super.setUp();
     }
 
-    /* ---------- LoanCodec.maxRefinances() ---------- */
+    /* ---------- LoanManager.maxRefinances() ---------- */
     /**
      * Test the max refinances constant.
      *
@@ -141,7 +165,7 @@ contract LoanManagerUtils is LoanManagerInit {
         );
     }
 
-    /* --------- LoanCodec.setAnzaToken() -------- */
+    /* --------- LoanManager.setAnzaToken() -------- */
     /**
      * Fuzz test the anza token setter function.
      *
@@ -158,16 +182,10 @@ contract LoanManagerUtils is LoanManagerInit {
         address _caller,
         address _anzaToken
     ) public {
-        assertEq(
-            loanManagerHarness.anzaToken(),
-            address(0),
-            "0 :: anzaToken should be initialized to the zero address."
-        );
-
         // Test the caller of the setter function.
         vm.startPrank(_caller);
         try loanManagerHarness.setAnzaToken(_anzaToken) {
-            assertEq(_caller, admin, "1 :: caller should be the admin.");
+            assertEq(_caller, admin, "0 :: caller should be the admin.");
             vm.stopPrank();
             return;
         } catch Error(string memory _errStr) {
@@ -179,7 +197,7 @@ contract LoanManagerUtils is LoanManagerInit {
                             getAccessControlFailMsg(_ADMIN_, _caller)
                         )
                     ),
-                    "2 :: access control standard failure expected."
+                    "1 :: access control standard failure expected."
                 );
             } else {
                 unexpectedFail(
@@ -191,18 +209,19 @@ contract LoanManagerUtils is LoanManagerInit {
         vm.stopPrank();
 
         // Test the address used by the setter function.
+        vm.startPrank(admin);
         try loanManagerHarness.setAnzaToken(_anzaToken) {
             assertEq(
                 loanManagerHarness.anzaToken(),
                 _anzaToken,
-                "1 :: anzaToken should be set to the correct address."
+                "2 :: anzaToken should be set to the correct address."
             );
         } catch (bytes memory _err) {
             if (_anzaToken == address(0)) {
                 assertEq(
                     bytes4(_err),
                     _INVALID_ADDRESS_ERROR_ID_,
-                    "2 :: Anza Token address cannot be the zero address."
+                    "3 :: Anza Token address cannot be the zero address."
                 );
             } else {
                 unexpectedFail(
@@ -211,9 +230,10 @@ contract LoanManagerUtils is LoanManagerInit {
                 );
             }
         }
+        vm.stopPrank();
     }
 
-    /* --------- LoanCodec.setCollateralVault() -------- */
+    /* --------- LoanManager.setCollateralVault() -------- */
     /**
      * Fuzz test the collateral vault setter function.
      *
@@ -230,16 +250,10 @@ contract LoanManagerUtils is LoanManagerInit {
         address _caller,
         address _collateralVault
     ) public {
-        assertEq(
-            loanManagerHarness.collateralVault(),
-            address(0),
-            "0 :: collateralVault should be initialized to the zero address."
-        );
-
         // Test the caller of the setter function.
         vm.startPrank(_caller);
         try loanManagerHarness.setCollateralVault(_collateralVault) {
-            assertEq(_caller, admin, "1 :: caller should be the admin.");
+            assertEq(_caller, admin, "0 :: caller should be the admin.");
             vm.stopPrank();
             return;
         } catch Error(string memory _errStr) {
@@ -251,7 +265,7 @@ contract LoanManagerUtils is LoanManagerInit {
                             getAccessControlFailMsg(_ADMIN_, _caller)
                         )
                     ),
-                    "2 :: access control standard failure expected."
+                    "1 :: access control standard failure expected."
                 );
             } else {
                 unexpectedFail(
@@ -263,18 +277,19 @@ contract LoanManagerUtils is LoanManagerInit {
         vm.stopPrank();
 
         // Test the address used by the setter function.
+        vm.startPrank(admin);
         try loanManagerHarness.setCollateralVault(_collateralVault) {
             assertEq(
                 loanManagerHarness.collateralVault(),
                 _collateralVault,
-                "3:: collateralVault should be set to the correct address."
+                "2 :: collateralVault should be set to the correct address."
             );
         } catch (bytes memory _err) {
             if (_collateralVault == address(0)) {
                 assertEq(
                     bytes4(_err),
                     _INVALID_ADDRESS_ERROR_ID_,
-                    "4 :: Collateral Vault address cannot be the zero address."
+                    "3 :: Collateral Vault address cannot be the zero address."
                 );
             } else {
                 unexpectedFail(
@@ -283,122 +298,102 @@ contract LoanManagerUtils is LoanManagerInit {
                 );
             }
         }
+        vm.stopPrank();
     }
 
-    /* --------- LoanCodec.updateLoanState() -------- */
-    // function testLoanContract__UpdateLoanState() public {
-    //     uint256 _debtId = loanContract.totalDebts();
+    /* --------- LoanManager.updateLoanState() -------- */
+    /**
+     * Fuzz test the update loan state function for basic functionality without
+     * payoffs.
+     *
+     * @dev This function tests a standard lifecycle of the loan state from
+     * transition of:
+     * 1. Active Grace -> Active -> Default
+     * 2. Active -> Default
+     *
+     * @param _now The time to warp to.
+     * @param _debtId The debt id of the loan to test.
+     * @param _contractTerms The contract terms of the loan to test.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     * @dev Caught fail/pass if the function reverts with the expected error.
+     */ function _testLoanManager_UpdateLoanState(
+        uint256 _now,
+        uint256 _debtId,
+        ContractTerms memory _contractTerms
+    ) public {
+        if (_contractTerms.gracePeriod > 1) {
+            vm.warp(_now + _contractTerms.gracePeriod / 2);
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                1,
+                "0 :: _testLoanManager_UpdateLoanState :: loan should be updated successfully."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _ACTIVE_GRACE_STATE_,
+                "1 :: _testLoanManager_UpdateLoanState :: loan state should be active grace."
+            );
+        }
 
-    //     // Expect to fail for access control
-    //     vm.startPrank(admin);
-    //     vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, admin)));
-    //     loanContract.updateLoanState(_debtId);
-    //     vm.stopPrank();
+        // Update loan state with time progression past grace period.
+        vm.warp(_now + _contractTerms.gracePeriod);
+        assertEq(
+            loanManagerHarness.updateLoanState(_debtId),
+            2,
+            "2 :: _testLoanManager_UpdateLoanState :: loan should be updated successfully."
+        );
+        assertEq(
+            loanManagerHarness.loanState(_debtId),
+            _ACTIVE_STATE_,
+            "3 :: _testLoanManager_UpdateLoanState :: loan state should be active."
+        );
 
-    //     // Loan state update should fail because there is no loan
-    //     vm.deal(treasurer, 1 ether);
-    //     vm.startPrank(address(loanTreasurer));
-    //     vm.expectRevert(
-    //         abi.encodeWithSelector(StdCodecErrors.InactiveLoanState.selector)
-    //     );
-    //     loanContract.updateLoanState(_debtId);
-    //     vm.stopPrank();
+        // Update loan state with time progression past duration.
+        vm.warp(_now + _contractTerms.gracePeriod + _contractTerms.duration);
+        assertEq(
+            loanManagerHarness.updateLoanState(_debtId),
+            4,
+            "4 :: _testLoanManager_UpdateLoanState :: loan state should be updated."
+        );
+        assertEq(
+            loanManagerHarness.loanState(_debtId),
+            _DEFAULT_STATE_,
+            "5 :: _testLoanManager_UpdateLoanState :: loan state should be default."
+        );
 
-    //     // Create loan contract
-    //     uint256 _timeLoanCreated = block.timestamp;
-    //     createLoanContract(collateralId);
-    //     _debtId = loanContract.totalDebts();
+        // Attempt to revert loan state back to active.
+        vm.warp(_now);
+        try loanManagerHarness.updateLoanState(_debtId) returns (uint256) {
+            assertTrue(
+                false,
+                "6 :: _testLoanManager_UpdateLoanState :: loan state update should fail."
+            );
+        } catch (bytes memory _err) {
+            assertEq(
+                bytes4(_err),
+                _INACTIVE_LOAN_STATE_SELECTOR_,
+                "7 :: _testLoanManager_UpdateLoanState :: loan state update should fail with expected message."
+            );
+        }
+    }
 
-    //     // Loan state should remain unchanged
-    //     vm.startPrank(address(loanTreasurer));
-    //     loanContract.updateLoanState(_debtId);
-    //     assertEq(
-    //         loanContract.loanState(_debtId),
-    //         _ACTIVE_GRACE_STATE_,
-    //         "0 :: Loan state should remain unchanged"
-    //     );
-    //     assertEq(
-    //         loanContract.loanLastChecked(_debtId),
-    //         _timeLoanCreated + _GRACE_PERIOD_,
-    //         "1 :: Loan last checked time should remain the loan start time"
-    //     );
-
-    //     // Loan state should change to _ACTIVE_STATE_
-    //     vm.warp(loanContract.loanStart(_debtId));
-    //     vm.expectEmit(true, true, true, true, address(loanContract));
-    //     emit LoanStateChanged(_debtId, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_);
-    //     loanContract.updateLoanState(_debtId);
-    //     assertEq(
-    //         loanContract.loanState(_debtId),
-    //         _ACTIVE_STATE_,
-    //         "2 :: Loan state should change to _ACTIVE_STATE_"
-    //     );
-    //     assertEq(
-    //         loanContract.loanLastChecked(_debtId),
-    //         _timeLoanCreated + _GRACE_PERIOD_,
-    //         "3 :: Loan last checked time should remain the loan start time"
-    //     );
-
-    //     // Loan state should remain _ACTIVE_
-    //     vm.warp(loanContract.loanClose(_debtId) - 1);
-    //     uint256 _now = block.timestamp;
-    //     loanContract.updateLoanState(_debtId);
-    //     assertEq(
-    //         loanContract.loanState(_debtId),
-    //         _ACTIVE_STATE_,
-    //         "4 :: Loan state should remain _ACTIVE_"
-    //     );
-    //     assertEq(
-    //         loanContract.loanLastChecked(_debtId),
-    //         _now,
-    //         "5 :: Loan last checked time should be updated to now"
-    //     );
-
-    //     // Loan state should change to _DEFAULT_STATE_
-    //     vm.warp(loanContract.loanClose(_debtId));
-    //     vm.expectEmit(true, true, true, true, address(loanContract));
-    //     emit LoanStateChanged(_debtId, _DEFAULT_STATE_, _ACTIVE_STATE_);
-    //     _now = block.timestamp;
-    //     loanContract.updateLoanState(_debtId);
-    //     assertEq(
-    //         loanContract.loanState(_debtId),
-    //         _DEFAULT_STATE_,
-    //         "6 :: Loan state should change to _DEFAULT_STATE_"
-    //     );
-    //     assertEq(
-    //         loanContract.loanLastChecked(_debtId),
-    //         _now,
-    //         "7 :: Loan last checked time should be updated to now"
-    //     );
-    //     vm.stopPrank();
-
-    //     // Loan payoff
-    //     createLoanContract(collateralId + 1);
-    //     _debtId = loanContract.totalDebts();
-
-    //     vm.deal(borrower, _PRINCIPAL_);
-    //     vm.startPrank(borrower);
-    //     vm.expectEmit(true, true, true, true, address(loanContract));
-    //     emit LoanStateChanged(_debtId, _PAID_STATE_, _ACTIVE_GRACE_STATE_);
-    //     uint256 _loanStart = loanContract.loanStart(_debtId);
-    //     (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
-    //         abi.encodeWithSignature("depositPayment(uint256)", _debtId)
-    //     );
-    //     assertTrue(_success, "Payment was unsuccessful");
-    //     assertEq(
-    //         loanContract.loanState(_debtId),
-    //         _PAID_STATE_,
-    //         "8 :: Loan state should be paid in full"
-    //     );
-    //     assertEq(
-    //         loanContract.loanLastChecked(_debtId),
-    //         _loanStart,
-    //         "9 :: Loan last checked time should remain the loan start time"
-    //     );
-    //     vm.stopPrank();
-    // }
-
-    function testLoanContract__FuzzUpdateLoanState(
+    /**
+     * Fuzz test the update loan state function.
+     *
+     * @dev This function tests a standard lifecycle of the loan state from
+     * transition of:
+     * 1. Active Grace -> Active -> Default
+     * 2. Active -> Default
+     *
+     * @param _amount The amount of the loan payment.
+     * @param _debtId The debt ID of the loan.
+     * @param _contractTerms The contract terms of the loan.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     * @dev Caught fail/pass if the function reverts with the expected error.
+     */
+    function testLoanManager__FuzzUpdateLoanState(
         uint256 _amount,
         uint256 _debtId,
         ContractTerms memory _contractTerms
@@ -439,18 +434,23 @@ contract LoanManagerUtils is LoanManagerInit {
         vm.startPrank(address(loanTreasurer));
 
         // Update loan state without time progression.
-        assertTrue(
-            loanManagerHarness.updateLoanState(_debtId),
-            "0 :: loan should be in an active state."
-        );
-
         if (_contractTerms.gracePeriod > 0) {
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                1,
+                "0 :: loan should be in an active grace state."
+            );
             assertEq(
                 loanManagerHarness.loanState(_debtId),
                 _ACTIVE_GRACE_STATE_,
                 "1 :: loan state should be active grace."
             );
         } else {
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                2,
+                "0 :: loan should be in an active state."
+            );
             assertEq(
                 loanManagerHarness.loanState(_debtId),
                 _ACTIVE_STATE_,
@@ -459,53 +459,898 @@ contract LoanManagerUtils is LoanManagerInit {
         }
 
         // Update loan state with time progression within grace period.
-        if (_contractTerms.gracePeriod > 1) {
-            vm.warp(_now + _contractTerms.gracePeriod / 2);
-            assertTrue(
+        _testLoanManager_UpdateLoanState(_now, _debtId, _contractTerms);
+
+        vm.stopPrank();
+    }
+
+    /**
+     * Fuzz test the update loan state function with payoffs.
+     *
+     * @dev This function tests a lifecycle of the loan state with payoffs
+     * from transition of:
+     * 1. Active Grace -> Active -> Default
+     * 2. Active -> Default
+     * 3. Active Grace -> Paid
+     * 4. Active -> Paid
+     *
+     * @param _amount The amount of the loan payment.
+     * @param _debtId The debt ID of the loan.
+     * @param _partialPayoff The percentage of the loan to pay off.
+     * @param _contractTerms The contract terms of the loan.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     * @dev Caught fail/pass if the function reverts with the expected error.
+     */
+    function testLoanManager__PayoffActive_FuzzUpdateLoanState(
+        uint256 _amount,
+        uint256 _debtId,
+        uint8 _partialPayoff,
+        ContractTerms memory _contractTerms
+    ) public {
+        _partialPayoff = uint8(bound(_partialPayoff, 0, 100));
+        vm.assume(_amount > 0 && _amount <= (_UINT256_MAX_ / 100));
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+        uint256 _amountPayoff = (_amount * _partialPayoff) / 100;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        // Mint debt tokens.
+        uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+        anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
+
+        vm.startPrank(address(loanTreasurer));
+
+        // Update loan state without time progression.
+        if (_contractTerms.gracePeriod > 0) {
+            assertEq(
                 loanManagerHarness.updateLoanState(_debtId),
-                "3 :: loan should be in an active state."
+                1,
+                "0 :: loan should be in an active grace state."
             );
             assertEq(
                 loanManagerHarness.loanState(_debtId),
                 _ACTIVE_GRACE_STATE_,
-                "4 :: loan state should be active grace."
+                "1 :: loan state should be active grace."
+            );
+        } else {
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                2,
+                "0 :: loan should be in an active state."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _ACTIVE_STATE_,
+                "2 :: loan state should be active."
             );
         }
 
-        // Update loan state with time progression past grace period.
-        vm.warp(_now + _contractTerms.gracePeriod);
-        assertTrue(
-            loanManagerHarness.updateLoanState(_debtId),
-            "5 :: loan should be in an active state."
-        );
+        // Conduct payoff
+        anzaTokenHarness.burnLenderToken(_debtId, _amountPayoff);
         assertEq(
-            loanManagerHarness.loanState(_debtId),
-            _ACTIVE_STATE_,
-            "6 :: loan state should be active."
+            anzaTokenHarness.totalSupply(
+                anzaTokenHarness.lenderTokenId(_debtId)
+            ),
+            _amount - _amountPayoff,
+            "3 :: lender token supply should be updated."
         );
+
+        if (_partialPayoff != 100) {
+            // Update loan state with time progression within grace period.
+            _testLoanManager_UpdateLoanState(_now, _debtId, _contractTerms);
+        } else {
+            // If grace period is 0, then no time update occurs here.
+            vm.warp(_now + _contractTerms.gracePeriod / 2);
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                3,
+                "4 :: loan should be updated successfully."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _PAID_STATE_,
+                "5 :: loan state should be paid."
+            );
+
+            // Update loan state with time progression past grace period.
+            vm.warp(_now + _contractTerms.gracePeriod);
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                _UINT256_MAX_,
+                "6 :: loan should be not be updated."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _PAID_STATE_,
+                "7 :: loan state should be paid."
+            );
+
+            // Update loan state with time progression past duration.
+            vm.warp(
+                _now + _contractTerms.gracePeriod + _contractTerms.duration
+            );
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                _UINT256_MAX_,
+                "8 :: loan state should not be updated."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _PAID_STATE_,
+                "9 :: loan state should be paid."
+            );
+
+            // Attempt to revert loan state back to active.
+            vm.warp(_now);
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                _UINT256_MAX_,
+                "10 :: loan state should not be updated."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _PAID_STATE_,
+                "11 :: loan state should be paid."
+            );
+        }
+
+        vm.stopPrank();
+    }
+
+    /**
+     * Fuzz test the update loan state function with expired loans.
+     *
+     * @dev This function tests a lifecycle of a loan contract with expiration
+     * from transition of:
+     * 1. Active Grace -> Expired
+     * 2. Active -> Expired
+     *
+     * @notice This function also performs a payoff after the loan has expired.
+     * This should have no impact on the ability of a loan state transition.
+     *
+     * @param _amount The amount of the loan payment.
+     * @param _debtId The debt ID of the loan.
+     * @param _partialPayoff The percentage of the loan to pay off.
+     * @param _contractTerms The contract terms of the loan.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     * @dev Caught fail/pass if the function reverts with the expected error.
+     */
+    function testLoanManager__PayoffExpired_FuzzUpdateLoanState(
+        uint256 _amount,
+        uint256 _debtId,
+        uint8 _partialPayoff,
+        ContractTerms memory _contractTerms
+    ) public {
+        _partialPayoff = uint8(bound(_partialPayoff, 0, 99));
+        vm.assume(_amount > 0 && _amount <= (_UINT256_MAX_ / 100));
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+        uint256 _amountPayoff = (_amount * _partialPayoff) / 100;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        // Mint debt tokens.
+        uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+        anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
+
+        vm.startPrank(address(loanTreasurer));
+
+        // Update loan state without time progression.
+        if (_contractTerms.gracePeriod > 0) {
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                1,
+                "0 :: loan should be in an active grace state."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _ACTIVE_GRACE_STATE_,
+                "1 :: loan state should be active grace."
+            );
+        } else {
+            assertEq(
+                loanManagerHarness.updateLoanState(_debtId),
+                2,
+                "2 :: loan should be in an active state."
+            );
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _ACTIVE_STATE_,
+                "3 :: loan state should be active."
+            );
+        }
+
+        // Conduct partial payoff
+        anzaTokenHarness.burnLenderToken(_debtId, _amountPayoff);
 
         // Update loan state with time progression past duration.
         vm.warp(_now + _contractTerms.gracePeriod + _contractTerms.duration);
-        assertFalse(
+        assertEq(
             loanManagerHarness.updateLoanState(_debtId),
-            "7 :: loan state should be in an expired state."
+            4,
+            "4 :: loan state should be updated."
         );
         assertEq(
             loanManagerHarness.loanState(_debtId),
             _DEFAULT_STATE_,
-            "8 :: loan state should be default."
+            "5 :: loan state should be default."
         );
 
+        // Attempt to revert loan state back to active.
         vm.warp(_now);
-        try loanManagerHarness.updateLoanState(_debtId) returns (
-            bool
-        ) {} catch (bytes memory _err) {
+        vm.expectRevert(_INACTIVE_LOAN_STATE_SELECTOR_);
+        loanManagerHarness.updateLoanState(_debtId);
+
+        assertEq(
+            loanManagerHarness.loanState(_debtId),
+            _DEFAULT_STATE_,
+            "7 :: loan state should be default."
+        );
+
+        // Conduct full payoff
+        anzaTokenHarness.burnLenderToken(_debtId, _amount - _amountPayoff);
+
+        // Attempt to revert loan state back to active.
+        vm.expectRevert(_INACTIVE_LOAN_STATE_SELECTOR_);
+        loanManagerHarness.updateLoanState(_debtId);
+
+        assertEq(
+            loanManagerHarness.loanState(_debtId),
+            _DEFAULT_STATE_,
+            "9 :: loan state should be default."
+        );
+
+        vm.stopPrank();
+    }
+
+    /* --------- LoanManager.verifyLoanActive() -------- */
+    /**
+     * Fuzz test the verify loan active function.
+     *
+     * @param _debtId The debt ID of the loan.
+     * @param _newLoanState The new loan state to test.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     * @dev Caught fail/pass if the function reverts with the expected error.
+     */
+    function testLoanManager__FuzzVerifyLoanActive(
+        uint256 _debtId,
+        uint8 _newLoanState,
+        ContractTerms memory _contractTerms
+    ) public {
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+        uint8 _oldLoanState = _contractTerms.gracePeriod == 0
+            ? _ACTIVE_STATE_
+            : _ACTIVE_GRACE_STATE_;
+
+        vm.assume(_newLoanState != _oldLoanState);
+        bool _isActiveState = _newLoanState != _ACTIVE_GRACE_STATE_ ||
+            _newLoanState != _ACTIVE_STATE_;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        loanManagerHarness.exposed__updateLoanState(_debtId, _newLoanState);
+
+        try loanManagerHarness.verifyLoanActive(_debtId) {
+            assertTrue(
+                loanManagerHarness.loanState(_debtId) == _ACTIVE_GRACE_STATE_ ||
+                    loanManagerHarness.loanState(_debtId) == _ACTIVE_STATE_,
+                "0 :: loan state should be active."
+            );
+        } catch (bytes memory _err) {
+            // Check if the updated loan state is illegal due to the current loan
+            // state and the new loan state being the same.
+            if (_isActiveState) {
+                assertEq(
+                    bytes4(_err),
+                    _INACTIVE_LOAN_STATE_SELECTOR_,
+                    "1 :: 'inactive loan state' failure expected."
+                );
+            }
+        }
+    }
+
+    /* --------- LoanManager.verifyLoanNotExpired() -------- */
+    /**
+     * Fuzz test the verify loan not expired function.
+     *
+     * @param _debtId The debt ID of the loan.
+     * @param _amount The amount of debt tokens to mint.
+     * @param _newLoanState The new loan state to test.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     * @dev Caught fail/pass if the function reverts with the expected error.
+     */
+    function testLoanManager__FuzzVerifyLoanNotExpired(
+        uint256 _debtId,
+        uint256 _amount,
+        uint8 _newLoanState,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+        uint8 _oldLoanState = _contractTerms.gracePeriod == 0
+            ? _ACTIVE_STATE_
+            : _ACTIVE_GRACE_STATE_;
+
+        vm.assume(_newLoanState != _oldLoanState);
+        bool _isNotActiveState = _newLoanState != _ACTIVE_GRACE_STATE_ &&
+            _newLoanState != _ACTIVE_STATE_;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        // Mint debt tokens.
+        if (_amount > 0) {
+            uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+            anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
+        }
+
+        loanManagerHarness.exposed__updateLoanState(_debtId, _newLoanState);
+
+        loanManagerHarness.verifyLoanNotExpired(_debtId);
+        assertTrue(
+            _amount == 0 ||
+                loanManagerHarness.loanClose(_debtId) > block.timestamp,
+            "0 :: loan state should not be expired."
+        );
+
+        // Check time based loan expiry.
+        vm.warp(_now + _contractTerms.duration + _contractTerms.gracePeriod);
+        try loanManagerHarness.verifyLoanNotExpired(_debtId) {
+            assertEq(_amount, 0, "1 :: loan debt balance should be 0.");
+            return;
+        } catch (bytes memory _err) {
+            // Verify that the new loan state was a not active state.
+            if (_isNotActiveState) {
+                assertEq(
+                    bytes4(_err),
+                    _EXPIRED_LOAN_SELECTOR_,
+                    "1 :: 'expired loan' failure expected."
+                );
+            }
+        }
+
+        // Burn all lender tokens.
+        vm.startPrank(address(loanTreasurer));
+        anzaTokenHarness.burnLenderToken(_debtId, _amount);
+        vm.stopPrank();
+
+        // Check amount based loan expiry.
+        loanManagerHarness.verifyLoanNotExpired(_debtId);
+        assertTrue(
+            _amount == 0 ||
+                loanManagerHarness.loanClose(_debtId) <= block.timestamp,
+            "2 :: loan state should not be expired."
+        );
+    }
+
+    /* --------- LoanManager.checkProposalActive() -------- */
+    /**
+     * Fuzz test the check proposal active function.
+     *
+     * @param _collateralAddress The address of the collateral token.
+     * @param _collateralId The ID of the collateral token.
+     * @param _collateralNonce The nonce of the collateral token to check.
+     *
+     * @dev Full pass if the collateral nonce availability is as expected.
+     */
+    function testLoanManager__FuzzCheckProposalActive(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _collateralNonce
+    ) public {
+        vm.assume(_collateralAddress != address(0));
+        vm.assume(_collateralNonce <= type(uint8).max);
+        uint256 _nextNonce = 1;
+
+        // Use up the collateral nonces.
+        if (_collateralNonce >= _nextNonce++) {
+            assertTrue(
+                loanManagerHarness.checkProposalActive(
+                    _collateralAddress,
+                    _collateralId,
+                    _collateralNonce
+                ),
+                "0 :: collateral nonce expected to be available."
+            );
+
+            // Use up the collateral nonces up to the _collateralNonce.
+            loanManagerHarness.exposed__writeDebt(
+                _collateralAddress,
+                _collateralId
+            );
+
+            for (;;) {
+                if (_collateralNonce < _nextNonce) break;
+
+                assertTrue(
+                    loanManagerHarness.checkProposalActive(
+                        _collateralAddress,
+                        _collateralId,
+                        _collateralNonce
+                    ),
+                    "1 :: collateral nonce expected to be available."
+                );
+
+                loanManagerHarness.exposed__appendDebt(
+                    _collateralAddress,
+                    _collateralId
+                );
+
+                ++_nextNonce;
+            }
+        }
+
+        // Validate the collateral nonce is now unavailable.
+        if (_collateralNonce != 0)
             assertEq(
-                bytes4(_err),
-                _INACTIVE_LOAN_STATE_SELECTOR_,
-                "9 :: loan state update should fail."
+                _collateralNonce,
+                _nextNonce - 1,
+                "2 :: collateral nonce should be expected nonce - 1."
+            );
+
+        assertFalse(
+            loanManagerHarness.checkProposalActive(
+                _collateralAddress,
+                _collateralId,
+                _collateralNonce
+            ),
+            "3 :: collateral nonce expected to be unavailable."
+        );
+    }
+
+    /* --------- LoanManager.checkLoanActive() -------- */
+    /**
+     * Fuzz test the check loan active function.
+     *
+     * @param _debtId The ID of the debt to check.
+     * @param _newLoanState The new loan state to set.
+     *
+     * @dev Full pass if the loan state is as expected.
+     */
+    function testLoanManager__FuzzCheckLoanActive(
+        uint256 _debtId,
+        uint8 _newLoanState,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+        uint8 _oldLoanState = _contractTerms.gracePeriod == 0
+            ? _ACTIVE_STATE_
+            : _ACTIVE_GRACE_STATE_;
+
+        vm.assume(_newLoanState != _oldLoanState);
+        bool _isActiveState = _newLoanState == _ACTIVE_GRACE_STATE_ ||
+            _newLoanState == _ACTIVE_STATE_;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        // Verify loan active.
+        assertTrue(
+            loanManagerHarness.checkLoanActive(_debtId),
+            "0 :: loan should be active."
+        );
+
+        // Update loan state.
+        loanManagerHarness.exposed__updateLoanState(_debtId, _newLoanState);
+
+        // Check updated loan state
+        assertEq(
+            loanManagerHarness.checkLoanActive(_debtId),
+            _isActiveState,
+            "1 :: loan state should match expected state."
+        );
+    }
+
+    /* --------- LoanManager.checkLoanDefault() -------- */
+    /**
+     * Fuzz test the check loan default function.
+     *
+     * @param _debtId The ID of the debt to check.
+     * @param _newLoanState The new loan state to set.
+     *
+     * @dev Full pass if the loan state is as expected.
+     */
+    function testLoanManager__FuzzCheckLoanDefault(
+        uint256 _debtId,
+        uint8 _newLoanState,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+        uint8 _oldLoanState = _contractTerms.gracePeriod == 0
+            ? _ACTIVE_STATE_
+            : _ACTIVE_GRACE_STATE_;
+
+        vm.assume(_newLoanState != _oldLoanState);
+        bool _isDefaultState = _newLoanState >= _DEFAULT_STATE_ &&
+            _newLoanState <= _AWARDED_STATE_;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        // Verify loan active.
+        assertFalse(
+            loanManagerHarness.checkLoanDefault(_debtId),
+            "0 :: loan should not be default."
+        );
+
+        // Update loan state.
+        loanManagerHarness.exposed__updateLoanState(_debtId, _newLoanState);
+
+        // Check updated loan state
+        assertEq(
+            loanManagerHarness.checkLoanDefault(_debtId),
+            _isDefaultState,
+            "1 :: loan state should match expected state."
+        );
+    }
+
+    /* --------- LoanManager.checkLoanClosed() -------- */
+    /**
+     * Fuzz test the check loan closed function.
+     *
+     * @param _debtId The ID of the debt to check.
+     * @param _newLoanState The new loan state to set.
+     *
+     * @dev Full pass if the loan state is as expected.
+     */
+    function testLoanManager__FuzzCheckLoanClosed(
+        uint256 _debtId,
+        uint8 _newLoanState,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+        uint8 _oldLoanState = _contractTerms.gracePeriod == 0
+            ? _ACTIVE_STATE_
+            : _ACTIVE_GRACE_STATE_;
+
+        vm.assume(_newLoanState != _oldLoanState);
+        bool _isClosedState = _newLoanState >= _PAID_PENDING_STATE_;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        // Verify loan active.
+        assertFalse(
+            loanManagerHarness.checkLoanClosed(_debtId),
+            "0 :: loan should not be closed."
+        );
+
+        // Update loan state.
+        loanManagerHarness.exposed__updateLoanState(_debtId, _newLoanState);
+
+        // Check updated loan state
+        assertEq(
+            loanManagerHarness.checkLoanClosed(_debtId),
+            _isClosedState,
+            "1 :: loan state should match expected state."
+        );
+    }
+
+    /* --------- LoanManager.checkLoanExpired() -------- */
+    /**
+     * Fuzz test the check loan expired function.
+     *
+     * @param _debtId The debt ID of the loan.
+     * @param _amount The amount of debt tokens to mint.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     */
+    function testLoanManager__FuzzCheckLoanExpired(
+        uint256 _debtId,
+        uint256 _amount,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        vm.assume(_amount > 0);
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        // Mint debt tokens.
+        uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+        anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
+
+        assertFalse(
+            loanManagerHarness.checkLoanExpired(_debtId),
+            "0 :: loan state should not be expired."
+        );
+
+        // Check time based loan expiry.
+        vm.warp(_now + _contractTerms.duration + _contractTerms.gracePeriod);
+        assertTrue(
+            loanManagerHarness.checkLoanExpired(_debtId),
+            "1 :: loan state should be expired."
+        );
+
+        vm.warp(_now + _contractTerms.duration + _contractTerms.gracePeriod);
+        assertTrue(
+            loanManagerHarness.checkLoanExpired(_debtId),
+            "1 :: loan state should be expired."
+        );
+
+        // Rever time back.
+        vm.warp(_now);
+        assertFalse(
+            loanManagerHarness.checkLoanExpired(_debtId),
+            "2 :: loan state should not be expired."
+        );
+
+        // Burn all lender tokens.
+        vm.startPrank(address(loanTreasurer));
+        anzaTokenHarness.burnLenderToken(_debtId, _amount);
+        vm.stopPrank();
+
+        assertFalse(
+            loanManagerHarness.checkLoanExpired(_debtId),
+            "3 :: loan should not be expired."
+        );
+
+        // Check time based loan expiry.
+        vm.warp(_now + _contractTerms.duration + _contractTerms.gracePeriod);
+        assertFalse(
+            loanManagerHarness.checkLoanExpired(_debtId),
+            "4 :: loan should not be expired."
+        );
+    }
+
+    /* --------- LoanManager._checkLoanGracePeriod() -------- */
+    /**
+     * Fuzz test the check loan grace period function.
+     *
+     * @param _debtId The debt ID of the loan.
+     *
+     * @dev Full pass if the loan state is updated as expected.
+     */
+    function testLoanManager__FuzzCheckLoanGracePeriod(
+        uint256 _debtId,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
+        cleanContractTerms(_contractTerms);
+
+        uint64 _now = uint64(block.timestamp);
+        uint256 _activeLoanIndex = 1;
+
+        // Pack and store the contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Setting the loan agreement updates the duration to account for the grace
+        // period. We need to do that here too.
+        _contractTerms.duration -= _contractTerms.gracePeriod;
+
+        // Check the unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanManagerHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now,
+            _contractTerms
+        );
+
+        assertEq(
+            loanManagerHarness.exposed__checkLoanGracePeriod(_debtId),
+            _contractTerms.gracePeriod != 0,
+            "0 :: loan state grace period incorrect."
+        );
+
+        if (_contractTerms.gracePeriod != 0) {
+            vm.warp(_now + _contractTerms.gracePeriod - 1);
+            assertTrue(
+                loanManagerHarness.exposed__checkLoanGracePeriod(_debtId),
+                "1 :: loan state grace period incorrect."
             );
         }
-        vm.stopPrank();
+
+        vm.warp(_now + _contractTerms.gracePeriod + 1);
+        assertFalse(
+            loanManagerHarness.exposed__checkLoanGracePeriod(_debtId),
+            "2 :: loan state should not be in grace period."
+        );
+
+        // Rever time back.
+        vm.warp(_now);
+        assertEq(
+            loanManagerHarness.exposed__checkLoanGracePeriod(_debtId),
+            _contractTerms.gracePeriod != 0,
+            "3 :: loan state grace period incorrect."
+        );
     }
 }

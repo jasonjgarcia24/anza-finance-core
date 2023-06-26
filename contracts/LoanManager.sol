@@ -4,8 +4,9 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_, _TREASURER_} from "@lending-constants/LoanContractRoles.sol";
-import {_DEFAULT_STATE_, _PAID_STATE_, _ACTIVE_STATE_, _ACTIVE_GRACE_STATE_, _AWARDED_STATE_, _PAID_PENDING_STATE_} from "@lending-constants/LoanContractStates.sol";
+import "@lending-constants/LoanContractStates.sol";
 import {_MAX_REFINANCES_} from "@lending-constants/LoanContractNumbers.sol";
+import {_UINT256_MAX_} from "@universal-numbers/StdNumbers.sol";
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
@@ -95,10 +96,10 @@ abstract contract LoanManager is
      */
     function updateLoanState(
         uint256 _debtId
-    ) external onlyRole(_TREASURER_) returns (bool) {
+    ) external onlyRole(_TREASURER_) returns (uint256) {
         if (checkLoanClosed(_debtId)) {
             console.log("Closed loan: %s", _debtId);
-            return false;
+            return _UINT256_MAX_;
         }
 
         if (!checkLoanActive(_debtId)) {
@@ -109,34 +110,34 @@ abstract contract LoanManager is
         // Loan defaulted
         if (checkLoanExpired(_debtId)) {
             console.log("Defaulted loan: %s", _debtId);
-            _updateLoanTimes(_debtId);
+            _updateLoanTimes(_debtId, 4);
             _updateLoanState(_debtId, _DEFAULT_STATE_);
-            return false;
+            return 4;
         }
         // Loan fully paid off
         else if (debtBalance(_debtId) <= 0) {
             console.log("Paid loan: %s", _debtId);
             _updateLoanState(_debtId, _PAID_STATE_);
-            return false;
+            return 3;
         }
         // Loan active and interest compounding
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
             console.log("Active loan: %s", _debtId);
-            _updateLoanTimes(_debtId);
-            return true;
+            _updateLoanTimes(_debtId, 2);
+            return 2;
         }
         // Loan no longer in grace period
-        else if (!_checkGracePeriod(_debtId)) {
+        else if (!_checkLoanGracePeriod(_debtId)) {
             console.log("Grace period expired: %s", _debtId);
             _updateLoanState(_debtId, _ACTIVE_STATE_);
-            _updateLoanTimes(_debtId);
-            return true;
-        } else if (_checkGracePeriod(_debtId)) {
+            _updateLoanTimes(_debtId, 2);
+            return 2;
+        } else if (_checkLoanGracePeriod(_debtId)) {
             console.log("Grace period ongoing: %s", _debtId);
-            return true;
+            return 1;
         }
 
-        return false;
+        return 0;
     }
 
     function verifyLoanActive(uint256 _debtId) public view {
@@ -173,16 +174,18 @@ abstract contract LoanManager is
             loanState(_debtId) <= _AWARDED_STATE_;
     }
 
+    function checkLoanClosed(uint256 _debtId) public view returns (bool) {
+        return loanState(_debtId) >= _PAID_PENDING_STATE_;
+    }
+
     function checkLoanExpired(uint256 _debtId) public view returns (bool) {
         return
             debtBalance(_debtId) > 0 && loanClose(_debtId) <= block.timestamp;
     }
 
-    function checkLoanClosed(uint256 _debtId) public view returns (bool) {
-        return loanState(_debtId) >= _PAID_PENDING_STATE_;
-    }
-
-    function _checkGracePeriod(uint256 _debtId) internal view returns (bool) {
+    function _checkLoanGracePeriod(
+        uint256 _debtId
+    ) internal view returns (bool) {
         return loanStart(_debtId) > block.timestamp;
     }
 }

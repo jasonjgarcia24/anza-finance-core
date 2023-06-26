@@ -6,6 +6,7 @@ import {console} from "forge-std/console.sol";
 import "@lending-constants/LoanContractRoles.sol";
 import {StdVaultErrors} from "@custom-errors/StdVaultErrors.sol";
 
+import {CollateralVault} from "@base/CollateralVault.sol";
 import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
 
 import {LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
@@ -13,7 +14,35 @@ import {ICollateralVaultEvents} from "@test-vault-interfaces/ICollateralVaultEve
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-contract LoanCollateralVaultUnitTest is
+contract CollateralVaultHarness is CollateralVault {
+    struct RecordInput {
+        address from;
+        address collateralAddress;
+        uint256 collateralId;
+        uint256 debtId;
+        uint256 activeLoanIndex;
+    }
+
+    constructor(address _anzaToken) CollateralVault(_anzaToken) {}
+
+    function exposed__record(
+        address _from,
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId,
+        uint256 _activeLoanIndex
+    ) public {
+        _record(
+            _from,
+            _collateralAddress,
+            _collateralId,
+            _debtId,
+            _activeLoanIndex
+        );
+    }
+}
+
+contract CollateralVaultUnitTest is
     LoanContractSubmitted,
     ICollateralVaultEvents
 {
