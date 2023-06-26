@@ -175,7 +175,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
 
         // Set LoanContract access control roles
         loanContract.setAnzaToken(address(anzaToken));
-        loanContract.setLoanTreasurer(address(loanTreasurer));
+        loanContract.grantRole(_TREASURER_, address(loanTreasurer));
         loanContract.setCollateralVault(address(collateralVault));
 
         // Set LoanTreasurey access control roles

@@ -32,7 +32,7 @@ abstract contract LoanManagerAccessControllerInit is Setup {
 contract LoanManagerAccessControllerUnitTest is
     LoanManagerAccessControllerInit
 {
-    /* --------- DebtBookAccessController.setLoanTreasurer() --------- */
+    /* -------- DebtBookAccessController.__setLoanTreasurer() -------- */
     /**
      * Fuzz test for setting the loan treasurer address.
      *
@@ -62,7 +62,8 @@ contract LoanManagerAccessControllerUnitTest is
         // Set with caller
         vm.startPrank(_caller);
         try
-            loanManagerAccessControllerHarness.setLoanTreasurer(
+            loanManagerAccessControllerHarness.grantRole(
+                _TREASURER_,
                 _loanTreasurerAddress
             )
         {
@@ -101,7 +102,8 @@ contract LoanManagerAccessControllerUnitTest is
 
         // Set with admin
         vm.startPrank(admin);
-        loanManagerAccessControllerHarness.setLoanTreasurer(
+        loanManagerAccessControllerHarness.grantRole(
+            _TREASURER_,
             _loanTreasurerAddress
         );
 
@@ -120,7 +122,8 @@ contract LoanManagerAccessControllerUnitTest is
         );
 
         // Change with admin
-        loanManagerAccessControllerHarness.setLoanTreasurer(
+        loanManagerAccessControllerHarness.grantRole(
+            _TREASURER_,
             _alt_loanTreasurerAddress
         );
 

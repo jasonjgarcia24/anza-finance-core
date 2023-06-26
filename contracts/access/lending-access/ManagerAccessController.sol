@@ -38,13 +38,6 @@ abstract contract ManagerAccessController is
     }
 
     /**
-     * See {__setLoanTreasurer} for more information.
-     */
-    function setLoanTreasurer(address _treasurer) external onlyRole(_ADMIN_) {
-        __setLoanTreasurer(_treasurer);
-    }
-
-    /**
      * Overriding the default grantRole function to set the Loan Treasurer
      * address as the _TREASURER_ role holder.
      *

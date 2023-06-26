@@ -77,7 +77,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         // Allow
         vm.deal(admin, 1 ether);
         vm.startPrank(admin);
-        loanContract.setLoanTreasurer(address(0));
+        loanContract.grantRole(_TREASURER_, address(0));
 
         assertTrue(
             loanContract.loanTreasurer() == address(0),
@@ -85,7 +85,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         );
 
         // Allow
-        loanContract.setLoanTreasurer(address(loanTreasurer));
+        loanContract.grantRole(_TREASURER_, address(loanTreasurer));
         vm.stopPrank();
 
         assertTrue(
@@ -110,7 +110,7 @@ contract LoanContractSetterUnitTest is LoanContractDeployer {
         vm.expectRevert(
             bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
         );
-        loanContract.setLoanTreasurer(address(loanTreasurer));
+        loanContract.grantRole(_TREASURER_, address(loanTreasurer));
         vm.stopPrank();
 
         assertTrue(

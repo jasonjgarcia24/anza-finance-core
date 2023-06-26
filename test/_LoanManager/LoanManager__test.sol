@@ -94,7 +94,7 @@ abstract contract LoanManagerInit is Setup {
 
         // Set LoanContract access control roles
         loanManagerHarness.setAnzaToken(address(anzaTokenHarness));
-        loanManagerHarness.setLoanTreasurer(address(loanTreasurer));
+        loanManagerHarness.grantRole(_TREASURER_, address(loanTreasurer));
 
         // Set LoanTreasurey access control roles
         loanTreasurer.setAnzaToken(address(anzaTokenHarness));
