@@ -5,18 +5,18 @@ import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
-import "@market-constants/AnzaDebtMarketRoles.sol";
+import "@markets-constants/AnzaDebtMarketRoles.sol";
 
 import {LoanContract} from "@base/LoanContract.sol";
-import {CollateralVault} from "@base/CollateralVault.sol";
-import {LoanTreasurey} from "@base/LoanTreasurey.sol";
-import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
-import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
-import {AnzaToken} from "@base/token/AnzaToken.sol";
-import {AnzaDebtMarket} from "@base/AnzaDebtMarket.sol";
-import {AnzaDebtStorefront} from "@base/storefronts/AnzaDebtStorefront.sol";
-import {AnzaSponsorshipStorefront} from "@base/storefronts/AnzaSponsorshipStorefront.sol";
-import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront.sol";
+import {CollateralVault} from "@services/CollateralVault.sol";
+import {LoanTreasurey} from "@services/LoanTreasurey.sol";
+import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
+import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@services-interfaces/ILoanNotary.sol";
+import {AnzaToken} from "@tokens/AnzaToken.sol";
+import {AnzaDebtMarket} from "@markets/AnzaDebtMarket.sol";
+import {AnzaDebtStorefront} from "@storefronts/AnzaDebtStorefront.sol";
+import {AnzaSponsorshipStorefront} from "@storefronts/AnzaSponsorshipStorefront.sol";
+import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol";
 import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 
 import {DemoToken} from "@test-utils/DemoToken.sol";

@@ -12,9 +12,9 @@ import {StdCodecErrors, _INVALID_LOAN_PARAMETER_SELECTOR_} from "@custom-errors/
 import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 import "@custom-errors/StdLoanErrors.sol";
 
-import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
-import {TypeUtils} from "./libraries/TypeUtils.sol";
+import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 abstract contract LoanCodec is ILoanCodec, DebtTerms {

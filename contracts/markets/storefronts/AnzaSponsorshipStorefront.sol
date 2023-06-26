@@ -5,15 +5,15 @@ import {console} from "forge-std/console.sol";
 
 import {StdBaseMarketErrors} from "@custom-errors/StdBaseMarketErrors.sol";
 
-import {IAnzaDebtStorefront} from "@market-interfaces/IAnzaDebtStorefront.sol";
-import {AnzaBaseMarketParticipant, NonceLocker} from "@market-databases/AnzaBaseMarketParticipant.sol";
-import {AnzaDebtStorefrontAccessController} from "@market-access/AnzaDebtStorefrontAccessController.sol";
-import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
+import {IAnzaSponsorshipStorefront} from "@storefronts-interfaces/IAnzaSponsorshipStorefront.sol";
+import {AnzaBaseMarketParticipant, NonceLocker} from "@markets-databases/AnzaBaseMarketParticipant.sol";
+import {AnzaSponsorshipStorefrontAccessController} from "@markets-access/AnzaSponsorshipStorefrontAccessController.sol";
+import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
 
-contract AnzaDebtStorefront is
-    IAnzaDebtStorefront,
+contract AnzaSponsorshipStorefront is
+    IAnzaSponsorshipStorefront,
     AnzaBaseMarketParticipant,
-    AnzaDebtStorefrontAccessController
+    AnzaSponsorshipStorefrontAccessController
 {
     using NonceLocker for NonceLocker.Nonce;
 
@@ -22,7 +22,7 @@ contract AnzaDebtStorefront is
         address _loanContract,
         address _loanTreasurer
     )
-        AnzaDebtStorefrontAccessController(
+        AnzaSponsorshipStorefrontAccessController(
             _anzaToken,
             _loanContract,
             _loanTreasurer
@@ -39,8 +39,10 @@ contract AnzaDebtStorefront is
         bytes4 interfaceId
     ) public view virtual override returns (bool) {
         return
-            interfaceId == type(IAnzaDebtStorefront).interfaceId ||
-            AnzaDebtStorefrontAccessController.supportsInterface(interfaceId);
+            interfaceId == type(IAnzaSponsorshipStorefront).interfaceId ||
+            AnzaSponsorshipStorefrontAccessController.supportsInterface(
+                interfaceId
+            );
     }
 
     /**
@@ -56,7 +58,7 @@ contract AnzaDebtStorefront is
      * @param _debtId The debt ID to publish a debt listing for.
      * @return _success True if the listing was published successfully.
      *
-     * @dev Reverts if the caller is not the borrower of the debt ID.
+     * @dev Reverts if the caller is not the lender of the debt ID.
      * @dev Reverts if the debt ID is not active.
      * @dev Reverts if the listing type is UNDEFINED.
      *
@@ -66,16 +68,18 @@ contract AnzaDebtStorefront is
         // Verify the debt ID is active
         _loanManager.verifyLoanActive(_debtId);
 
-        // Verify the caller is the current borrower of the debt
+        // Validate the caller is the current sponsor of the debt
         _verifySeller(_debtId);
 
         // Increment the debt nonce
-        _nonces.push(NonceLocker.spawn(msg.sender, uint8(ListingType.DEBT)));
+        _nonces.push(
+            NonceLocker.spawn(msg.sender, uint8(ListingType.SPONSORSHIP))
+        );
 
         emit ListingRegistered(
             msg.sender,
             _debtId,
-            uint8(ListingType.DEBT),
+            uint8(ListingType.SPONSORSHIP),
             _nonces.length
         );
 
@@ -83,91 +87,85 @@ contract AnzaDebtStorefront is
     }
 
     /**
-     * Executes a debt purchase for a given debt ID.
+     * Executes a sponsorship purchase for a given debt ID.
      *
-     * @notice This function is the primary entrypoint for transfer of debt from
-     * a borrower to a purchaser. Following a successfull execution of this
-     * function, the debt will be owned by the purchaser and the proceeds will
-     * be sent to the loan treasurer for distribution to the borrower and lender.
-     * The transfer of debt is conducted through the transfer of the borrower's
-     * AnzaToken, which is minted to the borrower upon loan origination. Therefore,
-     * no new loan contract is required.
+     * @notice This function is the primary entrypoint for purchasing a sponsorship
+     * for a given debt ID. Following a successfull execution of this function, a
+     * new loan contract will be created and the amount of debt in the agreement will
+     * be reallocated from the original loan contract to the new loan contract. The
+     * lender of the original loan contract will be paid out the amount of the debt
+     * that was reallocated and the borrower will be issued a new loan for the same
+     * amount. This will result in the borrower having an additional loan and a new
+     * lender being introduced into the borrower's loan conditions for a given
+     * collateral. Note, the new loan contract will be created with the same contract
+     * terms as the original loan contract.
      *
-     * @param _collateralAddress The address of the collateral contract.
-     * @param _collateralId The ID of the collateral token.
+     * @param _debtId The debt ID to sponsor.
      * @param _termsExpiry The expiry of the terms signature.
-     * @param _sellerSignature The signature of the borrower
-     * {see LoanNotary:DebtNotary-__typeDataHash}.
+     * @param _sellerSignature The signature of the lender.
      *
      * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
-     * @dev Reverts if the debt ID is owned by the caller.
+     * @dev Reverts if the caller is the lender of the debt ID.
      *
-     * @dev See {AnzaNotary:AnzaNotary-typeDataHash} for signature
-     * construction.
+     * @dev See {AnzaNotary:AnzaNotary-typeDataHash} for signature construction.
      */
-    function buyDebt(
-        address _collateralAddress,
-        uint256 _collateralId,
+    function buySponsorship(
+        uint256 _debtId,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
     ) public payable onlyActiveListing(_sellerSignature) {
-        _buyListing(
-            _collateralAddress,
-            _collateralId,
-            _termsExpiry,
-            msg.value,
-            _sellerSignature
-        );
+        _buyListing(_debtId, _termsExpiry, msg.value, _sellerSignature);
     }
 
     /**
-     * Executes a published debt purchase for a given debt ID.
+     * Executes a published sponsorship purchase for a given debt ID.
      *
-     * @notice This function is the primary entrypoint for transfer of debt from
-     * a borrower to a purchaser. Following a successfull execution of this
-     * function, the debt will be owned by the purchaser and the proceeds will
-     * be sent to the loan treasurer for distribution to the borrower and lender(s).
+     * @notice This function is the primary entrypoint for purchasing a sponsorship
+     * for a given debt ID. Following a successfull execution of this function, a
+     * new loan contract will be created and the amount of debt in the agreement will
+     * be reallocated from the original loan contract to the new loan contract. The
+     * lender of the original loan contract will be paid out the amount of the debt
+     * that was reallocated and the borrower will be issued a new loan for the same
+     * amount. This will result in the borrower having an additional loan and a new
+     * lender being introduced into the borrower's loan conditions for a given
+     * collateral. Note, the new loan contract will be created with the same contract
+     * terms as the original loan contract.
      *
-     * @param _collateralAddress The address of the collateral contract.
-     * @param _collateralId The ID of the collateral token.
+     * @param _debtId The debt ID to sponsor.
      * @param _listingNonce The nonce of the published listing to purchase.
      * @param _termsExpiry The expiry of the terms signature.
-     * @param _sellerSignature The signature of the borrower
-     * {see LoanNotary:DebtNotary-__typeDataHash}.
+     * @param _sellerSignature The signature of the lender.
      *
      * @dev Reverts if the listing is cancelled.
      * @dev Reverts if the signature is invalid.
      * @dev Reverts if the debt ID is not active.
-     * @dev Reverts if the caller is the borrower of the debt ID.
+     * @dev Reverts if the caller is the lender of the debt ID.
      * @dev Reverts if the listing nonce listing type is invalid.
      * @dev Reverts if the listing nonce is invalid.
      *
      * @dev See {AnzaNotary:AnzaNotary-typeDataHash} for signature construction.
      */
-    function buyDebt(
-        address _collateralAddress,
-        uint256 _collateralId,
+    function buySponsorship(
+        uint256 _debtId,
         uint256 _listingNonce,
         uint256 _termsExpiry,
         bytes calldata _sellerSignature
     ) public payable onlyActiveListing(_sellerSignature) {
         _buyListing(
-            _collateralAddress,
-            _collateralId,
-            _termsExpiry,
+            _debtId,
             _listingNonce,
+            _termsExpiry,
             msg.value,
             _sellerSignature
         );
     }
 
     /**
-     * Non-primary entrypoint for executing a purchase of a debt listing.
+     * Non-primary entrypoint for executing a purchase of a sponsorship listing.
      *
-     * @param _collateralAddress The contract address of the token's debt to purchase.
-     * @param _collateralId The token ID of the debt listing to purchase.
+     * @param _debtId The debt ID to purchase.
      * @param _termsExpiry The expiry of the terms signature.
      * @param _price The price of the debt listing.
      * @param _sellerSignature The signature of the seller.
@@ -177,52 +175,45 @@ contract AnzaDebtStorefront is
      * @dev See the {buyListing} nonpublished versions.
      */
     function _buyListing(
-        address _collateralAddress,
-        uint256 _collateralId,
+        uint256 _debtId,
         uint256 _termsExpiry,
         uint256 _price,
         bytes calldata _sellerSignature
     ) internal {
-        (uint256 _debtId, ) = _loanContract.collateralDebtAt(
-            _collateralAddress,
-            _collateralId,
-            0
-        );
-
         // Verify seller participation
         address _seller = _getSigner(
             _debtId,
-            DebtParams({
+            SponsorshipParams({
                 price: _price,
-                collateralAddress: _collateralAddress,
-                collateralId: _collateralId,
+                debtId: _debtId,
                 listingNonce: _nonces.length,
                 termsExpiry: _termsExpiry
             }),
             _sellerSignature,
-            _anzaTokenIndexer.borrowerOf
+            _anzaTokenIndexer.lenderOf
         );
 
         // Update listing nonce
-        _nonces.push(NonceLocker.ruin(msg.sender, uint8(ListingType.DEBT)));
+        _nonces.push(
+            NonceLocker.ruin(msg.sender, uint8(ListingType.SPONSORSHIP))
+        );
 
         // Transfer debt
-        _transferDebt(_collateralAddress, _collateralId, _price, _seller);
+        _transferSponsorship(_debtId, _price, _seller);
 
         // Emit refinance purchase event
         emit ListingPurchased(
             msg.sender,
-            uint8(ListingType.DEBT),
-            _collateralAddress,
-            _collateralId
+            uint8(ListingType.SPONSORSHIP),
+            address(_anzaTokenIndexer),
+            _anzaTokenIndexer.lenderTokenId(_debtId)
         );
     }
 
     /**
-     * Non-primary entrypoint for executing a purchase of a debt listing.
+     * Non-primary entrypoint for executing a purchase of a sponsoship listing.
      *
-     * @param _collateralAddress The contract address of the token's debt to purchase.
-     * @param _collateralId The token ID of the debt listing to purchase.
+     * @param _debtId The debt ID to purchase.
      * @param _listingNonce The nonce of the published debt listing to purchase.
      * @param _termsExpiry The expiry of the terms signature.
      * @param _price The price of the debt listing.
@@ -233,74 +224,63 @@ contract AnzaDebtStorefront is
      * @dev See the {buyListing} nonpublished versions.
      */
     function _buyListing(
-        address _collateralAddress,
-        uint256 _collateralId,
+        uint256 _debtId,
         uint256 _listingNonce,
         uint256 _termsExpiry,
         uint256 _price,
         bytes calldata _sellerSignature
     ) internal {
-        (uint256 _debtId, ) = _loanContract.collateralDebtAt(
-            _collateralAddress,
-            _collateralId,
-            0
-        );
-
         // Verify nonce is unused (handles reentrancy and replay attacks)
-        _nonces[_listingNonce].oneTimeAccess(uint8(ListingType.DEBT));
+        _nonces[_listingNonce].oneTimeAccess(uint8(ListingType.SPONSORSHIP));
 
         // Verify seller participation
         address _seller = _getSigner(
             _debtId,
-            DebtParams({
+            SponsorshipParams({
                 price: _price,
-                collateralAddress: _collateralAddress,
-                collateralId: _collateralId,
+                debtId: _debtId,
                 listingNonce: _listingNonce,
                 termsExpiry: _termsExpiry
             }),
             _sellerSignature,
-            _anzaTokenIndexer.ownerOf
+            _anzaTokenIndexer.lenderOf
         );
 
         // Transfer debt
-        _transferDebt(_collateralAddress, _collateralId, _price, _seller);
+        _transferSponsorship(_debtId, _price, _seller);
 
         // Emit refinance purchase event
         emit ListingPurchased(
             msg.sender,
-            uint8(ListingType.DEBT),
-            _collateralAddress,
-            _collateralId
+            uint8(ListingType.SPONSORSHIP),
+            address(_anzaTokenIndexer),
+            _anzaTokenIndexer.lenderTokenId(_debtId)
         );
     }
 
     /**
-     * Non-primary entrypoint for invoking debt transfer through the treasurer.
+     * Non-primary entrypoint for invoking sponsorship transfer through the
+     * treasurer.
      *
-     * @param _collateralAddress The address of the collateral contract.
-     * @param _collateralId The ID of the collateral token.
+     * @param _debtId The debt ID to transfer.
      * @param _price The price of the listing.
-     * @param _seller The seller of the listing.
+     * @param //_seller The seller of the listing.
      *
      * @dev Reverts if the listing type is not a valid.
      *
-     * @dev See {LoanTreasurey-executeDebtPurchase}.
+     * @dev See {LoanTreasurey-executeSponsorshipPurchase}.
      */
-    function _transferDebt(
-        address _collateralAddress,
-        uint256 _collateralId,
+    function _transferSponsorship(
+        uint256 _debtId,
         uint256 _price,
-        address _seller
+        address /* _seller */
     ) internal {
         (bool _success, bytes memory _data) = loanTreasurerAddress.call{
             value: _price
         }(
             abi.encodeWithSignature(
-                "executeDebtPurchase(address,uint256,address,address)",
-                _collateralAddress,
-                _collateralId,
-                _seller,
+                "executeSponsorshipPurchase(uint256,address)",
+                _debtId,
                 msg.sender
             )
         );

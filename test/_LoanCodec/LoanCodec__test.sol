@@ -10,8 +10,8 @@ import "@custom-errors/StdLoanErrors.sol";
 import "@custom-errors/StdCodecErrors.sol";
 import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
-import {LoanCodec} from "@base/LoanCodec.sol";
-import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {LoanCodec} from "@services/LoanCodec.sol";
+import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
 import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
 import {_OVERFLOW_CAST_SELECTOR_} from "@base/libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";

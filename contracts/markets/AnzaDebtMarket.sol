@@ -4,12 +4,12 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
-import "@market-constants/AnzaDebtMarketRoles.sol";
-import "@market-constants/AnzaDebtStorefrontSelectors.sol";
+import "@markets-constants/AnzaDebtMarketRoles.sol";
+import "@markets-constants/AnzaDebtStorefrontSelectors.sol";
 import {StdAnzaMarketErrors} from "@custom-errors/StdAnzaMarketErrors.sol";
 
-import {IAnzaDebtMarket} from "@market-interfaces/IAnzaDebtMarket.sol";
-import {AnzaBaseMarketParticipant, NonceLocker} from "@market-databases/AnzaBaseMarketParticipant.sol";
+import {IAnzaDebtMarket} from "@markets-interfaces/IAnzaDebtMarket.sol";
+import {AnzaBaseMarketParticipant, NonceLocker} from "@markets-databases/AnzaBaseMarketParticipant.sol";
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 

@@ -9,9 +9,9 @@ import "@lending-constants/LoanContractStates.sol";
 import "@custom-errors/StdLoanErrors.sol";
 import "@custom-errors/StdCodecErrors.sol";
 
-import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
+import {IAnzaToken} from "@tokens-interfaces/IAnzaToken.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
-import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 import {LoanSigned} from "@test-contract/LoanContract__test.sol";

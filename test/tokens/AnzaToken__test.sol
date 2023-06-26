@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {AnzaToken} from "@base/token/AnzaToken.sol";
+import {AnzaToken} from "@tokens/AnzaToken.sol";
 
 contract AnzaTokenHarness is AnzaToken {
     constructor() AnzaToken("www.anza-harness.io") {}

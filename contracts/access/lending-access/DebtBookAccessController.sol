@@ -5,8 +5,8 @@ import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
 import {_INVALID_ADDRESS_ERROR_ID_} from "@custom-errors/StdAccessErrors.sol";
 
 import {IDebtBookAccessController} from "./interfaces/IDebtBookAccessController.sol";
-import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
-import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {IAnzaToken} from "@tokens-interfaces/IAnzaToken.sol";
+import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
 
 abstract contract DebtBookAccessController {
     IAnzaToken internal _anzaToken;

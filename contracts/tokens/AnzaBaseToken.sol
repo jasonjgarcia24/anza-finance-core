@@ -3,10 +3,10 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
-import "@token-constants/AnzaTokenTransferTypes.sol";
+import "@tokens-constants/AnzaTokenTransferTypes.sol";
 
-import {IAnzaBase} from "@token-interfaces/IAnzaBase.sol";
-import {AnzaTokenAccessController} from "@token-access/AnzaTokenAccessController.sol";
+import {IAnzaBase} from "@tokens-interfaces/IAnzaBase.sol";
+import {AnzaTokenAccessController} from "@tokens-access/AnzaTokenAccessController.sol";
 import {AnzaTokenURIStorage, ERC1155} from "./AnzaTokenURIStorage.sol";
 
 abstract contract AnzaBaseToken is
@@ -36,7 +36,13 @@ abstract contract AnzaBaseToken is
 
     function supportsInterface(
         bytes4 _interfaceId
-    ) public view virtual override(AnzaTokenAccessController, ERC1155) returns (bool) {
+    )
+        public
+        view
+        virtual
+        override(AnzaTokenAccessController, ERC1155)
+        returns (bool)
+    {
         return
             _interfaceId == type(IAnzaBase).interfaceId ||
             ERC1155.supportsInterface(_interfaceId) ||

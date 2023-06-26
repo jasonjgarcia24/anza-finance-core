@@ -9,8 +9,8 @@ import {_MAX_REFINANCES_} from "@lending-constants/LoanContractNumbers.sol";
 import {_UINT256_MAX_} from "@universal-numbers/StdNumbers.sol";
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
-import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
-import {LoanCodec} from "@base/LoanCodec.sol";
+import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
+import {LoanCodec} from "@services/LoanCodec.sol";
 import {DebtBook} from "@lending-databases/DebtBook.sol";
 import {ManagerAccessController} from "@lending-access/ManagerAccessController.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";

@@ -6,8 +6,8 @@ import {console} from "forge-std/console.sol";
 import "@lending-constants/LoanContractRoles.sol";
 import {StdVaultErrors} from "@custom-errors/StdVaultErrors.sol";
 
-import {CollateralVault} from "@base/CollateralVault.sol";
-import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {CollateralVault} from "@services/CollateralVault.sol";
+import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
 
 import {LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
 import {ICollateralVaultEvents} from "@test-vault-interfaces/ICollateralVaultEvents__test.sol";

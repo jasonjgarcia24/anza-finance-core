@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
 
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
-import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
 import {DebtBookAccessController} from "@lending-access/DebtBookAccessController.sol";
 
 /**

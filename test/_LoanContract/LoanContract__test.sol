@@ -11,12 +11,12 @@ import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {LoanContract} from "@base/LoanContract.sol";
-import {CollateralVault} from "@base/CollateralVault.sol";
-import {LoanTreasurey} from "@base/LoanTreasurey.sol";
-import {AnzaToken} from "@base/token/AnzaToken.sol";
-import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
-import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
-import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
+import {CollateralVault} from "@services/CollateralVault.sol";
+import {LoanTreasurey} from "@services/LoanTreasurey.sol";
+import {AnzaToken} from "@tokens/AnzaToken.sol";
+import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
+import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
+import {ILoanTreasurey} from "@services-interfaces/ILoanTreasurey.sol";
 import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers} from "@helper-libraries/LibLoanContractConstants.sol";
 
 import {Utils, Setup} from "@test-base/Setup__test.sol";

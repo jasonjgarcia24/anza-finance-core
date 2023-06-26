@@ -10,7 +10,7 @@ import "@custom-errors/StdManagerErrors.sol";
 import "@custom-errors/StdNotaryErrors.sol";
 import "@custom-errors/StdCodecErrors.sol";
 
-import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
+import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@services-interfaces/ILoanNotary.sol";
 import {LibLoanContractStates as States} from "@helper-libraries/LibLoanContractConstants.sol";
 
 import {Setup, AnzaDebtStorefront} from "@test-base/Setup__test.sol";

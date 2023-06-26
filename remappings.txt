@@ -15,20 +15,31 @@
     @lending-access=contracts/access/lending-access/
     @lending-constants=contracts/databases/globals/lending-constants/
     @lending-databases=contracts/databases/lending-databases/
-    @lending-interfaces=contracts/interfaces/lending-interfaces/
     @lending-libraries=contracts/libraries/lending-libraries/
 
-    @market-access=contracts/access/market-access/
-    @market-constants=contracts/databases/globals/market-constants/
-    @market-interfaces=contracts/interfaces/market-interfaces/
-    @market-databases=contracts/databases/market-databases/
-    @market-libraries=contracts/libraries/market-libraries/
+    @markets=contracts/markets/
+    @markets-interfaces=contracts/markets/interfaces/
+    @markets-access=contracts/access/market-access/
+    @markets-constants=contracts/databases/globals/market-constants/
+    @markets-databases=contracts/databases/market-databases/
+    @markets-libraries=contracts/libraries/market-libraries/
 
-    @token-access=contracts/access/token-access/
-    @token-constants=contracts/databases/globals/token-constants/
-    @token-databases=contracts/databases/token-databases/
-    @token-interfaces=contracts/interfaces/token-interfaces/
-    @token-libraries=contracts/libraries/token-libraries/
+    @storefronts=contracts/markets/storefronts/
+    @storefronts-interfaces=contracts/markets/storefronts/interfaces/
+    @storefronts-access=contracts/markets/storefronts/access/market-access/
+    @storefronts-constants=contracts/markets/storefronts/databases/globals/market-constants/
+    @storefronts-databases=contracts/markets/storefronts/databases/market-databases/
+    @storefronts-libraries=contracts/markets/storefronts/libraries/market-libraries/
+
+    @services=contracts/services/
+    @services-interfaces=contracts/services/interfaces/
+
+    @tokens=contracts/tokens/
+    @tokens-interfaces=contracts/tokens/interfaces/
+    @tokens-access=contracts/access/token-access/
+    @tokens-constants=contracts/databases/globals/token-constants/
+    @tokens-databases=contracts/databases/token-databases/
+    @tokens-libraries=contracts/libraries/token-libraries/
 
     @test-base=test/
 

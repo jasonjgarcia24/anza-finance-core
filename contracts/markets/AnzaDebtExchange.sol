@@ -3,12 +3,12 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
-import {_DEBT_MARKET_} from "@market-constants/AnzaDebtMarketRoles.sol";
-import {_DEBT_TRANSFER_} from "@token-constants/AnzaTokenTransferTypes.sol";
+import {_DEBT_MARKET_} from "@markets-constants/AnzaDebtMarketRoles.sol";
+import {_DEBT_TRANSFER_} from "@tokens-constants/AnzaTokenTransferTypes.sol";
 import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 
-import {IAnzaDebtExchange} from "@lending-interfaces/IAnzaDebtExchange.sol";
-import {LoanAccountant} from "@base/LoanAccountant.sol";
+import {IAnzaDebtExchange} from "@markets-interfaces//IAnzaDebtExchange.sol";
+import {LoanAccountant} from "@services/LoanAccountant.sol";
 
 abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
     constructor() LoanAccountant() {}

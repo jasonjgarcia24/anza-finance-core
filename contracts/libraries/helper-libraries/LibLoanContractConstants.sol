@@ -7,7 +7,7 @@ import "@lending-constants/LoanContractNumbers.sol";
 import "@lending-constants/LoanContractTermMaps.sol";
 import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
-import "@market-constants/AnzaDebtMarketRoles.sol";
+import "@markets-constants/AnzaDebtMarketRoles.sol";
 
 /**
  * @title LibLoanContractConstants

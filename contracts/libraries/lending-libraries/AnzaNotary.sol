@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 import "@lending-constants/LoanNotaryTypeHashes.sol";
 import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 
-import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@lending-interfaces/ILoanNotary.sol";
+import {ILoanNotary, IDebtNotary, ISponsorshipNotary, IRefinanceNotary} from "@services-interfaces/ILoanNotary.sol";
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 

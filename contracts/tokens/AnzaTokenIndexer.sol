@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 import {_MAX_DEBT_ID_} from "@lending-constants/LoanContractNumbers.sol";
 import {_INVALID_TOKEN_ID_SELECTOR_} from "@custom-errors/StdAnzaTokenErrors.sol";
 
-import {IAnzaTokenIndexer} from "@token-interfaces/IAnzaTokenIndexer.sol";
+import {IAnzaTokenIndexer} from "@tokens-interfaces/IAnzaTokenIndexer.sol";
 
 abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     /* ------------------------------------------------ *

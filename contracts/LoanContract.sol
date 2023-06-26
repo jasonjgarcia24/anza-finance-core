@@ -7,11 +7,11 @@ import {_TREASURER_} from "@lending-constants/LoanContractRoles.sol";
 import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
 import {StdMonetaryErrors} from "@custom-errors/StdMonetaryErrors.sol";
 
-import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
-import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
-import {LoanManager} from "./LoanManager.sol";
-import {LoanNotary} from "./LoanNotary.sol";
-import {TypeUtils} from "./libraries/TypeUtils.sol";
+import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
+import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
+import {LoanManager} from "@services/LoanManager.sol";
+import {LoanNotary} from "@services/LoanNotary.sol";
+import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 
 import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
@@ -342,12 +342,12 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     /**
      * Revoke a proposed loan contract.
      *
-     * @dev This function will only revoke a proposed loan contract if the caller 
-     * is the borrower and the holder of the collateral and if the signed collateral 
+     * @dev This function will only revoke a proposed loan contract if the caller
+     * is the borrower and the holder of the collateral and if the signed collateral
      * nonce is still active.
-     * 
-     * @notice Revoking a proposed loan is performed by using the collateral nonce. 
-     * Therefore all other loan proposals for this collateral with the same nonce will 
+     *
+     * @notice Revoking a proposed loan is performed by using the collateral nonce.
+     * Therefore all other loan proposals for this collateral with the same nonce will
      * also be revoked and require a new offchain proposal.
      *
      * @param _collateralAddress The address of the collateral token.

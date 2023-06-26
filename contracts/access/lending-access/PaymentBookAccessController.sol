@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {IPaymentBookAccessController} from "./interfaces/IPaymentBookAccessController.sol";
-import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
+import {IAnzaToken} from "@tokens-interfaces/IAnzaToken.sol";
 
 abstract contract PaymentBookAccessController is IPaymentBookAccessController {
     IAnzaToken internal _anzaToken;

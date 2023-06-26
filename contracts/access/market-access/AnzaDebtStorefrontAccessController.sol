@@ -5,11 +5,11 @@ import {console} from "forge-std/console.sol";
 
 import {StdManagerErrors} from "@custom-errors/StdManagerErrors.sol";
 
-import {IAnzaDebtStorefrontAccessController} from "@market-interfaces/IAnzaDebtStorefrontAccessController.sol";
-import {IAnzaTokenIndexer} from "@token-interfaces/IAnzaTokenIndexer.sol";
+import {IAnzaDebtStorefrontAccessController} from "@markets-access/interfaces/IAnzaDebtStorefrontAccessController.sol";
+import {IAnzaTokenIndexer} from "@tokens-interfaces/IAnzaTokenIndexer.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
-import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
-import {DebtNotary} from "@base/LoanNotary.sol";
+import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
+import {DebtNotary} from "@services/LoanNotary.sol";
 
 abstract contract AnzaDebtStorefrontAccessController is
     IAnzaDebtStorefrontAccessController,

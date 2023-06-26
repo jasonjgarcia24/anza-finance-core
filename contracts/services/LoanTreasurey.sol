@@ -6,8 +6,8 @@ import {console} from "forge-std/console.sol";
 import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 import {StdManagerErrors} from "@custom-errors/StdManagerErrors.sol";
 
-import {ILoanTreasurey} from "@lending-interfaces/ILoanTreasurey.sol";
-import {AnzaDebtExchange} from "@base/AnzaDebtExchange.sol";
+import {ILoanTreasurey} from "@services-interfaces/ILoanTreasurey.sol";
+import {AnzaDebtExchange} from "@markets/AnzaDebtExchange.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
 

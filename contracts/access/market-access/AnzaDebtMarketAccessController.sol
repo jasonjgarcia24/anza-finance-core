@@ -4,9 +4,9 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
-import "@market-constants/AnzaDebtMarketRoles.sol";
+import "@markets-constants/AnzaDebtMarketRoles.sol";
 
-import {IAnzaDebtMarketAccessController} from "@market-interfaces/IAnzaDebtMarketAccessController.sol";
+import {IAnzaDebtMarketAccessController} from "@markets-access/interfaces/IAnzaDebtMarketAccessController.sol";
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 

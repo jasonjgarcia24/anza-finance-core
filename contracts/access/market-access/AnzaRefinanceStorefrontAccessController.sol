@@ -5,11 +5,11 @@ import {console} from "forge-std/console.sol";
 
 import {StdManagerErrors} from "@custom-errors/StdManagerErrors.sol";
 
-import {IAnzaRefinanceStorefrontAccessController} from "@market-interfaces/IAnzaRefinanceStorefrontAccessController.sol";
-import {IAnzaTokenIndexer} from "@token-interfaces/IAnzaTokenIndexer.sol";
-import {ILoanContract} from "@lending-interfaces/ILoanContract.sol";
-import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
-import {RefinanceNotary} from "@base/LoanNotary.sol";
+import {IAnzaRefinanceStorefrontAccessController} from "@markets-access/interfaces/IAnzaRefinanceStorefrontAccessController.sol";
+import {IAnzaTokenIndexer} from "@tokens-interfaces/IAnzaTokenIndexer.sol";
+import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
+import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
+import {RefinanceNotary} from "@services/LoanNotary.sol";
 
 abstract contract AnzaRefinanceStorefrontAccessController is
     IAnzaRefinanceStorefrontAccessController,

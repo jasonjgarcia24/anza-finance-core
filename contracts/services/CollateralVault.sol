@@ -7,9 +7,9 @@ import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
 import {StdVaultErrors} from "@custom-errors/StdVaultErrors.sol";
 
-import {IAnzaToken} from "@token-interfaces/IAnzaToken.sol";
-import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
-import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
+import {IAnzaToken} from "@tokens-interfaces/IAnzaToken.sol";
+import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
+import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {VaultAccessController} from "@lending-access/VaultAccessController.sol";
 

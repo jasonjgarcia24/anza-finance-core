@@ -4,14 +4,14 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_, _LOAN_CONTRACT_} from "@lending-constants/LoanContractRoles.sol";
-import {_DEBT_MARKET_} from "@market-constants/AnzaDebtMarketRoles.sol";
+import {_DEBT_MARKET_} from "@markets-constants/AnzaDebtMarketRoles.sol";
 
 import {IAccountantAccessController} from "@lending-access/interfaces/IAccountantAccessController.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
-import {ILoanManager} from "@lending-interfaces/ILoanManager.sol";
-import {ILoanCodec} from "@lending-interfaces/ILoanCodec.sol";
-import {ICollateralVault} from "@lending-interfaces/ICollateralVault.sol";
+import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
+import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
+import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 

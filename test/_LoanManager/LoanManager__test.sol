@@ -10,10 +10,10 @@ import {_UINT256_MAX_} from "@universal-numbers/StdNumbers.sol";
 import {_INACTIVE_LOAN_STATE_SELECTOR_, _EXPIRED_LOAN_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
 import {_INVALID_ADDRESS_ERROR_ID_} from "@custom-errors/StdAccessErrors.sol";
 
-import {LoanManager} from "@base/LoanManager.sol";
-import {AnzaDebtStorefront} from "@base/storefronts/AnzaDebtStorefront.sol";
-import {AnzaSponsorshipStorefront} from "@base/storefronts/AnzaSponsorshipStorefront.sol";
-import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront.sol";
+import {LoanManager} from "@services/LoanManager.sol";
+import {AnzaDebtStorefront} from "@storefronts/AnzaDebtStorefront.sol";
+import {AnzaSponsorshipStorefront} from "@storefronts/AnzaSponsorshipStorefront.sol";
+import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {LoanCodecInit} from "@test-base/_LoanCodec/LoanCodec__test.sol";

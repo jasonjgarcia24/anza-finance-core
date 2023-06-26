@@ -10,12 +10,12 @@ import {_INVALID_COLLATERAL_SELECTOR_} from "@custom-errors/StdLoanErrors.sol";
 import {_ILLEGAL_MINT_SELECTOR_, _INVALID_TOKEN_ID_SELECTOR_} from "@custom-errors/StdAnzaTokenErrors.sol";
 
 import {DebtBook} from "@lending-databases/DebtBook.sol";
-import {AnzaToken} from "@base/token/AnzaToken.sol";
-import {LoanTreasurey} from "@base/LoanTreasurey.sol";
-import {CollateralVault} from "@base/CollateralVault.sol";
-import {AnzaDebtStorefront} from "@base/storefronts/AnzaDebtStorefront.sol";
-import {AnzaSponsorshipStorefront} from "@base/storefronts/AnzaSponsorshipStorefront.sol";
-import {AnzaRefinanceStorefront} from "@base/storefronts/AnzaRefinanceStorefront.sol";
+import {AnzaToken} from "@tokens/AnzaToken.sol";
+import {LoanTreasurey} from "@services/LoanTreasurey.sol";
+import {CollateralVault} from "@services/CollateralVault.sol";
+import {AnzaDebtStorefront} from "@storefronts/AnzaDebtStorefront.sol";
+import {AnzaSponsorshipStorefront} from "@storefronts/AnzaSponsorshipStorefront.sol";
+import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
