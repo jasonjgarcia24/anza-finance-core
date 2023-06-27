@@ -192,6 +192,7 @@ contract AnzaRefinanceStorefront is
     ) internal {
         // Verify seller participation
         address _seller = _getBorrower(
+            address(_anzaTokenIndexer),
             _debtId,
             RefinanceParams({
                 price: _price,
@@ -248,6 +249,7 @@ contract AnzaRefinanceStorefront is
 
         // Verify seller participation
         address _seller = _getBorrower(
+            address(_anzaTokenIndexer),
             _debtId,
             RefinanceParams({
                 price: _price,

@@ -145,7 +145,7 @@ abstract contract LoanManagerInit is Setup {
     }
 }
 
-contract LoanManagerUtils is LoanManagerInit {
+contract LoanManagerUnitTest is LoanManagerInit {
     function setUp() public virtual override {
         super.setUp();
     }

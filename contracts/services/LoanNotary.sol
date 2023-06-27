@@ -21,7 +21,6 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  */
 abstract contract LoanNotary is ILoanNotary {
     /**
-     * @dev Returns the value that is unique to each contract that uses EIP-712.
      * This hashed value is used to prevent replay attacks from malicious actors
      * attempting to use a signed message to execute the same action multiple
      * times.
@@ -64,6 +63,8 @@ abstract contract LoanNotary is ILoanNotary {
      * be a IERC721.ownerOf call on the collateral contract. If this is called
      * as a loan contract refinance for existing debt, this should be a
      * IAnzaToken.borrowerOf call on the debt contract.
+     *
+     * @return the verified borrower of the loan contract.
      */
     function _getBorrower(
         uint256 _assetId,
@@ -71,6 +72,9 @@ abstract contract LoanNotary is ILoanNotary {
         bytes memory _borrowerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
+        if (_contractParams.collateralAddress != ownerOf.address)
+            revert StdNotaryErrors.InvalidOwnerMethod();
+
         address _borrower = ownerOf(_assetId);
 
         if (
@@ -82,13 +86,10 @@ abstract contract LoanNotary is ILoanNotary {
     }
 
     /**
-     * @dev Verifies the sender is the owner of the collateral and borrower
-     * of a signed set of loan contract terms.
+     * Verifies the sender is the owner of the collateral and borrower of a signed
+     * set of loan contract terms.
      *
-     * @param _assetId the collateral or debt ID of the asset. If this is
-     * called as an original loan contract for a new loan, this should be the
-     * collateral ID. If this is called as a loan contract refinance for
-     * existing debt, this should be the debt ID.
+     * @param _assetId the collateral or debt ID of the asset.
      * @param _contractParams the loan contract terms.
      * @param _borrowerSignature the signed loan contract terms.
      * @param ownerOf the function used to identify the recorded borrower. If
@@ -96,6 +97,8 @@ abstract contract LoanNotary is ILoanNotary {
      * be a IERC721.ownerOf call on the collateral contract. If this is called
      * as a loan contract refinance for existing debt, this should be a
      * IAnzaToken.borrowerOf call on the debt contract.
+     *
+     * @return the address of the borrower.
      */
     function _verifyBorrower(
         uint256 _assetId,
@@ -114,10 +117,15 @@ abstract contract LoanNotary is ILoanNotary {
     }
 
     /**
-     * @dev Returns the address that signed a hashed message (`hash`) with
-     * `_signature`. This address can then be used for verification purposes.
+     * Returns the address that signed a hashed message (`hash`) with `_signature`.
+     * This address can then be used for verification purposes.
+     *
+     * @param _contractParams the loan contract terms.
+     * @param _signature the signed loan contract terms.
      *
      * {see ECDSA-recover}
+     *
+     * @return the address that signed the message.
      */
     function _recoverSigner(
         ContractParams memory _contractParams,
@@ -131,11 +139,14 @@ abstract contract LoanNotary is ILoanNotary {
     }
 
     /**
-     * @dev Returns an Ethereum Signed Typed Data, created from a
-     * `domainSeparator` and a `structHash`. This produces hash corresponding
-     * to the one signed with the
-     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
-     * JSON-RPC method as part of EIP-712.
+     * Returns an Ethereum Signed Typed Data, created from a `domainSeparator`
+     * and a `structHash`. This produces hash corresponding to the one signed.
+     *
+     * @param _contractParams the loan contract terms.
+     *
+     * {see EIP-712}
+     *
+     * @return the hash of the structured message.
      */
     function __typeDataHash(
         ContractParams memory _contractParams
@@ -151,12 +162,16 @@ abstract contract LoanNotary is ILoanNotary {
     }
 
     /**
-     * @dev Returns the hash of a structured message. This hash shall be
-     * combined with the `domainSeparator` and signed by the signer using their
-     * private key to produce a signature. The signature is then used to verify
-     * that the structured message originated
-     * from the signer.
-     * https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+     * Returns the hash of a structured message. This hash shall be combined with
+     * the `domainSeparator` and signed by the signer using their private key to
+     * produce a signature. The signature is then used to verify that the structured
+     * message originated from the signer.
+     *
+     * @param _contractParams the loan contract terms.
+     *
+     * {see EIP-712}
+     *
+     * @return the hash of the structured message.
      */
     function __structHash(
         ContractParams memory _contractParams
@@ -176,15 +191,13 @@ abstract contract LoanNotary is ILoanNotary {
 }
 
 /**
- * @notice This contract implements the EIP 1271 type-specific encoding of signed debt sales
- * terms.
+ * @notice This contract implements the EIP 1271 type-specific encoding of signed
+ * debt sales terms.
  */
 abstract contract DebtNotary is IDebtNotary {
     /**
-     * @dev Returns the value that is unique to each contract that uses EIP-712.
      * This hashed value is used to prevent replay attacks from malicious actors
-     * attempting to use a signed message to execute the same action multiple
-     * times.
+     * attempting to use a signed message to execute the same action multiple times.
      */
     bytes32 private immutable __debtDomainSeparator;
 
@@ -210,13 +223,14 @@ abstract contract DebtNotary is IDebtNotary {
     }
 
     /**
-     * @dev Returns the verified signer of a signed set of loan contract
-     * terms.
+     * @dev Returns the verified signer of a signed set of loan contract terms.
      *
      * @param _assetId the debt ID of the asset.
      * @param _debtParams the debt terms.
      * @param _sellerSignature the signed debt listing terms.
      * @param ownerOf the function used to identify the recorded borrower.
+     *
+     * @return the address of the signer.
      */
     function _getSigner(
         uint256 _assetId,
@@ -235,10 +249,15 @@ abstract contract DebtNotary is IDebtNotary {
     }
 
     /**
-     * @dev Returns the address that signed a hashed message (`hash`) with
-     * `_signature`. This address can then be used for verification purposes.
+     * Returns the address that signed a hashed message (`hash`) with `_signature`.
+     * This address can then be used for verification purposes.
+     *
+     * @param _debtParams the debt terms.
+     * @param _signature the signed debt listing terms.
      *
      * {see ECDSA-recover}
+     *
+     * @return the address of the signer.
      */
     function _recoverSigner(
         DebtParams memory _debtParams,
@@ -252,11 +271,14 @@ abstract contract DebtNotary is IDebtNotary {
     }
 
     /**
-     * @dev Returns an Ethereum Signed Typed Data, created from a
-     * `domainSeparator` and a `structHash`. This produces hash corresponding
-     * to the one signed with the
-     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
-     * JSON-RPC method as part of EIP-712.
+     * Returns an Ethereum Signed Typed Data, created from a `domainSeparator`
+     * and a `structHash`. This produces hash corresponding to the one signed.
+     *
+     * @param _debtParams the debt terms.
+     *
+     * {see EIP1271}
+     *
+     * @return the hash of the structured message.
      */
     function __typeDataHash(
         DebtParams memory _debtParams
@@ -272,12 +294,17 @@ abstract contract DebtNotary is IDebtNotary {
     }
 
     /**
-     * @dev Returns the hash of a structured message. This hash shall be
+     * Returns the hash of a structured message. This hash shall be
      * combined with the `domainSeparator` and signed by the signer using their
      * private key to produce a signature. The signature is then used to verify
      * that the structured message originated
      * from the signer.
-     * https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+     *
+     * @param _debtParams the debt terms.
+     *
+     * {see EIP1271}
+     *
+     * @return the hash of the structured message.
      */
     function __structHash(
         DebtParams memory _debtParams
@@ -302,7 +329,7 @@ abstract contract DebtNotary is IDebtNotary {
  */
 abstract contract RefinanceNotary is IRefinanceNotary {
     /**
-     * @dev Returns the value that is unique to each contract that uses EIP-712.
+     * Returns the value that is unique to each contract that uses EIP-1271.
      * This hashed value is used to prevent replay attacks from malicious actors
      * attempting to use a signed message to execute the same action multiple
      * times.
@@ -331,41 +358,70 @@ abstract contract RefinanceNotary is IRefinanceNotary {
     }
 
     /**
-     * @dev Returns the verified borrower of a signed set of loan contract
+     * Returns the verified borrower of a signed set of loan contract
      * terms.
      *
-     * @param _assetId the debt ID of the asset.
-     * @param _refinanceParams the debt refinance listing terms.
-     * @param _sellerSignature the signed debt refinance listing terms.
-     * @param ownerOf the function used to identify the recorded borrower.
+     * @param _anzaTokenAddress The address of the Anza token.
+     * @param _assetId The debt ID of the asset.
+     * @param _refinanceParams The debt refinance listing terms.
+     * @param _sellerSignature The signed debt refinance listing terms.
+     * @param ownerOf The function used to identify the recorded borrower.
+     *
+     * @return The address of the borrower.
      */
     function _getBorrower(
+        address _anzaTokenAddress,
         uint256 _assetId,
         RefinanceParams memory _refinanceParams,
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
+        if (_anzaTokenAddress != ownerOf.address)
+            revert StdNotaryErrors.InvalidOwnerMethod();
+
         address _borrower = ownerOf(_assetId);
+
+        console.log("borrower: %s", _borrower);
+        console.log("msg.sender: %s", msg.sender);
+        console.log(
+            "recoverSigner: %s",
+            _recoverSigner(
+                _anzaTokenAddress,
+                _refinanceParams,
+                _sellerSignature
+            )
+        );
 
         if (
             _borrower == msg.sender ||
-            _borrower != _recoverSigner(_refinanceParams, _sellerSignature)
+            _borrower !=
+            _recoverSigner(
+                _anzaTokenAddress,
+                _refinanceParams,
+                _sellerSignature
+            )
         ) revert StdNotaryErrors.InvalidSigner();
 
         return _borrower;
     }
 
     /**
-     * @dev Returns the address that signed a hashed message (`hash`) with
+     * Returns the address that signed a hashed message (`hash`) with
      * `_signature`. This address can then be used for verification purposes.
      *
+     * @param _anzaTokenAddress The address of the Anza token.
+     * @param _refinanceParams The debt refinance listing terms.
+     *
      * {see ECDSA-recover}
+     *
+     * @return The address of the signer.
      */
     function _recoverSigner(
+        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams,
         bytes memory _signature
     ) internal view returns (address) {
-        bytes32 _message = __typeDataHash(_refinanceParams);
+        bytes32 _message = __typeDataHash(_anzaTokenAddress, _refinanceParams);
 
         (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
@@ -373,13 +429,19 @@ abstract contract RefinanceNotary is IRefinanceNotary {
     }
 
     /**
-     * @dev Returns an Ethereum Signed Typed Data, created from a
+     * Returns an Ethereum Signed Typed Data, created from a
      * `domainSeparator` and a `structHash`. This produces hash corresponding
-     * to the one signed with the
-     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
-     * JSON-RPC method as part of EIP-712.
+     * to the one signed.
+     *
+     * @param _anzaTokenAddress The address of the Anza token.
+     * @param _refinanceParams The debt refinance listing terms.
+     *
+     * {see EIP1271}
+     *
+     * @return The hash of a structured message.
      */
     function __typeDataHash(
+        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams
     ) private view returns (bytes32) {
         return
@@ -387,20 +449,27 @@ abstract contract RefinanceNotary is IRefinanceNotary {
                 abi.encodePacked(
                     "\x19\x01",
                     __refinanceDomainSeparator,
-                    __structHash(_refinanceParams)
+                    __structHash(_anzaTokenAddress, _refinanceParams)
                 )
             );
     }
 
     /**
-     * @dev Returns the hash of a structured message. This hash shall be
+     * Returns the hash of a structured message. This hash shall be
      * combined with the `domainSeparator` and signed by the signer using their
      * private key to produce a signature. The signature is then used to verify
      * that the structured message originated
      * from the signer.
-     * https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+     *
+     * @param _anzaTokenAddress The address of the Anza token.
+     * @param _refinanceParams The debt refinance listing terms.
+     *
+     * {see EIP1271}
+     *
+     * @return The hash of a structured message.
      */
     function __structHash(
+        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams
     ) private pure returns (bytes32) {
         return
@@ -408,6 +477,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
                 abi.encode(
                     _REFINANCE_PARAMS_ENCODE_TYPE_HASH_,
                     _refinanceParams.price,
+                    _anzaTokenAddress,
                     _refinanceParams.debtId,
                     _refinanceParams.contractTerms,
                     _refinanceParams.listingNonce,
@@ -423,7 +493,6 @@ abstract contract RefinanceNotary is IRefinanceNotary {
  */
 abstract contract SponsorshipNotary is ISponsorshipNotary {
     /**
-     * @dev Returns the value that is unique to each contract that uses EIP-712.
      * This hashed value is used to prevent replay attacks from malicious actors
      * attempting to use a signed message to execute the same action multiple
      * times.
@@ -452,15 +521,19 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
     }
 
     /**
-     * @dev Returns the verified signer of a signed set of loan contract
+     * Returns the verified signer of a signed set of loan contract
      * terms.
      *
+     * @param _anzaTokenAddress the Anza Token address.
      * @param _assetId the debt ID of the asset.
      * @param _sponsorshipParams the debt listing terms.
      * @param _sellerSignature the signed debt listing terms.
      * @param ownerOf the function used to identify the recorded borrower.
+     *
+     * @return the verified signer of the signed debt listing terms.
      */
     function _getSigner(
+        address _anzaTokenAddress,
         uint256 _assetId,
         SponsorshipParams memory _sponsorshipParams,
         bytes memory _sellerSignature,
@@ -470,23 +543,38 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
 
         if (
             _seller == msg.sender ||
-            _seller != _recoverSigner(_sponsorshipParams, _sellerSignature)
+            _seller !=
+            _recoverSigner(
+                _anzaTokenAddress,
+                _sponsorshipParams,
+                _sellerSignature
+            )
         ) revert StdNotaryErrors.InvalidSigner();
 
         return _seller;
     }
 
     /**
-     * @dev Returns the address that signed a hashed message (`hash`) with
+     * Returns the address that signed a hashed message (`hash`) with
      * `_signature`. This address can then be used for verification purposes.
      *
+     * @param _anzaTokenAddress the Anza Token address.
+     * @param _sponsorshipParams the debt listing terms.
+     * @param _signature the signed debt listing terms.
+     *
      * {see ECDSA-recover}
+     *
+     * @return the address of the signer.
      */
     function _recoverSigner(
+        address _anzaTokenAddress,
         SponsorshipParams memory _sponsorshipParams,
         bytes memory _signature
     ) internal view returns (address) {
-        bytes32 _message = __typeDataHash(_sponsorshipParams);
+        bytes32 _message = __typeDataHash(
+            _anzaTokenAddress,
+            _sponsorshipParams
+        );
 
         (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
@@ -494,13 +582,19 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
     }
 
     /**
-     * @dev Returns an Ethereum Signed Typed Data, created from a
+     * Returns an Ethereum Signed Typed Data, created from a
      * `domainSeparator` and a `structHash`. This produces hash corresponding
-     * to the one signed with the
-     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]
-     * JSON-RPC method as part of EIP-712.
+     * to the one signed.
+     *
+     * @param _anzaTokenAddress the Anza Token address.
+     * @param _sponsorshipParams the debt listing terms.
+     *
+     * {see EIP-1271}
+     *
+     * @return the hash of the structured message.
      */
     function __typeDataHash(
+        address _anzaTokenAddress,
         SponsorshipParams memory _sponsorshipParams
     ) private view returns (bytes32) {
         return
@@ -508,20 +602,27 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
                 abi.encodePacked(
                     "\x19\x01",
                     __sponsorshipDomainSeparator,
-                    __structHash(_sponsorshipParams)
+                    __structHash(_anzaTokenAddress, _sponsorshipParams)
                 )
             );
     }
 
     /**
-     * @dev Returns the hash of a structured message. This hash shall be
+     * Returns the hash of a structured message. This hash shall be
      * combined with the `domainSeparator` and signed by the signer using their
      * private key to produce a signature. The signature is then used to verify
      * that the structured message originated
      * from the signer.
-     * https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct
+     *
+     * @param _anzaTokenAddress the Anza Token address.
+     * @param _sponsorshipParams the debt listing terms.
+     *
+     * {see EIP-1271}
+     *
+     * @return the hash of the structured message.
      */
     function __structHash(
+        address _anzaTokenAddress,
         SponsorshipParams memory _sponsorshipParams
     ) private pure returns (bytes32) {
         return
@@ -529,6 +630,7 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
                 abi.encode(
                     _SPONSORSHIP_PARAMS_ENCODE_TYPE_HASH_,
                     _sponsorshipParams.price,
+                    _anzaTokenAddress,
                     _sponsorshipParams.debtId,
                     _sponsorshipParams.listingNonce,
                     _sponsorshipParams.termsExpiry

@@ -190,11 +190,11 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         vm.stopPrank();
 
         vm.startPrank(borrower);
-        demoToken = new DemoToken();
+        demoToken = new DemoToken(10);
         demoToken.approve(address(loanContract), collateralId);
         demoToken.setApprovalForAll(address(loanContract), true);
 
-        alt_demoToken = new DemoToken();
+        alt_demoToken = new DemoToken(10);
         alt_demoToken.approve(address(loanContract), collateralId);
         alt_demoToken.setApprovalForAll(address(loanContract), true);
         vm.stopPrank();
@@ -335,6 +335,32 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
 
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(borrowerPrivKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
+    function createContractSignature(
+        uint256 _signerPrivKey,
+        uint256 _principal,
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        bytes32 _contractTerms,
+        Notary.DomainSeparator memory _domainSeparator
+    ) public virtual returns (bytes memory _signature) {
+        // Create message for signing
+        bytes32 _message = Notary.typeDataHash(
+            ILoanNotary.ContractParams({
+                principal: _principal,
+                contractTerms: _contractTerms,
+                collateralAddress: _collateralAddress,
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            }),
+            _domainSeparator
+        );
+
+        // Sign borrower's terms
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPrivKey, _message);
         _signature = abi.encodePacked(r, s, v);
     }
 
@@ -517,6 +543,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams
     ) public virtual returns (bytes memory _signature) {
         bytes32 _message = Notary.typeDataHash(
+            address(anzaToken),
             _sponsorshipParams,
             sponsorshipDomainSeparator
         );
@@ -531,6 +558,7 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         IRefinanceNotary.RefinanceParams memory _refinanceParams
     ) public virtual returns (bytes memory _signature) {
         bytes32 _message = Notary.typeDataHash(
+            address(anzaToken),
             _refinanceParams,
             refinanceDomainSeparator
         );
@@ -545,8 +573,26 @@ abstract contract Setup is Settings, IERC1155Events, IAccessControlEvents {
         IRefinanceNotary.RefinanceParams memory _debtRefinanceParams
     ) public virtual returns (bytes memory _signature) {
         bytes32 _message = Notary.typeDataHash(
+            address(anzaToken),
             _debtRefinanceParams,
             refinanceDomainSeparator
+        );
+
+        // Sign seller's listing terms
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_sellerPrivateKey, _message);
+        _signature = abi.encodePacked(r, s, v);
+    }
+
+    function createRefinanceSignature(
+        uint256 _sellerPrivateKey,
+        address _anzaTokenAddress,
+        IRefinanceNotary.RefinanceParams memory _debtRefinanceParams,
+        Notary.DomainSeparator memory _refinanceDomainSeparator
+    ) public virtual returns (bytes memory _signature) {
+        bytes32 _message = Notary.typeDataHash(
+            _anzaTokenAddress,
+            _debtRefinanceParams,
+            _refinanceDomainSeparator
         );
 
         // Sign seller's listing terms

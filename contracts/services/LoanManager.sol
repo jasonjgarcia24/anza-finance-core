@@ -54,7 +54,7 @@ abstract contract LoanManager is
      */
     function setAnzaToken(
         address _anzaToken
-    ) public override onlyRole(_ADMIN_) {
+    ) public virtual override onlyRole(_ADMIN_) {
         super._setAnzaToken(_anzaToken);
     }
 

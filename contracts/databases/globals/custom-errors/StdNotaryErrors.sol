@@ -11,5 +11,6 @@ library StdNotaryErrors {
      *                 Notary Errors                    *
      * ------------------------------------------------ */
     error InvalidSigner();
+    error InvalidOwnerMethod();
     error InvalidSignatureLength();
 }

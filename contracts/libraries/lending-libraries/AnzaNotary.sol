@@ -97,11 +97,16 @@ library AnzaNotary {
      * {see LoanNotary:RefinanceNotary-__recoverSigner}
      */
     function recoverSigner(
+        address _anzaTokenAddress,
         IRefinanceNotary.RefinanceParams memory _refinanceParams,
         DomainSeparator memory _domainSeparator,
         bytes memory _signature
     ) public pure returns (address) {
-        bytes32 _message = typeDataHash(_refinanceParams, _domainSeparator);
+        bytes32 _message = typeDataHash(
+            _anzaTokenAddress,
+            _refinanceParams,
+            _domainSeparator
+        );
 
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
@@ -112,11 +117,16 @@ library AnzaNotary {
      * {see LoanNotary:SponsorshipNotary-__recoverSigner}
      */
     function recoverSigner(
+        address _anzaTokenAddress,
         ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams,
         DomainSeparator memory _domainSeparator,
         bytes memory _signature
     ) public pure returns (address) {
-        bytes32 _message = typeDataHash(_sponsorshipParams, _domainSeparator);
+        bytes32 _message = typeDataHash(
+            _anzaTokenAddress,
+            _sponsorshipParams,
+            _domainSeparator
+        );
 
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(_signature);
 
@@ -179,6 +189,7 @@ library AnzaNotary {
      * {see LoanNotary:RefinanceNotary-__typeDataHash}
      */
     function typeDataHash(
+        address _anzaTokenAddress,
         IRefinanceNotary.RefinanceParams memory _refinanceParams,
         DomainSeparator memory _domainSeparator
     ) public pure returns (bytes32) {
@@ -187,7 +198,7 @@ library AnzaNotary {
                 abi.encodePacked(
                     "\x19\x01",
                     domainSeparator(_domainSeparator),
-                    structHash(_refinanceParams)
+                    structHash(_anzaTokenAddress, _refinanceParams)
                 )
             );
     }
@@ -196,6 +207,7 @@ library AnzaNotary {
      * {see LoanNotary:SponsorshipNotary-__typeDataHash}
      */
     function typeDataHash(
+        address _anzaTokenAddress,
         ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams,
         DomainSeparator memory _domainSeparator
     ) public pure returns (bytes32) {
@@ -204,7 +216,7 @@ library AnzaNotary {
                 abi.encodePacked(
                     "\x19\x01",
                     domainSeparator(_domainSeparator),
-                    structHash(_sponsorshipParams)
+                    structHash(_anzaTokenAddress, _sponsorshipParams)
                 )
             );
     }
@@ -242,6 +254,7 @@ library AnzaNotary {
     }
 
     function structHash(
+        address _anzaTokenAddress,
         IRefinanceNotary.RefinanceParams memory _refinanceParams
     ) public pure returns (bytes32) {
         return
@@ -249,6 +262,7 @@ library AnzaNotary {
                 abi.encode(
                     _REFINANCE_PARAMS_ENCODE_TYPE_HASH_,
                     _refinanceParams.price,
+                    _anzaTokenAddress,
                     _refinanceParams.debtId,
                     _refinanceParams.contractTerms,
                     _refinanceParams.listingNonce,
@@ -258,6 +272,7 @@ library AnzaNotary {
     }
 
     function structHash(
+        address _anzaTokenAddress,
         ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams
     ) public pure returns (bytes32) {
         return
@@ -265,6 +280,7 @@ library AnzaNotary {
                 abi.encode(
                     _SPONSORSHIP_PARAMS_ENCODE_TYPE_HASH_,
                     _sponsorshipParams.price,
+                    _anzaTokenAddress,
                     _sponsorshipParams.debtId,
                     _sponsorshipParams.listingNonce,
                     _sponsorshipParams.termsExpiry

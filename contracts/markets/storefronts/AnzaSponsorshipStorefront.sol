@@ -182,6 +182,7 @@ contract AnzaSponsorshipStorefront is
     ) internal {
         // Verify seller participation
         address _seller = _getSigner(
+            address(_anzaTokenIndexer),
             _debtId,
             SponsorshipParams({
                 price: _price,
@@ -235,6 +236,7 @@ contract AnzaSponsorshipStorefront is
 
         // Verify seller participation
         address _seller = _getSigner(
+            address(_anzaTokenIndexer),
             _debtId,
             SponsorshipParams({
                 price: _price,

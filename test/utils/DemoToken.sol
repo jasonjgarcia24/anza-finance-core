@@ -10,8 +10,8 @@ contract DemoToken is ERC721 {
 
     mapping(address => uint256[]) public ownedTokens;
 
-    constructor() ERC721("Demo Token", "DT") {
-        while (totalSupply < 10) {
+    constructor(uint256 _initialSupply) ERC721("Demo Token", "DT") {
+        while (totalSupply < _initialSupply) {
             _safeMint(msg.sender, ++totalSupply);
         }
     }
@@ -34,6 +34,10 @@ contract DemoToken is ERC721 {
         while (totalSupply < _updatedSupply) {
             _safeMint(msg.sender, ++totalSupply);
         }
+    }
+
+    function exposed__mint(address _to, uint256 _tokenId) public {
+        _mint(_to, _tokenId);
     }
 
     function _baseURI() internal view override returns (string memory) {
