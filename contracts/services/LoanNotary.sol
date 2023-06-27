@@ -25,13 +25,18 @@ abstract contract LoanNotary is ILoanNotary {
      * attempting to use a signed message to execute the same action multiple
      * times.
      */
-    bytes32 private immutable __loanDomainSeparator;
+    bytes32 private immutable __loanNotary_domainSeparator;
+    address private __loanNotary_anzaTokenAddress;
 
-    constructor(string memory _contractName, string memory _contractVersion) {
+    constructor(
+        string memory _contractName,
+        string memory _contractVersion,
+        address _anzaTokenAddress
+    ) {
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
-        __loanDomainSeparator = keccak256(
+        __loanNotary_domainSeparator = keccak256(
             abi.encode(
                 _TYPE_HASH_,
                 nameHash,
@@ -40,6 +45,8 @@ abstract contract LoanNotary is ILoanNotary {
                 address(this)
             )
         );
+
+        __loanNotary_anzaTokenAddress = _anzaTokenAddress;
     }
 
     function supportsInterface(
@@ -49,13 +56,20 @@ abstract contract LoanNotary is ILoanNotary {
     }
 
     /**
+     * Set the address of the AnzaToken contract.
+     *
+     * @notice This function is not access control guarded (i.e. unsafe).
+     *
+     * @param _anzaTokenAddress the address of the AnzaToken contract.
+     */
+    function _unsafeSetAnzaToken(address _anzaTokenAddress) internal {
+        __loanNotary_anzaTokenAddress = _anzaTokenAddress;
+    }
+
+    /**
      * @dev Returns the verified borrower of a signed set of loan contract
      * terms.
      *
-     * @param _assetId the collateral or debt ID of the asset. If this is
-     * called as an original loan contract for a new loan, this should be the
-     * collateral ID. If this is called as a loan contract refinance for
-     * existing debt, this should be the debt ID.
      * @param _contractParams the loan contract terms.
      * @param _borrowerSignature the signed loan contract terms.
      * @param ownerOf the function used to identify the recorded borrower. If
@@ -67,7 +81,6 @@ abstract contract LoanNotary is ILoanNotary {
      * @return the verified borrower of the loan contract.
      */
     function _getBorrower(
-        uint256 _assetId,
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
         function(uint256) external view returns (address) ownerOf
@@ -75,7 +88,7 @@ abstract contract LoanNotary is ILoanNotary {
         if (_contractParams.collateralAddress != ownerOf.address)
             revert StdNotaryErrors.InvalidOwnerMethod();
 
-        address _borrower = ownerOf(_assetId);
+        address _borrower = ownerOf(_contractParams.collateralId);
 
         if (
             _borrower == msg.sender ||
@@ -155,7 +168,7 @@ abstract contract LoanNotary is ILoanNotary {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    __loanDomainSeparator,
+                    __loanNotary_domainSeparator,
                     __structHash(_contractParams)
                 )
             );
@@ -199,13 +212,18 @@ abstract contract DebtNotary is IDebtNotary {
      * This hashed value is used to prevent replay attacks from malicious actors
      * attempting to use a signed message to execute the same action multiple times.
      */
-    bytes32 private immutable __debtDomainSeparator;
+    bytes32 private immutable __debtNotary_domainSeparator;
+    address private immutable __debtNotary_anzaTokenAddress;
 
-    constructor(string memory _contractName, string memory _contractVersion) {
+    constructor(
+        string memory _contractName,
+        string memory _contractVersion,
+        address _anzaTokenAddress
+    ) {
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
-        __debtDomainSeparator = keccak256(
+        __debtNotary_domainSeparator = keccak256(
             abi.encode(
                 _TYPE_HASH_,
                 nameHash,
@@ -214,6 +232,8 @@ abstract contract DebtNotary is IDebtNotary {
                 address(this)
             )
         );
+
+        __debtNotary_anzaTokenAddress = _anzaTokenAddress;
     }
 
     function supportsInterface(
@@ -238,6 +258,9 @@ abstract contract DebtNotary is IDebtNotary {
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
+        if (__debtNotary_anzaTokenAddress != ownerOf.address)
+            revert StdNotaryErrors.InvalidOwnerMethod();
+
         address _seller = ownerOf(_assetId);
 
         if (
@@ -287,7 +310,7 @@ abstract contract DebtNotary is IDebtNotary {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    __debtDomainSeparator,
+                    __debtNotary_domainSeparator,
                     __structHash(_debtParams)
                 )
             );
@@ -334,13 +357,18 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * attempting to use a signed message to execute the same action multiple
      * times.
      */
-    bytes32 private immutable __refinanceDomainSeparator;
+    bytes32 private immutable __refinanceNotary_domainSeparator;
+    address private immutable __refinanceNotary_anzaTokenAddress;
 
-    constructor(string memory _contractName, string memory _contractVersion) {
+    constructor(
+        string memory _contractName,
+        string memory _contractVersion,
+        address _anzaTokenAddress
+    ) {
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
-        __refinanceDomainSeparator = keccak256(
+        __refinanceNotary_domainSeparator = keccak256(
             abi.encode(
                 _TYPE_HASH_,
                 nameHash,
@@ -349,6 +377,8 @@ abstract contract RefinanceNotary is IRefinanceNotary {
                 address(this)
             )
         );
+
+        __refinanceNotary_anzaTokenAddress = _anzaTokenAddress;
     }
 
     function supportsInterface(
@@ -361,8 +391,6 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * Returns the verified borrower of a signed set of loan contract
      * terms.
      *
-     * @param _anzaTokenAddress The address of the Anza token.
-     * @param _assetId The debt ID of the asset.
      * @param _refinanceParams The debt refinance listing terms.
      * @param _sellerSignature The signed debt refinance listing terms.
      * @param ownerOf The function used to identify the recorded borrower.
@@ -370,36 +398,18 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * @return The address of the borrower.
      */
     function _getBorrower(
-        address _anzaTokenAddress,
-        uint256 _assetId,
         RefinanceParams memory _refinanceParams,
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
-        if (_anzaTokenAddress != ownerOf.address)
+        if (__refinanceNotary_anzaTokenAddress != ownerOf.address)
             revert StdNotaryErrors.InvalidOwnerMethod();
 
-        address _borrower = ownerOf(_assetId);
-
-        console.log("borrower: %s", _borrower);
-        console.log("msg.sender: %s", msg.sender);
-        console.log(
-            "recoverSigner: %s",
-            _recoverSigner(
-                _anzaTokenAddress,
-                _refinanceParams,
-                _sellerSignature
-            )
-        );
+        address _borrower = ownerOf(_refinanceParams.debtId);
 
         if (
             _borrower == msg.sender ||
-            _borrower !=
-            _recoverSigner(
-                _anzaTokenAddress,
-                _refinanceParams,
-                _sellerSignature
-            )
+            _borrower != _recoverSigner(_refinanceParams, _sellerSignature)
         ) revert StdNotaryErrors.InvalidSigner();
 
         return _borrower;
@@ -409,7 +419,6 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * Returns the address that signed a hashed message (`hash`) with
      * `_signature`. This address can then be used for verification purposes.
      *
-     * @param _anzaTokenAddress The address of the Anza token.
      * @param _refinanceParams The debt refinance listing terms.
      *
      * {see ECDSA-recover}
@@ -417,11 +426,10 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * @return The address of the signer.
      */
     function _recoverSigner(
-        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams,
         bytes memory _signature
     ) internal view returns (address) {
-        bytes32 _message = __typeDataHash(_anzaTokenAddress, _refinanceParams);
+        bytes32 _message = __typeDataHash(_refinanceParams);
 
         (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
@@ -433,7 +441,6 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * `domainSeparator` and a `structHash`. This produces hash corresponding
      * to the one signed.
      *
-     * @param _anzaTokenAddress The address of the Anza token.
      * @param _refinanceParams The debt refinance listing terms.
      *
      * {see EIP1271}
@@ -441,15 +448,14 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * @return The hash of a structured message.
      */
     function __typeDataHash(
-        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams
     ) private view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    __refinanceDomainSeparator,
-                    __structHash(_anzaTokenAddress, _refinanceParams)
+                    __refinanceNotary_domainSeparator,
+                    __structHash(_refinanceParams)
                 )
             );
     }
@@ -461,7 +467,6 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * that the structured message originated
      * from the signer.
      *
-     * @param _anzaTokenAddress The address of the Anza token.
      * @param _refinanceParams The debt refinance listing terms.
      *
      * {see EIP1271}
@@ -469,7 +474,6 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      * @return The hash of a structured message.
      */
     function __structHash(
-        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams
     ) private pure returns (bytes32) {
         return
@@ -477,7 +481,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
                 abi.encode(
                     _REFINANCE_PARAMS_ENCODE_TYPE_HASH_,
                     _refinanceParams.price,
-                    _anzaTokenAddress,
+                    __refinanceNotary_anzaTokenAddress,
                     _refinanceParams.debtId,
                     _refinanceParams.contractTerms,
                     _refinanceParams.listingNonce,
@@ -497,13 +501,18 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * attempting to use a signed message to execute the same action multiple
      * times.
      */
-    bytes32 private immutable __sponsorshipDomainSeparator;
+    bytes32 private immutable __sponsorshipNotary_domainSeparator;
+    address private immutable __sponsorshipNotary_anzaTokenAddress;
 
-    constructor(string memory _contractName, string memory _contractVersion) {
+    constructor(
+        string memory _contractName,
+        string memory _contractVersion,
+        address _anzaTokenAddress
+    ) {
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
-        __sponsorshipDomainSeparator = keccak256(
+        __sponsorshipNotary_domainSeparator = keccak256(
             abi.encode(
                 _TYPE_HASH_,
                 nameHash,
@@ -512,6 +521,8 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
                 address(this)
             )
         );
+
+        __sponsorshipNotary_anzaTokenAddress = _anzaTokenAddress;
     }
 
     function supportsInterface(
@@ -524,8 +535,6 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * Returns the verified signer of a signed set of loan contract
      * terms.
      *
-     * @param _anzaTokenAddress the Anza Token address.
-     * @param _assetId the debt ID of the asset.
      * @param _sponsorshipParams the debt listing terms.
      * @param _sellerSignature the signed debt listing terms.
      * @param ownerOf the function used to identify the recorded borrower.
@@ -533,22 +542,18 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * @return the verified signer of the signed debt listing terms.
      */
     function _getSigner(
-        address _anzaTokenAddress,
-        uint256 _assetId,
         SponsorshipParams memory _sponsorshipParams,
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
-        address _seller = ownerOf(_assetId);
+        if (__sponsorshipNotary_anzaTokenAddress != ownerOf.address)
+            revert StdNotaryErrors.InvalidOwnerMethod();
+
+        address _seller = ownerOf(_sponsorshipParams.debtId);
 
         if (
             _seller == msg.sender ||
-            _seller !=
-            _recoverSigner(
-                _anzaTokenAddress,
-                _sponsorshipParams,
-                _sellerSignature
-            )
+            _seller != _recoverSigner(_sponsorshipParams, _sellerSignature)
         ) revert StdNotaryErrors.InvalidSigner();
 
         return _seller;
@@ -558,7 +563,6 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * Returns the address that signed a hashed message (`hash`) with
      * `_signature`. This address can then be used for verification purposes.
      *
-     * @param _anzaTokenAddress the Anza Token address.
      * @param _sponsorshipParams the debt listing terms.
      * @param _signature the signed debt listing terms.
      *
@@ -567,14 +571,10 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * @return the address of the signer.
      */
     function _recoverSigner(
-        address _anzaTokenAddress,
         SponsorshipParams memory _sponsorshipParams,
         bytes memory _signature
     ) internal view returns (address) {
-        bytes32 _message = __typeDataHash(
-            _anzaTokenAddress,
-            _sponsorshipParams
-        );
+        bytes32 _message = __typeDataHash(_sponsorshipParams);
 
         (uint8 v, bytes32 r, bytes32 s) = Notary.splitSignature(_signature);
 
@@ -586,7 +586,6 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * `domainSeparator` and a `structHash`. This produces hash corresponding
      * to the one signed.
      *
-     * @param _anzaTokenAddress the Anza Token address.
      * @param _sponsorshipParams the debt listing terms.
      *
      * {see EIP-1271}
@@ -594,15 +593,14 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * @return the hash of the structured message.
      */
     function __typeDataHash(
-        address _anzaTokenAddress,
         SponsorshipParams memory _sponsorshipParams
     ) private view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    __sponsorshipDomainSeparator,
-                    __structHash(_anzaTokenAddress, _sponsorshipParams)
+                    __sponsorshipNotary_domainSeparator,
+                    __structHash(_sponsorshipParams)
                 )
             );
     }
@@ -614,7 +612,6 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * that the structured message originated
      * from the signer.
      *
-     * @param _anzaTokenAddress the Anza Token address.
      * @param _sponsorshipParams the debt listing terms.
      *
      * {see EIP-1271}
@@ -622,7 +619,6 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      * @return the hash of the structured message.
      */
     function __structHash(
-        address _anzaTokenAddress,
         SponsorshipParams memory _sponsorshipParams
     ) private pure returns (bytes32) {
         return
@@ -630,7 +626,7 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
                 abi.encode(
                     _SPONSORSHIP_PARAMS_ENCODE_TYPE_HASH_,
                     _sponsorshipParams.price,
-                    _anzaTokenAddress,
+                    __sponsorshipNotary_anzaTokenAddress,
                     _sponsorshipParams.debtId,
                     _sponsorshipParams.listingNonce,
                     _sponsorshipParams.termsExpiry

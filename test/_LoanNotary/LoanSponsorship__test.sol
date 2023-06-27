@@ -9,8 +9,8 @@ import {_SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
 import "@markets-constants/AnzaDebtMarketRoles.sol";
 import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 
-import {RefinanceNotary} from "@services/LoanNotary.sol";
-import {IRefinanceNotary} from "@services-interfaces/ILoanNotary.sol";
+import {SponsorshipNotary} from "@services/LoanNotary.sol";
+import {ISponsorshipNotary} from "@services-interfaces/ILoanNotary.sol";
 import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 import {AnzaDebtMarket} from "@markets/AnzaDebtMarket.sol";
 import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol";
@@ -20,24 +20,24 @@ import {Setup, Settings} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
 import {DemoToken} from "@test-utils/DemoToken.sol";
 
-string constant REFINANCE_CONTRACT_NAME = "RefinanceNotary__test";
-string constant REFINANCE_CONTRACT_VERSION = "0";
+string constant SPONSORSHIP_CONTRACT_NAME = "SponsorshipNotary__test";
+string constant SPONSORSHIP_CONTRACT_VERSION = "0";
 
-contract RefinanceNotaryHarness is RefinanceNotary {
+contract SponsorshipNotaryHarness is SponsorshipNotary {
     constructor()
-        RefinanceNotary(REFINANCE_CONTRACT_NAME, REFINANCE_CONTRACT_VERSION)
+        SponsorshipNotary(SPONSORSHIP_CONTRACT_NAME, SPONSORSHIP_CONTRACT_VERSION)
     {}
 
-    function exposed__getBorrower(
+    function exposed__getSigner(
         address _anzaTokenAddress,
-        RefinanceParams memory _refinanceParams,
+        SponsorshipParams memory _sponsorshipParams,
         bytes memory _borrowerSignature,
         function(uint256) external view returns (address) ownerOf
     ) public view returns (address) {
         return
-            _getBorrower(
+            _getSigner(
                 _anzaTokenAddress,
-                _refinanceParams,
+                _sponsorshipParams,
                 _borrowerSignature,
                 ownerOf
             );
@@ -45,15 +45,15 @@ contract RefinanceNotaryHarness is RefinanceNotary {
 
     function exposed__recoverSigner(
         address _anzaTokenAddress,
-        RefinanceParams memory _refinanceParams,
+        SponsorshipParams memory _sponsorshipParams,
         bytes memory _signature
     ) internal view returns (address) {
-        return _recoverSigner(_anzaTokenAddress, _refinanceParams, _signature);
+        return _recoverSigner(_anzaTokenAddress, _sponsorshipParams, _signature);
     }
 }
 
 abstract contract LoanRefinanceInit is Setup {
-    RefinanceNotaryHarness public refinanceNotaryHarness;
+    SponsorshipNotaryHarness public refinanceNotaryHarness;
     LoanRefinanceUtils public loanRefinanceUtils;
     AnzaTokenHarness public anzaTokenHarness;
     Notary.DomainSeparator internal _refinanceDomainSeparator;
@@ -62,7 +62,7 @@ abstract contract LoanRefinanceInit is Setup {
         super.setUp();
 
         vm.startPrank(admin);
-        refinanceNotaryHarness = new RefinanceNotaryHarness();
+        refinanceNotaryHarness = new SponsorshipNotaryHarness();
 
         // Deploy AnzaToken
         anzaTokenHarness = new AnzaTokenHarness();
@@ -92,8 +92,8 @@ abstract contract LoanRefinanceInit is Setup {
         vm.stopPrank();
 
         _refinanceDomainSeparator = Notary.DomainSeparator({
-            name: REFINANCE_CONTRACT_NAME,
-            version: REFINANCE_CONTRACT_VERSION,
+            name: SPONSORSHIP_CONTRACT_NAME,
+            version: SPONSORSHIP_CONTRACT_VERSION,
             chainId: block.chainid,
             contractAddress: address(refinanceNotaryHarness)
         });
@@ -128,11 +128,11 @@ contract LoanRefinanceUtils is Settings {
 
     function createRefinanceSignature(
         uint256 _sellerPrivKey,
-        IRefinanceNotary.RefinanceParams memory _debtRefinanceParams
+        ISponsorshipNotary.SponsorshipParams memory _debtSponsorshipParams
     ) public virtual returns (bytes memory _signature) {
         bytes32 _message = Notary.typeDataHash(
             __anzaTokenAddress,
-            _debtRefinanceParams,
+            _debtSponsorshipParams,
             __refinanceDomainSeparator
         );
 
@@ -175,8 +175,8 @@ contract LoanRefinanceUtils is Settings {
         ).nonce();
 
         // Create contract params.
-        IRefinanceNotary.RefinanceParams
-            memory _refinanceParams = IRefinanceNotary.RefinanceParams({
+        ISponsorshipNotary.SponsorshipParams
+            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
                 price: _contractTerms.principal,
                 debtId: _debtId,
                 listingNonce: _listingNonce,
@@ -187,7 +187,7 @@ contract LoanRefinanceUtils is Settings {
         // Create borrower's signature.
         bytes memory _signature = createRefinanceSignature(
             _borrowerPrivKey,
-            _refinanceParams
+            _sponsorshipParams
         );
 
         // Create refinance contract.
@@ -235,7 +235,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         super.setUp();
     }
 
-    /* ---------- LoanRefinance._getBorrower() ---------- */
+    /* ---------- LoanRefinance._getSigner() ---------- */
     /**
      * Test the get borrower function.
      *
@@ -271,8 +271,8 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
 
         // Create contract params.
-        IRefinanceNotary.RefinanceParams
-            memory _refinanceParams = IRefinanceNotary.RefinanceParams({
+        ISponsorshipNotary.SponsorshipParams
+            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
                 price: _contractTerms.principal,
                 debtId: _debtId,
                 listingNonce: _listingNonce,
@@ -282,12 +282,12 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Sign contract.
         bytes memory _borrowerSignature = loanRefinanceUtils
-            .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
+            .createRefinanceSignature(_borrowerPrivKey, _sponsorshipParams);
 
         // Verify and get borrower.
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );
@@ -304,7 +304,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
      *
      * This test is a fuzz test that generates random inputs for the loan notary's
      * get borrower function. This test is intended to fail signature validation due
-     * to the caller of the _getBorrower() function being the borrower.
+     * to the caller of the _getSigner() function being the borrower.
      *
      * @param _borrowerPrivKey The private key of the borrower.
      * @param _debtId The debt id to refinance.
@@ -336,8 +336,8 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Create contract params.
-        IRefinanceNotary.RefinanceParams
-            memory _refinanceParams = IRefinanceNotary.RefinanceParams({
+        ISponsorshipNotary.SponsorshipParams
+            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
                 price: _contractTerms.principal,
                 debtId: _debtId,
                 listingNonce: _listingNonce,
@@ -347,14 +347,14 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Sign contract.
         bytes memory _borrowerSignature = loanRefinanceUtils
-            .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
+            .createRefinanceSignature(_borrowerPrivKey, _sponsorshipParams);
 
         // Verify and get borrower.
         vm.startPrank(_borrower); //*
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );
@@ -404,8 +404,8 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Create contract params.
-        IRefinanceNotary.RefinanceParams
-            memory _refinanceParams = IRefinanceNotary.RefinanceParams({
+        ISponsorshipNotary.SponsorshipParams
+            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
                 price: _contractTerms.principal,
                 debtId: _debtId,
                 listingNonce: _listingNonce,
@@ -415,13 +415,13 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Sign contract.
         bytes memory _randomSignature = loanRefinanceUtils
-            .createRefinanceSignature(_randomPrivKey, _refinanceParams);
+            .createRefinanceSignature(_randomPrivKey, _sponsorshipParams);
 
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _randomSignature, //*
             anzaTokenHarness.borrowerOf
         );
@@ -469,8 +469,8 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         _altAnzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Create contract params.
-        IRefinanceNotary.RefinanceParams memory _refinanceParams = IRefinanceNotary
-            .RefinanceParams({
+        ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams = ISponsorshipNotary
+            .SponsorshipParams({
                 price: _contractTerms.principal,
                 debtId: _debtId,
                 listingNonce: _listingNonce, //*
@@ -480,22 +480,22 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Sign contract.
         bytes memory _borrowerSignature = loanRefinanceUtils
-            .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
+            .createRefinanceSignature(_borrowerPrivKey, _sponsorshipParams);
 
         // Verify and get borrower with invalid collateral address.
         vm.expectRevert(StdNotaryErrors.InvalidOwnerMethod.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(_altAnzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );
 
         // Verify and get borrower with invalid collateral ownerOf function.
         vm.expectRevert(StdNotaryErrors.InvalidOwnerMethod.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             _altAnzaTokenHarness.borrowerOf //*
         );
@@ -549,8 +549,8 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         _altAnzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Create contract params with invalid principal
-        IRefinanceNotary.RefinanceParams memory _refinanceParams = IRefinanceNotary
-            .RefinanceParams({
+        ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams = ISponsorshipNotary
+            .SponsorshipParams({
                 price: _contractTerms[1].principal, //*
                 debtId: _debtId,
                 listingNonce: _listingNonce[0],
@@ -560,22 +560,22 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Sign contract.
         bytes memory _borrowerSignature = loanRefinanceUtils
-            .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
+            .createRefinanceSignature(_borrowerPrivKey, _sponsorshipParams);
 
         // Change price.
-        _refinanceParams.price = _contractTerms[0].principal;
+        _sponsorshipParams.price = _contractTerms[0].principal;
 
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );
 
         // Create contract params with invalid terms
-        _refinanceParams = IRefinanceNotary.RefinanceParams({
+        _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
             price: _contractTerms[0].principal,
             debtId: _debtId,
             listingNonce: _listingNonce[0],
@@ -585,15 +585,15 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );
 
         // Create contract params with invalid nonce
-        _refinanceParams = IRefinanceNotary.RefinanceParams({
+        _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
             price: _contractTerms[0].principal,
             debtId: _debtId,
             listingNonce: _listingNonce[1], //*
@@ -603,15 +603,15 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );
 
         // Create contract params with invalid terms expiry
-        _refinanceParams = IRefinanceNotary.RefinanceParams({
+        _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
             price: _contractTerms[0].principal,
             debtId: _debtId,
             listingNonce: _listingNonce[0],
@@ -621,9 +621,9 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
 
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
+        _borrower = refinanceNotaryHarness.exposed__getSigner(
             address(anzaTokenHarness),
-            _refinanceParams,
+            _sponsorshipParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );

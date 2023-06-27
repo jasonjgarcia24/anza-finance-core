@@ -22,6 +22,8 @@ import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIn
 import {Utils, Setup} from "@test-base/Setup__test.sol";
 import {DemoToken} from "@test-utils/DemoToken.sol";
 import {ILoanContractEvents} from "@test-contract-interfaces/ILoanContractEvents__test.sol";
+import {LoanNotaryUtils} from "@test-base/_LoanNotary/LoanNotary__test.sol";
+import {LoanRefinanceUtils} from "@test-base/_LoanNotary/LoanRefinance__test.sol";
 
 abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
     function setUp() public virtual override {
@@ -30,6 +32,17 @@ abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
 }
 
 abstract contract LoanSigned is LoanContractDeployer {
+    LoanNotaryUtils public loanNotaryUtils =
+        new LoanNotaryUtils(address(demoToken), loanDomainSeparator);
+
+    LoanRefinanceUtils public loanRefinanceUtils =
+        new LoanRefinanceUtils(
+            address(anzaToken),
+            address(anzaDebtMarket),
+            address(anzaRefinanceStorefront),
+            refinanceDomainSeparator
+        );
+
     function setUp() public virtual override {
         super.setUp();
 
@@ -47,7 +60,10 @@ abstract contract LoanContractSubmitted is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
         assertEq(_debtId, 0);
 
-        (bool _success, ) = createLoanContract(collateralId);
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            collateralId
+        );
         assertTrue(_success, "Contract creation failed.");
         _debtId = loanContract.totalDebts();
     }
@@ -220,7 +236,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertEq(
@@ -230,7 +246,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId + 1);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId + 1);
         ++_debtId;
 
         assertEq(
@@ -248,7 +264,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
 
         assertEq(
             loanContract.collateralNonce(address(demoToken), collateralId),
@@ -275,7 +291,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
 
         (_debtId, ) = loanContract.collateralDebtAt(
             address(demoToken),
@@ -297,7 +313,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         uint256 _now = block.timestamp;
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         bytes32 _contractTerms = loanContract.debtTerms(_debtId);
@@ -379,7 +395,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertEq(
@@ -399,7 +415,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertEq(
@@ -419,7 +435,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertEq(
@@ -440,7 +456,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         uint256 _now = block.timestamp;
-        (bool _success, ) = createLoanContract(collateralId);
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            collateralId
+        );
         assertTrue(_success, "0 :: loan contract creation failed.");
         ++_debtId;
 
@@ -462,7 +481,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         uint256 _now = block.timestamp;
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertGt(
@@ -482,7 +501,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertEq(
@@ -503,7 +522,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
 
         // Create loan contract
         uint256 _now = block.timestamp;
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertEq(
@@ -529,7 +548,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
 
         assertEq(
             anzaToken.borrowerOf(_debtId),
@@ -548,7 +567,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         ++_debtId;
 
         assertEq(
@@ -568,7 +587,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        createLoanContract(collateralId);
+        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
         _debtId = loanContract.totalDebts();
 
         assertEq(
@@ -578,7 +597,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract partial refinance
-        (bool _success, ) = refinanceDebt(
+        (bool _success, ) = loanRefinanceUtils.refinanceDebt(
             _debtId,
             borrowerPrivKey,
             ContractTerms({
@@ -604,7 +623,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(
+        (_success, ) = loanRefinanceUtils.refinanceDebt(
             _debtId,
             borrowerPrivKey,
             ContractTerms({
@@ -630,7 +649,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(
+        (_success, ) = loanRefinanceUtils.refinanceDebt(
             _refDebtId,
             borrowerPrivKey,
             ContractTerms({
@@ -664,7 +683,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         uint256 _debtId = loanContract.totalDebts();
         uint256 _collateralId = collateralId;
 
-        (bool _success, ) = createLoanContract(
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _SECONDLY_,
@@ -688,7 +708,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _MINUTELY_,
@@ -718,7 +739,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _HOURLY_,
@@ -747,7 +769,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _DAILY_,
@@ -776,7 +799,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _WEEKLY_,
@@ -805,7 +829,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _2_WEEKLY_,
@@ -834,7 +859,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _4_WEEKLY_,
@@ -863,7 +889,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _6_WEEKLY_,
@@ -892,7 +919,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _8_WEEKLY_,
@@ -921,7 +949,8 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
             _collateralId++,
             ContractTerms({
                 firInterval: _360_DAILY_,
@@ -959,14 +988,17 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract
-        (bool _success, ) = createLoanContract(collateralId);
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            collateralId
+        );
         assertTrue(_success, "0 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
         loanContract.verifyLoanActive(_debtId);
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(
+        (_success, ) = loanRefinanceUtils.refinanceDebt(
             _debtId,
             borrowerPrivKey,
             ContractTerms({
@@ -988,7 +1020,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         loanContract.verifyLoanActive(_refDebtId);
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(
+        (_success, ) = loanRefinanceUtils.refinanceDebt(
             _refDebtId,
             borrowerPrivKey,
             ContractTerms({
@@ -1023,7 +1055,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (bool _success, ) = createLoanContract(collateralId);
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            collateralId
+        );
         assertTrue(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1034,7 +1069,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(
+        (_success, ) = loanRefinanceUtils.refinanceDebt(
             _debtId,
             borrowerPrivKey,
             ContractTerms({
@@ -1064,7 +1099,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract partial refinance
-        (_success, ) = refinanceDebt(
+        (_success, ) = loanRefinanceUtils.refinanceDebt(
             _refDebtId,
             borrowerPrivKey,
             ContractTerms({
@@ -1110,7 +1145,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (bool _success, ) = createLoanContract(localCollateralId++);
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            localCollateralId++
+        );
         assertTrue(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1139,7 +1177,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(localCollateralId++);
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            localCollateralId++
+        );
         assertTrue(_success, "5 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1177,7 +1218,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (bool _success, ) = createLoanContract(localCollateralId++);
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            localCollateralId++
+        );
         assertTrue(_success, "1 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 
@@ -1206,7 +1250,7 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = createLoanContract(localCollateralId++);
+        (_success, ) = loanNotaryUtils.createLoanContract(borrowerPrivKey, localCollateralId++);
         assertTrue(_success, "4 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 

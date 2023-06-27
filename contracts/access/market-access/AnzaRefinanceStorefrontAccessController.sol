@@ -25,7 +25,7 @@ abstract contract AnzaRefinanceStorefrontAccessController is
         address _anzaTokenAddress,
         address _loanContractAddress,
         address _loanTreasurerAddress
-    ) RefinanceNotary("AnzaRefinanceStorefront", "0") {
+    ) RefinanceNotary("AnzaRefinanceStorefront", "0", _anzaTokenAddress) {
         _anzaTokenIndexer = IAnzaTokenIndexer(_anzaTokenAddress);
         _loanContract = ILoanContract(_loanContractAddress);
         _loanManager = ILoanManager(_loanContractAddress);

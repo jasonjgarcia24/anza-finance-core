@@ -25,7 +25,7 @@ abstract contract AnzaDebtStorefrontAccessController is
         address _anzaTokenAddress,
         address _loanContractAddress,
         address _loanTreasurerAddress
-    ) DebtNotary("AnzaDebtStorefront", "0") {
+    ) DebtNotary("AnzaDebtStorefront", "0", _anzaTokenAddress) {
         _anzaTokenIndexer = IAnzaTokenIndexer(_anzaTokenAddress);
         _loanContract = IDebtBook(_loanContractAddress);
         _loanManager = ILoanManager(_loanContractAddress);

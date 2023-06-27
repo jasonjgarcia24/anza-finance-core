@@ -314,11 +314,8 @@ contract LoanContractSubmitTest is LoanContractSubmitFunctions {
             bytes memory _expectedData
         ) = initLoanContractExpectations(_contractTerms);
 
-        (bool _success, bytes memory _data) = createLoanContract(
-            collateralId,
-            _collateralNonce,
-            _contractTerms
-        );
+        (bool _success, bytes memory _data) = loanNotaryUtils
+            .createLoanContract(collateralId, _collateralNonce, _contractTerms);
 
         // Setting the loan agreement updates the duration to account for the grace
         // period. We need to do that here too.
@@ -489,11 +486,8 @@ contract LoanContractFuzzSubmit is LoanContractSubmitFunctions {
             bytes memory _expectedData
         ) = initLoanContractExpectations(_contractTerms);
 
-        (bool _success, bytes memory _data) = createLoanContract(
-            collateralId,
-            _collateralNonce,
-            _contractTerms
-        );
+        (bool _success, bytes memory _data) = loanNotaryUtils
+            .createLoanContract(collateralId, _collateralNonce, _contractTerms);
 
         // Setting the loan agreement updates the duration to account for the grace
         // period. We need to do that here too.

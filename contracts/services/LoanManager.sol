@@ -44,9 +44,7 @@ abstract contract LoanManager is
     }
 
     /**
-     * Checked public call to set the Anza Token address.
-     *
-     * @notice This function fullfills the DebtBook signature.
+     * Function to set the Anza Token address.
      *
      * @param _anzaToken The Anza Token address.
      *

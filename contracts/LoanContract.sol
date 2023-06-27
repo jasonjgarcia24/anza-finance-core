@@ -18,7 +18,7 @@ import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/I
 contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     using TypeUtils for uint256;
 
-    constructor() LoanManager() LoanNotary("LoanContract", "0") {}
+    constructor() LoanManager() LoanNotary("LoanContract", "0", address(0)) {}
 
     /**
      * Returns the support status of an interface.
@@ -34,6 +34,29 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             _interfaceId == type(ILoanContract).interfaceId ||
             LoanManager.supportsInterface(_interfaceId) ||
             LoanNotary.supportsInterface(_interfaceId);
+    }
+
+    /**
+     * Function to set the Anza Token address.
+     *
+     * @notice Access control is enforced within LoanManager and not within
+     * LoanNotary.
+     *
+     * Note: Given this function simultaneously sets the Anza Token address
+     * within both LoanManager and LoanNotary, there is no Anza Token address
+     * getter within LoanNotary. Therefore, there should be no implementations
+     * of LoanNotary._unsafeSetAnzaToken() outside of this function.
+     *
+     * @param _anzaToken The Anza Token address.
+     *
+     * @dev This function is only callable by the _ADMIN_ role.
+     */
+    function setAnzaToken(address _anzaToken) public virtual override {
+        // Access control enforced within LoanManager.
+        LoanManager.setAnzaToken(_anzaToken);
+
+        // No access control enforced.
+        LoanNotary._unsafeSetAnzaToken(_anzaToken);
     }
 
     /**
@@ -82,7 +105,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         IERC721Metadata _collateralToken = IERC721Metadata(_collateralAddress);
 
         address _borrower = _getBorrower(
-            _collateralId,
             ContractParams({
                 principal: _principal,
                 contractTerms: _contractTerms,

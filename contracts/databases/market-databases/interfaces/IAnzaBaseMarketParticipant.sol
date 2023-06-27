@@ -34,6 +34,4 @@ interface IAnzaBaseMarketParticipant {
     );
 
     function nonce() external view returns (uint256);
-
-    // function publishListing(uint256 _debtId) external returns (bool _success);
 }

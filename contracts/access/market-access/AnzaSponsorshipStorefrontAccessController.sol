@@ -25,7 +25,7 @@ abstract contract AnzaSponsorshipStorefrontAccessController is
         address _anzaTokenAddress,
         address _loanContractAddress,
         address _loanTreasurerAddress
-    ) SponsorshipNotary("AnzaSponsorshipStorefront", "0") {
+    ) SponsorshipNotary("AnzaSponsorshipStorefront", "0", _anzaTokenAddress) {
         _anzaTokenIndexer = IAnzaTokenIndexer(_anzaTokenAddress);
         _loanContract = ILoanContract(_loanContractAddress);
         _loanManager = ILoanManager(_loanContractAddress);

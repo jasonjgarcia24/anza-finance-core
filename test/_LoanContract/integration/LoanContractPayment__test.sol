@@ -280,7 +280,10 @@ contract LoanContractFuzzPayments is LoanContractSubmitted {
             ? _PRINCIPAL_
             : _payment;
 
-        (bool _success, ) = createLoanContract(updatedCollateralId);
+        (bool _success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            updatedCollateralId
+        );
         require(_success, "0 :: loan creation failed.");
 
         uint256 _debtId = loanContract.totalDebts();
