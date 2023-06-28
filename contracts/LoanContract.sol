@@ -380,7 +380,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         // If this fails, the whole transaction will revert.
         _verifyBorrower(
-            _collateralId,
             ContractParams({
                 principal: _principal,
                 contractTerms: _contractTerms,

@@ -23,7 +23,7 @@ import {Utils, Setup} from "@test-base/Setup__test.sol";
 import {DemoToken} from "@test-utils/DemoToken.sol";
 import {ILoanContractEvents} from "@test-contract-interfaces/ILoanContractEvents__test.sol";
 import {LoanNotaryUtils} from "@test-base/_LoanNotary/LoanNotary__test.sol";
-import {LoanRefinanceUtils} from "@test-base/_LoanNotary/LoanRefinance__test.sol";
+import {RefinanceNotaryUtils} from "@test-base/_LoanNotary/RefinanceNotary__test.sol";
 
 abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
     function setUp() public virtual override {
@@ -35,8 +35,8 @@ abstract contract LoanSigned is LoanContractDeployer {
     LoanNotaryUtils public loanNotaryUtils =
         new LoanNotaryUtils(address(demoToken), loanDomainSeparator);
 
-    LoanRefinanceUtils public loanRefinanceUtils =
-        new LoanRefinanceUtils(
+    RefinanceNotaryUtils public loanRefinanceUtils =
+        new RefinanceNotaryUtils(
             address(anzaToken),
             address(anzaDebtMarket),
             address(anzaRefinanceStorefront),
@@ -1250,7 +1250,10 @@ contract LoanContractViewsUnitTest is LoanSigned {
         );
 
         // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(borrowerPrivKey, localCollateralId++);
+        (_success, ) = loanNotaryUtils.createLoanContract(
+            borrowerPrivKey,
+            localCollateralId++
+        );
         assertTrue(_success, "4 :: loan contract creation failed.");
         _debtId = loanContract.totalDebts();
 

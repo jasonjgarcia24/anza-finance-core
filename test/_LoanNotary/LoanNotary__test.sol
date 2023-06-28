@@ -28,18 +28,11 @@ contract LoanNotaryHarness is LoanNotary {
     }
 
     function exposed__verifyBorrower(
-        uint256 _assetId,
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
         function(uint256) external view returns (address) ownerOf
     ) public view returns (address) {
-        return
-            _verifyBorrower(
-                _assetId,
-                _contractParams,
-                _borrowerSignature,
-                ownerOf
-            );
+        return _verifyBorrower(_contractParams, _borrowerSignature, ownerOf);
     }
 
     function exposed__recoverSigner(
@@ -719,8 +712,338 @@ abstract contract LoanNotaryGetBorrowerUnitTest is LoanNotaryInit {
     }
 }
 
-contract LoanNotaryUnitTest is LoanNotaryGetBorrowerUnitTest {
+abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
     function setUp() public virtual override {
-        LoanNotaryGetBorrowerUnitTest.setUp();
+        super.setUp();
+    }
+
+    /* ---------- LoanNotary._verifyBorrower() ---------- */
+    /**
+     * Test the verify borrower function.
+     *
+     * This test is a fuzz test that generates random inputs for the loan notary's
+     * verify borrower function. This test is intended to pass signature validation.
+     *
+     * @param _borrowerPrivKey The private key of the borrower.
+     * @param _collateralId The id of the collateral.
+     * @param _collateralNonce The nonce of the collateral.
+     *
+     * @dev Full pass if the function returns the correct borrower.
+     */
+    function testLoanNotary__VerifyBorrower_Fuzz_Pass(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(
+            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
+        );
+
+        address _borrower = vm.addr(_borrowerPrivKey);
+
+        // Pack contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        // Mint collateral
+        DemoToken _demoToken = new DemoToken(0);
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        // Create contract params.
+        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
+            .ContractParams({
+                principal: _contractTerms.principal,
+                contractTerms: _packedContractTerms,
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            });
+
+        // Sign contract.
+        bytes memory _borrowerSignature = loanNotaryUtils
+            .createContractSignature(
+                _borrowerPrivKey,
+                _loanDomainSeparator,
+                _contractParams
+            );
+
+        // Verify and get borrower.
+        vm.startPrank(_borrower);
+        assertEq(
+            loanNotaryHarness.exposed__verifyBorrower(
+                _contractParams,
+                _borrowerSignature,
+                _demoToken.ownerOf
+            ),
+            vm.addr(_borrowerPrivKey),
+            "0 :: borrower mismatch"
+        );
+        vm.stopPrank();
+    }
+
+    /**
+     * Test the verify borrower function.
+     *
+     * This test is a fuzz test that generates random inputs for the loan notary's
+     * verify borrower function. This test is intended to fail signature validation due
+     * to the caller of the _verifyBorrower() function being the borrower.
+     *
+     * @param _borrowerPrivKey The private key of the borrower.
+     * @param _collateralId The id of the collateral.
+     * @param _collateralNonce The nonce of the collateral.
+     * @param _contractTerms The contract terms.
+     *
+     * @dev Full pass if the function reverts as expected.
+     */
+    function testLoanNotary__VerifyBorrower_Fuzz_FailCaller(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(
+            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
+        );
+
+        address _borrower = vm.addr(_borrowerPrivKey);
+
+        // Pack contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        // Mint collateral
+        DemoToken _demoToken = new DemoToken(0);
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        // Create contract params.
+        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
+            .ContractParams({
+                principal: _contractTerms.principal,
+                contractTerms: _packedContractTerms,
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            });
+
+        // Sign contract.
+        bytes memory _borrowerSignature = loanNotaryUtils
+            .createContractSignature(_borrowerPrivKey, _contractParams);
+
+        // Verify and get borrower.
+        vm.startPrank(admin); //*
+        vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
+        _borrower = loanNotaryHarness.exposed__verifyBorrower(
+            _contractParams,
+            _borrowerSignature,
+            _demoToken.ownerOf
+        );
+        vm.stopPrank();
+    }
+
+    /**
+     * Test the verify borrower function.
+     *
+     * This test is a fuzz test that generates random inputs for the loan notary's
+     * verify borrower function. This test is intended to fail signature validation due
+     * to the signer of the signature not being the borrower.
+     *
+     * @param _borrowerPrivKey The private key of the borrower.
+     * @param _randomPrivKey The private key of a random address.
+     * @param _collateralId The id of the collateral.
+     * @param _collateralNonce The nonce of the collateral.
+     * @param _contractTerms The contract terms.
+     *
+     * @dev Full pass if the function reverts as expected.
+     */
+    function testLoanNotary__VerifyBorrower_Fuzz_FailSigner(
+        uint256 _borrowerPrivKey,
+        uint256 _randomPrivKey,
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(
+            _borrowerPrivKey != 0 &&
+                _randomPrivKey != 0 &&
+                _borrowerPrivKey < _SECP256K1_CURVE_ORDER_ &&
+                _randomPrivKey < _SECP256K1_CURVE_ORDER_ &&
+                _borrowerPrivKey != _randomPrivKey
+        );
+
+        address _borrower = vm.addr(_borrowerPrivKey);
+
+        // Pack contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        // Mint collateral
+        DemoToken _demoToken = new DemoToken(0);
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        // Create contract params.
+        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
+            .ContractParams({
+                principal: _contractTerms.principal,
+                contractTerms: _packedContractTerms,
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            });
+
+        // Sign contract.
+        bytes memory _randomSignature = loanNotaryUtils.createContractSignature(
+            _randomPrivKey,
+            _contractParams
+        );
+
+        // Verify and get borrower.
+        vm.startPrank(_borrower);
+        vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
+        _borrower = loanNotaryHarness.exposed__verifyBorrower(
+            _contractParams,
+            _randomSignature, //*
+            _demoToken.ownerOf
+        );
+        vm.stopPrank();
+    }
+
+    /**
+     * Test the verify borrower function.
+     *
+     * This test is a fuzz test that generates random inputs for the loan notary's
+     * verify borrower function. This test is intended to fail signature validation due
+     * to the collateral terms supplied at signature validation not matching the
+     * collateral supplied at signature creation.
+     *
+     * @param _borrowerPrivKey The private key of the borrower.
+     * @param _collateralId The id of the collateral.
+     * @param _collateralNonce The nonce of the collateral.
+     * @param _altCollateralNonce The alternate nonce of the collateral.
+     * @param _contractTerms The contract terms.
+     * @param _altContractTerms The alternate contract terms.
+     *
+     * @dev Full pass if the function reverts as expected.
+     */
+    function testLoanNotary__VerifyBorrower_Fuzz_FailTerms(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        uint256 _altCollateralNonce,
+        ContractTerms memory _contractTerms,
+        ContractTerms memory _altContractTerms
+    ) public {
+        vm.assume(
+            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
+        );
+        vm.assume(_collateralNonce != _altCollateralNonce);
+        vm.assume(_contractTerms.principal != _altContractTerms.principal);
+
+        address _borrower = vm.addr(_borrowerPrivKey);
+
+        // Pack contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _altPackedContractTerms = createContractTerms(
+            _altContractTerms
+        );
+
+        // Mint collateral
+        DemoToken _demoToken = new DemoToken(0);
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        // Mint collateral
+        DemoToken _altDemoToken = new DemoToken(0);
+        _altDemoToken.exposed__mint(_borrower, _collateralId);
+
+        // Create contract params.
+        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
+            .ContractParams({
+                principal: _contractTerms.principal,
+                contractTerms: _packedContractTerms,
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            });
+
+        // Sign contract.
+        bytes memory _borrowerSignature = loanNotaryUtils
+            .createContractSignature(_borrowerPrivKey, _contractParams);
+
+        // Contract params with invalid principal
+        _contractParams.principal = _altContractTerms.principal; //*
+
+        // Verify and get borrower.
+        vm.startPrank(_borrower);
+        vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
+        loanNotaryHarness.exposed__verifyBorrower(
+            _contractParams, //*
+            _borrowerSignature,
+            _demoToken.ownerOf
+        );
+
+        // Contract params with invalid terms.
+        _contractParams.principal = _contractTerms.principal;
+        _contractParams.contractTerms = _altPackedContractTerms; //*
+
+        // Verify and get borrower.
+        vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
+        loanNotaryHarness.exposed__verifyBorrower(
+            _contractParams, //*
+            _borrowerSignature,
+            _demoToken.ownerOf
+        );
+
+        // Contract params with invalid collateral address
+        _contractParams.contractTerms = _packedContractTerms;
+        _contractParams.collateralAddress = address(_altDemoToken); //*
+
+        // Verify and get borrower.
+        vm.expectRevert(StdNotaryErrors.InvalidOwnerMethod.selector);
+        loanNotaryHarness.exposed__verifyBorrower(
+            _contractParams, //*
+            _borrowerSignature,
+            _demoToken.ownerOf
+        );
+
+        // Contract params with invalid collateral id
+        _contractParams.collateralAddress = address(_demoToken);
+        unchecked {
+            // Allow overflow
+            _contractParams.collateralId = _collateralId + 1; //*
+        }
+
+        // Verify and get borrower.
+        vm.expectRevert("ERC721: invalid token ID");
+        loanNotaryHarness.exposed__verifyBorrower(
+            _contractParams, //*
+            _borrowerSignature,
+            _demoToken.ownerOf
+        );
+
+        // Contract params with invalid collateral nonce
+        _contractParams.collateralId = _collateralId;
+        _contractParams.collateralNonce = _altCollateralNonce; //*
+
+        // Verify and get borrower.
+        vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
+        loanNotaryHarness.exposed__verifyBorrower(
+            _contractParams, //*
+            _borrowerSignature,
+            _demoToken.ownerOf
+        );
+        vm.stopPrank();
+    }
+}
+
+contract LoanNotaryUnitTest is
+    LoanNotaryGetBorrowerUnitTest,
+    LoanNotaryVerifyBorrowerUnitTest
+{
+    function setUp()
+        public
+        virtual
+        override(
+            LoanNotaryGetBorrowerUnitTest,
+            LoanNotaryVerifyBorrowerUnitTest
+        )
+    {
+        LoanNotaryInit.setUp();
     }
 }

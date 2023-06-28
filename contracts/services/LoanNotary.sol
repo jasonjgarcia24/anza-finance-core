@@ -84,7 +84,6 @@ abstract contract LoanNotary is ILoanNotary {
      * Verifies the sender is the owner of the collateral and borrower of a signed
      * set of loan contract terms.
      *
-     * @param _assetId the collateral or debt ID of the asset.
      * @param _contractParams the loan contract terms.
      * @param _borrowerSignature the signed loan contract terms.
      * @param ownerOf the function used to identify the recorded borrower. If
@@ -96,12 +95,14 @@ abstract contract LoanNotary is ILoanNotary {
      * @return the address of the borrower.
      */
     function _verifyBorrower(
-        uint256 _assetId,
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
         function(uint256) external view returns (address) ownerOf
     ) internal view returns (address) {
-        address _borrower = ownerOf(_assetId);
+        if (_contractParams.collateralAddress != ownerOf.address)
+            revert StdNotaryErrors.InvalidOwnerMethod();
+
+        address _borrower = ownerOf(_contractParams.collateralId);
 
         if (
             _borrower != msg.sender ||
