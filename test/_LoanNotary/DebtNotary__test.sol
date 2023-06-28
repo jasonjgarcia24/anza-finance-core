@@ -9,52 +9,53 @@ import {_SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
 import "@markets-constants/AnzaDebtMarketRoles.sol";
 import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 
-import {SponsorshipNotary} from "@services/LoanNotary.sol";
-import {ISponsorshipNotary} from "@services-interfaces/ILoanNotary.sol";
+import {DebtNotary} from "@services/LoanNotary.sol";
+import {IDebtNotary} from "@services-interfaces/ILoanNotary.sol";
 import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 import {AnzaDebtMarket} from "@markets/AnzaDebtMarket.sol";
-import {AnzaSponsorshipStorefront} from "@storefronts/AnzaSponsorshipStorefront.sol";
+import {AnzaDebtStorefront} from "@storefronts/AnzaDebtStorefront.sol";
 import {IAnzaBaseMarketParticipant} from "@markets-databases/interfaces/IAnzaBaseMarketParticipant.sol";
 
 import {Setup, Settings} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
 import {DemoToken} from "@test-utils/DemoToken.sol";
 
-string constant SPONSORSHIP_CONTRACT_NAME = "SponsorshipNotary__test";
-string constant SPONSORSHIP_CONTRACT_VERSION = "0";
+string constant DEBT_CONTRACT_NAME = "DebtNotary__test";
+string constant DEBT_CONTRACT_VERSION = "0";
 
-contract SponsorshipNotaryHarness is SponsorshipNotary {
+contract DebtNotaryHarness is DebtNotary {
     constructor(
         address _anzaTokenHarnessAddress
     )
-        SponsorshipNotary(
-            SPONSORSHIP_CONTRACT_NAME,
-            SPONSORSHIP_CONTRACT_VERSION,
+        DebtNotary(
+            DEBT_CONTRACT_NAME,
+            DEBT_CONTRACT_VERSION,
             _anzaTokenHarnessAddress
         )
     {}
 
     function exposed__getSigner(
-        SponsorshipParams memory _sponsorshipParams,
+        uint256 _assetId,
+        DebtParams memory _debtParams,
         bytes memory _sellerSignature,
         function(uint256) external view returns (address) ownerOf
     ) public view returns (address) {
-        return _getSigner(_sponsorshipParams, _sellerSignature, ownerOf);
+        return _getSigner(_assetId, _debtParams, _sellerSignature, ownerOf);
     }
 
     function exposed__recoverSigner(
-        SponsorshipParams memory _sponsorshipParams,
+        DebtParams memory _debtParams,
         bytes memory _signature
     ) internal view returns (address) {
-        return _recoverSigner(_sponsorshipParams, _signature);
+        return _recoverSigner(_debtParams, _signature);
     }
 }
 
-abstract contract SponsorshipNotaryInit is Setup {
-    SponsorshipNotaryHarness public sponsorshipNotaryHarness;
-    SponsorshipNotaryUtils public sponsorshipNotaryUtils;
+abstract contract DebtNotaryInit is Setup {
+    DebtNotaryHarness public debtNotaryHarness;
+    DebtNotaryUtils public debtNotaryUtils;
     AnzaTokenHarness public anzaTokenHarness;
-    Notary.DomainSeparator internal _sponsorshipDomainSeparator;
+    Notary.DomainSeparator internal _debtDomainSeparator;
 
     function setUp() public virtual override {
         super.setUp();
@@ -63,15 +64,13 @@ abstract contract SponsorshipNotaryInit is Setup {
         // Set AnzaTokenHarness
         anzaTokenHarness = new AnzaTokenHarness();
 
-        // Set SponsorshipNotaryHarness
-        sponsorshipNotaryHarness = new SponsorshipNotaryHarness(
-            address(anzaTokenHarness)
-        );
+        // Set DebtNotaryHarness
+        debtNotaryHarness = new DebtNotaryHarness(address(anzaTokenHarness));
 
         // Set Anza Debt Marketplace and Storefronts
         anzaDebtMarket = new AnzaDebtMarket();
 
-        anzaSponsorshipStorefront = new AnzaSponsorshipStorefront(
+        anzaDebtStorefront = new AnzaDebtStorefront(
             address(anzaTokenHarness),
             address(loanContract),
             address(loanTreasurer)
@@ -79,62 +78,61 @@ abstract contract SponsorshipNotaryInit is Setup {
 
         // Set Anza Debt Marketplace access control roles
         anzaDebtMarket.grantRole(
-            _SPONSORSHIP_STOREFRONT_,
-            address(anzaSponsorshipStorefront)
+            _DEBT_STOREFRONT_,
+            address(anzaDebtStorefront)
         );
 
-        sponsorshipDomainSeparator = Notary.DomainSeparator({
-            name: "AnzaSponsorshipStorefront",
+        debtDomainSeparator = Notary.DomainSeparator({
+            name: "AnzaDebtStorefront",
             version: "0",
             chainId: block.chainid,
-            contractAddress: address(anzaSponsorshipStorefront)
+            contractAddress: address(anzaDebtStorefront)
         });
 
         vm.stopPrank();
 
-        _sponsorshipDomainSeparator = Notary.DomainSeparator({
-            name: SPONSORSHIP_CONTRACT_NAME,
-            version: SPONSORSHIP_CONTRACT_VERSION,
+        _debtDomainSeparator = Notary.DomainSeparator({
+            name: DEBT_CONTRACT_NAME,
+            version: DEBT_CONTRACT_VERSION,
             chainId: block.chainid,
-            contractAddress: address(sponsorshipNotaryHarness)
+            contractAddress: address(debtNotaryHarness)
         });
 
-        // Create SponsorshipNotaryUtils
-        sponsorshipNotaryUtils = new SponsorshipNotaryUtils(
+        // Create DebtNotaryUtils
+        debtNotaryUtils = new DebtNotaryUtils(
             address(anzaTokenHarness),
             address(anzaDebtMarket),
-            address(anzaSponsorshipStorefront),
-            _sponsorshipDomainSeparator
+            address(anzaDebtStorefront),
+            _debtDomainSeparator
         );
     }
 }
 
-contract SponsorshipNotaryUtils is Settings {
+contract DebtNotaryUtils is Settings {
     address private immutable __anzaTokenAddress;
     address private immutable __anzaDebtMarket;
-    address private immutable __anzaSponsorshipStorefrontAddress;
-    Notary.DomainSeparator private __sponsorshipDomainSeparator;
+    address private immutable __anzaDebtStorefrontAddress;
+    Notary.DomainSeparator private __debtDomainSeparator;
 
     constructor(
         address _anzaTokenAddress,
         address _anzaDebtMarket,
-        address _anzaSponsorshipStorefrontAddress,
-        Notary.DomainSeparator memory _sponsorshipDomainSeparator
+        address _anzaDebtStorefrontAddress,
+        Notary.DomainSeparator memory _debtDomainSeparator
     ) {
         __anzaTokenAddress = _anzaTokenAddress;
         __anzaDebtMarket = _anzaDebtMarket;
-        __anzaSponsorshipStorefrontAddress = _anzaSponsorshipStorefrontAddress;
-        __sponsorshipDomainSeparator = _sponsorshipDomainSeparator;
+        __anzaDebtStorefrontAddress = _anzaDebtStorefrontAddress;
+        __debtDomainSeparator = _debtDomainSeparator;
     }
 
-    function createSponsorshipSignature(
+    function createDebtSignature(
         uint256 _sellerPrivKey,
-        ISponsorshipNotary.SponsorshipParams memory _debtSponsorshipParams
+        IDebtNotary.DebtParams memory _debtParams
     ) public virtual returns (bytes memory _signature) {
         bytes32 _message = Notary.typeDataHash(
-            __anzaTokenAddress,
-            _debtSponsorshipParams,
-            __sponsorshipDomainSeparator
+            _debtParams,
+            __debtDomainSeparator
         );
 
         // Sign seller's listing terms
@@ -142,13 +140,15 @@ contract SponsorshipNotaryUtils is Settings {
         _signature = abi.encodePacked(r, s, v);
     }
 
-    function sponsorshipDebt(
-        uint256 _debtId,
+    function purchaseDebt(
+        address _collateralAddress,
+        uint256 _collateralId,
         uint256 _sellerPrivKey
     ) public virtual returns (bool _success, bytes memory _data) {
         return
-            sponsorshipDebt(
-                _debtId,
+            purchaseDebt(
+                _collateralAddress,
+                _collateralId,
                 _sellerPrivKey,
                 ContractTerms({
                     firInterval: _FIR_INTERVAL_,
@@ -164,46 +164,49 @@ contract SponsorshipNotaryUtils is Settings {
             );
     }
 
-    function sponsorshipDebt(
-        uint256 _debtId,
+    function purchaseDebt(
+        address _collateralAddress,
+        uint256 _collateralId,
         uint256 _sellerPrivKey,
         ContractTerms memory _contractTerms
     ) public virtual returns (bool _success, bytes memory _data) {
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
         uint256 _listingNonce = IAnzaBaseMarketParticipant(
-            __anzaSponsorshipStorefrontAddress
+            __anzaDebtStorefrontAddress
         ).nonce();
 
         // Create contract params.
-        ISponsorshipNotary.SponsorshipParams
-            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
-                price: _contractTerms.principal,
-                debtId: _debtId,
-                listingNonce: _listingNonce,
-                termsExpiry: _termsExpiry
-            });
+        IDebtNotary.DebtParams memory _debtParams = IDebtNotary.DebtParams({
+            price: _PRINCIPAL_,
+            collateralAddress: _collateralAddress,
+            collateralId: _collateralId,
+            listingNonce: _listingNonce,
+            termsExpiry: _termsExpiry
+        });
 
         // Create seller's signature.
-        bytes memory _signature = createSponsorshipSignature(
+        bytes memory _signature = createDebtSignature(
             _sellerPrivKey,
-            _sponsorshipParams
+            _debtParams
         );
 
-        // Create sponsorship contract.
+        // Create debt contract.
         return
-            initSponsorshipContract(
+            initDebtContract(
                 _contractTerms.principal,
-                _debtId,
+                _collateralAddress,
+                _collateralId,
                 _termsExpiry,
                 _packedContractTerms,
                 _signature
             );
     }
 
-    function initSponsorshipContract(
+    function initDebtContract(
         uint256 _price,
-        uint256 _debtId,
+        address _collateralAddress,
+        uint256 _collateralId,
         uint256 _termsExpiry,
         bytes32 _packedContractTerms,
         bytes memory _signature
@@ -212,10 +215,11 @@ contract SponsorshipNotaryUtils is Settings {
         vm.startPrank(alt_account);
         (_success, _data) = address(anzaDebtMarket).call{value: _price}(
             abi.encodePacked(
-                __anzaSponsorshipStorefrontAddress,
+                __anzaDebtStorefrontAddress,
                 abi.encodeWithSignature(
-                    "buySponsorship(uint256,uint256,bytes32,bytes)",
-                    _debtId,
+                    "buyDebt(address,uint256,uint256,bytes32,bytes)",
+                    _collateralAddress,
+                    _collateralId,
                     _termsExpiry,
                     _packedContractTerms,
                     _signature
@@ -224,36 +228,39 @@ contract SponsorshipNotaryUtils is Settings {
         );
         assertTrue(
             _success,
-            "0 :: initSponsorshipContract :: buySponsorship test should succeed."
+            "0 :: initDebtContract :: buyDebt test should succeed."
         );
         vm.stopPrank();
     }
 }
 
-abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
+abstract contract DebtNotaryGetSignerUnitTest is DebtNotaryInit {
     function setUp() public virtual override {
         super.setUp();
     }
 
-    /* ---------- SponsorshipNotary._getSigner() ---------- */
+    /* ---------- DebtNotary._getSigner() ---------- */
     /**
      * Test the get signer function.
      *
-     * This test is a fuzz test that generates random inputs for the sponsorship
-     * notary's get signer function. This test is intended to pass signature
-     * validation.
+     * This test is a fuzz test that generates random inputs for the debt notary's
+     * get signer function. This test is intended to pass signature validation.
      *
      * @param _sellerPrivKey The private key of the seller.
-     * @param _debtId The debt id to sponsorship.
-     * @param _price The price of the sponsorship listing.
-     * @param _listingNonce The nonce of the sponsorship listing.
-     * @param _termsExpiry The expiry of the sponsorship listing.
+     * @param _debtId The id of the debt.
+     * @param _collateralAddress The address of the collateral.
+     * @param _collateralId The id of the collateral.
+     * @param _price The price of the debt listing.
+     * @param _listingNonce The nonce of the debt listing.
+     * @param _termsExpiry The expiry of the debt listing.
      *
      * @dev Full pass if the function returns the correct seller.
      */
-    function testSponsorshipNotary__GetSigner_Fuzz_Pass(
+    function testDebtNotary__GetSigner_Fuzz_Pass(
         uint256 _sellerPrivKey,
         uint256 _debtId,
+        address _collateralAddress,
+        uint256 _collateralId,
         uint256 _price,
         uint256 _listingNonce,
         uint256 _termsExpiry
@@ -261,6 +268,7 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         vm.assume(
             _sellerPrivKey != 0 && _sellerPrivKey < _SECP256K1_CURVE_ORDER_
         );
+        vm.assume(_collateralAddress != address(0));
         vm.assume(_debtId <= _MAX_DEBT_ID_);
 
         // Mint debt
@@ -269,21 +277,24 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
-        ISponsorshipNotary.SponsorshipParams
-            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
-                price: _price,
-                debtId: _debtId,
-                listingNonce: _listingNonce,
-                termsExpiry: _termsExpiry
-            });
+        IDebtNotary.DebtParams memory _debtParams = IDebtNotary.DebtParams({
+            price: _price,
+            collateralAddress: _collateralAddress,
+            collateralId: _collateralId,
+            listingNonce: _listingNonce,
+            termsExpiry: _termsExpiry
+        });
 
         // Sign contract.
-        bytes memory _sellerSignature = sponsorshipNotaryUtils
-            .createSponsorshipSignature(_sellerPrivKey, _sponsorshipParams);
+        bytes memory _sellerSignature = debtNotaryUtils.createDebtSignature(
+            _sellerPrivKey,
+            _debtParams
+        );
 
         // Verify and get seller.
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _sellerSignature,
             anzaTokenHarness.borrowerOf
         );
@@ -294,21 +305,25 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
     /**
      * Test the get signer function.
      *
-     * This test is a fuzz test that generates random inputs for the sponsorship
-     * notary's get signer function. This test is intended to fail signature
-     * validation due to the caller of the _getSigner() function being the seller.
+     * This test is a fuzz test that generates random inputs for the debt notary's
+     * get signer function. This test is intended to fail signature validation due
+     * to the caller of the _getSigner() function being the seller.
      *
      * @param _sellerPrivKey The private key of the seller.
-     * @param _debtId The debt id to sponsorship.
-     * @param _price The price of the sponsorship listing.
-     * @param _listingNonce The nonce of the sponsorship listing.
+     * @param _debtId The id of the debt.
+     * @param _collateralAddress The address of the collateral.
+     * @param _collateralId The id of the collateral.
+     * @param _price The price of the debt listing.
+     * @param _listingNonce The nonce of the debt listing.
      * @param _termsExpiry The expiry of the contract terms.
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testSponsorshipNotary__GetSigner_Fuzz_FailCaller(
+    function testDebtNotary__GetSigner_Fuzz_FailCaller(
         uint256 _sellerPrivKey,
         uint256 _debtId,
+        address _collateralAddress,
+        uint256 _collateralId,
         uint256 _price,
         uint256 _listingNonce,
         uint256 _termsExpiry
@@ -325,23 +340,26 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
-        ISponsorshipNotary.SponsorshipParams
-            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
-                price: _price,
-                debtId: _debtId,
-                listingNonce: _listingNonce,
-                termsExpiry: _termsExpiry
-            });
+        IDebtNotary.DebtParams memory _debtParams = IDebtNotary.DebtParams({
+            price: _price,
+            collateralAddress: _collateralAddress,
+            collateralId: _collateralId,
+            listingNonce: _listingNonce,
+            termsExpiry: _termsExpiry
+        });
 
         // Sign contract.
-        bytes memory _sellerSignature = sponsorshipNotaryUtils
-            .createSponsorshipSignature(_sellerPrivKey, _sponsorshipParams);
+        bytes memory _sellerSignature = debtNotaryUtils.createDebtSignature(
+            _sellerPrivKey,
+            _debtParams
+        );
 
         // Verify and get seller.
         vm.startPrank(_seller); //*
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _sellerSignature,
             anzaTokenHarness.borrowerOf
         );
@@ -351,23 +369,27 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
     /**
      * Test the get signer function.
      *
-     * This test is a fuzz test that generates random inputs for the sponsorship
-     * notary's get signer function. This test is intended to fail signature
-     * validation due to the signer of the signature not being the seller.
+     * This test is a fuzz test that generates random inputs for the debt notary's
+     * get signer function. This test is intended to fail signature validation due
+     * to the signer of the signature not being the seller.
      *
      * @param _sellerPrivKey The private key of the seller.
      * @param _randomPrivKey The private key of a random address.
-     * @param _debtId The debt id to sponsorship.
-     * @param _price The price of the sponsorship listing.
-     * @param _listingNonce The nonce of the sponsorship listing.
+     * @param _debtId The id of the debt.
+     * @param _collateralAddress The address of the collateral.
+     * @param _collateralId The id of the collateral.
+     * @param _price The price of the debt listing.
+     * @param _listingNonce The nonce of the debt listing.
      * @param _termsExpiry The expiry of the contract terms.
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testSponsorshipNotary__GetSigner_Fuzz_FailSigner(
+    function testDebtNotary__GetSigner_Fuzz_FailSigner(
         uint256 _sellerPrivKey,
         uint256 _randomPrivKey,
         uint256 _debtId,
+        address _collateralAddress,
+        uint256 _collateralId,
         uint256 _price,
         uint256 _listingNonce,
         uint256 _termsExpiry
@@ -388,22 +410,25 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
-        ISponsorshipNotary.SponsorshipParams
-            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
-                price: _price,
-                debtId: _debtId,
-                listingNonce: _listingNonce,
-                termsExpiry: _termsExpiry
-            });
+        IDebtNotary.DebtParams memory _debtParams = IDebtNotary.DebtParams({
+            price: _price,
+            collateralAddress: _collateralAddress,
+            collateralId: _collateralId,
+            listingNonce: _listingNonce,
+            termsExpiry: _termsExpiry
+        });
 
         // Sign contract.
-        bytes memory _randomSignature = sponsorshipNotaryUtils
-            .createSponsorshipSignature(_randomPrivKey, _sponsorshipParams);
+        bytes memory _randomSignature = debtNotaryUtils.createDebtSignature(
+            _randomPrivKey,
+            _debtParams
+        );
 
         // Verify and get seller.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _randomSignature, //*
             anzaTokenHarness.borrowerOf
         );
@@ -412,22 +437,26 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
     /**
      * Test the get signer function.
      *
-     * This test is a fuzz test that generates random inputs for the sponsorship
-     * notary's get signer function. This test is intended to fail signature
-     * validation due to the collateral supplied at signature validation not
-     * matching the collateral supplied at signature creation.
+     * This test is a fuzz test that generates random inputs for the debt notary's
+     * get signer function. This test is intended to fail signature validation due
+     * to the collateral supplied at signature validation not matching the collateral
+     * supplied at signature creation.
      *
      * @param _sellerPrivKey The private key of the seller.
-     * @param _debtId The debt id to sponsorship.
-     * @param _price The price of the sponsorship.
-     * @param _listingNonce The nonce of the sponsorship listing.
+     * @param _collateralAddress The address of the collateral.
+     * @param _debtId The id of the debt.
+     * @param _collateralId The id of the collateral.
+     * @param _price The price of the debt.
+     * @param _listingNonce The nonce of the debt listing.
      * @param _termsExpiry The expiry of the contract terms.
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testSponsorshipNotary__GetSigner_Fuzz_FailCollateral(
+    function testDebtNotary__GetSigner_Fuzz_FailCollateral(
         uint256 _sellerPrivKey,
         uint256 _debtId,
+        address _collateralAddress,
+        uint256 _collateralId,
         uint256 _price,
         uint256 _listingNonce,
         uint256 _termsExpiry
@@ -448,22 +477,25 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         _altAnzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
-        ISponsorshipNotary.SponsorshipParams
-            memory _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
-                price: _price,
-                debtId: _debtId,
-                listingNonce: _listingNonce,
-                termsExpiry: _termsExpiry
-            });
+        IDebtNotary.DebtParams memory _debtParams = IDebtNotary.DebtParams({
+            price: _price,
+            collateralAddress: _collateralAddress,
+            collateralId: _collateralId,
+            listingNonce: _listingNonce,
+            termsExpiry: _termsExpiry
+        });
 
         // Sign contract.
-        bytes memory _sellerSignature = sponsorshipNotaryUtils
-            .createSponsorshipSignature(_sellerPrivKey, _sponsorshipParams);
+        bytes memory _sellerSignature = debtNotaryUtils.createDebtSignature(
+            _sellerPrivKey,
+            _debtParams
+        );
 
         // Verify and get seller with invalid collateral ownerOf function.
         vm.expectRevert(StdNotaryErrors.InvalidOwnerMethod.selector);
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _sellerSignature,
             _altAnzaTokenHarness.borrowerOf //*
         );
@@ -472,22 +504,26 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
     /**
      * Test the get signer function.
      *
-     * This test is a fuzz test that generates random inputs for the sponsorship
-     * notary's get signer function. This test is intended to fail signature
-     * validation due to the collateral terms supplied at signature validation
-     * not matching the collateral supplied at signature creation.
+     * This test is a fuzz test that generates random inputs for the debt notary's
+     * get signer function. This test is intended to fail signature validation due
+     * to the collateral terms supplied at signature validation not matching the
+     * collateral supplied at signature creation.
      *
      * @param _sellerPrivKey The private key of the seller.
-     * @param _debtId The debt ids to sponsorship.
-     * @param _price The prices of the sponsorship listing.
-     * @param _listingNonce The nonces of the sponsorship listing.
+     * @param _debtId The id of the debt.
+     * @param _collateralAddress The collateral addresses of the debt listing.
+     * @param _collateralId The collateral ids of the debt listing.
+     * @param _price The prices of the debt listing.
+     * @param _listingNonce The nonces of the debt listing.
      * @param _termsExpiry The expiries of the contract terms.
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testSponsorshipNotary__GetSigner_Fuzz_FailParams(
+    function testDebtNotary__GetSigner_Fuzz_FailParams(
         uint256 _sellerPrivKey,
-        uint256[2] memory _debtId,
+        uint256 _debtId,
+        address[2] memory _collateralAddress,
+        uint256[2] memory _collateralId,
         uint256[2] memory _price,
         uint256[2] memory _listingNonce,
         uint256[2] memory _termsExpiry
@@ -495,15 +531,15 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         vm.assume(
             _sellerPrivKey != 0 && _sellerPrivKey < _SECP256K1_CURVE_ORDER_
         );
+        vm.assume(_debtId <= _MAX_DEBT_ID_);
         vm.assume(_listingNonce[0] != _listingNonce[1]);
         vm.assume(_termsExpiry[0] != _termsExpiry[1]);
         vm.assume(_price[0] != _price[1]);
-        vm.assume(_debtId[0] <= _MAX_DEBT_ID_ && _debtId[1] <= _MAX_DEBT_ID_);
 
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId[0]);
+        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Mint alternate debt
@@ -511,81 +547,108 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         _altAnzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params with invalid principal
-        ISponsorshipNotary.SponsorshipParams memory _sponsorshipParams = ISponsorshipNotary
-            .SponsorshipParams({
-                price: _price[1], //*
-                debtId: _debtId[0],
-                listingNonce: _listingNonce[0],
-                termsExpiry: _termsExpiry[0]
-            });
+        IDebtNotary.DebtParams memory _debtParams = IDebtNotary.DebtParams({
+            price: _price[1], //*
+            collateralAddress: _collateralAddress[0],
+            collateralId: _collateralId[0],
+            listingNonce: _listingNonce[0],
+            termsExpiry: _termsExpiry[0]
+        });
 
         // Sign contract.
-        bytes memory _sellerSignature = sponsorshipNotaryUtils
-            .createSponsorshipSignature(_sellerPrivKey, _sponsorshipParams);
+        bytes memory _sellerSignature = debtNotaryUtils.createDebtSignature(
+            _sellerPrivKey,
+            _debtParams
+        );
 
         // Change price.
-        _sponsorshipParams.price = _price[0];
+        _debtParams.price = _price[0];
 
         // Verify and get seller.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _sellerSignature,
             anzaTokenHarness.borrowerOf
         );
 
-        // Create contract params with invalid debt ID
-        _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
+        // Create contract params with invalid collateral address
+        _debtParams = IDebtNotary.DebtParams({
             price: _price[0],
-            debtId: _debtId[1], //*
+            collateralAddress: _collateralAddress[1], //*
+            collateralId: _collateralId[0],
             listingNonce: _listingNonce[0],
             termsExpiry: _termsExpiry[0]
         });
 
         // Verify and get seller.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
+            _sellerSignature,
+            anzaTokenHarness.borrowerOf
+        );
+
+        // Create contract params with invalid collateral ID
+        _debtParams = IDebtNotary.DebtParams({
+            price: _price[0],
+            collateralAddress: _collateralAddress[0],
+            collateralId: _collateralId[1], //*
+            listingNonce: _listingNonce[0],
+            termsExpiry: _termsExpiry[0]
+        });
+
+        // Verify and get seller.
+        vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _sellerSignature,
             anzaTokenHarness.borrowerOf
         );
 
         // Create contract params with invalid nonce
-        _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
+        _debtParams = IDebtNotary.DebtParams({
             price: _price[0],
-            debtId: _debtId[0],
+            collateralAddress: _collateralAddress[0],
+            collateralId: _collateralId[0],
             listingNonce: _listingNonce[1], //*
             termsExpiry: _termsExpiry[0]
         });
 
         // Verify and get seller.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _sellerSignature,
             anzaTokenHarness.borrowerOf
         );
 
         // Create contract params with invalid terms expiry
-        _sponsorshipParams = ISponsorshipNotary.SponsorshipParams({
+        _debtParams = IDebtNotary.DebtParams({
             price: _price[0],
-            debtId: _debtId[0],
+            collateralAddress: _collateralAddress[0],
+            collateralId: _collateralId[0],
             listingNonce: _listingNonce[0],
             termsExpiry: _termsExpiry[1] //*
         });
 
         // Verify and get seller.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _seller = sponsorshipNotaryHarness.exposed__getSigner(
-            _sponsorshipParams,
+        _seller = debtNotaryHarness.exposed__getSigner(
+            _debtId,
+            _debtParams,
             _sellerSignature,
             anzaTokenHarness.borrowerOf
         );
     }
 }
 
-contract SponsorshipNotaryUnitTest is SponsorshipNotaryGetSignerUnitTest {
+contract DebtNotaryUnitTest is DebtNotaryGetSignerUnitTest {
     function setUp() public virtual override {
-        SponsorshipNotaryGetSignerUnitTest.setUp();
+        DebtNotaryGetSignerUnitTest.setUp();
     }
 }

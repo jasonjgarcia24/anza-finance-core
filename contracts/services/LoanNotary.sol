@@ -26,13 +26,8 @@ abstract contract LoanNotary is ILoanNotary {
      * times.
      */
     bytes32 private immutable __loanNotary_domainSeparator;
-    address private __loanNotary_anzaTokenAddress;
 
-    constructor(
-        string memory _contractName,
-        string memory _contractVersion,
-        address _anzaTokenAddress
-    ) {
+    constructor(string memory _contractName, string memory _contractVersion) {
         bytes32 nameHash = keccak256(abi.encodePacked(_contractName));
         bytes32 versionHash = keccak256(abi.encodePacked(_contractVersion));
 
@@ -45,25 +40,12 @@ abstract contract LoanNotary is ILoanNotary {
                 address(this)
             )
         );
-
-        __loanNotary_anzaTokenAddress = _anzaTokenAddress;
     }
 
     function supportsInterface(
         bytes4 _interfaceId
     ) public view virtual returns (bool) {
         return _interfaceId == type(ILoanNotary).interfaceId;
-    }
-
-    /**
-     * Set the address of the AnzaToken contract.
-     *
-     * @notice This function is not access control guarded (i.e. unsafe).
-     *
-     * @param _anzaTokenAddress the address of the AnzaToken contract.
-     */
-    function _unsafeSetAnzaToken(address _anzaTokenAddress) internal {
-        __loanNotary_anzaTokenAddress = _anzaTokenAddress;
     }
 
     /**
@@ -475,7 +457,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      */
     function __structHash(
         RefinanceParams memory _refinanceParams
-    ) private pure returns (bytes32) {
+    ) private view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -620,7 +602,7 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      */
     function __structHash(
         SponsorshipParams memory _sponsorshipParams
-    ) private pure returns (bytes32) {
+    ) private view returns (bytes32) {
         return
             keccak256(
                 abi.encode(

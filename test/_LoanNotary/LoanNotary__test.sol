@@ -175,7 +175,7 @@ contract LoanNotaryUtils is Settings {
 
     function initContract(
         uint256 _debtId,
-        bytes32 _contractTerms,
+        bytes32 _packedContractTerms,
         bytes memory _signature
     ) public virtual returns (bool _success, bytes memory _data) {
         // Create loan contract
@@ -184,7 +184,7 @@ contract LoanNotaryUtils is Settings {
             abi.encodeWithSignature(
                 "initContract(uint256,bytes32,bytes)",
                 _debtId,
-                _contractTerms,
+                _packedContractTerms,
                 _signature
             )
         );
@@ -197,7 +197,7 @@ contract LoanNotaryUtils is Settings {
     function initContract(
         uint256 _debtId,
         uint256 _principal,
-        bytes32 _contractTerms,
+        bytes32 _packedContractTerms,
         bytes memory _signature
     ) public virtual returns (bool _success, bytes memory _data) {
         // Create loan contract
@@ -207,7 +207,7 @@ contract LoanNotaryUtils is Settings {
             abi.encodeWithSignature(
                 "initContract(uint256,bytes32,bytes)",
                 _debtId,
-                _contractTerms,
+                _packedContractTerms,
                 _signature
             )
         );
@@ -220,7 +220,7 @@ contract LoanNotaryUtils is Settings {
         uint256 _principal,
         address _collateralAddress,
         uint256 _collateralId,
-        bytes32 _contractTerms,
+        bytes32 _packedContractTerms,
         bytes memory _signature
     ) public virtual returns (bool _success, bytes memory _data) {
         // Create loan contract
@@ -232,7 +232,7 @@ contract LoanNotaryUtils is Settings {
                 "initContract(address,uint256,bytes32,bytes)",
                 _collateralAddress,
                 _collateralId,
-                _contractTerms,
+                _packedContractTerms,
                 _signature
             )
         );
@@ -403,7 +403,7 @@ contract LoanNotaryUtils is Settings {
     }
 }
 
-contract LoanNotaryUnitTest is LoanNotaryInit {
+abstract contract LoanNotaryGetBorrowerUnitTest is LoanNotaryInit {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -421,7 +421,7 @@ contract LoanNotaryUnitTest is LoanNotaryInit {
      *
      * @dev Full pass if the function returns the correct borrower.
      */
-    function testLoanNotary__Fuzz_Pass_GetBorrower(
+    function testLoanNotary__GetBorrower_Fuzz_Pass(
         uint256 _borrowerPrivKey,
         uint256 _collateralId,
         uint256 _collateralNonce,
@@ -486,7 +486,7 @@ contract LoanNotaryUnitTest is LoanNotaryInit {
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testLoanNotary__Fuzz_FailCaller_GetBorrower(
+    function testLoanNotary__GetBorrower_Fuzz_FailCaller(
         uint256 _borrowerPrivKey,
         uint256 _collateralId,
         uint256 _collateralNonce,
@@ -545,7 +545,7 @@ contract LoanNotaryUnitTest is LoanNotaryInit {
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testLoanNotary__Fuzz_FailSigner_GetBorrower(
+    function testLoanNotary__GetBorrower_Fuzz_FailSigner(
         uint256 _borrowerPrivKey,
         uint256 _randomPrivKey,
         uint256 _collateralId,
@@ -611,7 +611,7 @@ contract LoanNotaryUnitTest is LoanNotaryInit {
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testLoanNotary__Fuzz_FailTerms_GetBorrower(
+    function testLoanNotary__GetBorrower_Fuzz_FailTerms(
         uint256 _borrowerPrivKey,
         uint256 _collateralId,
         uint256 _collateralNonce,
@@ -716,5 +716,11 @@ contract LoanNotaryUnitTest is LoanNotaryInit {
             _borrowerSignature,
             _demoToken.ownerOf
         );
+    }
+}
+
+contract LoanNotaryUnitTest is LoanNotaryGetBorrowerUnitTest {
+    function setUp() public virtual override {
+        LoanNotaryGetBorrowerUnitTest.setUp();
     }
 }

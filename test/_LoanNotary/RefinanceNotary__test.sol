@@ -24,37 +24,35 @@ string constant REFINANCE_CONTRACT_NAME = "RefinanceNotary__test";
 string constant REFINANCE_CONTRACT_VERSION = "0";
 
 contract RefinanceNotaryHarness is RefinanceNotary {
-    constructor()
-        RefinanceNotary(REFINANCE_CONTRACT_NAME, REFINANCE_CONTRACT_VERSION)
+    constructor(
+        address _anzaTokenHarnessAddress
+    )
+        RefinanceNotary(
+            REFINANCE_CONTRACT_NAME,
+            REFINANCE_CONTRACT_VERSION,
+            _anzaTokenHarnessAddress
+        )
     {}
 
     function exposed__getBorrower(
-        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams,
         bytes memory _borrowerSignature,
         function(uint256) external view returns (address) ownerOf
     ) public view returns (address) {
-        return
-            _getBorrower(
-                _anzaTokenAddress,
-                _refinanceParams,
-                _borrowerSignature,
-                ownerOf
-            );
+        return _getBorrower(_refinanceParams, _borrowerSignature, ownerOf);
     }
 
     function exposed__recoverSigner(
-        address _anzaTokenAddress,
         RefinanceParams memory _refinanceParams,
         bytes memory _signature
     ) internal view returns (address) {
-        return _recoverSigner(_anzaTokenAddress, _refinanceParams, _signature);
+        return _recoverSigner(_refinanceParams, _signature);
     }
 }
 
-abstract contract LoanRefinanceInit is Setup {
+abstract contract RefinanceNotaryInit is Setup {
     RefinanceNotaryHarness public refinanceNotaryHarness;
-    LoanRefinanceUtils public loanRefinanceUtils;
+    RefinanceNotaryUtils public refinanceNotaryUtils;
     AnzaTokenHarness public anzaTokenHarness;
     Notary.DomainSeparator internal _refinanceDomainSeparator;
 
@@ -62,10 +60,13 @@ abstract contract LoanRefinanceInit is Setup {
         super.setUp();
 
         vm.startPrank(admin);
-        refinanceNotaryHarness = new RefinanceNotaryHarness();
-
-        // Deploy AnzaToken
+        // Set AnzaTokenHarness
         anzaTokenHarness = new AnzaTokenHarness();
+
+        // Set RefinanceNotaryHarness
+        refinanceNotaryHarness = new RefinanceNotaryHarness(
+            address(anzaTokenHarness)
+        );
 
         // Set Anza Debt Marketplace and Storefronts
         anzaDebtMarket = new AnzaDebtMarket();
@@ -98,8 +99,8 @@ abstract contract LoanRefinanceInit is Setup {
             contractAddress: address(refinanceNotaryHarness)
         });
 
-        // Create LoanRefinanceUtils
-        loanRefinanceUtils = new LoanRefinanceUtils(
+        // Create RefinanceNotaryUtils
+        refinanceNotaryUtils = new RefinanceNotaryUtils(
             address(anzaTokenHarness),
             address(anzaDebtMarket),
             address(anzaRefinanceStorefront),
@@ -108,7 +109,7 @@ abstract contract LoanRefinanceInit is Setup {
     }
 }
 
-contract LoanRefinanceUtils is Settings {
+contract RefinanceNotaryUtils is Settings {
     address private immutable __anzaTokenAddress;
     address private immutable __anzaDebtMarket;
     address private immutable __anzaRefinanceStorefrontAddress;
@@ -205,7 +206,7 @@ contract LoanRefinanceUtils is Settings {
         uint256 _price,
         uint256 _debtId,
         uint256 _termsExpiry,
-        bytes32 _contractTerms,
+        bytes32 _packedContractTerms,
         bytes memory _signature
     ) public returns (bool _success, bytes memory _data) {
         vm.deal(alt_account, 4 ether);
@@ -217,7 +218,7 @@ contract LoanRefinanceUtils is Settings {
                     "buyRefinance(uint256,uint256,bytes32,bytes)",
                     _debtId,
                     _termsExpiry,
-                    _contractTerms,
+                    _packedContractTerms,
                     _signature
                 )
             )
@@ -230,17 +231,18 @@ contract LoanRefinanceUtils is Settings {
     }
 }
 
-contract LoanRefinanceUnitTest is LoanRefinanceInit {
+abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
     function setUp() public virtual override {
         super.setUp();
     }
 
-    /* ---------- LoanRefinance._getBorrower() ---------- */
+    /* ---------- RefinanceNotary._getBorrower() ---------- */
     /**
      * Test the get borrower function.
      *
-     * This test is a fuzz test that generates random inputs for the loan notary's
-     * get borrower function. This test is intended to pass signature validation.
+     * This test is a fuzz test that generates random inputs for the refinance
+     * notary's get borrower function. This test is intended to pass signature
+     * validation.
      *
      * @param _borrowerPrivKey The private key of the borrower.
      * @param _debtId The debt id to refinance.
@@ -250,7 +252,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
      *
      * @dev Full pass if the function returns the correct borrower.
      */
-    function testLoanRefinance__Fuzz_Pass_GetBorrower(
+    function testRefinanceNotary__GetBorrower_Fuzz_Pass(
         uint256 _borrowerPrivKey,
         uint256 _debtId,
         uint256 _listingNonce,
@@ -281,12 +283,11 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
             });
 
         // Sign contract.
-        bytes memory _borrowerSignature = loanRefinanceUtils
+        bytes memory _borrowerSignature = refinanceNotaryUtils
             .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
 
         // Verify and get borrower.
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
@@ -302,9 +303,10 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
     /**
      * Test the get borrower function.
      *
-     * This test is a fuzz test that generates random inputs for the loan notary's
-     * get borrower function. This test is intended to fail signature validation due
-     * to the caller of the _getBorrower() function being the borrower.
+     * This test is a fuzz test that generates random inputs for the refinance
+     * notary's get borrower function. This test is intended to fail signature
+     * validation due to the caller of the _getBorrower() function being the
+     * borrower.
      *
      * @param _borrowerPrivKey The private key of the borrower.
      * @param _debtId The debt id to refinance.
@@ -314,7 +316,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testLoanRefinance__Fuzz_FailCaller_GetBorrower(
+    function testRefinanceNotary__GetBorrower_Fuzz_FailCaller(
         uint256 _borrowerPrivKey,
         uint256 _debtId,
         uint256 _listingNonce,
@@ -346,14 +348,13 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
             });
 
         // Sign contract.
-        bytes memory _borrowerSignature = loanRefinanceUtils
+        bytes memory _borrowerSignature = refinanceNotaryUtils
             .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
 
         // Verify and get borrower.
         vm.startPrank(_borrower); //*
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
@@ -364,9 +365,9 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
     /**
      * Test the get borrower function.
      *
-     * This test is a fuzz test that generates random inputs for the loan notary's
-     * get borrower function. This test is intended to fail signature validation due
-     * to the signer of the signature not being the borrower.
+     * This test is a fuzz test that generates random inputs for the refinance
+     * notary's get borrower function. This test is intended to fail signature
+     * validation due to the signer of the signature not being the borrower.
      *
      * @param _borrowerPrivKey The private key of the borrower.
      * @param _randomPrivKey The private key of a random address.
@@ -377,7 +378,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testLoanRefinance__Fuzz_FailSigner_GetBorrower(
+    function testRefinanceNotary__GetBorrower_Fuzz_FailSigner(
         uint256 _borrowerPrivKey,
         uint256 _randomPrivKey,
         uint256 _debtId,
@@ -414,13 +415,12 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
             });
 
         // Sign contract.
-        bytes memory _randomSignature = loanRefinanceUtils
+        bytes memory _randomSignature = refinanceNotaryUtils
             .createRefinanceSignature(_randomPrivKey, _refinanceParams);
 
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _randomSignature, //*
             anzaTokenHarness.borrowerOf
@@ -430,10 +430,10 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
     /**
      * Test the get borrower function.
      *
-     * This test is a fuzz test that generates random inputs for the loan notary's
-     * get borrower function. This test is intended to fail signature validation due
-     * to the collateral supplied at signature validation not matching the collateral
-     * supplied at signature creation.
+     * This test is a fuzz test that generates random inputs for the refinance
+     * notary's get borrower function. This test is intended to fail signature
+     * validation due to the collateral supplied at signature validation not
+     * matching the collateral supplied at signature creation.
      *
      * @param _borrowerPrivKey The private key of the borrower.
      * @param _debtId The debt id to refinance.
@@ -443,7 +443,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testLoanRefinance__Fuzz_FailCollateral_GetBorrower(
+    function testRefinanceNotary__GetBorrower_Fuzz_FailCollateral(
         uint256 _borrowerPrivKey,
         uint256 _debtId,
         uint256 _listingNonce,
@@ -479,22 +479,12 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
             });
 
         // Sign contract.
-        bytes memory _borrowerSignature = loanRefinanceUtils
+        bytes memory _borrowerSignature = refinanceNotaryUtils
             .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
-
-        // Verify and get borrower with invalid collateral address.
-        vm.expectRevert(StdNotaryErrors.InvalidOwnerMethod.selector);
-        _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(_altAnzaTokenHarness),
-            _refinanceParams,
-            _borrowerSignature,
-            anzaTokenHarness.borrowerOf
-        );
 
         // Verify and get borrower with invalid collateral ownerOf function.
         vm.expectRevert(StdNotaryErrors.InvalidOwnerMethod.selector);
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _borrowerSignature,
             _altAnzaTokenHarness.borrowerOf //*
@@ -504,10 +494,10 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
     /**
      * Test the get borrower function.
      *
-     * This test is a fuzz test that generates random inputs for the loan notary's
-     * get borrower function. This test is intended to fail signature validation due
-     * to the collateral terms supplied at signature validation not matching the
-     * collateral supplied at signature creation.
+     * This test is a fuzz test that generates random inputs for the refinance
+     * notary's get borrower function. This test is intended to fail signature
+     * validation due to the collateral terms supplied at signature validation
+     * not matching the collateral supplied at signature creation.
      *
      * @param _borrowerPrivKey The private key of the borrower.
      * @param _debtId The debt ids to refinance.
@@ -517,7 +507,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
      *
      * @dev Full pass if the function reverts as expected.
      */
-    function testLoanRefinance__Fuzz_FailTerms_GetBorrower(
+    function testRefinanceNotary__GetBorrower_Fuzz_FailTerms(
         uint256 _borrowerPrivKey,
         uint256 _debtId,
         uint256[2] memory _listingNonce,
@@ -559,7 +549,7 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
             });
 
         // Sign contract.
-        bytes memory _borrowerSignature = loanRefinanceUtils
+        bytes memory _borrowerSignature = refinanceNotaryUtils
             .createRefinanceSignature(_borrowerPrivKey, _refinanceParams);
 
         // Change price.
@@ -568,7 +558,6 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
@@ -586,7 +575,6 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
@@ -604,7 +592,6 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
@@ -622,10 +609,15 @@ contract LoanRefinanceUnitTest is LoanRefinanceInit {
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         _borrower = refinanceNotaryHarness.exposed__getBorrower(
-            address(anzaTokenHarness),
             _refinanceParams,
             _borrowerSignature,
             anzaTokenHarness.borrowerOf
         );
+    }
+}
+
+contract RefinanceNotaryUnitTest is RefinanceNotaryGetBorrowererUnitTest {
+    function setUp() public virtual override {
+        RefinanceNotaryGetBorrowererUnitTest.setUp();
     }
 }
