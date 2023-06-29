@@ -180,9 +180,13 @@ contract CollateralVault is
         uint256 _collateralId,
         bytes memory _data
     ) public override returns (bytes4) {
-        uint256 _debtId = uint256(bytes32(_data));
-
-        _record(_from, msg.sender, _collateralId, _debtId, 0);
+        _record(
+            _from,
+            msg.sender,
+            _collateralId,
+            uint256(bytes32(_data)) /* debtId */,
+            0
+        );
 
         // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
         return 0x150b7a02;
@@ -197,6 +201,7 @@ contract CollateralVault is
     ) internal onlyUniqueDeposit(_collateralAddress, _collateralId, _debtId) {
         // Add collateral to inventory
         ++totalCollateral;
+
         __collaterals[_debtId] = Collateral(
             _collateralAddress,
             _collateralId,

@@ -41,6 +41,8 @@ abstract contract ManagerAccessController is
      * Overriding the default grantRole function to set the Loan Treasurer
      * address as the _TREASURER_ role holder.
      *
+     * @notice Internal function without access restriction.
+     *
      * @param _role The role to grant.
      * @param _account The address to grant the role to.
      */
@@ -57,6 +59,8 @@ abstract contract ManagerAccessController is
      * Sets the Loan Treasurer address, revokes the _TREASURER_ role from the
      * previous Loan Treasurer, and grants the _TREASURER_ role to the new loan
      * treasurer address.
+     *
+     * @notice Private function without access restriction.
      *
      * @param _treasurer The address of the new loan treasurer.
      */

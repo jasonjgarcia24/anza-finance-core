@@ -16,19 +16,6 @@ interface ILoanContract {
         bytes32 contractTerms
     );
 
-    event PaymentSubmitted(
-        uint256 indexed debtId,
-        address indexed borrower,
-        address indexed lender,
-        uint256 amount
-    );
-
-    event LoanBorrowerChanged(
-        uint256 indexed debtId,
-        address indexed newBorrower,
-        address indexed oldBorrower
-    );
-
     function initContract(
         address _collateralAddress,
         uint256 _collateralId,
@@ -48,4 +35,12 @@ interface ILoanContract {
         address _borrower,
         address _lender
     ) external payable;
+
+    function revokeProposal(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _principal,
+        bytes32 _contractTerms,
+        bytes calldata _borrowerSignature
+    ) external returns (bool);
 }

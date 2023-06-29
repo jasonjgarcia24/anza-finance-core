@@ -129,15 +129,11 @@ abstract contract LoanCodecInit is Setup {
 }
 
 contract LoanCodecUtils is Setup {
-    function setUp() public virtual override {
-        super.setUp();
-    }
-
     /**
      * Utility function to establish the expected contract terms validity.
      *
      * @param _contractTerms The contract terms to validate.
-     * @param _loanContractHarness The LoanContract harness to call the
+     * @param _loanContractHarnessAddress The LoanContract harness address to call the
      * exposed__getTotalFirIntervals function.
      * @param _loanStart The loan start time.
      *
@@ -145,9 +141,13 @@ contract LoanCodecUtils is Setup {
      */
     function expectedContractTermsValidity(
         ContractTerms memory _contractTerms,
-        LoanCodecHarness _loanContractHarness,
+        address _loanContractHarnessAddress,
         uint64 _loanStart
     ) public pure returns (bool, bytes memory) {
+        ILoanCodecHarness _loanContractHarness = ILoanCodecHarness(
+            _loanContractHarnessAddress
+        );
+
         // Principal revert check
         if (_contractTerms.principal == 0) {
             return (
@@ -394,7 +394,7 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         (bool _expectedSuccess, bytes memory _expectedData) = loanCodecUtils
             .expectedContractTermsValidity(
                 _contractTerms,
-                loanCodecHarness,
+                address(loanCodecHarness),
                 _loanStart
             );
 
@@ -468,7 +468,7 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
 
     /* --------- LoanCodec._setLoanAgreement() --------- */
     /**
-     * See {testDebtTerm__Fuzz_Getters} for testing.
+     * See {testDebtTerm__Getters_Fuzz} for testing.
      */
 
     /* ----------- LoanCodec._updateLoanState() ----------- */

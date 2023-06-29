@@ -73,6 +73,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Set debt
+        // Note: This will increment `_totalDebts` by 1
         (, uint256 _collateralNonce) = _writeDebt(
             _collateralAddress,
             _collateralId
@@ -102,7 +103,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             _borrower,
             address(_collateralVault),
             _collateralId,
-            abi.encodePacked(totalDebts)
+            abi.encodePacked(_totalDebts)
         );
 
         // Transfer funds to borrower's account in treasurey
@@ -116,7 +117,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         _anzaToken.mint(
             msg.sender,
-            totalDebts,
+            _totalDebts,
             _principal,
             _collateralURI,
             abi.encodePacked(_borrower)
@@ -126,7 +127,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         emit ContractInitialized(
             _collateralAddress,
             _collateralId,
-            totalDebts,
+            _totalDebts,
             1
         );
     }
@@ -185,6 +186,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             .getCollateral(_debtId);
 
         // Set debt
+        // Note: This will increment `_totalDebts` by 1
         (uint256 _debtMapLength, ) = _appendDebt(
             _collateral.collateralAddress,
             _collateral.collateralId
@@ -201,7 +203,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         _collateralVault.setCollateral(
             _collateral.collateralAddress,
             _collateral.collateralId,
-            totalDebts,
+            _totalDebts,
             _debtMapLength
         );
 
@@ -219,7 +221,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         // Mint debt ADT for lender.
         _anzaToken.mint(
             _lender,
-            totalDebts,
+            _totalDebts,
             _principal,
             abi.encode(address(_borrower), _debtId)
         );
@@ -228,7 +230,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         emit ContractInitialized(
             _collateral.collateralAddress,
             _collateral.collateralId,
-            totalDebts,
+            _totalDebts,
             _debtMapLength
         );
     }
@@ -285,6 +287,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             .getCollateral(_debtId);
 
         // Set debt
+        // Note: This will increment `_totalDebts` by 1
         (uint256 _debtMapLength, ) = _appendDebt(
             _collateral.collateralAddress,
             _collateral.collateralId
@@ -301,7 +304,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         _collateralVault.setCollateral(
             _collateral.collateralAddress,
             _collateral.collateralId,
-            totalDebts,
+            _totalDebts,
             _debtMapLength
         );
 
@@ -324,7 +327,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         // Mint debt ADT for lender.
         _anzaToken.mint(
             _lender,
-            totalDebts,
+            _totalDebts,
             _principal >= _balance ? _balance : _principal,
             abi.encode(address(_borrower), _debtId)
         );
@@ -333,7 +336,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         emit ContractInitialized(
             _collateral.collateralAddress,
             _collateral.collateralId,
-            totalDebts,
+            _totalDebts,
             _debtMapLength
         );
     }
@@ -424,6 +427,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         if (_activeLoanIndex > maxRefinances())
             revert StdMonetaryErrors.ExceededRefinanceLimit();
 
-        _setLoanAgreement(_now, totalDebts, _activeLoanIndex, _contractTerms);
+        _setLoanAgreement(_now, _totalDebts, _activeLoanIndex, _contractTerms);
     }
 }

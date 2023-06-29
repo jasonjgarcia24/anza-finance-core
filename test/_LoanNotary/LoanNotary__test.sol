@@ -43,7 +43,7 @@ contract LoanNotaryHarness is LoanNotary {
     }
 }
 
-contract LoanNotaryInit is Setup {
+abstract contract LoanNotaryInit is Setup {
     LoanNotaryHarness public loanNotaryHarness;
     LoanNotaryUtils public loanNotaryUtils;
     Notary.DomainSeparator internal _loanDomainSeparator;
@@ -62,7 +62,7 @@ contract LoanNotaryInit is Setup {
             contractAddress: address(loanNotaryHarness)
         });
 
-        // Create LoanRefinanceUtils
+        // Create LoanNotaryUtils.
         loanNotaryUtils = new LoanNotaryUtils(
             address(demoToken),
             _loanDomainSeparator
@@ -71,14 +71,14 @@ contract LoanNotaryInit is Setup {
 }
 
 contract LoanNotaryUtils is Settings {
-    address private immutable __demoTokenAddress;
+    address internal immutable _demoTokenAddress;
     Notary.DomainSeparator private __loanDomainSeparator;
 
     constructor(
-        address _demoTokenAddress,
+        address _demoTokenAddress_,
         Notary.DomainSeparator memory _loanDomainSeparator
     ) {
-        __demoTokenAddress = _demoTokenAddress;
+        _demoTokenAddress = _demoTokenAddress_;
         __loanDomainSeparator = _loanDomainSeparator;
     }
 
@@ -93,9 +93,9 @@ contract LoanNotaryUtils is Settings {
     function createContractSignature(
         uint256 _borrowerPrivKey,
         uint256 _collateralId
-    ) public virtual returns (bytes memory _signature) {
+    ) public returns (bytes memory _signature) {
         uint256 _collateralNonce = loanContract.collateralNonce(
-            __demoTokenAddress,
+            _demoTokenAddress,
             _collateralId
         );
 
@@ -104,7 +104,7 @@ contract LoanNotaryUtils is Settings {
             .ContractParams({
                 principal: _PRINCIPAL_,
                 contractTerms: createContractTerms(),
-                collateralAddress: __demoTokenAddress,
+                collateralAddress: _demoTokenAddress,
                 collateralId: _collateralId,
                 collateralNonce: _collateralNonce
             });
@@ -131,7 +131,7 @@ contract LoanNotaryUtils is Settings {
     function createContractSignature(
         uint256 _borrowerPrivKey,
         ILoanNotary.ContractParams memory _contractParams
-    ) public virtual returns (bytes memory _signature) {
+    ) public view returns (bytes memory _signature) {
         bytes32 _message = Notary.typeDataHash(
             _contractParams,
             __loanDomainSeparator
@@ -155,7 +155,7 @@ contract LoanNotaryUtils is Settings {
         uint256 _borrowerPrivKey,
         Notary.DomainSeparator memory _loanDomainSeparator,
         ILoanNotary.ContractParams memory _contractParams
-    ) public virtual returns (bytes memory _signature) {
+    ) public pure returns (bytes memory _signature) {
         bytes32 _message = Notary.typeDataHash(
             _contractParams,
             _loanDomainSeparator
@@ -164,235 +164,6 @@ contract LoanNotaryUtils is Settings {
         // Sign borrower's terms
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_borrowerPrivKey, _message);
         _signature = abi.encodePacked(r, s, v);
-    }
-
-    function initContract(
-        uint256 _debtId,
-        bytes32 _packedContractTerms,
-        bytes memory _signature
-    ) public virtual returns (bool _success, bytes memory _data) {
-        // Create loan contract
-        vm.startPrank(lender);
-        (_success, _data) = address(loanContract).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature(
-                "initContract(uint256,bytes32,bytes)",
-                _debtId,
-                _packedContractTerms,
-                _signature
-            )
-        );
-
-        vm.stopPrank();
-
-        _data = abi.encodePacked(_data);
-    }
-
-    function initContract(
-        uint256 _debtId,
-        uint256 _principal,
-        bytes32 _packedContractTerms,
-        bytes memory _signature
-    ) public virtual returns (bool _success, bytes memory _data) {
-        // Create loan contract
-        vm.deal(lender, _principal + (1 ether));
-        vm.startPrank(lender);
-        (_success, _data) = address(loanContract).call{value: _principal}(
-            abi.encodeWithSignature(
-                "initContract(uint256,bytes32,bytes)",
-                _debtId,
-                _packedContractTerms,
-                _signature
-            )
-        );
-        vm.stopPrank();
-
-        _data = abi.encodePacked(_data);
-    }
-
-    function initContract(
-        uint256 _principal,
-        address _collateralAddress,
-        uint256 _collateralId,
-        bytes32 _packedContractTerms,
-        bytes memory _signature
-    ) public virtual returns (bool _success, bytes memory _data) {
-        // Create loan contract
-        vm.deal(lender, _principal);
-        vm.startPrank(lender);
-
-        (_success, _data) = address(loanContract).call{value: _principal}(
-            abi.encodeWithSignature(
-                "initContract(address,uint256,bytes32,bytes)",
-                _collateralAddress,
-                _collateralId,
-                _packedContractTerms,
-                _signature
-            )
-        );
-
-        vm.stopPrank();
-
-        _data = abi.encodePacked(_data);
-    }
-
-    /**
-     * Create a loan contract with default contract values.
-     *
-     * @param _borrowerPrivKey The borrower's private key.
-     * @param _collateralId The collateral id.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
-     */
-    function createLoanContract(
-        uint256 _borrowerPrivKey,
-        uint256 _collateralId
-    ) public virtual returns (bool, bytes memory) {
-        bytes32 _packedContractTerms = createContractTerms();
-
-        uint256 _collateralNonce = loanContract.collateralNonce(
-            __demoTokenAddress,
-            _collateralId
-        );
-
-        // Create contract params.
-        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
-            .ContractParams({
-                principal: _PRINCIPAL_,
-                contractTerms: _packedContractTerms,
-                collateralAddress: __demoTokenAddress,
-                collateralId: _collateralId,
-                collateralNonce: _collateralNonce
-            });
-
-        // Create borrower's signature
-        bytes memory _signature = createContractSignature(
-            _borrowerPrivKey,
-            _contractParams
-        );
-
-        // Create loan contract.
-        return
-            initContract(
-                _PRINCIPAL_,
-                __demoTokenAddress,
-                _collateralId,
-                _packedContractTerms,
-                _signature
-            );
-    }
-
-    /**
-     * Create a loan contract with contract values and the collateral ID
-     * specified.
-     *
-     * @param _borrowerPrivKey The borrower's private key.
-     * @param _collateralId The collateral's token ID.
-     * @param _contractTerms The contract terms.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
-     */
-    function createLoanContract(
-        uint256 _borrowerPrivKey,
-        uint256 _collateralId,
-        ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
-        uint256 _collateralNonce = loanContract.collateralNonce(
-            __demoTokenAddress,
-            _collateralId
-        );
-
-        // Create loan contract.
-        return
-            createLoanContract(
-                _borrowerPrivKey,
-                __demoTokenAddress,
-                _collateralId,
-                _collateralNonce,
-                _contractTerms
-            );
-    }
-
-    /**
-     * Create a loan contract with contract values and the collateral specified.
-     *
-     * @param _borrowerPrivKey The borrower's private key.
-     * @param _collateralAddress The collateral's address.
-     * @param _collateralId The collateral's token ID.
-     * @param _contractTerms The contract terms.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
-     */
-    function createLoanContract(
-        uint256 _borrowerPrivKey,
-        address _collateralAddress,
-        uint256 _collateralId,
-        ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
-        uint256 _collateralNonce = loanContract.collateralNonce(
-            _collateralAddress,
-            _collateralId
-        );
-
-        // Create loan contract.
-        return
-            createLoanContract(
-                _borrowerPrivKey,
-                _collateralAddress,
-                _collateralId,
-                _collateralNonce,
-                _contractTerms
-            );
-    }
-
-    /**
-     * Create a loan contract with the inputs specified.
-     *
-     * @param _borrowerPrivKey The borrower's private key.
-     * @param _collateralAddress The collateral's address.
-     * @param _collateralId The collateral's token ID.
-     * @param _collateralNonce The collateral's nonce.
-     * @param _contractTerms The contract terms.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
-     */
-    function createLoanContract(
-        uint256 _borrowerPrivKey,
-        address _collateralAddress,
-        uint256 _collateralId,
-        uint256 _collateralNonce,
-        ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
-
-        // Create contract params.
-        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
-            .ContractParams({
-                principal: _contractTerms.principal,
-                contractTerms: _packedContractTerms,
-                collateralAddress: _collateralAddress,
-                collateralId: _collateralId,
-                collateralNonce: _collateralNonce
-            });
-
-        // Create borrower's signature
-        bytes memory _signature = createContractSignature(
-            _borrowerPrivKey,
-            _contractParams
-        );
-
-        // Create loan contract.
-        return
-            initContract(
-                _contractTerms.principal,
-                _contractParams.collateralAddress,
-                _contractParams.collateralId,
-                _contractParams.contractTerms,
-                _signature
-            );
     }
 }
 

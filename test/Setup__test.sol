@@ -20,7 +20,7 @@ import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol"
 import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 
 import {DemoToken} from "@test-utils/DemoToken.sol";
-import {IERC1155Events} from "@test-utils-interfaces/IERC1155Events__test.sol";
+import {IERC1155Events} from "@test-utils/events/ERC1155EventsSuite__test.sol";
 import {IAccessControlEvents} from "@test-utils-interfaces/IAccessControlEvents__test.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";

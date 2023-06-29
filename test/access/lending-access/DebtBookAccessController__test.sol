@@ -60,38 +60,29 @@ contract DebtBookAccessControllerUnitTest is DebtBookAccessControllerInit {
             "0 :: anzaToken should be address(0)."
         );
 
-        try
-            debtBookAccessControllerHarness.exposed__setAnzaToken(
-                _anzaTokenAddress
-            )
-        {
-            assertEq(
-                address(debtBookAccessControllerHarness.anzaToken()),
-                _anzaTokenAddress,
-                "1 :: anzaToken does not match expected address"
-            );
-        } catch (bytes memory _err) {
-            if (_anzaTokenAddress == address(0)) {
-                assertEq(
-                    bytes4(_err),
-                    _INVALID_ADDRESS_ERROR_ID_,
-                    "2 :: 'invalid address failure' expected."
-                );
-            }
-        }
+        debtBookAccessControllerHarness.exposed__setAnzaToken(
+            _anzaTokenAddress
+        );
+
+        assertEq(
+            address(debtBookAccessControllerHarness.anzaToken()),
+            _anzaTokenAddress,
+            "1 :: anzaToken does not match expected address"
+        );
     }
 
     /* -------- DebtBookAccessController._setCollateralVault() -------- */
     /**
      * Fuzz test for setting the anza token address.
      *
-     * @param _collateralVault The address of the CollateralVault contract.
+     * @param _collateralVaultAddress The address of the CollateralVault
+     * contract.
      *
      * @dev Full pass if the address is set correctly.
      * @dev Caught fail/pass if the function reverts with the expected error.
      */
     function testDebtBookAccessController__Fuzz_SetCollateralVault(
-        address _collateralVault
+        address _collateralVaultAddress
     ) public {
         assertEq(
             debtBookAccessControllerHarness.collateralVault(),
@@ -99,24 +90,14 @@ contract DebtBookAccessControllerUnitTest is DebtBookAccessControllerInit {
             "0 :: collateral vault should be address(0)."
         );
 
-        try
-            debtBookAccessControllerHarness.exposed__setCollateralVault(
-                _collateralVault
-            )
-        {
-            assertEq(
-                debtBookAccessControllerHarness.collateralVault(),
-                _collateralVault,
-                "1 :: collateral vault does not match expected address."
-            );
-        } catch (bytes memory _err) {
-            if (_collateralVault == address(0)) {
-                assertEq(
-                    bytes4(_err),
-                    _INVALID_ADDRESS_ERROR_ID_,
-                    "2 :: 'invalid address failure' expected."
-                );
-            }
-        }
+        debtBookAccessControllerHarness.exposed__setCollateralVault(
+            _collateralVaultAddress
+        );
+
+        assertEq(
+            debtBookAccessControllerHarness.collateralVault(),
+            _collateralVaultAddress,
+            "1 :: collateral vault does not match expected address."
+        );
     }
 }

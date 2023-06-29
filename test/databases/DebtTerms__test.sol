@@ -6,6 +6,7 @@ import {stdError} from "forge-std/StdError.sol";
 import {Test} from "forge-std/Test.sol";
 
 import "@lending-constants/LoanContractStates.sol";
+import {_UINT128_MAX_} from "@universal-numbers/StdNumbers.sol";
 
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
 
@@ -33,18 +34,18 @@ abstract contract DebtTermsInit is Setup {
     LoanCodecHarness public loanCodecHarness;
 
     function setUp() public virtual override {
+        super.setUp();
+
         // Deploy DebtTerms
         debtTermsHarness = new DebtTermsHarness();
 
         // Deploy LoanCodec
         loanCodecHarness = new LoanCodecHarness();
-
-        super.setUp();
     }
 
     function cleanContractTerms(
         ContractTerms memory _contractTerms
-    ) public view {
+    ) public view virtual {
         // Only allow valid fir intervals.
         vm.assume(
             _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
@@ -181,7 +182,7 @@ contract DebtTermsUnitTest is DebtTermsInit {
      * @dev Full pass if the debt terms are equal to the expected packed contract
      * terms.
      */
-    function testDebtTerms__Fuzz_DebtTerms(
+    function testDebtTerms__DebtTerms_Fuzz(
         uint256 _debtId,
         bytes32 _packedContractTerms
     ) public {
@@ -204,7 +205,7 @@ contract DebtTermsUnitTest is DebtTermsInit {
      *
      * @dev Full pass if the debt term getters return the expected values.
      */
-    function testDebtTerm__Fuzz_Getters(
+    function testDebtTerm__Getters_Fuzz(
         uint256 _debtId,
         Setup.ContractTerms memory _contractTerms
     ) public {

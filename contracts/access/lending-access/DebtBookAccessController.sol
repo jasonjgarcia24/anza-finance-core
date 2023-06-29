@@ -37,7 +37,7 @@ abstract contract DebtBookAccessController {
      *
      * @param _anzaTokenAddress The address of the Anza Token contract.
      */
-    function setAnzaToken(address _anzaTokenAddress) public virtual;
+    function setAnzaToken(address _anzaTokenAddress) external virtual;
 
     /**
      * Call to set the Collateral Vault contract.
@@ -45,36 +45,29 @@ abstract contract DebtBookAccessController {
      * @param _collateralVaultAddress The address of the Collateral Vault
      * contract.
      */
-    function setCollateralVault(address _collateralVaultAddress) public virtual;
+    function setCollateralVault(
+        address _collateralVaultAddress
+    ) external virtual;
 
     /**
      * Sets the Anza Token contract.
      *
+     * @notice Internal function without access restriction.
+     *
      * @param _anzaTokenAddress The address of the Anza Token contract.
      */
     function _setAnzaToken(address _anzaTokenAddress) internal {
-        __verifyAddress(_anzaTokenAddress);
-
         _anzaToken = IAnzaToken(_anzaTokenAddress);
     }
 
     /**
      * Sets the Collateral Vault contract.
      *
+     * @notice Internal function without access restriction.
+     *
      * @param _collateralVaultAddress The address of the Collateral Vault contract.
      */
     function _setCollateralVault(address _collateralVaultAddress) internal {
-        __verifyAddress(_collateralVaultAddress);
-
         _collateralVault = ICollateralVault(_collateralVaultAddress);
-    }
-
-    function __verifyAddress(address _account) private pure {
-        assembly {
-            if iszero(_account) {
-                mstore(0x20, _INVALID_ADDRESS_ERROR_ID_)
-                revert(0x20, 0x04)
-            }
-        }
     }
 }

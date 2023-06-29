@@ -4,7 +4,6 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_, _TREASURER_} from "@lending-constants/LoanContractRoles.sol";
-import {_INVALID_ADDRESS_ERROR_ID_} from "@custom-errors/StdAccessErrors.sol";
 
 import {ManagerAccessController} from "@lending-access/ManagerAccessController.sol";
 
@@ -67,10 +66,14 @@ contract LoanManagerAccessControllerUnitTest is
                 _loanTreasurerAddress
             )
         {
+            assertTrue(
+                loanManagerAccessControllerHarness.hasRole(_ADMIN_, _caller),
+                "1 :: caller should have admin role"
+            );
             assertEq(
                 loanManagerAccessControllerHarness.loanTreasurer(),
                 _loanTreasurerAddress,
-                "1 :: loan treasurer does not match expected address"
+                "2 :: loan treasurer does not match expected address"
             );
 
             assertTrue(
@@ -78,7 +81,7 @@ contract LoanManagerAccessControllerUnitTest is
                     _TREASURER_,
                     _loanTreasurerAddress
                 ),
-                "2 :: loan treasurer should have treasurer role"
+                "3 :: loan treasurer should have treasurer role"
             );
         } catch Error(string memory _errStr) {
             if (_caller != admin) {
@@ -89,7 +92,7 @@ contract LoanManagerAccessControllerUnitTest is
                             getAccessControlFailMsg(_ADMIN_, _caller)
                         )
                     ),
-                    "3 :: access control standard failure expected."
+                    "4 :: access control standard failure expected."
                 );
             } else {
                 unexpectedFail(
@@ -102,6 +105,11 @@ contract LoanManagerAccessControllerUnitTest is
 
         // Set with admin
         vm.startPrank(admin);
+        assertTrue(
+            loanManagerAccessControllerHarness.hasRole(_ADMIN_, admin),
+            "5 :: admin should have admin role"
+        );
+
         loanManagerAccessControllerHarness.grantRole(
             _TREASURER_,
             _loanTreasurerAddress
@@ -110,7 +118,7 @@ contract LoanManagerAccessControllerUnitTest is
         assertEq(
             loanManagerAccessControllerHarness.loanTreasurer(),
             _loanTreasurerAddress,
-            "4 :: loan treasurer does not match expected address"
+            "6 :: loan treasurer does not match expected address"
         );
 
         assertTrue(
@@ -118,7 +126,7 @@ contract LoanManagerAccessControllerUnitTest is
                 _TREASURER_,
                 _loanTreasurerAddress
             ),
-            "5 :: loan treasurer should have treasurer role"
+            "7 :: loan treasurer should have treasurer role"
         );
 
         // Change with admin
@@ -130,7 +138,7 @@ contract LoanManagerAccessControllerUnitTest is
         assertEq(
             loanManagerAccessControllerHarness.loanTreasurer(),
             _alt_loanTreasurerAddress,
-            "6 :: alt loan treasurer does not match expected address"
+            "8 :: alt loan treasurer does not match expected address"
         );
 
         assertTrue(
@@ -138,7 +146,7 @@ contract LoanManagerAccessControllerUnitTest is
                 _TREASURER_,
                 _alt_loanTreasurerAddress
             ),
-            "7 :: alt loan treasurer should have treasurer role"
+            "9 :: alt loan treasurer should have treasurer role"
         );
 
         assertFalse(
@@ -146,7 +154,7 @@ contract LoanManagerAccessControllerUnitTest is
                 _TREASURER_,
                 _loanTreasurerAddress
             ),
-            "8 :: loan treasurer should not have treasurer role"
+            "10 :: loan treasurer should not have treasurer role"
         );
         vm.stopPrank();
     }

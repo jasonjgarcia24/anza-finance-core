@@ -52,7 +52,7 @@ abstract contract LoanManager is
      */
     function setAnzaToken(
         address _anzaToken
-    ) public virtual override onlyRole(_ADMIN_) {
+    ) external override onlyRole(_ADMIN_) {
         super._setAnzaToken(_anzaToken);
     }
 
@@ -67,7 +67,7 @@ abstract contract LoanManager is
      */
     function setCollateralVault(
         address _collateralVault
-    ) public override onlyRole(_ADMIN_) {
+    ) external override onlyRole(_ADMIN_) {
         super._setCollateralVault(_collateralVault);
     }
 

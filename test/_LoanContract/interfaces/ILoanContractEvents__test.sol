@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.5.0) (token/ERC721/extensions/IERC721Enumerable.sol)
+pragma solidity 0.8.20;
 
-pragma solidity ^0.8.0;
+bytes32 constant CONTRACT_INTIALIZED_EVENT_SIG = keccak256(
+    "ContractInitialized(address,uint256,uint256,uint256)"
+);
+
+bytes32 constant PROPOSAL_REVOKED_EVENT_SIG = keccak256(
+    "ProposalRevoked(address,uint256,uint256,bytes32)"
+);
 
 interface ILoanContractEvents {
     event ContractInitialized(
@@ -11,16 +17,10 @@ interface ILoanContractEvents {
         uint256 activeLoanIndex
     );
 
-    event PaymentSubmitted(
-        uint256 indexed debtId,
-        address indexed borrower,
-        address indexed lender,
-        uint256 amount
-    );
-
-    event LoanStateChanged(
-        uint256 indexed debtId,
-        uint8 indexed newLoanState,
-        uint8 indexed oldLoanState
+    event ProposalRevoked(
+        address indexed collateralAddress,
+        uint256 indexed collateralId,
+        uint256 indexed collateralNonce,
+        bytes32 contractTerms
     );
 }

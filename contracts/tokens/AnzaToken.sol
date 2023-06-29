@@ -116,7 +116,12 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         _mint(_to, lenderTokenId(_debtId), _amount, "");
 
         // Mint ADT for borrower
-        _mint(address(bytes20(_data)), borrowerTokenId(_debtId), 1, "");
+        _mint(
+            address(bytes20(_data)) /* borrower */,
+            borrowerTokenId(_debtId),
+            1,
+            ""
+        );
         _setURI(borrowerTokenId(_debtId), _collateralURI);
     }
 
@@ -164,8 +169,6 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
 
                 // Ownership: set the token owner.
                 _setOwner(_id, _to);
-                console.log(_to);
-                console.log(_id);
             }
             /** Transfering */
             else if (_to != address(0)) {

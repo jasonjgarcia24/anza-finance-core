@@ -7,8 +7,6 @@ interface IDebtBook {
         uint256 collateralNonce;
     }
 
-    function totalDebts() external returns (uint256);
-
     function debtBalance(uint256 debtId) external view returns (uint256);
 
     function lenderDebtBalance(

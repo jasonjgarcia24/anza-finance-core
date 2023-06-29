@@ -157,7 +157,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Full pass if the max refinances function matches the expected
      * value.
      */
-    function testLoanManager__Fuzz_MaxRefinances() public {
+    function testLoanManager_MaxRefinances_Fuzz() public {
         assertEq(
             loanManagerHarness.maxRefinances(),
             _MAX_REFINANCES_,
@@ -178,14 +178,24 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Caught fail/pass if the function reverts with the expected error
      * message.
      */
-    function testLoanManager__Fuzz_SetAnzaToken(
+    function testLoanManager_SetAnzaToke_Fuzzn(
         address _caller,
         address _anzaToken
     ) public {
+        // Clear role
+        vm.startPrank(admin);
+        loanManagerHarness.setAnzaToken(address(0));
+        vm.stopPrank();
+
         // Test the caller of the setter function.
         vm.startPrank(_caller);
         try loanManagerHarness.setAnzaToken(_anzaToken) {
             assertEq(_caller, admin, "0 :: caller should be the admin.");
+            assertEq(
+                loanManagerHarness.anzaToken(),
+                _anzaToken,
+                "1 :: anzaToken should be set to the correct address."
+            );
             vm.stopPrank();
             return;
         } catch Error(string memory _errStr) {
@@ -197,7 +207,12 @@ contract LoanManagerUnitTest is LoanManagerInit {
                             getAccessControlFailMsg(_ADMIN_, _caller)
                         )
                     ),
-                    "1 :: access control standard failure expected."
+                    "2 :: access control standard failure expected."
+                );
+                assertEq(
+                    loanManagerHarness.anzaToken(),
+                    address(0),
+                    "3 :: anzaToken should not be set."
                 );
             } else {
                 unexpectedFail(
@@ -210,26 +225,15 @@ contract LoanManagerUnitTest is LoanManagerInit {
 
         // Test the address used by the setter function.
         vm.startPrank(admin);
-        try loanManagerHarness.setAnzaToken(_anzaToken) {
-            assertEq(
-                loanManagerHarness.anzaToken(),
-                _anzaToken,
-                "2 :: anzaToken should be set to the correct address."
-            );
-        } catch (bytes memory _err) {
-            if (_anzaToken == address(0)) {
-                assertEq(
-                    bytes4(_err),
-                    _INVALID_ADDRESS_ERROR_ID_,
-                    "3 :: Anza Token address cannot be the zero address."
-                );
-            } else {
-                unexpectedFail(
-                    "not 'invalid address selector failure' expected.",
-                    _err
-                );
-            }
-        }
+
+        loanManagerHarness.setAnzaToken(_anzaToken);
+
+        assertEq(
+            loanManagerHarness.anzaToken(),
+            _anzaToken,
+            "4 :: anzaToken should be set to the correct address."
+        );
+
         vm.stopPrank();
     }
 
@@ -246,10 +250,15 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Caught fail/pass if the function reverts with the expected error
      * message.
      */
-    function testLoanManager__Fuzz_SetCollateralVault(
+    function testLoanManager_SetCollateralVault_Fuzz(
         address _caller,
         address _collateralVault
     ) public {
+        // Clear role
+        vm.startPrank(admin);
+        loanManagerHarness.setCollateralVault(address(0));
+        vm.stopPrank();
+
         // Test the caller of the setter function.
         vm.startPrank(_caller);
         try loanManagerHarness.setCollateralVault(_collateralVault) {
@@ -278,26 +287,15 @@ contract LoanManagerUnitTest is LoanManagerInit {
 
         // Test the address used by the setter function.
         vm.startPrank(admin);
-        try loanManagerHarness.setCollateralVault(_collateralVault) {
-            assertEq(
-                loanManagerHarness.collateralVault(),
-                _collateralVault,
-                "2 :: collateralVault should be set to the correct address."
-            );
-        } catch (bytes memory _err) {
-            if (_collateralVault == address(0)) {
-                assertEq(
-                    bytes4(_err),
-                    _INVALID_ADDRESS_ERROR_ID_,
-                    "3 :: Collateral Vault address cannot be the zero address."
-                );
-            } else {
-                unexpectedFail(
-                    "not 'invalid address selector failure', should not fail.",
-                    _err
-                );
-            }
-        }
+
+        loanManagerHarness.setCollateralVault(_collateralVault);
+
+        assertEq(
+            loanManagerHarness.collateralVault(),
+            _collateralVault,
+            "2 :: collateralVault should be set to the correct address."
+        );
+
         vm.stopPrank();
     }
 
@@ -317,7 +315,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
      *
      * @dev Full pass if the loan state is updated as expected.
      * @dev Caught fail/pass if the function reverts with the expected error.
-     */ function _testLoanManager_UpdateLoanState(
+     */
+    function _testLoanManager_UpdateLoanState(
         uint256 _now,
         uint256 _debtId,
         ContractTerms memory _contractTerms
@@ -393,7 +392,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Full pass if the loan state is updated as expected.
      * @dev Caught fail/pass if the function reverts with the expected error.
      */
-    function testLoanManager__FuzzUpdateLoanState(
+    function testLoanManager_UpdateLoanState_Fuzz(
         uint256 _amount,
         uint256 _debtId,
         ContractTerms memory _contractTerms
@@ -482,7 +481,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Full pass if the loan state is updated as expected.
      * @dev Caught fail/pass if the function reverts with the expected error.
      */
-    function testLoanManager__PayoffActive_FuzzUpdateLoanState(
+    function testLoanManager_UpdateLoanState_Fuzz_PayoffActive(
         uint256 _amount,
         uint256 _debtId,
         uint8 _partialPayoff,
@@ -641,7 +640,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Full pass if the loan state is updated as expected.
      * @dev Caught fail/pass if the function reverts with the expected error.
      */
-    function testLoanManager__PayoffExpired_FuzzUpdateLoanState(
+    function testLoanManager_UpdateLoanState_Fuzz_PayoffExpired(
         uint256 _amount,
         uint256 _debtId,
         uint8 _partialPayoff,
@@ -762,7 +761,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Full pass if the loan state is updated as expected.
      * @dev Caught fail/pass if the function reverts with the expected error.
      */
-    function testLoanManager__FuzzVerifyLoanActive(
+    function testLoanManager_VerifyLoanActive_Fuzz(
         uint256 _debtId,
         uint8 _newLoanState,
         ContractTerms memory _contractTerms
@@ -775,6 +774,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
             ? _ACTIVE_STATE_
             : _ACTIVE_GRACE_STATE_;
 
+        _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
         vm.assume(_newLoanState != _oldLoanState);
         bool _isActiveState = _newLoanState != _ACTIVE_GRACE_STATE_ ||
             _newLoanState != _ACTIVE_STATE_;
@@ -833,7 +833,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      * @dev Full pass if the loan state is updated as expected.
      * @dev Caught fail/pass if the function reverts with the expected error.
      */
-    function testLoanManager__FuzzVerifyLoanNotExpired(
+    function testLoanManager_VerifyLoanNotExpired_Fuzz(
         uint256 _debtId,
         uint256 _amount,
         uint8 _newLoanState,
@@ -930,7 +930,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      *
      * @dev Full pass if the collateral nonce availability is as expected.
      */
-    function testLoanManager__FuzzCheckProposalActive(
+    function testLoanManager_CheckProposalActive_Fuzz(
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _collateralNonce
@@ -1004,7 +1004,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      *
      * @dev Full pass if the loan state is as expected.
      */
-    function testLoanManager__FuzzCheckLoanActive(
+    function testLoanManager_CheckLoanActive_Fuzz(
         uint256 _debtId,
         uint8 _newLoanState,
         ContractTerms memory _contractTerms
@@ -1071,7 +1071,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      *
      * @dev Full pass if the loan state is as expected.
      */
-    function testLoanManager__FuzzCheckLoanDefault(
+    function testLoanManager_CheckLoanDefault_Fuzz(
         uint256 _debtId,
         uint8 _newLoanState,
         ContractTerms memory _contractTerms
@@ -1138,7 +1138,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      *
      * @dev Full pass if the loan state is as expected.
      */
-    function testLoanManager__FuzzCheckLoanClosed(
+    function testLoanManager_CheckLoanClosed_Fuzz(
         uint256 _debtId,
         uint8 _newLoanState,
         ContractTerms memory _contractTerms
@@ -1204,7 +1204,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      *
      * @dev Full pass if the loan state is updated as expected.
      */
-    function testLoanManager__FuzzCheckLoanExpired(
+    function testLoanManager_CheckLoanExpired_Fuzz(
         uint256 _debtId,
         uint256 _amount,
         ContractTerms memory _contractTerms
@@ -1293,7 +1293,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
      *
      * @dev Full pass if the loan state is updated as expected.
      */
-    function testLoanManager__FuzzCheckLoanGracePeriod(
+    function testLoanManager__CheckLoanGracePeriod_Fuzz(
         uint256 _debtId,
         ContractTerms memory _contractTerms
     ) public {

@@ -16,7 +16,7 @@ import {DebtBookAccessController} from "@lending-access/DebtBookAccessController
  */
 abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     // Count of total inactive/active debts
-    uint256 public totalDebts;
+    uint256 internal _totalDebts;
 
     // Mapping from collateral to debt
     mapping(address collateralAddress => mapping(uint256 collateralId => DebtMap[]))
@@ -227,7 +227,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         address _collateralAddress,
         uint256 _collateralId
     ) internal returns (uint256, uint256) {
-        return _writeDebt(_collateralAddress, _collateralId, ++totalDebts);
+        return _writeDebt(_collateralAddress, _collateralId, ++_totalDebts);
     }
 
     /**
@@ -299,7 +299,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
 
         // Set debt fields
         _debtMaps.push(
-            DebtMap({debtId: ++totalDebts, collateralNonce: _collateralNonce})
+            DebtMap({debtId: ++_totalDebts, collateralNonce: _collateralNonce})
         );
 
         return (_debtMaps.length, _collateralNonce);

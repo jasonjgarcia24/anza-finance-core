@@ -1,1283 +1,545 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
+import {Vm} from "forge-std/Vm.sol";
 
-import "@lending-constants/LoanContractFIRIntervals.sol";
 import "@lending-constants/LoanContractRoles.sol";
-import "@lending-constants/LoanContractStates.sol";
-import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
-import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
+import {_UINT128_MAX_, _SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
 
 import {LoanContract} from "@base/LoanContract.sol";
-import {CollateralVault} from "@services/CollateralVault.sol";
-import {LoanTreasurey} from "@services/LoanTreasurey.sol";
-import {AnzaToken} from "@tokens/AnzaToken.sol";
 import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
-import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
-import {ILoanTreasurey} from "@services-interfaces/ILoanTreasurey.sol";
-import {LibLoanContractStates, LibLoanContractFIRIntervals, LibLoanContractFIRIntervalMultipliers} from "@helper-libraries/LibLoanContractConstants.sol";
+import {ILoanNotary} from "@services/interfaces/ILoanNotary.sol";
+import {AnzaToken} from "@tokens/AnzaToken.sol";
+import {CollateralVault} from "@services/CollateralVault.sol";
+import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 
-import {Utils, Setup} from "@test-base/Setup__test.sol";
-import {DemoToken} from "@test-utils/DemoToken.sol";
-import {ILoanContractEvents} from "@test-contract-interfaces/ILoanContractEvents__test.sol";
+import {Setup} from "@test-base/Setup__test.sol";
+import {LoanCodecHarness} from "@test-base/_LoanCodec/LoanCodec__test.sol";
 import {LoanNotaryUtils} from "@test-base/_LoanNotary/LoanNotary__test.sol";
-import {RefinanceNotaryUtils} from "@test-base/_LoanNotary/RefinanceNotary__test.sol";
+import {LoanCodecUtils} from "@test-base/_LoanCodec/LoanCodec__test.sol";
+import {DebtTermsInit} from "@test-databases/DebtTerms__test.sol";
+import {DemoToken} from "@test-utils/DemoToken.sol";
+import {CONTRACT_INTIALIZED_EVENT_SIG} from "@test-base/_LoanContract/interfaces/ILoanContractEvents__test.sol";
+import {BytesUtils} from "@test-utils/test-utils/BytesUtils.sol";
+import {ERC1155EventsSuite} from "@test-utils/events/ERC1155EventsSuite__test.sol";
+import {ERC721EventsSuite} from "@test-utils/events/ERC721EventsSuite__test.sol";
+import {LoanContractEventsSuite} from "@test-utils/events/LoanContractEventsSuite__test.sol";
+import {CollateralVaultEventsSuite} from "@test-utils/events/CollateralVaultEventsSuite__test.sol";
 
-abstract contract LoanContractDeployer is Setup, ILoanContractEvents {
-    function setUp() public virtual override {
-        super.setUp();
-    }
-}
+string constant LOAN_CONTRACT_NAME = "LoanContract";
+string constant LOAN_CONTRACT_VERSION = "0";
 
-abstract contract LoanSigned is LoanContractDeployer {
-    LoanNotaryUtils public loanNotaryUtils =
-        new LoanNotaryUtils(address(demoToken), loanDomainSeparator);
-
-    RefinanceNotaryUtils public loanRefinanceUtils =
-        new RefinanceNotaryUtils(
-            address(anzaToken),
-            address(anzaDebtMarket),
-            address(anzaRefinanceStorefront),
-            refinanceDomainSeparator
-        );
-
-    function setUp() public virtual override {
-        super.setUp();
-
-        collateralNonce = loanContract.collateralNonce(
-            address(demoToken),
-            collateralId
-        );
-    }
-}
-
-abstract contract LoanContractSubmitted is LoanSigned {
-    function setUp() public virtual override {
-        super.setUp();
-
-        uint256 _debtId = loanContract.totalDebts();
-        assertEq(_debtId, 0);
-
-        (bool _success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            collateralId
-        );
-        assertTrue(_success, "Contract creation failed.");
-        _debtId = loanContract.totalDebts();
-    }
-}
-
-contract LoanContractConstantsTest is Test {
-    function setUp() public virtual {}
-}
-
-contract LoanContractSetterUnitTest is LoanContractDeployer {
-    uint256 public localCollateralId = collateralId;
-
-    function setUp() public virtual override {
-        super.setUp();
-
-        vm.startPrank(borrower);
-        demoToken.mint(300);
-        vm.stopPrank();
+contract LoanContractHarness is LoanContract {
+    function exposed__validateLoanTerms(
+        bytes32 _contractTerms,
+        uint64 _loanStart,
+        uint256 _principal
+    ) public pure {
+        _validateLoanTerms(_contractTerms, _loanStart, _principal);
     }
 
-    function testLoanContract__SetLoanTreasurer() public {
-        assertTrue(
-            loanContract.loanTreasurer() == address(loanTreasurer),
-            "0 :: Should be loan treasurer"
-        );
-
-        // Allow
-        vm.deal(admin, 1 ether);
-        vm.startPrank(admin);
-        loanContract.grantRole(_TREASURER_, address(0));
-
-        assertTrue(
-            loanContract.loanTreasurer() == address(0),
-            "1 :: Should be address zero"
-        );
-
-        // Allow
-        loanContract.grantRole(_TREASURER_, address(loanTreasurer));
-        vm.stopPrank();
-
-        assertTrue(
-            loanContract.loanTreasurer() == address(loanTreasurer),
-            "2 :: Should be loan treasurer"
-        );
+    function exposed__getTotalFirIntervals(
+        uint256 _firInterval,
+        uint256 _seconds
+    ) public pure returns (uint256) {
+        return _getTotalFirIntervals(_firInterval, _seconds);
     }
 
-    function testLoanContract__FuzzSetLoanTreasurerDeny(
-        address _account
+    function exposed__setLoanAgreement(
+        uint64 _now,
+        uint256 _debtId,
+        uint256 _activeLoanIndex,
+        bytes32 _contractTerms
     ) public {
-        vm.assume(_account != admin);
-
-        assertTrue(
-            loanContract.loanTreasurer() == address(loanTreasurer),
-            "0 :: Should be loan treasurer"
-        );
-
-        // Disallow
-        vm.deal(_account, 1 ether);
-        vm.startPrank(_account);
-        vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
-        );
-        loanContract.grantRole(_TREASURER_, address(loanTreasurer));
-        vm.stopPrank();
-
-        assertTrue(
-            loanContract.loanTreasurer() == address(loanTreasurer),
-            "1 :: Should be loan treasurer"
-        );
+        _setLoanAgreement(_now, _debtId, _activeLoanIndex, _contractTerms);
     }
 
-    function testLoanContract__SetAnzaToken() public {
-        assertTrue(
-            loanContract.anzaToken() == address(anzaToken),
-            "0 :: Should be AnzaToken"
-        );
+    function exposed__updateLoanState(
+        uint256 _debtId,
+        uint8 _newLoanState
+    ) public {
+        _updateLoanState(_debtId, _newLoanState);
+    }
 
-        // Allow
-        vm.deal(admin, 1 ether);
+    function exposed__updateLoanTimes(
+        uint256 _debtId,
+        uint256 _updateType
+    ) public {
+        _updateLoanTimes(_debtId, _updateType);
+    }
+
+    /* Abstract functions */
+    /* ^^^^^^^^^^^^^^^^^^ */
+}
+
+abstract contract LoanContractInit is DebtTermsInit {
+    LoanContractHarness public loanContractHarness;
+    LoanContractUtils public loanContractUtils;
+    Notary.DomainSeparator internal _loanDomainSeparator;
+    DemoToken internal _demoToken;
+
+    function setUp() public virtual override {
+        Setup.setUp();
+
         vm.startPrank(admin);
-        loanContract.setAnzaToken(address(0));
 
-        assertTrue(
-            loanContract.anzaToken() == address(0),
-            "1 :: Should be address zero"
-        );
+        // Deploy AnzaToken
+        anzaToken = new AnzaToken("www.anza.io");
 
-        // Allow
-        loanContract.setAnzaToken(address(anzaToken));
+        // Deploy LoanContractHarness.
+        loanContractHarness = new LoanContractHarness();
+
+        // Deploy CollateralVault
+        collateralVault = new CollateralVault(address(anzaToken));
+
+        // Set AnzaToken access control roles
+        anzaToken.grantRole(_LOAN_CONTRACT_, address(loanContractHarness));
+        anzaToken.grantRole(_COLLATERAL_VAULT_, address(collateralVault));
+
+        // Set LoanContract access control roles
+        loanContractHarness.setAnzaToken(address(anzaToken));
+        loanContractHarness.setCollateralVault(address(collateralVault));
+
+        // Set LoanContract access control roles
+        loanContractHarness.setAnzaToken(address(anzaToken));
+        loanContractHarness.setCollateralVault(address(collateralVault));
+
+        // Set CollateralVault access control roles
+        collateralVault.setLoanContract(address(loanContractHarness));
+
         vm.stopPrank();
 
-        assertTrue(
-            loanContract.anzaToken() == address(anzaToken),
-            "2 :: Should be AnzaToken"
-        );
-    }
+        // Deploy DemoToken with no token balance.
+        _demoToken = new DemoToken(0);
 
-    function testLoanContract__FuzzSetAnzaTokenDeny(address _account) public {
-        vm.assume(_account != admin);
+        // Deploy LoanContractUtils.
+        _loanDomainSeparator = Notary.DomainSeparator({
+            name: LOAN_CONTRACT_NAME,
+            version: LOAN_CONTRACT_VERSION,
+            chainId: block.chainid,
+            contractAddress: address(loanContractHarness)
+        });
 
-        assertTrue(
-            loanContract.anzaToken() == address(anzaToken),
-            "0 :: Should be AnzaToken"
-        );
-
-        // Disallow
-        vm.deal(_account, 1 ether);
-        vm.startPrank(_account);
-        vm.expectRevert(
-            bytes(Utils.getAccessControlFailMsg(_ADMIN_, _account))
-        );
-        loanContract.setAnzaToken(address(anzaToken));
-        vm.stopPrank();
-
-        assertTrue(
-            loanContract.anzaToken() == address(anzaToken),
-            "1 :: Should be AnzaToken"
+        loanContractUtils = new LoanContractUtils(
+            address(loanContractHarness),
+            address(_demoToken),
+            _loanDomainSeparator
         );
     }
 }
 
-contract LoanContractViewsUnitTest is LoanSigned {
+contract LoanContractUtils is LoanNotaryUtils, LoanCodecUtils {
+    LoanContract internal immutable _loanContract;
+
+    constructor(
+        address _loanContractAddress,
+        address _demoTokenAddress_,
+        Notary.DomainSeparator memory _loanDomainSeparator
+    ) LoanNotaryUtils(_demoTokenAddress_, _loanDomainSeparator) {
+        _loanContract = LoanContract(_loanContractAddress);
+    }
+
+    function initContract(
+        uint256 _debtId,
+        bytes32 _packedContractTerms,
+        bytes memory _signature
+    ) public virtual returns (bool _success, bytes memory _data) {
+        // Create loan contract
+        vm.startPrank(lender);
+        (_success, _data) = address(_loanContract).call{value: _PRINCIPAL_}(
+            abi.encodeWithSignature(
+                "initContract(uint256,bytes32,bytes)",
+                _debtId,
+                _packedContractTerms,
+                _signature
+            )
+        );
+
+        vm.stopPrank();
+    }
+
+    function initContract(
+        uint256 _debtId,
+        uint256 _principal,
+        bytes32 _packedContractTerms,
+        bytes memory _signature
+    ) public virtual returns (bool _success, bytes memory _data) {
+        // Create loan contract
+        vm.deal(lender, _principal + (1 ether));
+        vm.startPrank(lender);
+        (_success, _data) = address(_loanContract).call{value: _principal}(
+            abi.encodeWithSignature(
+                "initContract(uint256,bytes32,bytes)",
+                _debtId,
+                _packedContractTerms,
+                _signature
+            )
+        );
+        vm.stopPrank();
+    }
+
+    function initContract(
+        uint256 _principal,
+        address _collateralAddress,
+        uint256 _collateralId,
+        bytes32 _packedContractTerms,
+        bytes memory _signature
+    ) public virtual returns (bool _success, bytes memory _data) {
+        // Create loan contract
+        vm.deal(lender, _principal);
+        vm.startPrank(lender);
+
+        (_success, _data) = address(_loanContract).call{value: _principal}(
+            abi.encodeWithSignature(
+                "initContract(address,uint256,bytes32,bytes)",
+                _collateralAddress,
+                _collateralId,
+                _packedContractTerms,
+                _signature
+            )
+        );
+
+        vm.stopPrank();
+    }
+
+    /**
+     * Create a loan contract with default contract values.
+     *
+     * @param _borrowerPrivKey The borrower's private key.
+     * @param _collateralId The collateral id.
+     *
+     * @return _success The success of the transaction.
+     * @return _data The data returned from the transaction.
+     */
+    function createLoanContract(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId
+    ) public virtual returns (bool, bytes memory) {
+        bytes32 _packedContractTerms = createContractTerms();
+
+        uint256 _collateralNonce = _loanContract.collateralNonce(
+            _demoTokenAddress,
+            _collateralId
+        );
+
+        // Create contract params.
+        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
+            .ContractParams({
+                principal: _PRINCIPAL_,
+                contractTerms: _packedContractTerms,
+                collateralAddress: _demoTokenAddress,
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            });
+
+        // Create borrower's signature
+        bytes memory _signature = createContractSignature(
+            _borrowerPrivKey,
+            _contractParams
+        );
+
+        // Create loan contract.
+        return
+            initContract(
+                _PRINCIPAL_,
+                _demoTokenAddress,
+                _collateralId,
+                _packedContractTerms,
+                _signature
+            );
+    }
+
+    /**
+     * Create a loan contract with contract values and the collateral ID
+     * specified.
+     *
+     * @param _borrowerPrivKey The borrower's private key.
+     * @param _collateralId The collateral's token ID.
+     * @param _contractTerms The contract terms.
+     *
+     * @return _success The success of the transaction.
+     * @return _data The data returned from the transaction.
+     */
+    function createLoanContract(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId,
+        ContractTerms memory _contractTerms
+    ) public virtual returns (bool, bytes memory) {
+        uint256 _collateralNonce = _loanContract.collateralNonce(
+            _demoTokenAddress,
+            _collateralId
+        );
+
+        // Create loan contract.
+        return
+            createLoanContract(
+                _borrowerPrivKey,
+                _demoTokenAddress,
+                _collateralId,
+                _collateralNonce,
+                _contractTerms
+            );
+    }
+
+    /**
+     * Create a loan contract with contract values and the collateral specified.
+     *
+     * @param _borrowerPrivKey The borrower's private key.
+     * @param _collateralAddress The collateral's address.
+     * @param _collateralId The collateral's token ID.
+     * @param _contractTerms The contract terms.
+     *
+     * @return _success The success of the transaction.
+     * @return _data The data returned from the transaction.
+     */
+    function createLoanContract(
+        uint256 _borrowerPrivKey,
+        address _collateralAddress,
+        uint256 _collateralId,
+        ContractTerms memory _contractTerms
+    ) public virtual returns (bool, bytes memory) {
+        uint256 _collateralNonce = _loanContract.collateralNonce(
+            _collateralAddress,
+            _collateralId
+        );
+
+        // Create loan contract.
+        return
+            createLoanContract(
+                _borrowerPrivKey,
+                _collateralAddress,
+                _collateralId,
+                _collateralNonce,
+                _contractTerms
+            );
+    }
+
+    /**
+     * Create a loan contract with the inputs specified.
+     *
+     * @param _borrowerPrivKey The borrower's private key.
+     * @param _collateralAddress The collateral's address.
+     * @param _collateralId The collateral's token ID.
+     * @param _collateralNonce The collateral's nonce.
+     * @param _contractTerms The contract terms.
+     *
+     * @return _success The success of the transaction.
+     * @return _data The data returned from the transaction.
+     */
+    function createLoanContract(
+        uint256 _borrowerPrivKey,
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _collateralNonce,
+        ContractTerms memory _contractTerms
+    ) public virtual returns (bool, bytes memory) {
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        // Create contract params.
+        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
+            .ContractParams({
+                principal: _contractTerms.principal,
+                contractTerms: _packedContractTerms,
+                collateralAddress: _collateralAddress,
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            });
+
+        // Create borrower's signature
+        bytes memory _signature = createContractSignature(
+            _borrowerPrivKey,
+            _contractParams
+        );
+
+        // Create loan contract.
+        return
+            initContract(
+                _contractTerms.principal,
+                _contractParams.collateralAddress,
+                _contractParams.collateralId,
+                _contractParams.contractTerms,
+                _signature
+            );
+    }
+}
+
+contract LoanContractViewsUnitTest is
+    LoanContractInit,
+    ERC1155EventsSuite,
+    ERC721EventsSuite,
+    LoanContractEventsSuite,
+    CollateralVaultEventsSuite
+{
+    using BytesUtils for bytes[2];
+
     uint256 public localCollateralId = collateralId;
 
     function setUp() public virtual override {
         super.setUp();
     }
 
-    function testLoanContract__Pass() public view {}
-
-    function testLoanContract__StateVars() public {
-        assertEq(
-            loanContract.collateralVault(),
-            address(collateralVault),
-            "Should match collateralVault"
+    /**
+     * Fuzz test the init contract function.
+     *
+     * @notice This test conducts testing on the loan contract initialization
+     * of a new initial loan (i.e. leveraging the borrower's collateral).
+     *
+     * @notice Test Function:
+     *  initContract(
+     *      address _collateralAddress,
+     *      uint256 _collateralId,
+     *      bytes32 _contractTerms,
+     *      bytes calldata _borrowerSignature
+     *  )
+     *
+     * @param _borrowerPrivKey The private key of the borrower.
+     * @param _collateralId The id of the collateral.
+     * @param _contractTerms The contract terms.
+     */
+    function testLoanContract__InitContract_Fuzz_InitialLoan(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId,
+        ContractTerms memory _contractTerms
+    ) public {
+        vm.assume(
+            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
         );
 
-        assertEq(
-            loanContract.loanTreasurer(),
-            address(loanTreasurer),
-            "Should match loanTreasurer"
-        );
-
-        assertEq(
-            loanContract.anzaToken(),
-            address(anzaToken),
-            "Should match anzaToken"
-        );
-
-        assertEq(
-            loanContract.maxRefinances(),
-            2008,
-            "maxRefinances should currently be 2008"
-        );
-
-        assertEq(
-            loanContract.totalDebts(),
-            0,
-            "totalDebts should currently be 0"
-        );
-    }
-
-    function testLoanContract__DebtBalanceOf() public {
-        uint256 _debtId = 0;
-
-        assertEq(
-            loanContract.debtBalance(_debtId),
-            0,
-            "0 :: Debt balance for token 0 should be zero"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertEq(
-            loanContract.debtBalance(_debtId),
-            _PRINCIPAL_,
-            "1 :: Debt balance for token 0 should be _PRINCIPAL_"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId + 1);
-        ++_debtId;
-
-        assertEq(
-            loanContract.debtBalance(_debtId),
-            _PRINCIPAL_,
-            "Debt balance for token 2 should be _PRINCIPAL_"
-        );
-    }
-
-    function testLoanContract__GetCollateralNonce() public {
-        assertEq(
-            loanContract.collateralNonce(address(demoToken), collateralId),
+        // Limit principal for vm.deal limitations.
+        _contractTerms.principal = bound(
+            _contractTerms.principal,
             1,
-            "0 :: Collateral nonce should be one"
+            _UINT128_MAX_
         );
 
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
+        address _borrower = vm.addr(_borrowerPrivKey);
 
-        assertEq(
-            loanContract.collateralNonce(address(demoToken), collateralId),
-            2,
-            "1 :: Collateral nonce should be two"
-        );
-
-        assertEq(
-            loanContract.collateralNonce(address(demoToken), collateralId + 1),
-            1,
-            "2 :: Collateral nonce should be one"
-        );
-    }
-
-    function testLoanContract__GetCollateralDebtId() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(StdLoanErrors.InvalidCollateral.selector)
-        );
-        // ILoanContract.DebtMap memory _debtMap = loanContract.collateralDebtAt(
-        (uint256 _debtId, ) = loanContract.collateralDebtAt(
-            address(demoToken),
-            collateralId,
-            type(uint256).max
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-
-        (_debtId, ) = loanContract.collateralDebtAt(
-            address(demoToken),
-            collateralId,
-            type(uint256).max
-        );
-
-        assertEq(_debtId, 1, "1 :: Collateral debt ID should be one");
-    }
-
-    function testLoanContract__GetDebtTerms() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.debtTerms(_debtId),
-            bytes32(0),
-            "0 :: debt terms should be bytes32(0)"
-        );
-
-        // Create loan contract
-        uint256 _now = block.timestamp;
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        bytes32 _contractTerms = loanContract.debtTerms(_debtId);
-
-        assertTrue(
-            _contractTerms != bytes32(0),
-            "1 :: debt terms should not be bytes32(0)"
-        );
-
-        assertEq(
-            loanContract.loanState(_debtId),
-            uint256(_ACTIVE_GRACE_STATE_),
-            "2 :: loan state should be _ACTIVE_GRACE_STATE_"
-        );
-
-        assertEq(
-            loanContract.firInterval(_debtId),
-            _FIR_INTERVAL_,
-            "3 :: fir interval should be _FIR_INTERVAL_"
-        );
-
-        assertEq(
-            loanContract.fixedInterestRate(_debtId),
-            _FIXED_INTEREST_RATE_,
-            "4 :: fixed interest rate should be _FIXED_INTEREST_RATE_"
-        );
-
-        assertGt(
-            loanContract.loanLastChecked(_debtId),
-            _now,
-            "5 :: loan last checked should be greater than time now"
-        );
-
-        assertGt(
-            loanContract.loanStart(_debtId),
-            _now,
-            "6 :: loan start should be greater than time now"
-        );
-
-        assertEq(
-            loanContract.loanDuration(_debtId),
-            _DURATION_,
-            "7 :: loan duration should be _DURATION_"
-        );
-
-        assertEq(
-            loanContract.loanClose(_debtId),
-            loanContract.loanStart(_debtId) +
-                loanContract.loanDuration(_debtId),
-            "8 :: loan close should be the sum of loan start and loan duration"
-        );
-
-        assertGt(
-            loanContract.loanClose(_debtId),
-            _now,
-            "9 :: loan close should be greater than time now"
-        );
-
-        assertEq(
-            loanContract.lenderRoyalties(_debtId),
-            _LENDER_ROYALTIES_,
-            "10 :: loan royalties should be _LENDER_ROYALTIES_"
-        );
-
-        assertEq(
-            loanContract.activeLoanCount(_debtId),
-            1,
-            "11 :: active loan count should be 0"
-        );
-    }
-
-    function testLoanContract__LoanState() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.loanState(_debtId),
-            uint256(_UNDEFINED_STATE_),
-            "0 :: loan state should be _UNDEFINED_STATE_"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertEq(
-            loanContract.loanState(_debtId),
-            uint256(_ACTIVE_GRACE_STATE_),
-            "1 :: loan state should be _ACTIVE_GRACE_STATE_"
-        );
-    }
-
-    function testLoanContract__FirInterval() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.firInterval(_debtId),
-            uint256(_SECONDLY_),
-            "0 :: fir interval should be the default _SECONDLY_"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertEq(
-            loanContract.firInterval(_debtId),
-            _FIR_INTERVAL_,
-            "1 :: fir interval should be _FIR_INTERVAL_"
-        );
-    }
-
-    function testLoanContract__FixedInterestRate() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.fixedInterestRate(_debtId),
-            0,
-            "0 :: fixed interest rate should be the default 0"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertEq(
-            loanContract.fixedInterestRate(_debtId),
-            _FIXED_INTEREST_RATE_,
-            "1 :: fixed interest rate should be _FIXED_INTEREST_RATE_"
-        );
-    }
-
-    function testLoanContract__LoanLastChecked() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.loanLastChecked(_debtId),
-            0,
-            "0 :: loan last checked should be the default 0"
-        );
-
-        // Create loan contract
-        uint256 _now = block.timestamp;
-        (bool _success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            collateralId
-        );
-        assertTrue(_success, "0 :: loan contract creation failed.");
-        ++_debtId;
-
-        assertGt(
-            loanContract.loanLastChecked(_debtId),
-            _now,
-            "1 :: loan last checked should be greater than time now"
-        );
-    }
-
-    function testLoanContract__LoanStart() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.loanStart(_debtId),
-            0,
-            "0 :: loan start should be the default 0"
-        );
-
-        // Create loan contract
-        uint256 _now = block.timestamp;
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertGt(
-            loanContract.loanStart(_debtId),
-            _now,
-            "1 :: loan start should be greater than time now"
-        );
-    }
-
-    function testLoanContract__LoanDuration() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.loanDuration(_debtId),
-            0,
-            "0 :: loan duration should be the default 0"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertEq(
-            loanContract.loanDuration(_debtId),
-            _DURATION_,
-            "1 :: loan duration should be _DURATION_"
-        );
-    }
-
-    function testLoanContract__LoanClose() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.loanClose(_debtId),
-            0,
-            "0 :: loan close should be the default 0"
-        );
-
-        // Create loan contract
-        uint256 _now = block.timestamp;
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertEq(
-            loanContract.loanClose(_debtId),
-            loanContract.loanStart(_debtId) +
-                loanContract.loanDuration(_debtId),
-            "1 :: loan close should be the sum of loan start and loan duration"
-        );
-
-        assertGt(
-            loanContract.loanClose(_debtId),
-            _now,
-            "2 :: loan close should be greater than time now"
-        );
-    }
-
-    function testLoanContract__Borrower() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertTrue(
-            anzaToken.borrowerOf(++_debtId) != borrower,
-            "0 :: loan borrower should not be borrower"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-
-        assertEq(
-            anzaToken.borrowerOf(_debtId),
-            borrower,
-            "1 :: loan borrower should be borrower"
-        );
-    }
-
-    function testLoanContract__LenderRoyalties() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.lenderRoyalties(_debtId),
-            0,
-            "0 :: loan royalties should be the default 0"
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        ++_debtId;
-
-        assertEq(
-            loanContract.lenderRoyalties(_debtId),
-            _LENDER_ROYALTIES_,
-            "1 :: loan royalties should be _LENDER_ROYALTIES_"
-        );
-    }
-
-    function testLoanContract__CollateralDebtCount() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.collateralDebtCount(address(demoToken), collateralId),
-            0,
-            "0 :: Collateral debt count should be 0."
-        );
-
-        // Create loan contract
-        loanNotaryUtils.createLoanContract(borrowerPrivKey, collateralId);
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.collateralDebtCount(address(demoToken), collateralId),
-            1,
-            "1 :: Collateral debt count should be 1."
-        );
-
-        // Create loan contract partial refinance
-        (bool _success, ) = loanRefinanceUtils.refinanceDebt(
-            _debtId,
-            borrowerPrivKey,
-            ContractTerms({
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_ / 2,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-        assertTrue(_success, "2 :: Refinance failed.");
-
-        uint256 _refDebtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.collateralDebtCount(address(demoToken), collateralId),
-            2,
-            "3 :: Collateral debt count should be 2."
-        );
-
-        // Create loan contract partial refinance
-        (_success, ) = loanRefinanceUtils.refinanceDebt(
-            _debtId,
-            borrowerPrivKey,
-            ContractTerms({
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_ / 2,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-        assertTrue(_success, "4 :: Refinance failed.");
-
-        _refDebtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.collateralDebtCount(address(demoToken), collateralId),
-            3,
-            "5 :: Collateral debt count should be 3."
-        );
-
-        // Create loan contract partial refinance
-        (_success, ) = loanRefinanceUtils.refinanceDebt(
-            _refDebtId,
-            borrowerPrivKey,
-            ContractTerms({
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_ / 2,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-        assertTrue(_success, "6 :: Refinance failed.");
-
-        _refDebtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.collateralDebtCount(address(demoToken), collateralId),
-            4,
-            "7 :: Collateral debt count should be 4."
-        );
-    }
-
-    function testLoanContract__TotalFirIntervals() public {
-        // Will manually set values to avoid of loan contract
-        // max compounded debt validations
-
-        // Create loan contract
-        uint256 _debtId = loanContract.totalDebts();
-        uint256 _collateralId = collateralId;
-
-        (bool _success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _SECONDLY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_SECONDLY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "0 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _SECONDLY_MULTIPLIER_),
-            1,
-            "1 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _MINUTELY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_MINUTELY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-
-        assertTrue(_success, "2 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _MINUTELY_MULTIPLIER_ - 1),
-            0,
-            "3 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _MINUTELY_MULTIPLIER_),
-            1,
-            "4 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _HOURLY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_HOURLY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "5 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _HOURLY_MULTIPLIER_ - 1),
-            0,
-            "6 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _HOURLY_MULTIPLIER_),
-            1,
-            "7 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _DAILY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_DAILY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "8 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _DAILY_MULTIPLIER_ - 1),
-            0,
-            "9 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _DAILY_MULTIPLIER_),
-            1,
-            "10 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _WEEKLY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_WEEKLY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "11 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _WEEKLY_MULTIPLIER_ - 1),
-            0,
-            "12 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _WEEKLY_MULTIPLIER_),
-            1,
-            "13 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _2_WEEKLY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_2_WEEKLY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "14 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _2_WEEKLY_MULTIPLIER_ - 1),
-            0,
-            "15 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _2_WEEKLY_MULTIPLIER_),
-            1,
-            "16 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _4_WEEKLY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_4_WEEKLY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "17 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _4_WEEKLY_MULTIPLIER_ - 1),
-            0,
-            "18 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _4_WEEKLY_MULTIPLIER_),
-            1,
-            "19 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _6_WEEKLY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_6_WEEKLY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "20 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _6_WEEKLY_MULTIPLIER_ - 1),
-            0,
-            "21 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _6_WEEKLY_MULTIPLIER_),
-            1,
-            "22 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _8_WEEKLY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_8_WEEKLY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "23 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _8_WEEKLY_MULTIPLIER_ - 1),
-            0,
-            "24 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _8_WEEKLY_MULTIPLIER_),
-            1,
-            "25 :: total fir intervals should be 1"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            _collateralId++,
-            ContractTerms({
-                firInterval: _360_DAILY_,
-                fixedInterestRate: 1,
-                isFixed: 0,
-                commital: 0,
-                principal: 1,
-                gracePeriod: 0,
-                duration: uint32(_360_DAILY_MULTIPLIER_),
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: 0
-            })
-        );
-        assertTrue(_success, "26 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _360_DAILY_MULTIPLIER_ - 1),
-            0,
-            "27 :: total fir intervals should be 0"
-        );
-        assertEq(
-            loanContract.totalFirIntervals(_debtId, _360_DAILY_MULTIPLIER_),
-            1,
-            "28 :: total fir intervals should be 1"
-        );
-    }
-
-    function testLoanContract__VerifyLoanActive() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(StdCodecErrors.InactiveLoanState.selector)
-        );
-        loanContract.verifyLoanActive(_debtId);
-
-        // Create loan contract
-        (bool _success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            collateralId
-        );
-        assertTrue(_success, "0 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        loanContract.verifyLoanActive(_debtId);
-
-        // Create loan contract partial refinance
-        (_success, ) = loanRefinanceUtils.refinanceDebt(
-            _debtId,
-            borrowerPrivKey,
-            ContractTerms({
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_ / 2,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-        assertTrue(_success, "1 :: loan contract refinance failed.");
-        uint256 _refDebtId = loanContract.totalDebts();
-
-        loanContract.verifyLoanActive(_debtId);
-        loanContract.verifyLoanActive(_refDebtId);
-
-        // Create loan contract partial refinance
-        (_success, ) = loanRefinanceUtils.refinanceDebt(
-            _refDebtId,
-            borrowerPrivKey,
-            ContractTerms({
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_ / 2,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-        assertTrue(_success, "2 :: loan contract refinance failed.");
-
-        loanContract.verifyLoanActive(_debtId);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(StdCodecErrors.InactiveLoanState.selector)
-        );
-        loanContract.verifyLoanActive(_refDebtId);
-    }
-
-    function testLoanContract__CheckLoanActive() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.checkLoanActive(_debtId),
-            false,
-            "0 :: loan should be default inactive"
-        );
-
-        // Create loan contract
-        (bool _success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            collateralId
-        );
-        assertTrue(_success, "1 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.checkLoanActive(_debtId),
-            true,
-            "2 :: loan should be active"
-        );
-
-        // Create loan contract partial refinance
-        (_success, ) = loanRefinanceUtils.refinanceDebt(
-            _debtId,
-            borrowerPrivKey,
-            ContractTerms({
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_ / 2,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-        assertTrue(_success, "3 :: loan contract refinance failed.");
-        uint256 _refDebtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.checkLoanActive(_debtId),
-            true,
-            "4 :: loan should be active"
-        );
-        assertEq(
-            loanContract.checkLoanActive(_refDebtId),
-            true,
-            "5 :: refinanced loan should be active"
-        );
-
-        // Create loan contract partial refinance
-        (_success, ) = loanRefinanceUtils.refinanceDebt(
-            _refDebtId,
-            borrowerPrivKey,
-            ContractTerms({
-                firInterval: _FIR_INTERVAL_,
-                fixedInterestRate: _FIXED_INTEREST_RATE_,
-                isFixed: _IS_FIXED_,
-                commital: _COMMITAL_,
-                principal: _PRINCIPAL_ / 2,
-                gracePeriod: _GRACE_PERIOD_,
-                duration: _DURATION_,
-                termsExpiry: _TERMS_EXPIRY_,
-                lenderRoyalties: _LENDER_ROYALTIES_
-            })
-        );
-        assertTrue(_success, "6 :: loan contract refinance failed.");
-
-        assertEq(
-            loanContract.checkLoanActive(_debtId),
-            true,
-            "7 :: loan should be active"
-        );
-        assertEq(
-            loanContract.checkLoanActive(_refDebtId),
-            false,
-            "8 :: refinanced loan should be inactive"
-        );
-
-        _refDebtId = loanContract.totalDebts();
-        assertEq(
-            loanContract.checkLoanActive(_refDebtId),
-            true,
-            "9 :: refinanced loan should be active"
-        );
-    }
-
-    function testLoanContract__CheckLoanDefault() public {
-        uint256 _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.checkLoanDefault(_debtId),
-            false,
-            "0 :: non existent loan should not be default"
-        );
-
-        // Create loan contract
-        (bool _success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            localCollateralId++
-        );
-        assertTrue(_success, "1 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        assertEq(
-            loanContract.checkLoanDefault(_debtId),
-            false,
-            "2 :: loan should not be default"
-        );
-
-        vm.warp(loanContract.loanClose(_debtId));
-
-        assertEq(
-            loanContract.checkLoanDefault(_debtId),
-            false,
-            "3 :: loan should not be default without an update performed"
-        );
+        // Mint collateral and approve loan contract.
+        _demoToken.exposed__mint(_borrower, _collateralId);
 
-        vm.startPrank(address(loanTreasurer));
-        loanContract.updateLoanState(_debtId);
+        vm.startPrank(_borrower);
+        _demoToken.approve(address(loanContractHarness), _collateralId);
         vm.stopPrank();
 
-        assertEq(
-            loanContract.checkLoanDefault(_debtId),
-            true,
-            "4 :: loan should be default with an update performed"
+        // Get collateral nonce.
+        uint256 _collateralNonce = loanContractHarness.collateralNonce(
+            address(_demoToken),
+            _collateralId
         );
 
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            localCollateralId++
-        );
-        assertTrue(_success, "5 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
+        // Set contract initialization expectation.
+        (bool _expectedSuccess, bytes memory _expectedData) = loanContractUtils
+            .expectedContractTermsValidity(
+                _contractTerms,
+                address(loanContractHarness),
+                uint64(block.timestamp)
+            );
 
-        // Pay off loan
-        vm.deal(borrower, _PRINCIPAL_);
-        vm.startPrank(borrower);
-        (_success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
-        );
-        assertTrue(_success, "6 :: Payment was unsuccessful");
-        vm.stopPrank();
+        // Create loan contract.
+        vm.recordLogs();
+        (bool _success, bytes memory _data) = loanContractUtils
+            .createLoanContract(
+                _borrowerPrivKey,
+                address(_demoToken),
+                _collateralId,
+                _collateralNonce,
+                _contractTerms
+            );
 
-        assertEq(
-            loanContract.checkLoanDefault(_debtId),
-            false,
-            "7 :: loan should not be default"
-        );
+        // Get logs.
+        Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        vm.warp(loanContract.loanClose(_debtId));
+        // Get expected return data.
+        (_expectedData, _data) = [_expectedData, _data].normalizeBytesMSB();
 
-        assertEq(
-            loanContract.checkLoanDefault(_debtId),
-            false,
-            "8:: loan should not be default"
-        );
-    }
+        // Verify successful contract creation results.
+        if (_success) {
+            (uint256 _debtId, ) = loanContractHarness.collateralDebtAt(
+                address(_demoToken),
+                _collateralId,
+                type(uint256).max
+            );
 
-    function testLoanContract__CheckLoanExpired() public {
-        uint256 _debtId = loanContract.totalDebts();
+            // Transfer event for collateral into CollateralVault.
+            _testTransfer(
+                entries[0],
+                TransferFields({
+                    from: _borrower,
+                    to: address(collateralVault),
+                    tokenId: _collateralId
+                })
+            );
 
-        assertEq(
-            loanContract.checkLoanExpired(_debtId),
-            false,
-            "0 :: non existent loan should not be expired"
-        );
+            // Ignore DemoToken convenience approval event.
+            // entries[1]
 
-        // Create loan contract
-        (bool _success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            localCollateralId++
-        );
-        assertTrue(_success, "1 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
+            // DepositedCollateral event for collateral into CollateralVault.
+            _testDepositedCollateral(
+                entries[2],
+                DepositedCollateralFields({
+                    from: _borrower,
+                    collateralAddress: address(_demoToken),
+                    collateralId: _collateralId
+                })
+            );
 
-        assertEq(
-            loanContract.checkLoanExpired(_debtId),
-            false,
-            "2 :: loan should not be expired"
-        );
+            // TransferSingle event for lender token mints.
+            _testTransferSingle(
+                entries[3],
+                TransferSingleFields({
+                    operator: address(loanContractHarness),
+                    from: address(0),
+                    to: lender,
+                    id: anzaToken.lenderTokenId(_debtId),
+                    value: _contractTerms.principal
+                })
+            );
 
-        vm.warp(loanContract.loanClose(_debtId));
+            // TransferSingle event for borrower token mints.
+            _testTransferSingle(
+                entries[4],
+                TransferSingleFields({
+                    operator: address(loanContractHarness),
+                    from: address(0),
+                    to: _borrower,
+                    id: anzaToken.borrowerTokenId(_debtId),
+                    value: 1
+                })
+            );
 
-        assertEq(
-            loanContract.checkLoanExpired(_debtId),
-            true,
-            "2 :: loan should be expired regardless an update performed"
-        );
+            // URI event for setting borrower token URI.
+            _testURI(
+                entries[5],
+                URIFields({
+                    value: _demoToken.tokenURI(_collateralId),
+                    id: anzaToken.borrowerTokenId(_debtId)
+                })
+            );
 
-        vm.startPrank(address(loanTreasurer));
-        loanContract.updateLoanState(_debtId);
-        vm.stopPrank();
-
-        assertEq(
-            loanContract.checkLoanExpired(_debtId),
-            true,
-            "3 :: loan should be expired with an update performed"
-        );
-
-        // Create loan contract
-        (_success, ) = loanNotaryUtils.createLoanContract(
-            borrowerPrivKey,
-            localCollateralId++
-        );
-        assertTrue(_success, "4 :: loan contract creation failed.");
-        _debtId = loanContract.totalDebts();
-
-        // Pay off loan
-        vm.deal(borrower, _PRINCIPAL_);
-        vm.startPrank(borrower);
-        (_success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
-            abi.encodeWithSignature("depositPayment(uint256)", _debtId)
-        );
-        assertTrue(_success, "5 :: Payment was unsuccessful");
-        vm.stopPrank();
-
-        assertEq(
-            loanContract.checkLoanExpired(_debtId),
-            false,
-            "6 :: loan should not be expired"
-        );
-
-        vm.warp(loanContract.loanClose(_debtId));
-
-        assertEq(
-            loanContract.checkLoanExpired(_debtId),
-            false,
-            "7 :: loan should not be expired"
-        );
+            // ContractInitialized event.
+            _testContractInitialized(
+                entries[6],
+                ContractInitializedFields({
+                    collateralAddress: address(_demoToken),
+                    collateralId: _collateralId,
+                    debtId: _debtId,
+                    activeLoanIndex: 1
+                })
+            );
+        }
+        // Verify failed contract creation results.
+        else {
+            assertEq(
+                _expectedSuccess,
+                _success,
+                "0 :: init loan contract expected failure."
+            );
+            assertEq(
+                _expectedData,
+                _data,
+                "1 :: init loan contract error message mismatch."
+            );
+        }
     }
 }
