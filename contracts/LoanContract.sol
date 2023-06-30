@@ -217,7 +217,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
-                _borrower,
+                _lender,
                 _debtId
             )
         );

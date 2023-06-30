@@ -53,14 +53,12 @@ contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
         nonReentrant
         returns (bool)
     {
-        uint256 _payment = msg.value;
-
         // Overpayments checked when burning lender debt tokens.
         // Therefore, no need to check here.
-        if (_payment == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
+        if (msg.value == 0) revert StdTreasureyErrors.InvalidFundsTransfer();
 
         // Deposit payment to debt.
-        uint256 _excess = _depositPayment(_sponsor, _debtId, _payment);
+        uint256 _excess = _depositPayment(_sponsor, _debtId, msg.value);
 
         // Deposit excess funds to Payment record for sponsor.
         if (_excess > 0)

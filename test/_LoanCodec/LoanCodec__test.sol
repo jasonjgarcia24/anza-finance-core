@@ -18,7 +18,7 @@ import {InterestCalculator as Interest} from "@lending-libraries/InterestCalcula
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {DebtTermsUtils} from "@test-databases/DebtTerms__test.sol";
-import {ILoanCodecEvents} from "./interfaces/ILoanCodecEvents__test.sol";
+import {ILoanCodecEvents} from "@test-utils/events/LoanCodecEventsSuite__test.sol";
 
 contract LoanCodecHarness is LoanCodec {
     function exposed__validateLoanTerms(

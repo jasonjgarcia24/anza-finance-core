@@ -104,15 +104,25 @@ abstract contract LoanAccountant is PaymentBook, AccountantAccessController {
         return __updatePermit;
     }
 
+    function __assessUpdatePermitted(uint256 _debtId) internal {
+        __updatePermit =
+            !_loanManager.checkLoanExpired(_debtId) &&
+            !_loanManager.checkLoanClosed(_debtId);
+    }
+
     // TODO: Need to revisit to ensure accuracy at larger total debt values
     // (e.g. 10000 * 10**18).
     function __updateDebt(uint256 _debtId) private updatePermitLocker {
         uint256 _prevCheck = _loanDebtTerms.loanLastChecked(_debtId);
 
-        // Update both the loan's state and the last checked timestamp. If
-        // an update is performed the result will be true if the loan
-        // remains active and false if the loan has expired or been closed.
-        if (_loanManager.updateLoanState(_debtId) != _UINT256_MAX_) return;
+        // Update both the loan's state and the last checked timestamp.
+        // If an update is performed the result will be less than 3.
+        // If the loan is paid off, expired, or closed the result will
+        // be 3, 4, type(uint256).max respectively.
+        if (_loanManager.updateLoanState(_debtId) >= 3) {
+            __assessUpdatePermitted(_debtId);
+            return;
+        }
 
         // Find time intervals passed
         uint256 _firIntervals = _loanCodec.totalFirIntervals(
@@ -133,8 +143,8 @@ abstract contract LoanAccountant is PaymentBook, AccountantAccessController {
             _anzaToken.mint(_debtId, _updatedDebt - _totalDebt);
         }
 
-        __updatePermit =
-            !_loanManager.checkLoanExpired(_debtId) &&
-            !_loanManager.checkLoanClosed(_debtId);
+        __assessUpdatePermitted(_debtId);
+
+        console.log("Updated debt: %s", __updatePermit);
     }
 }

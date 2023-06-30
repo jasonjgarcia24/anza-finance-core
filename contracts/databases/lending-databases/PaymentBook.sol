@@ -174,6 +174,7 @@ abstract contract PaymentBook is
 
             return 0;
         } else {
+            console.log("burning lender token");
             __withdrawableBalance[_lender] += _balance;
 
             _anzaToken.burnLenderToken(_debtId, _balance);

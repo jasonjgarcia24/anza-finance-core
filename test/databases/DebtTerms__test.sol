@@ -7,6 +7,7 @@ import {Test} from "forge-std/Test.sol";
 
 import "@lending-constants/LoanContractStates.sol";
 import {_UINT128_MAX_} from "@universal-numbers/StdNumbers.sol";
+import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
 
@@ -23,6 +24,13 @@ contract DebtTermsHarness is DebtTerms {
         bytes32 _packedDebtTerms
     ) public {
         _setDebtTerms(_debtId, _packedDebtTerms);
+    }
+
+    function exposed__updateDebtTerms(
+        uint256 _debtId,
+        bytes32 _packedDebtTerms
+    ) public {
+        _updateDebtTerms(_debtId, _packedDebtTerms);
     }
 
     /* Abstract functions */
@@ -178,14 +186,18 @@ contract DebtTermsUnitTest is DebtTermsInit {
      *
      * @param _debtId The debt ID key to store the debt terms under.
      * @param _packedContractTerms The packed contract terms to store.
+     * @param _updatedPackedContractTerms The updated packed contract terms to
+     * store.
      *
      * @dev Full pass if the debt terms are equal to the expected packed contract
      * terms.
      */
     function testDebtTerms__DebtTerms_Fuzz(
         uint256 _debtId,
-        bytes32 _packedContractTerms
+        bytes32 _packedContractTerms,
+        bytes32 _updatedPackedContractTerms
     ) public {
+        // Set the debt terms with _setDebtTerms().
         debtTermsHarness.exposed__setDebtTerms(_debtId, _packedContractTerms);
 
         assertEq(
@@ -193,7 +205,50 @@ contract DebtTermsUnitTest is DebtTermsInit {
             _packedContractTerms,
             "0 :: debt terms does not equal expected contract terms."
         );
+
+        // Conditionally fail to update the debt terms with _setDebtTerms().
+        // Note: This will only fail if the original packed debt terms are
+        // not bytes32(0). This is okay for this test case since we perform
+        // the checks for this condition with the calling function.
+        try
+            debtTermsHarness.exposed__setDebtTerms(
+                _debtId,
+                _updatedPackedContractTerms
+            )
+        {} catch (bytes memory _err) {
+            if (_packedContractTerms != bytes32(0)) {
+                assertEq(
+                    bytes4(_err),
+                    _ILLEGAL_TERMS_UPDATE_SELECTOR_,
+                    "1 :: debt terms set should revert as expected."
+                );
+            } else {
+                fail("unexpected revert.");
+            }
+        }
+
+        // Update the debt terms with _updateDebtTerms().
+        debtTermsHarness.exposed__updateDebtTerms(
+            _debtId,
+            _updatedPackedContractTerms
+        );
+
+        assertEq(
+            debtTermsHarness.debtTerms(_debtId),
+            _updatedPackedContractTerms,
+            "0 :: debt terms does not equal expected contract terms."
+        );
     }
+
+    /* ----------- DebtTerms._setTerms() ----------- */
+    /**
+     * See {testDebtTerms__DebtTerms_Fuzz}.
+     */
+
+    /* ----------- DebtTerms._updateTerms() ----------- */
+    /**
+     * See {testDebtTerms__DebtTerms_Fuzz}.
+     */
 
     /* ----------- DebtTerms getters ----------- */
     /**

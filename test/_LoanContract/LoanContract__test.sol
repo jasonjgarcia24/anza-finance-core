@@ -3,8 +3,10 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 import {Vm} from "forge-std/Vm.sol";
+import {StdStyle} from "forge-std/StdStyle.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
+import "@lending-constants/LoanContractStates.sol";
 import {_UINT64_MAX_, _UINT128_MAX_, _SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
 
 import {LoanContract} from "@base/LoanContract.sol";
@@ -27,6 +29,7 @@ import {BytesUtils} from "@test-utils/test-utils/BytesUtils.sol";
 import {ERC1155EventsSuite} from "@test-utils/events/ERC1155EventsSuite__test.sol";
 import {ERC721EventsSuite} from "@test-utils/events/ERC721EventsSuite__test.sol";
 import {LoanContractEventsSuite} from "@test-utils/events/LoanContractEventsSuite__test.sol";
+import {LoanCodecEventsSuite} from "@test-utils/events/LoanCodecEventsSuite__test.sol";
 import {CollateralVaultEventsSuite} from "@test-utils/events/CollateralVaultEventsSuite__test.sol";
 import {PaymentBookEventsSuite} from "@test-utils/events/PaymentBookEventsSuite__test.sol";
 
@@ -467,6 +470,7 @@ contract LoanContractViewsUnitTest is
     ERC1155EventsSuite,
     ERC721EventsSuite,
     LoanContractEventsSuite,
+    LoanCodecEventsSuite,
     CollateralVaultEventsSuite,
     PaymentBookEventsSuite
 {
@@ -500,7 +504,7 @@ contract LoanContractViewsUnitTest is
         uint256 _borrowerPrivKey,
         uint256 _collateralId,
         ContractTerms memory _contractTerms
-    ) public returns (bool _success, uint256 _debtId) {
+    ) internal returns (bool _success, uint256 _debtId) {
         vm.assume(
             _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
         );
@@ -554,11 +558,6 @@ contract LoanContractViewsUnitTest is
 
         // Verify successful contract creation results.
         if (_success) {
-            console.log("entries:");
-            for (uint256 i; i < _entries.length; ++i) {
-                console.logBytes32(_entries[i].topics[0]);
-            }
-
             (_debtId, ) = loanContractHarness.collateralDebtAt(
                 address(_demoToken),
                 _collateralId,
@@ -658,18 +657,6 @@ contract LoanContractViewsUnitTest is
         }
     }
 
-    function testLoanContract__InitContract_Fuzz_InitialLoan(
-        uint256 _borrowerPrivKey,
-        uint256 _collateralId,
-        ContractTerms memory _contractTerms
-    ) public {
-        _testLoanContract__InitContract_Fuzz_InitialLoan(
-            _borrowerPrivKey,
-            _collateralId,
-            _contractTerms
-        );
-    }
-
     /**
      * Fuzz test the contract refinancing function.
      *
@@ -689,12 +676,14 @@ contract LoanContractViewsUnitTest is
      * @param _collateralId The id of the collateral.
      * @param _contractTerms The contract terms.
      */
-    function testLoanContract__InitContract_Fuzz_RefinanceLoan(
+    function _testLoanContract__InitContract_Fuzz_RefinanceLoan(
         uint256 _borrowerPrivKey,
         address _lender,
         uint256 _collateralId,
         ContractTerms memory _contractTerms
-    ) public {
+    ) internal {
+        vm.assume(_lender != address(0));
+
         // Limit principal for vm.deal limitations.
         _contractTerms.principal = bound(
             _contractTerms.principal,
@@ -713,12 +702,6 @@ contract LoanContractViewsUnitTest is
 
         address _borrower = vm.addr(_borrowerPrivKey);
 
-        // Get collateral nonce.
-        uint256 _collateralNonce = loanContractHarness.collateralNonce(
-            address(_demoToken),
-            _collateralId
-        );
-
         // Set contract initialization expectation.
         (bool _expectedSuccess, bytes memory _expectedData) = loanContractUtils
             .expectedContractTermsValidity(
@@ -727,114 +710,155 @@ contract LoanContractViewsUnitTest is
                 uint64(block.timestamp)
             );
 
-        // // Create loan contract.
-        // vm.recordLogs();
-        // bytes memory _data;
-        // (_success, _data) = loanContractUtils.refinanceLoanContract(
-        //     _borrower,
-        //     _lender,
-        //     _debtId,
-        //     _contractTerms
-        // );
+        // Create loan contract.
+        vm.recordLogs();
+        bytes memory _data;
+        (_success, _data) = loanContractUtils.refinanceLoanContract(
+            _borrower,
+            _lender,
+            _debtId,
+            _contractTerms
+        );
 
-        // console.logBytes(_data);
+        // Get expected return data.
+        (_expectedData, _data) = [_expectedData, _data].normalizeBytesMSB();
 
-        // assertTrue(!_success, "0 :: refinance loan contract failed.");
-        // fail("forced fail.");
+        // Get logs.
+        Vm.Log[] memory _entries = vm.getRecordedLogs();
 
-        // // Get logs.
-        // Vm.Log[] memory _entries = vm.getRecordedLogs();
+        if (_success) {
+            uint256 _prevDebtId = _debtId;
 
-        // // Get expected return data.
-        // (_expectedData, _data) = [_expectedData, _data].normalizeBytesMSB();
+            (_debtId, ) = loanContractHarness.collateralDebtAt(
+                address(_demoToken),
+                _collateralId,
+                type(uint256).max
+            );
 
-        // // Verify successful contract creation results.
-        // if (_success) {
-        //     (uint256 _debtId, ) = loanContractHarness.collateralDebtAt(
-        //         address(_demoToken),
-        //         _collateralId,
-        //         type(uint256).max
-        //     );
+            // Test updated debt ID.
+            assertEq(
+                _prevDebtId + 1,
+                _debtId,
+                "1 :: debt id should increment by 1."
+            );
 
-        //     // Transfer event for collateral into CollateralVault.
-        //     _testTransfer(
-        //         _entries[0],
-        //         TransferFields({
-        //             from: _borrower,
-        //             to: address(collateralVault),
-        //             tokenId: _collateralId
-        //         })
-        //     );
+            // TransferSingle event for lender token mints.
+            _testTransferSingle(
+                _entries[0],
+                TransferSingleFields({
+                    operator: address(loanTreasurer),
+                    from: lender,
+                    to: address(0),
+                    id: anzaToken.lenderTokenId(_prevDebtId),
+                    value: _contractTerms.principal
+                })
+            );
 
-        //     // Ignore DemoToken convenience approval event.
-        //     // _entries[1]
+            // Deposited event for funds into LoanTreasurer.
+            _testDeposited(
+                _entries[1],
+                DepositedFields({
+                    debtId: _prevDebtId,
+                    payer: _lender,
+                    payee: lender,
+                    weiAmount: _contractTerms.principal
+                })
+            );
 
-        //     // DepositedCollateral event for collateral into CollateralVault.
-        //     _testDepositedCollateral(
-        //         _entries[2],
-        //         DepositedCollateralFields({
-        //             from: _borrower,
-        //             collateralAddress: address(_demoToken),
-        //             collateralId: _collateralId
-        //         })
-        //     );
+            // LoanStateChanged event for prev debt ID payoff.
+            _testLoanStateChanged(
+                _entries[2],
+                LoanStateChangedFields({
+                    debtId: _prevDebtId,
+                    newLoanState: _PAID_STATE_,
+                    oldLoanState: _contractTerms.gracePeriod == 0
+                        ? _ACTIVE_STATE_
+                        : _ACTIVE_GRACE_STATE_
+                })
+            );
 
-        //     // TransferSingle event for lender token mints.
-        //     _testTransferSingle(
-        //         _entries[3],
-        //         TransferSingleFields({
-        //             operator: address(loanContractHarness),
-        //             from: address(0),
-        //             to: lender,
-        //             id: anzaToken.lenderTokenId(_debtId),
-        //             value: _contractTerms.principal
-        //         })
-        //     );
+            // TransferSingle event for lender token mints.
+            _testTransferSingle(
+                _entries[3],
+                TransferSingleFields({
+                    operator: address(loanContractHarness),
+                    from: address(0),
+                    to: _lender,
+                    id: anzaToken.lenderTokenId(_debtId),
+                    value: _contractTerms.principal
+                })
+            );
 
-        //     // TransferSingle event for borrower token mints.
-        //     _testTransferSingle(
-        //         _entries[4],
-        //         TransferSingleFields({
-        //             operator: address(loanContractHarness),
-        //             from: address(0),
-        //             to: _borrower,
-        //             id: anzaToken.borrowerTokenId(_debtId),
-        //             value: 1
-        //         })
-        //     );
+            // TransferSingle event for borrower token mints.
+            _testTransferSingle(
+                _entries[4],
+                TransferSingleFields({
+                    operator: address(loanContractHarness),
+                    from: address(0),
+                    to: _borrower,
+                    id: anzaToken.borrowerTokenId(_debtId),
+                    value: 1
+                })
+            );
 
-        //     // URI event for setting borrower token URI.
-        //     _testURI(
-        //         _entries[5],
-        //         URIFields({
-        //             value: _demoToken.tokenURI(_collateralId),
-        //             id: anzaToken.borrowerTokenId(_debtId)
-        //         })
-        //     );
+            // URI event for setting borrower token URI.
+            _testURI(
+                _entries[5],
+                URIFields({
+                    value: _demoToken.tokenURI(_collateralId),
+                    id: anzaToken.borrowerTokenId(_debtId)
+                })
+            );
 
-        //     // ContractInitialized event.
-        //     _testContractInitialized(
-        //         _entries[6],
-        //         ContractInitializedFields({
-        //             collateralAddress: address(_demoToken),
-        //             collateralId: _collateralId,
-        //             debtId: _debtId,
-        //             activeLoanIndex: 1
-        //         })
-        //     );
-        // }
-        // // Verify failed contract creation results.
-        // else {
-        //     assertEq(
-        //         _expectedSuccess,
-        //         _success,
-        //         "0 :: init loan contract expected failure."
-        //     );
-        //     assertEq(
-        //         _expectedData,
-        //         _data,
-        //         "1 :: init loan contract error message mismatch."
-        //     );
-        // }
+            // ContractInitialized event.
+            _testContractInitialized(
+                _entries[6],
+                ContractInitializedFields({
+                    collateralAddress: address(_demoToken),
+                    collateralId: _collateralId,
+                    debtId: _debtId,
+                    activeLoanIndex: 2
+                })
+            );
+        }
+        // Verify failed contract creation results.
+        else {
+            assertEq(
+                _expectedSuccess,
+                _success,
+                "0 :: init loan contract expected failure."
+            );
+            assertEq(
+                _expectedData,
+                _data,
+                "1 :: init loan contract error message mismatch."
+            );
+        }
+    }
+
+    function testLoanContract__InitContract_Fuzz_InitialLoan(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId,
+        ContractTerms memory _contractTerms
+    ) public {
+        _testLoanContract__InitContract_Fuzz_InitialLoan(
+            _borrowerPrivKey,
+            _collateralId,
+            _contractTerms
+        );
+    }
+
+    function testLoanContract__InitContract_Fuzz_RefinanceLoan(
+        uint256 _borrowerPrivKey,
+        address _lender,
+        uint256 _collateralId,
+        ContractTerms memory _contractTerms
+    ) public {
+        _testLoanContract__InitContract_Fuzz_RefinanceLoan(
+            _borrowerPrivKey,
+            _lender,
+            _collateralId,
+            _contractTerms
+        );
     }
 }
