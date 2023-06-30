@@ -108,7 +108,12 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         // Transfer funds to borrower's account in treasurey
         (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
-            abi.encodeWithSignature("depositFunds(address)", _borrower)
+            abi.encodeWithSignature(
+                "depositFunds(uint256,address,address)",
+                _totalDebts,
+                msg.sender,
+                _borrower
+            )
         );
         if (!_success) revert StdMonetaryErrors.FailedFundsTransfer();
 

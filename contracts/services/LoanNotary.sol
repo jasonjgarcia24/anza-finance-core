@@ -467,8 +467,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
                     __refinanceNotary_anzaTokenAddress,
                     _refinanceParams.debtId,
                     _refinanceParams.contractTerms,
-                    _refinanceParams.listingNonce,
-                    _refinanceParams.termsExpiry
+                    _refinanceParams.listingNonce
                 )
             );
     }

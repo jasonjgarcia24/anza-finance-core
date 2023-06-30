@@ -322,7 +322,6 @@
 //                 price: _price,
 //                 debtId: _debtId,
 //                 listingNonce: _sponsorshipListingNonce,
-//                 termsExpiry: _termsExpiry,
 //                 contractTerms: _contractTerms
 //             })
 //         );

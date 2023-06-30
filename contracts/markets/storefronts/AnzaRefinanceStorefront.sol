@@ -196,7 +196,6 @@ contract AnzaRefinanceStorefront is
                 price: _price,
                 debtId: _debtId,
                 listingNonce: _nonces.length,
-                termsExpiry: _termsExpiry,
                 contractTerms: _contractTerms
             }),
             _sellerSignature,
@@ -251,7 +250,6 @@ contract AnzaRefinanceStorefront is
                 price: _price,
                 debtId: _debtId,
                 listingNonce: _listingNonce,
-                termsExpiry: _termsExpiry,
                 contractTerms: _contractTerms
             }),
             _sellerSignature,

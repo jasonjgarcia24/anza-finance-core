@@ -35,7 +35,6 @@ interface IRefinanceNotary {
         uint256 price;
         uint256 debtId;
         uint256 listingNonce;
-        uint256 termsExpiry;
         bytes32 contractTerms;
     }
 }

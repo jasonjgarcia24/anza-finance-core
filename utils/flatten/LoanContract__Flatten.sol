@@ -5523,7 +5523,7 @@ bytes32 constant _SPONSORSHIP_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
     "SponsorshipParams(uint256 price,uint256 debtId,uint256 listingNonce,uint256 termsExpiry)"
 );
 bytes32 constant _REFINANCE_PARAMS_ENCODE_TYPE_HASH_ = keccak256(
-    "RefinanceParams(uint256 price,uint256 debtId,bytes32 contractTerms,uint256 listingNonce,uint256 termsExpiry)"
+    "RefinanceParams(uint256 price,uint256 debtId,uint256 listingNonce,bytes32 contractTerms)"
 );
 
 /* ------------------------------------------------ *
@@ -5574,7 +5574,6 @@ interface IRefinanceNotary {
         uint256 price;
         uint256 debtId;
         uint256 listingNonce;
-        uint256 termsExpiry;
         bytes32 contractTerms;
     }
 }
@@ -6043,8 +6042,7 @@ library AnzaNotary {
                     _anzaTokenAddress,
                     _refinanceParams.debtId,
                     _refinanceParams.contractTerms,
-                    _refinanceParams.listingNonce,
-                    _refinanceParams.termsExpiry
+                    _refinanceParams.listingNonce
                 )
             );
     }
@@ -6537,8 +6535,7 @@ abstract contract RefinanceNotary is IRefinanceNotary {
                     __refinanceNotary_anzaTokenAddress,
                     _refinanceParams.debtId,
                     _refinanceParams.contractTerms,
-                    _refinanceParams.listingNonce,
-                    _refinanceParams.termsExpiry
+                    _refinanceParams.listingNonce
                 )
             );
     }

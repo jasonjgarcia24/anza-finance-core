@@ -63,7 +63,13 @@ contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
         uint256 _excess = _depositPayment(_sponsor, _debtId, _payment);
 
         // Deposit excess funds to Payment record for sponsor.
-        if (_excess > 0) _depositFunds(_sponsor, _excess);
+        if (_excess > 0)
+            _depositFunds(
+                _debtId,
+                _sponsor,
+                _anzaToken.borrowerOf(_debtId),
+                _excess
+            );
 
         return true;
     }
@@ -105,7 +111,7 @@ contract LoanTreasurey is ILoanTreasurey, AnzaDebtExchange {
         uint256 _excess = _depositPayment(_borrower, _debtId, msg.value);
 
         // Deposit excess funds to PaymentBook record for borrower.
-        if (_excess > 0) _depositFunds(_borrower, _excess);
+        if (_excess > 0) _depositFunds(_debtId, msg.sender, _borrower, _excess);
 
         return true;
     }

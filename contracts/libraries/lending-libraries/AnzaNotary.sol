@@ -265,8 +265,7 @@ library AnzaNotary {
                     _anzaTokenAddress,
                     _refinanceParams.debtId,
                     _refinanceParams.contractTerms,
-                    _refinanceParams.listingNonce,
-                    _refinanceParams.termsExpiry
+                    _refinanceParams.listingNonce
                 )
             );
     }

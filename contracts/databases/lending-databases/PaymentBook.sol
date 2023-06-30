@@ -26,6 +26,40 @@ abstract contract PaymentBook is
     }
 
     /**
+     * Public function to deposit funds into the `_payee` addresses
+     * withdrawable balance.
+     *
+     * @notice This function is payable.
+     *
+     * @param _payee The account to receive funds in their withdrawable balance.
+     *
+     * @dev The _depositFunds function is non-reentrant.
+     */
+    function depositFunds(address _payee) public payable nonReentrant {
+        _depositFunds(type(uint256).max, msg.sender, _payee, msg.value);
+    }
+
+    /**
+     * Public function to deposit funds into the `_payee` addresses
+     * withdrawable balance.
+     *
+     * @notice This function is payable.
+     *
+     * @param _debtId The debt ID to deposit the payment.
+     * @param _payer The payer to deposit funds.
+     * @param _payee The account to receive funds in their withdrawable balance.
+     *
+     * @dev The _depositFunds function is non-reentrant.
+     */
+    function depositFunds(
+        uint256 _debtId,
+        address _payer,
+        address _payee
+    ) public payable nonReentrant {
+        _depositFunds(_debtId, _payer, _payee, msg.value);
+    }
+
+    /**
      * External function to return the withdrawable balance of the `_account`.
      *
      * @param _account The account to withdraw funds from.
@@ -39,21 +73,6 @@ abstract contract PaymentBook is
     }
 
     /**
-     * Public function to deposit funds into the `_account` addresses
-     * withdrawable balance.
-     *
-     * @notice This function is payable.
-     *
-     * @param _account The account to deposit funds.
-     *
-     * @dev Only the LoanContract can call this function.
-     * @dev The _depositFunds function is non-reentrant.
-     */
-    function depositFunds(address _account) public payable nonReentrant {
-        _depositFunds(_account, msg.value);
-    }
-
-    /**
      * Internal function to deposit funds into the `_account` addresses
      * withdrawable balance.
      *
@@ -62,15 +81,22 @@ abstract contract PaymentBook is
      * @notice Reentrancy is not handled here. If reentrancy is not handled
      * earlier in the call stack, reentrancy attacks are possible.
      *
-     * @param _account The account to deposit funds.
+     * @param _debtId The debt ID to deposit the payment.
+     * @param _payer The payer to deposit funds.
+     * @param _payee The account to receive funds in their withdrawable balance.
      * @param _amount The amount of funds to deposit.
      *
      * Emits a {Deposited} event.
      */
-    function _depositFunds(address _account, uint256 _amount) internal {
-        __withdrawableBalance[_account] += _amount;
+    function _depositFunds(
+        uint256 _debtId,
+        address _payer,
+        address _payee,
+        uint256 _amount
+    ) internal {
+        __withdrawableBalance[_payee] += _amount;
 
-        emit Deposited(type(uint256).max, msg.sender, _account, _amount);
+        emit Deposited(_debtId, _payer, _payee, _amount);
     }
 
     /**

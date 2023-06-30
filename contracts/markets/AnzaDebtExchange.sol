@@ -145,9 +145,10 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
         uint256[] memory _ids = new uint256[](_collateralDebtCount);
         uint256[] memory _amounts = new uint256[](_collateralDebtCount);
 
+        uint256 _debtId;
         for (uint256 i; i < _collateralDebtCount; ) {
             // Get debt ID for collateral at index.
-            (uint256 _debtId, ) = _loanContract.collateralDebtAt(
+            (_debtId, ) = _loanContract.collateralDebtAt(
                 _collateralAddress,
                 _collateralId,
                 i
@@ -167,7 +168,13 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
 
         // If there is payment balance remaining, deposit it to the
         // borrower's withdrawable balance.
-        if (_payment > 0) _depositFunds(_borrower, _payment);
+        if (_payment > 0)
+            _depositFunds(
+                type(uint256).max,
+                address(this),
+                _borrower,
+                _payment
+            );
 
         // Transfer debt tokens to beneficiary.
         _anzaToken.safeBatchTransferFrom(
