@@ -7,7 +7,7 @@ import "@tokens-constants/AnzaTokenTransferTypes.sol";
 import {_LOAN_CONTRACT_, _TREASURER_, _COLLATERAL_VAULT_} from "@lending-constants/LoanContractRoles.sol";
 import {StdAnzaTokenErrors} from "@custom-errors/StdAnzaTokenErrors.sol";
 
-import {IAnzaTokenLite} from "@tokens-interfaces/IAnzaTokenLite.sol";
+import {IAnzaTokenLite} from "@tokens-interfaces/IAnzaToken.sol";
 import {AnzaBaseToken} from "./AnzaBaseToken.sol";
 import {AnzaTokenIndexer} from "./AnzaTokenIndexer.sol";
 
@@ -79,50 +79,41 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         }
     }
 
+    /**
+     * Mint ADT pair for a given issued debt's lender and borrower.
+     *
+     * This function is for initial loan contract creation with a borrower's
+     * collateral.
+     *
+     * @param _lender The address of the debt's lender.
+     * @param _borrower The address of the debt's borrower.
+     * @param _debtId The ID of the debt.
+     * @param _amount The amount of ADT to mint for the lender.
+     * @param _collateralURI The URI of the collateral NFT. This will be
+     * used to set the URI of the borrower's ADT URI.
+     *
+     * @dev This function is only callable by the loan contract.
+     */
+    function mintPair(
+        address _lender,
+        address _borrower,
+        uint256 _debtId,
+        uint256 _amount,
+        bytes calldata _collateralURI
+    ) external onlyRole(_LOAN_CONTRACT_) {
+        // Mint ADT for lender
+        _mint(_lender, lenderTokenId(_debtId), _amount);
+
+        // Mint ADT for borrower
+        _mint(_borrower, borrowerTokenId(_debtId), 1, _collateralURI);
+    }
+
     function mint(
         uint256 _debtId,
         uint256 _amount
     ) external onlyRole(_TREASURER_) {
         // Mint ADT for lender
-        _mint(lenderOf(_debtId), lenderTokenId(_debtId), _amount, "");
-    }
-
-    function mint(
-        address _to,
-        uint256 _debtId,
-        uint256 _amount,
-        bytes memory _data
-    ) external onlyRole(_LOAN_CONTRACT_) {
-        // Mint ADT for lender
-        _mint(_to, lenderTokenId(_debtId), _amount, "");
-
-        // Mint ADT for borrower
-        (address _borrower, uint256 _rootDebtId) = abi.decode(
-            _data,
-            (address, uint256)
-        );
-        _mint(_borrower, borrowerTokenId(_debtId), 1, "");
-        _setURI(borrowerTokenId(_debtId), uri(borrowerTokenId(_rootDebtId)));
-    }
-
-    function mint(
-        address _to,
-        uint256 _debtId,
-        uint256 _amount,
-        string calldata _collateralURI,
-        bytes memory _data
-    ) external onlyRole(_LOAN_CONTRACT_) {
-        // Mint ADT for lender
-        _mint(_to, lenderTokenId(_debtId), _amount, "");
-
-        // Mint ADT for borrower
-        _mint(
-            address(bytes20(_data)) /* borrower */,
-            borrowerTokenId(_debtId),
-            1,
-            ""
-        );
-        _setURI(borrowerTokenId(_debtId), _collateralURI);
+        _mint(lenderOf(_debtId), lenderTokenId(_debtId), _amount);
     }
 
     function burnBorrowerToken(uint256 _debtId) external onlyRole(_TREASURER_) {
@@ -140,6 +131,38 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         _burn(lenderOf(_debtId), _lenderTokenId, _amount);
     }
 
+    /**
+     * Internal mint for ADT lender tokens.
+     *
+     * @notice This function is only for minting lender tokens.
+     *
+     * @param _to The address to mint the tokens to.
+     * @param _id The ID of the token to mint.
+     * @param _amount The amount of tokens to mint.
+     *
+     * @dev This function allows only valid mint amounts.
+     */
+    function _mint(
+        address _to,
+        uint256 _id,
+        uint256 _amount
+    ) internal onlyValidMint(_amount) {
+        super._mint(_to, _id, _amount, "");
+    }
+
+    /**
+     * Internal mint for ADT borrower tokens.
+     *
+     * @notice This function is only for minting borrower tokens.
+     *
+     * @param _to The address to mint the tokens to.
+     * @param _id The ID of the token to mint.
+     * @param _amount The amount of tokens to mint.
+     * @param _data The URI of the token to mint.
+     *
+     * @dev This function allows only valid mint amounts.
+     * @dev This function sets the URI of the token.
+     */
     function _mint(
         address _to,
         uint256 _id,
@@ -147,6 +170,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         bytes memory _data
     ) internal override onlyValidMint(_amount) {
         super._mint(_to, _id, _amount, _data);
+        _setURI(_id, string(_data));
     }
 
     function _beforeTokenTransfer(

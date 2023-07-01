@@ -95,7 +95,11 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Add debt to database
-        __sealContract(block.timestamp._toUint64(), 1, _contractTerms);
+        __sealContract(
+            block.timestamp._toUint64(),
+            1 /* _debtMapLength */,
+            _contractTerms
+        );
 
         // The collateral ID and address will be mapped within
         // the loan collateral vault to the debt ID.
@@ -117,15 +121,17 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
         if (!_success) revert StdMonetaryErrors.FailedFundsTransfer();
 
-        // Mint debt ADT for lender
-        string memory _collateralURI = _collateralToken.tokenURI(_collateralId);
+        // Mint debt ADT for lender and borrower.
+        bytes memory _collateralURI = bytes(
+            _collateralToken.tokenURI(_collateralId)
+        );
 
-        _anzaToken.mint(
+        _anzaToken.mintPair(
             msg.sender,
+            _borrower,
             _totalDebts,
             _principal,
-            _collateralURI,
-            abi.encodePacked(_borrower)
+            _collateralURI
         );
 
         // Emit initialization event
@@ -133,7 +139,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             _collateralAddress,
             _collateralId,
             _totalDebts,
-            1
+            1 /* _debtMapLength */
         );
     }
 
@@ -167,7 +173,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
      *
-     * Emits a {LoanContractRefinanced} event.
+     * Emits a {ContractInitialized} event.
      */
     function initContract(
         uint256 _debtId,
@@ -223,12 +229,19 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
         if (!_success) revert StdMonetaryErrors.FailedFundsTransfer();
 
-        // Mint debt ADT for lender.
-        _anzaToken.mint(
+        // Mint debt ADT for lender and borrower.
+        bytes memory _collateralURI = bytes(
+            IERC721Metadata(_collateral.collateralAddress).tokenURI(
+                _collateral.collateralId
+            )
+        );
+
+        _anzaToken.mintPair(
             _lender,
+            _borrower,
             _totalDebts,
             _principal,
-            abi.encode(address(_borrower), _debtId)
+            _collateralURI
         );
 
         // Emit initialization event
@@ -241,7 +254,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     }
 
     /**
-     * TODO: Revisit to check if we can't just transfer the debt tokens to the
+     * TODO: Revisit to check if we can just transfer the debt tokens to the
      * new lender and transfer the payment directly to the previous lender's
      * withdrawable balance.
      *
@@ -272,7 +285,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
      *
-     * Emits a {LoanContractRefinanced} event.
+     * Emits a {ContractInitialized} event.
      */
     function initContract(
         uint256 _debtId,
@@ -323,18 +336,25 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
-                _borrower,
+                _lender,
                 _debtId
             )
         );
         if (!_success) revert StdMonetaryErrors.FailedFundsTransfer();
 
-        // Mint debt ADT for lender.
-        _anzaToken.mint(
+        // Mint debt ADT for lender and borrower.
+        bytes memory _collateralURI = bytes(
+            IERC721Metadata(_collateral.collateralAddress).tokenURI(
+                _collateral.collateralId
+            )
+        );
+
+        _anzaToken.mintPair(
             _lender,
+            _borrower,
             _totalDebts,
             _principal >= _balance ? _balance : _principal,
-            abi.encode(address(_borrower), _debtId)
+            _collateralURI
         );
 
         // Emit initialization event

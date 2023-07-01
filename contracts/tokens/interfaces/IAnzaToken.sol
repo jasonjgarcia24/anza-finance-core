@@ -1,7 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-interface IAnzaToken {
+interface IAnzaTokenLite {
+    function mintPair(
+        address _lender,
+        address _borrower,
+        uint256 _debtId,
+        uint256 _amount,
+        bytes calldata _collateralURI
+    ) external;
+
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
+    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
+    function mint(uint256 _debtId, uint256 _amount) external;
+
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
+    function burnBorrowerToken(uint256 _debtId) external;
+
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
+    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
+    function burnLenderToken(uint256 _debtId, uint256 _amount) external;
+}
+
+interface IAnzaToken is IAnzaTokenLite {
     /**
      * @dev Returns the token collection name.
      */
@@ -78,33 +99,6 @@ interface IAnzaToken {
         bytes calldata _data
     ) external;
 
-    /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
-    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
-    function mint(uint256 _debtId, uint256 _amount) external;
-
-    /// @param _to argument MUST be the address of the recipient whose balance is increased.
-    /// @param _debtId argument MUST be the debt ID for deriving token ID being transferred.
-    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
-    /// @param _data Additional data with no specified format, MUST be sent unaltered in call to the `ERC1155TokenReceiver` hook(s) on `_to`
-    function mint(
-        address _to,
-        uint256 _debtId,
-        uint256 _amount,
-        bytes memory _data
-    ) external;
-
-    /// @param _to argument MUST be the address of the recipient whose balance is increased.
-    /// @param _id argument MUST be the token ID being transferred.
-    /// @param _amount argument MUST be the number of tokens the holder balance is decreased by and match what the recipient balance is increased by.
-    /// @param _data Additional data with no specified format, MUST be sent unaltered in call to the `ERC1155TokenReceiver` hook(s) on `_to`
-    function mint(
-        address _to,
-        uint256 _id,
-        uint256 _amount,
-        string calldata _collateralURI,
-        bytes memory _data
-    ) external;
-
     /// @param _account argument MUST be the address of the owner/operator whose balance is decreased.
     /// @param _id argument MUST be the token being burned.
     /// @param _amount argument MUST be the number of tokens the holder balance is decreased by.
@@ -118,11 +112,4 @@ interface IAnzaToken {
         uint256[] memory _ids,
         uint256[] memory _amounts
     ) external;
-
-    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
-    function burnBorrowerToken(uint256 _debtId) external;
-
-    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
-    /// @param _debtId argument MUST be the debt ID for deriving token ID being burned.
-    function burnLenderToken(uint256 _debtId, uint256 _amount) external;
 }
