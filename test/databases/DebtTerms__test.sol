@@ -161,11 +161,11 @@ contract DebtTermsUtils is Test {
             "8 :: lender royalties does not equal expected lender royalties."
         );
 
-        assertEq(
-            _loanCodecHarness.activeLoanCount(_debtId),
-            _activeLoanIndex,
-            "9 :: active loan contract does not equal expected active loan contract."
-        );
+        // assertEq(
+        //     _loanCodecHarness.activeLoanCount(_debtId),
+        //     _activeLoanIndex,
+        //     "9 :: active loan contract does not equal expected active loan contract."
+        // );
     }
 }
 

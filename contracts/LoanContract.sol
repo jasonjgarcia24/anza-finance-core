@@ -312,11 +312,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Add debt to database
-        __sealContract(
-            block.timestamp._toUint64(),
-            _debtMapLength,
-            debtTerms(_debtId)
-        );
+        __duplicateContract(_debtMapLength, _debtId);
 
         // Store collateral-debtId mapping in vault
         _collateralVault.setCollateral(
@@ -453,5 +449,23 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             revert StdMonetaryErrors.ExceededRefinanceLimit();
 
         _setLoanAgreement(_now, _totalDebts, _activeLoanIndex, _contractTerms);
+    }
+
+    /**
+     * Duplicate an existing loan agreement for a new loan.
+     *
+     * @param _activeLoanIndex The index of the active loan.
+     * @param _debtId The debt ID to duplicate the contract terms from.
+     *
+     * @dev Reverts if the `_activeLoanIndex` exceeds the maximum refinances.
+     */
+    function __duplicateContract(
+        uint256 _activeLoanIndex,
+        uint256 _debtId
+    ) private {
+        if (_activeLoanIndex > maxRefinances())
+            revert StdMonetaryErrors.ExceededRefinanceLimit();
+
+        _setDebtTerms(_totalDebts, debtTerms(_debtId));
     }
 }
