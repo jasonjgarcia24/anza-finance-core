@@ -68,7 +68,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         uint256 _principal = msg.value;
         _validateLoanTerms(
             _contractTerms,
-            block.timestamp._toUint64(),
+            block.timestamp.toUint64(),
             _principal
         );
 
@@ -96,7 +96,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         // Add debt to database
         __sealContract(
-            block.timestamp._toUint64(),
+            block.timestamp.toUint64(),
             1 /* _debtMapLength */,
             _contractTerms
         );
@@ -188,7 +188,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         uint256 _principal = msg.value;
         _validateLoanTerms(
             _contractTerms,
-            block.timestamp._toUint64(),
+            block.timestamp.toUint64(),
             _principal
         );
 
@@ -205,13 +205,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         // Add debt to database
         __sealContract(
-            block.timestamp._toUint64(),
+            block.timestamp.toUint64(),
             _debtMapLength,
             _contractTerms
         );
 
         // Store collateral-debtId mapping in vault
         _collateralVault.setCollateral(
+            _borrower,
             _collateral.collateralAddress,
             _collateral.collateralId,
             _totalDebts,
@@ -312,10 +313,11 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Add debt to database
-        __duplicateContract(_debtMapLength, _debtId);
+        __duplicateContract(_debtId, _debtMapLength);
 
         // Store collateral-debtId mapping in vault
         _collateralVault.setCollateral(
+            _borrower,
             _collateral.collateralAddress,
             _collateral.collateralId,
             _totalDebts,
@@ -454,18 +456,19 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     /**
      * Duplicate an existing loan agreement for a new loan.
      *
-     * @param _activeLoanIndex The index of the active loan.
-     * @param _debtId The debt ID to duplicate the contract terms from.
-     *
      * @dev Reverts if the `_activeLoanIndex` exceeds the maximum refinances.
      */
     function __duplicateContract(
-        uint256 _activeLoanIndex,
-        uint256 _debtId
+        uint256 _sourceDebtId,
+        uint256 _activeLoanIndex
     ) private {
         if (_activeLoanIndex > maxRefinances())
             revert StdMonetaryErrors.ExceededRefinanceLimit();
 
-        _setDebtTerms(_totalDebts, debtTerms(_debtId));
+        _setLoanAgreement(
+            _totalDebts,
+            _activeLoanIndex,
+            debtTerms(_sourceDebtId)
+        );
     }
 }

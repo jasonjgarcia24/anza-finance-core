@@ -63,7 +63,7 @@ pragma solidity 0.8.20;
 //                 false,
 //                 abi.encodePacked(
 //                     _INVALID_LOAN_PARAMETER_SELECTOR_,
-//                     _TIME_EXPIRY_ERROR_ID_
+//                     _TERMS_EXPIRY_ERROR_ID_
 //                 )
 //             );
 //         }

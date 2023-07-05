@@ -24,7 +24,7 @@ library LibLoanContractStandardErrors {
     bytes4 public constant FIXED_INTEREST_RATE_ERROR_ID =
         _FIXED_INTEREST_RATE_ERROR_ID_;
     bytes4 public constant GRACE_PERIOD_ERROR_ID = _GRACE_PERIOD_ERROR_ID_;
-    bytes4 public constant TIME_EXPIRY_ERROR_ID = _TIME_EXPIRY_ERROR_ID_;
+    bytes4 public constant TIME_EXPIRY_ERROR_ID = _TERMS_EXPIRY_ERROR_ID_;
     bytes4 public constant LENDER_ROYALTIES_ERROR_ID =
         _LENDER_ROYALTIES_ERROR_ID_;
 }

@@ -28,7 +28,7 @@ contract CollateralVault is
         address _anzaTokenAddress
     ) VaultAccessController(_anzaTokenAddress) {
         // This is necessary because the LoanContract
-        // debtId starts at 1
+        // debtId starts at 1.
         __collaterals[0] = Collateral(
             0x000000000000000000000000000000000000D3ad,
             0,
@@ -46,8 +46,8 @@ contract CollateralVault is
         _;
     }
 
-    modifier onlyWithdrawalAllowed(address _to, uint256 _debtId) {
-        if (!withdrawalAllowed(_to, _debtId))
+    modifier onlyWithdrawAllowed(address _to, uint256 _debtId) {
+        if (!withdrawAllowed(_to, _debtId))
             revert StdVaultErrors.UnallowedWithdrawal();
         _;
     }
@@ -67,13 +67,14 @@ contract CollateralVault is
     }
 
     function setCollateral(
+        address _from,
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId,
         uint256 _activeLoanIndex
     ) external onlyRole(_LOAN_CONTRACT_) {
         _record(
-            msg.sender,
+            _from,
             _collateralAddress,
             _collateralId,
             _debtId,
@@ -82,8 +83,9 @@ contract CollateralVault is
     }
 
     /**
-     * @dev Returns whether a token is allowed to be deposited as collateral or
+     * Returns whether a token is allowed to be deposited as collateral or
      * stored as a reference to collateral.
+     *
      * @param _collateralAddress The collateral token's contract address.
      * @param _collateralId The collateral token's ID.
      * @param _debtId The debt ID associated with the collateral.
@@ -113,16 +115,16 @@ contract CollateralVault is
     }
 
     /**
-     * @dev Returns whether an address is allowed to withdraw their collateral.
+     * Returns whether an address is allowed to withdraw their collateral.
+     *
+     * This checks two things:
+     *   1. The loan state is paid in full.
+     *   2. The recipient is the borrower.
+     *
      * @param _to The destination address of the collateral.
      * @param _debtId The debt ID mapped to the collateral.
-     *
-     * This checks three things:
-     *   1. The debt ID is a vault containing the collateral.
-     *   2. The loan state is paid in full.
-     *   3. The recipient is the documented borrower.
      */
-    function withdrawalAllowed(
+    function withdrawAllowed(
         address _to,
         uint256 _debtId
     ) public view returns (bool) {
@@ -137,13 +139,28 @@ contract CollateralVault is
             IAnzaToken(anzaToken).borrowerOf(_debtId) == _to; // Is borrower?
     }
 
+    /**
+     * Conducts a collateral withdraw from the vault.
+     *
+     * @param _to The destination address of the collateral.
+     * @param _debtId The debt ID mapped to the collateral.
+     *
+     * @dev This function is only callable by the LoanTreasurer.
+     * @dev This function is only callable when the collateral is
+     * withdrawable.
+     *
+     * Emits a {WithdrawnCollateral} event.
+     *
+     * @return {bool} Returns true if the collateral was successfully
+     * withdrawn.
+     */
     function withdraw(
         address _to,
         uint256 _debtId
     )
         external
         onlyRole(_TREASURER_)
-        onlyWithdrawalAllowed(_to, _debtId)
+        onlyWithdrawAllowed(_to, _debtId)
         returns (bool)
     {
         Collateral storage _collateral = __collaterals[_debtId];
@@ -167,19 +184,25 @@ contract CollateralVault is
     }
 
     /**
-     * @dev Whenever an {IERC721} `tokenId` token is transferred to this contract via
+     * Whenever an {IERC721} `tokenId` token is transferred to this contract via
      * {IERC721-safeTransferFrom} by `operator` from `from`, this function is called.
      *
-     * It must return its Solidity selector to confirm the token transfer.
-     * If any other value is returned or the interface is not implemented by the recipient,
-     * the transfer will be reverted.
+     * @param _from The address which previously owned the token.
+     * @param _collateralId The token ID which is being transferred.
+     * @param _data Additional data containing the debt ID.
+     *
+     * @dev This function is only callable by the LoanContract.
+     *
+     * @return The Solidity selector to confirm the token transfer.
      */
     function onERC721Received(
-        address,
+        address _operator,
         address _from,
         uint256 _collateralId,
         bytes memory _data
     ) public override returns (bytes4) {
+        _checkRole(_LOAN_CONTRACT_, _operator);
+
         _record(
             _from,
             msg.sender,

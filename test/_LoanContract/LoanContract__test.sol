@@ -7,11 +7,14 @@ import {StdStyle} from "forge-std/StdStyle.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
+import {_SECONDS_PER_24_MINUTES_RATIO_SCALED_} from "@lending-constants/LoanContractNumbers.sol";
+import {_INVALID_SIGNER_SELECTOR_} from "@custom-errors/StdNotaryErrors.sol";
 import {_UINT64_MAX_, _UINT128_MAX_, _SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
 
 import {LoanContract} from "@base/LoanContract.sol";
 import {LoanTreasurey} from "@base/services/LoanTreasurey.sol";
 import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
+import {ILoanManager} from "@services/interfaces/ILoanManager.sol";
 import {ILoanNotary, IRefinanceNotary} from "@services/interfaces/ILoanNotary.sol";
 import {AnzaToken} from "@tokens/AnzaToken.sol";
 import {CollateralVault} from "@services/CollateralVault.sol";
@@ -71,7 +74,7 @@ contract LoanContractHarness is LoanContract {
 
     function exposed__updateLoanTimes(
         uint256 _debtId,
-        uint256 _updateType
+        ILoanManager.LoanStateUpdateKind _updateType
     ) public {
         _updateLoanTimes(_debtId, _updateType);
     }
@@ -172,16 +175,27 @@ abstract contract LoanContractInit is DebtTermsInit {
         uint256 _borrowerPrivKey,
         ContractTerms memory _contractTerms
     ) public view virtual {
+        // Only allow valid principal
+        vm.assume(
+            _contractTerms.principal > 0 &&
+                _contractTerms.principal <= _UINT128_MAX_
+        );
+
         // Only allow valid fir intervals.
         vm.assume(
             _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
         );
 
         // Duration must be greater than grace period.
-        vm.assume(_contractTerms.duration >= _contractTerms.gracePeriod);
+        vm.assume(_contractTerms.duration > _contractTerms.gracePeriod);
 
         // Commital must be no greater than 100%.
         _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
+
+        // Terms expiry must be greater than 24 minutes.
+        vm.assume(
+            _contractTerms.termsExpiry > _SECONDS_PER_24_MINUTES_RATIO_SCALED_
+        );
 
         // Lender royalties must be no greater than 100%.
         _contractTerms.lenderRoyalties = uint8(
@@ -748,6 +762,9 @@ contract LoanContractViewsUnitTest is
                 _data,
                 "1 :: init loan contract error message mismatch."
             );
+
+            // Force rerun.
+            vm.assume(_success);
         }
     }
 
@@ -1113,6 +1130,7 @@ contract LoanContractViewsUnitTest is
         }
     }
 
+    /* --------------- LoanContract.initContract() --------------- */
     /**
      * See {_testLoanContract__InitContract_Fuzz_InitialLoan}.
      */
@@ -1149,6 +1167,7 @@ contract LoanContractViewsUnitTest is
         );
     }
 
+    /* --------------- LoanContract.initContract() --------------- */
     /**
      * See {_testLoanContract__InitContract_Fuzz_RefinanceLoan}.
      */
@@ -1187,6 +1206,7 @@ contract LoanContractViewsUnitTest is
         );
     }
 
+    /* --------------- LoanContract.initContract() --------------- */
     /**
      * See {_testLoanContract__InitContract_Fuzz_SponshorshipLoan}.
      */
@@ -1216,12 +1236,122 @@ contract LoanContractViewsUnitTest is
         _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
+        console.log("2 - _debtId: ", _debtId);
+
+        console.log(
+            "loanContractHarness.loanState(_debtId): ",
+            loanContractHarness.loanState(_debtId)
+        );
+
         loanContractUtils.checkLoanTerms(
             address(loanContractHarness),
             _debtId,
             2,
             _now,
             _contractTerms
+        );
+    }
+
+    /* -------------- LoanContract.revokeProposal() ------------- */
+    /**
+     * Test the init contract function.
+     *
+     * @notice This test conducts testing on the loan contract initialization
+     * of a new initial loan (i.e. leveraging the borrower's collateral).
+     *
+     * @notice Test Function:
+     *  initContract(
+     *      address _collateralAddress,
+     *      uint256 _collateralId,
+     *      bytes32 _contractTerms,
+     *      bytes calldata _borrowerSignature
+     *  )
+     *
+     * @param _borrowerPrivKey The private key of the borrower.
+     * @param _collateralId The id of the collateral.
+     * @param _contractTerms The contract terms.
+     */
+    function testLoanContract__RevokeProposal_Fuzz(
+        uint256 _borrowerPrivKey,
+        uint256 _collateralId,
+        ContractTerms memory _contractTerms
+    ) public {
+        cleanContractTerms(_borrowerPrivKey, _contractTerms);
+
+        // Set FIR to ensure compounding interest failure doesn't assert.
+        _contractTerms.fixedInterestRate = uint8(
+            bound(_contractTerms.fixedInterestRate, 0, 0)
+        );
+
+        address _borrower = vm.addr(_borrowerPrivKey);
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        // Get collateral nonce.
+        uint256 _collateralNonce = loanContractHarness.collateralNonce(
+            address(_demoToken),
+            _collateralId
+        );
+
+        // Create contract params.
+        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
+            .ContractParams({
+                principal: _contractTerms.principal,
+                contractTerms: _packedContractTerms,
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                collateralNonce: _collateralNonce
+            });
+
+        // Create borrower's signature
+        bytes memory _signature = loanContractUtils.createContractSignature(
+            _borrowerPrivKey,
+            _contractParams
+        );
+
+        // Mint collateral and approve loan contract.
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        vm.startPrank(_borrower);
+        loanContractHarness.revokeProposal(
+            address(_demoToken),
+            _collateralId,
+            _contractTerms.principal,
+            _packedContractTerms,
+            _signature
+        );
+        vm.stopPrank();
+
+        // Collateral nonce should have been incremented by 1.
+        assertEq(
+            loanContractHarness.collateralNonce(
+                address(_demoToken),
+                _collateralId
+            ),
+            _collateralNonce + 1,
+            "0 :: collateral nonce mismatch."
+        );
+
+        // FAIL :: Create loan contract
+        vm.deal(lender, _contractTerms.principal + 1 ether);
+        vm.startPrank(lender);
+        (bool _success, bytes memory _data) = address(loanContractHarness).call{
+            value: _contractTerms.principal
+        }(
+            abi.encodeWithSignature(
+                "initContract(address,uint256,bytes32,bytes)",
+                address(_demoToken),
+                _collateralId,
+                _packedContractTerms,
+                _signature
+            )
+        );
+        vm.stopPrank();
+
+        assertFalse(_success, "1 :: initContract should fail.");
+        assertEq(
+            bytes4(_data),
+            _INVALID_SIGNER_SELECTOR_,
+            "2 :: invalid signer failure expected."
         );
     }
 }

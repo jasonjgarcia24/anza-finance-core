@@ -18,7 +18,7 @@ library TypeUtils {
      *
      * - input must fit into 64 bits
      */
-    function _toUint64(uint256 value) internal pure returns (uint64 _value) {
+    function toUint64(uint256 value) internal pure returns (uint64 _value) {
         assembly {
             if gt(value, _UINT64_MAX_) {
                 mstore(0x20, _OVERFLOW_CAST_SELECTOR_)
@@ -39,7 +39,7 @@ library TypeUtils {
      *
      * - input must fit into 64 bits
      */
-    function _toUint32(uint256 value) internal pure returns (uint32 _value) {
+    function toUint32(uint256 value) internal pure returns (uint32 _value) {
         assembly {
             if gt(value, _UINT32_MAX_) {
                 mstore(0x20, _OVERFLOW_CAST_SELECTOR_)
@@ -57,7 +57,7 @@ library TypeUtils {
      *
      * - input must fit into 64 bits
      */
-    function _verifyUint32(uint256 value) internal pure {
+    function verifyUint32(uint256 value) internal pure {
         assembly {
             if gt(value, _UINT32_MAX_) {
                 mstore(0x20, _OVERFLOW_CAST_SELECTOR_)

@@ -28,6 +28,7 @@ interface ICollateralVault {
     ) external view returns (Collateral memory);
 
     function setCollateral(
+        address _from,
         address _collateralAddress,
         uint256 _collateralId,
         uint256 _debtId,
@@ -40,7 +41,7 @@ interface ICollateralVault {
         uint256 _debtId
     ) external returns (bool);
 
-    function withdrawalAllowed(
+    function withdrawAllowed(
         address _to,
         uint256 _debtId
     ) external view returns (bool);

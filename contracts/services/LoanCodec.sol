@@ -13,6 +13,7 @@ import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.s
 import "@custom-errors/StdLoanErrors.sol";
 
 import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
+import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
 import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
@@ -33,7 +34,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         uint256 _seconds
     ) public view returns (uint256) {
         // Verify _seconds fits into a uint32.
-        _seconds._verifyUint32();
+        _seconds.verifyUint32();
 
         // Determine the max number of seconds that can be calculated.
         _seconds = (_seconds + loanLastChecked(_debtId)) <= loanClose(_debtId)
@@ -76,7 +77,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             let _termsExpiry := and(mload(0), _UINT32_MAX_)
 
             if lt(_termsExpiry, _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
-                __revert(_TIME_EXPIRY_ERROR_ID_)
+                __revert(_TERMS_EXPIRY_ERROR_ID_)
             }
 
             // Get packed duration
@@ -98,7 +99,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
                 __revert(_GRACE_PERIOD_ERROR_ID_)
             }
 
-            if gt(add(add(_loanStart, _duration), _gracePeriod), _UINT32_MAX_) {
+            if gt(add(add(_loanStart, _duration), _gracePeriod), _UINT64_MAX_) {
                 __revert(_DURATION_ERROR_ID_)
             }
 
@@ -237,7 +238,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             mstore(0x1f, _contractTerms)
             let _lenderRoylaties := and(mload(0), _UINT8_MAX_)
 
-            // Shif left to make space for loan state
+            // Shift left to make space for loan state
             mstore(0x20, shl(4, _contractTerms))
 
             // Pack loan state (uint4)
@@ -339,6 +340,37 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         _setDebtTerms(_debtId, _loanAgreement);
     }
 
+    function _setLoanAgreement(
+        uint256 _debtId,
+        uint256 _activeLoanIndex,
+        bytes32 _sourceAgreement
+    ) internal {
+        bytes32 _loanAgreement;
+
+        assembly {
+            function __packTerm(_mask, _map, _pos, _val) {
+                mstore(
+                    0x20,
+                    xor(and(_mask, mload(0x20)), and(_map, shl(_pos, _val)))
+                )
+            }
+
+            mstore(0x20, _sourceAgreement)
+
+            // Pack loan count (uint8)
+            __packTerm(
+                _LOAN_COUNT_MASK_,
+                _LOAN_COUNT_MAP_,
+                _LOAN_COUNT_POS_,
+                _activeLoanIndex
+            )
+
+            _loanAgreement := and(_CLEANUP_MASK_, mload(0x20))
+        }
+
+        _setDebtTerms(_debtId, _loanAgreement);
+    }
+
     function _updateLoanState(uint256 _debtId, uint8 _newLoanState) internal {
         bytes32 _contractTerms = debtTerms(_debtId);
         uint8 _oldLoanState;
@@ -382,7 +414,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
      */
     function _updateLoanTimes(
         uint256 _debtId,
-        uint256 _updateType
+        ILoanManager.LoanStateUpdateKind _updateType
     ) internal returns (uint256) {
         bytes32 _contractTerms = debtTerms(_debtId);
 
@@ -403,6 +435,8 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
 
             let _now := timestamp()
             if iszero(gt(_now, _loanStart)) {
+                // Note: This will exit the current context entirely.
+                // Therefore, we need to supply the return data directly.
                 mstore(0x20, _updateType)
                 return(0x20, 0x20)
             }

@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
-import {_UINT256_MAX_} from "@universal-numbers/StdNumbers.sol";
 
+import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {PaymentBook} from "@lending-databases/PaymentBook.sol";
 import {AccountantAccessController} from "@lending-access/AccountantAccessController.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
@@ -116,10 +116,11 @@ abstract contract LoanAccountant is PaymentBook, AccountantAccessController {
         uint256 _prevCheck = _loanDebtTerms.loanLastChecked(_debtId);
 
         // Update both the loan's state and the last checked timestamp.
-        // If an update is performed the result will be less than 3.
-        // If the loan is paid off, expired, or closed the result will
-        // be 3, 4, type(uint256).max respectively.
-        if (_loanManager.updateLoanState(_debtId) >= 3) {
+        // If an update is performed the result will be less than PAID.
+        if (
+            _loanManager.updateLoanState(_debtId) >=
+            ILoanManager.LoanStateUpdateKind.PAID
+        ) {
             __assessUpdatePermitted(_debtId);
             return;
         }

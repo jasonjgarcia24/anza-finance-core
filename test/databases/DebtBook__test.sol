@@ -29,6 +29,10 @@ contract DebtBookHarness is DebtBook {
         return _totalDebts;
     }
 
+    function exposed__setTotalDebts(uint256 _newTotalDebts) public {
+        _totalDebts = _newTotalDebts;
+    }
+
     function exposed__setAnzaToken(address _anzaTokenAddress) public {
         _setAnzaToken(_anzaTokenAddress);
     }

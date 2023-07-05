@@ -11,7 +11,7 @@ bytes4 constant _DURATION_ERROR_ID_ = 0x7cde7ce7;
 bytes4 constant _PRINCIPAL_ERROR_ID_ = 0xbbc5f09e;
 bytes4 constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0xbfe4482e;
 bytes4 constant _GRACE_PERIOD_ERROR_ID_ = 0x3bc4ef6a;
-bytes4 constant _TIME_EXPIRY_ERROR_ID_ = 0xf0c15f40;
+bytes4 constant _TERMS_EXPIRY_ERROR_ID_ = 0xf0c15f40;
 bytes4 constant _LENDER_ROYALTIES_ERROR_ID_ = 0xe1f90bbd;
 
 /* ------------------------------------------------ *

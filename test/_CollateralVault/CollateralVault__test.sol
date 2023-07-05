@@ -4,13 +4,19 @@ pragma solidity 0.8.20;
 import {console} from "forge-std/console.sol";
 
 import "@lending-constants/LoanContractRoles.sol";
-import {StdVaultErrors} from "@custom-errors/StdVaultErrors.sol";
+import "@custom-errors/StdVaultErrors.sol";
+import {_INVALID_COLLATERAL_SELECTOR_} from "@custom-errors/StdLoanErrors.sol";
 
+import {LoanTreasurey} from "@base/services/LoanTreasurey.sol";
 import {CollateralVault} from "@services/CollateralVault.sol";
 import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
 
-// import {LoanContractSubmitted} from "@test-contract/LoanContract__test.sol";
-import {CollateralVaultEventsSuite} from "@test-utils/events/CollateralVaultEventsSuite__test.sol";
+import {Setup} from "@test-base/Setup__test.sol";
+import {DebtBookHarness} from "@test-databases/DebtBook__test.sol";
+import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
+import {DemoToken} from "@test-utils/DemoToken.sol";
+import {ICollateralVaultEvents, CollateralVaultEventsSuite} from "@test-utils/events/CollateralVaultEventsSuite__test.sol";
+import {IERC721Events} from "@test-utils/events/ERC721EventsSuite__test.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
@@ -42,160 +48,538 @@ contract CollateralVaultHarness is CollateralVault {
     }
 }
 
-// contract CollateralVaultUnitTest is
-//     LoanContratSubmitted,
-//     CollateralVaultEventsSuite
-// {
-//     function setUp() public virtual override {
-//         super.setUp();
-//     }
+abstract contract CollateralVaultInit is Setup {
+    DebtBookHarness public debtBookHarness;
+    AnzaTokenHarness public anzaTokenHarness;
+    CollateralVaultHarness public collateralVaultHarness;
 
-//     function testCollateralVault__Pass() public {}
+    DemoToken internal _demoToken;
 
-//     /*
-//      * @note CollateralVault should be the current owner
-//      * of the collateralized token.
-//      */
-//     function testCollateralVault__Collateral() public {
-//         assertEq(
-//             IERC721(demoToken).ownerOf(collateralId),
-//             address(collateralVault)
-//         );
-//     }
+    function setUp() public virtual override {
+        super.setUp();
 
-//     /*
-//      * @note CollateralVault should have the following roles assigned
-//      * to the following accounts:
-//      *  - _ADMIN_: admin
-//      *  - _TREASURER_: loanTreasurer
-//      *  - _LOAN_CONTRACT_: loanContract
-//      */
-//     function testCollateralVault__CollateralVaultHasRole() public {
-//         assertTrue(
-//             collateralVault.hasRole(_ADMIN_, admin),
-//             "0 :: admin role not set correctly."
-//         );
-//         assertTrue(
-//             collateralVault.hasRole(_TREASURER_, address(loanTreasurer)),
-//             "1 :: treasurer role not set correctly."
-//         );
-//         assertTrue(
-//             collateralVault.hasRole(_LOAN_CONTRACT_, address(loanContract)),
-//             "2 :: loan contract role not set correctly."
-//         );
-//     }
+        vm.startPrank(admin);
 
-//     // /*
-//     //  * @note The CollateralVault::getCollateral() should return
-//     //  * a ICollateralVault.Collateral struct with the collateralized
-//     //  * token's address and ID.
-//     //  */
-//     // function testCollateralVault__GetCollateralAt() public {
-//     //     // uint256 _debtId = loanContract.totalDebts();
-//     //     // ICollateralVault.Collateral memory _collateral = collateralVault
-//     //     //     .getCollateral(_debtId);
-//     //     // assertEq(
-//     //     //     _collateral.collateralAddress,
-//     //     //     address(demoToken),
-//     //     //     "0 :: collateral address in incorrect."
-//     //     // );
-//     //     // assertEq(
-//     //     //     _collateral.collateralId,
-//     //     //     collateralId,
-//     //     //     "1 :: collateral id is incorrect."
-//     //     // );
-//     // }
+        // Deploy DebtBook
+        debtBookHarness = new DebtBookHarness();
 
-//     // /*
-//     //  * @note CollateralVault::withdraw() should only be callable
-//     //  * from the LoanTreasurey contract.
-//     //  */
-//     // function testCollateralVault__Withdraw() public {
-//     //     uint256 _debtId = loanContract.totalDebts();
+        // Deploy AnzaToken
+        anzaTokenHarness = new AnzaTokenHarness();
+        anzaTokenHarness.grantRole(_TREASURER_, address(loanTreasurer));
 
-//     //     // DENY :: Try admin
-//     //     vm.startPrank(admin);
-//     //     vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, admin)));
-//     //     collateralVault.withdraw(admin, _debtId);
-//     //     vm.stopPrank();
+        // Deploy LoanTreasurey
+        loanTreasurer = new LoanTreasurey();
 
-//     //     // DENY :: Try loan contract
-//     //     vm.startPrank(address(loanContract));
-//     //     vm.expectRevert(
-//     //         bytes(getAccessControlFailMsg(_TREASURER_, address(loanContract)))
-//     //     );
-//     //     collateralVault.withdraw(address(loanContract), _debtId);
-//     //     vm.stopPrank();
+        // Deploy CollateralVault
+        collateralVaultHarness = new CollateralVaultHarness(
+            address(anzaTokenHarness)
+        );
 
-//     //     // DENY :: Try loan collateral vault
-//     //     vm.startPrank(address(collateralVault));
-//     //     vm.expectRevert(
-//     //         bytes(
-//     //             getAccessControlFailMsg(_TREASURER_, address(collateralVault))
-//     //         )
-//     //     );
-//     //     collateralVault.withdraw(address(collateralVault), _debtId);
-//     //     vm.stopPrank();
+        // Set AnzaToken access control roles
+        anzaTokenHarness.grantRole(
+            _COLLATERAL_VAULT_,
+            address(collateralVaultHarness)
+        );
+        anzaTokenHarness.grantRole(_TREASURER_, address(loanTreasurer));
 
-//     //     // DENY :: Try loan treasurer of unpaid loan
-//     //     vm.startPrank(address(loanTreasurer));
-//     //     vm.expectRevert(
-//     //         abi.encodeWithSelector(StdVaultErrors.UnallowedWithdrawal.selector)
-//     //     );
-//     //     emit WithdrawnCollateral(borrower, address(demoToken), collateralId);
-//     //     collateralVault.withdraw(borrower, _debtId);
-//     //     vm.stopPrank();
+        // Set CollateralVault access control roles
+        collateralVaultHarness.setLoanContract(address(debtBookHarness));
+        collateralVaultHarness.grantRole(_TREASURER_, address(loanTreasurer));
 
-//     //     // ALLOW :: Try loan treasurer of unpaid loan
-//     //     vm.startPrank(borrower);
-//     //     vm.deal(borrower, _PRINCIPAL_);
-//     //     (bool _success, ) = address(loanTreasurer).call{value: _PRINCIPAL_}(
-//     //         abi.encodeWithSignature("depositPayment(uint256)", _debtId)
-//     //     );
-//     //     require(_success == true, "0 :: deposited payment.");
-//     //     vm.stopPrank();
+        // Set harnessed DebtBook access control roles
+        debtBookHarness.exposed__setAnzaToken(address(anzaTokenHarness));
+        debtBookHarness.exposed__setCollateralVault(
+            address(collateralVaultHarness)
+        );
 
-//     //     vm.startPrank(address(loanTreasurer));
-//     //     vm.expectEmit(true, true, true, true, address(collateralVault));
-//     //     emit WithdrawnCollateral(borrower, address(demoToken), collateralId);
-//     //     collateralVault.withdraw(borrower, _debtId);
-//     //     vm.stopPrank();
-//     // }
+        vm.stopPrank();
 
-//     // function testCollateralVault__FuzzWithdrawDenied(address _sender) public {
-//     //     uint256 _debtId = loanContract.totalDebts();
+        // Deploy DemoToken with no token balance.
+        _demoToken = new DemoToken(0);
+    }
+}
 
-//     //     vm.expectRevert(bytes(getAccessControlFailMsg(_TREASURER_, _sender)));
+contract CollateralVaultUnitTest is
+    CollateralVaultInit,
+    IERC721Events,
+    ICollateralVaultEvents,
+    CollateralVaultEventsSuite
+{
+    function setUp() public virtual override {
+        super.setUp();
+    }
 
-//     //     vm.startPrank(_sender);
-//     //     collateralVault.withdraw(borrower, _debtId);
-//     //     vm.stopPrank();
-//     // }
+    /**
+     * Test the internal record function.
+     *
+     * @notice This test also tests the getCollateral() function.
+     *
+     * @param _borrower The borrower address.
+     * @param _collateralId The collateral ID.
+     * @param _debtId The debt ID.
+     * @param _activeLoanIndex The active loan index.
+     *
+     * @dev Full pass if the function initial reverts as expected and then
+     * passes with an updated debt ID.
+     */
+    function _testCollateralVault__Record(
+        address _borrower,
+        uint256 _collateralId,
+        uint256 _debtId,
+        uint256 _activeLoanIndex,
+        function(address, address, uint256, uint256, uint256) external recorder
+    ) internal {
+        vm.assume(_borrower != address(0));
 
-//     // /*
-//     //  * @note CollateralVault::onERC721Received() should only allow
-//     //  * ERC721 deposits from the LoanContract when there is a matching
-//     //  * debt ID and the collateral has not previously been stored.
-//     //  */
-//     // function testCollateralVault__FuzzDirectDepositDenied(
-//     //     bytes32 _hashedDebtId
-//     // ) public {
-//     //     uint256 _testCollateralId = collateralId + 1;
+        // Fail expected due to debt ID misalignment.
+        vm.expectRevert(_UNALLOWED_DEPOSIT_);
+        recorder(
+            _borrower,
+            address(_demoToken),
+            _collateralId,
+            _debtId,
+            _activeLoanIndex
+        );
 
-//     //     vm.startPrank(borrower);
-//     //     demoToken.approve(admin, _testCollateralId);
-//     //     vm.stopPrank();
+        _debtId = bound(_debtId, 1, type(uint256).max);
 
-//     //     vm.startPrank(admin);
-//     //     vm.expectRevert(
-//     //         abi.encodeWithSelector(StdVaultErrors.UnallowedDeposit.selector)
-//     //     );
-//     //     demoToken.safeTransferFrom(
-//     //         borrower,
-//     //         address(collateralVault),
-//     //         _testCollateralId,
-//     //         abi.encode(_hashedDebtId)
-//     //     );
-//     //     vm.stopPrank();
-//     // }
-// }
+        // Mint collateral and approve loan contract.
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        // Update totalDebts within DebtBook.
+        debtBookHarness.exposed__setTotalDebts(_debtId - 1);
+
+        // Write debt to DebtBook.
+        debtBookHarness.exposed__writeDebt(address(_demoToken), _collateralId);
+
+        // Record collateral.
+        recorder(
+            _borrower,
+            address(_demoToken),
+            _collateralId,
+            _debtId,
+            _activeLoanIndex
+        );
+
+        ICollateralVault.Collateral memory collateral = collateralVaultHarness
+            .getCollateral(_debtId);
+
+        assertEq(
+            collateral.collateralAddress,
+            address(_demoToken),
+            "0 :: collateral address mismatch."
+        );
+        assertEq(
+            collateral.collateralId,
+            _collateralId,
+            "1 :: collateral id mismatch."
+        );
+        assertEq(
+            collateral.activeLoanIndex,
+            _activeLoanIndex,
+            "2 :: active loan index mismatch."
+        );
+    }
+
+    function _simulateDeposit(
+        address _borrower,
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId,
+        uint256 _activeLoanIndex,
+        uint256 _amount,
+        function(address, uint256) external returns (uint256, uint256) writeDebt
+    ) internal {
+        writeDebt(_collateralAddress, _collateralId);
+        collateralVaultHarness.exposed__record(
+            _borrower,
+            _collateralAddress,
+            _collateralId,
+            _debtId,
+            _activeLoanIndex
+        );
+        anzaTokenHarness.exposed__mint(
+            _borrower,
+            anzaTokenHarness.borrowerTokenId(_debtId),
+            _debtId
+        );
+        anzaTokenHarness.exposed__mint(
+            lender,
+            anzaTokenHarness.lenderTokenId(_debtId),
+            _amount
+        );
+    }
+
+    /* --------------- CollateralVault._record() --------------- */
+    /**
+     * See {testCollateralVault__Record()} for testing.
+     */
+    function testCollateralVault__Record(
+        address _borrower,
+        uint256 _collateralId,
+        uint256 _debtId,
+        uint256 _activeLoanIndex
+    ) public {
+        _testCollateralVault__Record(
+            _borrower,
+            _collateralId,
+            _debtId,
+            _activeLoanIndex,
+            collateralVaultHarness.exposed__record
+        );
+    }
+
+    /* ------------ CollateralVault.getCollateral() ------------ */
+    /**
+     * See {testCollateralVault__Record()} for testing.
+     */
+
+    /* ------------ CollateralVault.setCollateral() ------------ */
+    /**
+     * Test the set collateral function.
+     */
+    function testCollateralVault_SetCollateral(
+        address _borrower,
+        uint256 _collateralId,
+        uint256 _debtId,
+        uint256 _activeLoanIndex
+    ) public {
+        vm.startPrank(address(debtBookHarness));
+        _testCollateralVault__Record(
+            _borrower,
+            _collateralId,
+            _debtId,
+            _activeLoanIndex,
+            collateralVaultHarness.setCollateral
+        );
+    }
+
+    /* ---------- CollateralVault.withdrawAllowed() ---------- */
+    /**
+     * Test the withdraw allowed function.
+     *
+     * @param _borrower The borrower address.
+     * @param _altAccount The alternate account address that should not
+     * be allowed to withdraw.
+     * @param _collateralId The collateral ID.
+     * @param _activeLoanIndex The active loan index.
+     * @param _principals The principal amounts.
+     *
+     * @dev Full pass if the function reverts are as expected.
+     * @dev Full pass if the function only returns true when the debt
+     * balance is zero and the `_to` is the borrower.
+     */
+    function testCollateralVault_WithdrawAllowed_Fuzz(
+        address _borrower,
+        address _altAccount,
+        uint256 _collateralId,
+        uint256 _activeLoanIndex,
+        uint128[20] memory _principals
+    ) public {
+        vm.assume(_borrower != address(0) && _borrower.code.length == 0);
+        vm.assume(_altAccount != _borrower);
+
+        for (uint256 i = 0; i < _principals.length; i++) {
+            vm.assume(_principals[i] > 0);
+        }
+
+        uint256 _debtId = _principals.length;
+
+        // Fail expected due to debt ID misalignment with DebtBook
+        // records.
+        vm.expectRevert(_UNALLOWED_DEPOSIT_);
+        collateralVaultHarness.exposed__record(
+            _borrower,
+            address(_demoToken),
+            _collateralId,
+            _debtId,
+            _activeLoanIndex
+        );
+
+        // Mint collateral and approve loan contract.
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        // Write debt to DebtBook and corresponding AnzaTokens.
+        _simulateDeposit(
+            _borrower,
+            address(_demoToken),
+            _collateralId,
+            1,
+            0,
+            _principals[0],
+            debtBookHarness.exposed__writeDebt
+        );
+
+        assertEq(
+            collateralVaultHarness.totalCollateral(),
+            1,
+            "0 :: total collateral mismatch."
+        );
+
+        for (uint256 i = 1; i < _debtId; ++i) {
+            _simulateDeposit(
+                _borrower,
+                address(_demoToken),
+                _collateralId,
+                i + 1,
+                i,
+                _principals[i],
+                debtBookHarness.exposed__appendDebt
+            );
+        }
+
+        // FALSE :: Check withdraw allowed.
+        vm.expectRevert(_INVALID_COLLATERAL_SELECTOR_);
+        collateralVaultHarness.withdrawAllowed(_borrower, type(uint256).max);
+
+        assertFalse(
+            collateralVaultHarness.withdrawAllowed(_borrower, _debtId),
+            "0 :: withdraw allowed mismatch."
+        );
+
+        assertFalse(
+            collateralVaultHarness.withdrawAllowed(_altAccount, _debtId),
+            "1 :: withdraw allowed mismatch."
+        );
+
+        // TRUE :: Check withdraw allowed.
+        vm.startPrank(address(loanTreasurer));
+
+        for (uint256 i = 0; i < _debtId - 1; ++i) {
+            anzaTokenHarness.burnLenderToken(i + 1, _principals[i]);
+
+            assertFalse(
+                collateralVaultHarness.withdrawAllowed(_borrower, _debtId),
+                "2 :: withdraw allowed mismatch."
+            );
+
+            assertFalse(
+                collateralVaultHarness.withdrawAllowed(_altAccount, _debtId),
+                "3 :: withdraw allowed mismatch."
+            );
+        }
+
+        anzaTokenHarness.burnLenderToken(_debtId, _principals[_debtId - 1]);
+
+        assertTrue(
+            collateralVaultHarness.withdrawAllowed(_borrower, _debtId),
+            "4 :: withdraw allowed mismatch."
+        );
+
+        assertFalse(
+            collateralVaultHarness.withdrawAllowed(_altAccount, _debtId),
+            "5 :: withdraw allowed mismatch."
+        );
+
+        vm.stopPrank();
+    }
+
+    /* -------------- CollateralVault.withdraw() ------------- */
+    /**
+     * Test the withdraw function.
+     *
+     * @param _borrower The borrower address.
+     * @param _altAccount The alternate account address that should not
+     * be allowed to withdraw.
+     * @param _collateralId The collateral ID.
+     * @param _principal The principal amount.
+     *
+     * @dev Full pass if the function reverts are as expected.
+     * @dev Full pass if the function only allows a withdrawal when the debt
+     * balance is zero and the `_to` is the borrower.
+     */
+    function testCollateralVault_Withdraw_Fuzz(
+        address _borrower,
+        address _altAccount,
+        uint256 _collateralId,
+        uint128 _principal
+    ) public {
+        vm.assume(_borrower != address(0) && _borrower.code.length == 0);
+        vm.assume(_altAccount != _borrower);
+        vm.assume(_principal > 0);
+
+        uint256 _debtId = 1;
+
+        // Fail expected due to access control.
+        vm.expectRevert(
+            abi.encodePacked(
+                getAccessControlFailMsg(_TREASURER_, address(this))
+            )
+        );
+        collateralVaultHarness.withdraw(_borrower, _debtId);
+
+        // Fail expected due to invalid collateral.
+        vm.expectRevert(_INVALID_COLLATERAL_SELECTOR_);
+        vm.startPrank(address(loanTreasurer));
+        collateralVaultHarness.withdraw(_borrower, _debtId);
+        vm.stopPrank();
+
+        // Mint collateral and approve loan contract.
+        _demoToken.exposed__mint(_borrower, _collateralId);
+
+        // Write debt to DebtBook and corresponding AnzaTokens.
+        debtBookHarness.exposed__writeDebt(address(_demoToken), _collateralId);
+
+        vm.startPrank(_borrower);
+        _demoToken.approve(address(debtBookHarness), _collateralId);
+        vm.stopPrank();
+
+        vm.startPrank(address(debtBookHarness));
+        _demoToken.safeTransferFrom(
+            _borrower,
+            address(collateralVaultHarness),
+            _collateralId,
+            abi.encodePacked(_debtId)
+        );
+        vm.stopPrank();
+
+        assertEq(
+            collateralVaultHarness.totalCollateral(),
+            1,
+            "0 :: total collateral mismatch."
+        );
+
+        anzaTokenHarness.exposed__mint(
+            _borrower,
+            anzaTokenHarness.borrowerTokenId(_debtId),
+            _debtId
+        );
+        anzaTokenHarness.exposed__mint(
+            lender,
+            anzaTokenHarness.lenderTokenId(_debtId),
+            _principal
+        );
+
+        // Fail expected due to withdraw not allowed.
+        vm.startPrank(address(loanTreasurer));
+
+        vm.expectRevert(_UNALLOWED_WITHDRAWAL_);
+        collateralVaultHarness.withdraw(_borrower, _debtId);
+
+        anzaTokenHarness.burnLenderToken(_debtId, _principal);
+
+        // Fail expected due to withdraw not allowed for non-borrower account.
+        vm.expectRevert(_UNALLOWED_WITHDRAWAL_);
+        collateralVaultHarness.withdraw(_altAccount, _debtId);
+
+        // Successful withdraw expected.
+        vm.expectEmit(true, true, true, false, address(_demoToken));
+        emit Transfer(
+            address(collateralVaultHarness),
+            _borrower,
+            _collateralId
+        );
+        vm.expectEmit(true, true, true, false, address(collateralVaultHarness));
+        emit WithdrawnCollateral(_borrower, address(_demoToken), _collateralId);
+        assertTrue(
+            collateralVaultHarness.withdraw(_borrower, _debtId),
+            "1 :: withdraw failed."
+        );
+
+        assertEq(
+            collateralVaultHarness.totalCollateral(),
+            0,
+            "2 :: total collateral mismatch."
+        );
+
+        vm.stopPrank();
+    }
+
+    /* ---------- CollateralVault.onERC721Received() --------- */
+    /**
+     * Test the onERC721Received function.
+     *
+     * @param _altOperator The alternate operator address that should not
+     * be allowed to deposit.
+     * @param _altBorrower The alternate borrower address that will allow
+     * to be included in the DepositCollateral event.
+     * @param _collateralId The collateral ID.
+     *
+     * @dev Full pass if the function reverts are as expected.
+     * @dev Full pass if the function only allows deposits with the correct
+     * parameters.
+     */
+    function testCollateralVault_OnERC721Received_Fuzz(
+        address _altOperator,
+        address _altBorrower,
+        uint256 _collateralId
+    ) public {
+        vm.assume(_altOperator != address(_demoToken));
+        vm.assume(_altBorrower != borrower);
+
+        uint256 _debtId = 1;
+
+        // Mint collateral and approve loan contract.
+        _demoToken.exposed__mint(borrower, _collateralId);
+
+        // Fail due to invalid caller.
+        vm.expectRevert(_UNALLOWED_DEPOSIT_);
+        collateralVaultHarness.onERC721Received(
+            address(debtBookHarness),
+            borrower,
+            _collateralId,
+            abi.encodePacked(_debtId)
+        );
+
+        // Write debt to DebtBook and corresponding AnzaTokens.
+        debtBookHarness.exposed__writeDebt(address(_demoToken), _collateralId);
+
+        vm.startPrank(address(_demoToken));
+
+        // Fail due to invalid operator.
+        vm.expectRevert(
+            abi.encodePacked(
+                getAccessControlFailMsg(_LOAN_CONTRACT_, _altOperator)
+            )
+        );
+        collateralVaultHarness.onERC721Received(
+            _altOperator,
+            borrower,
+            _collateralId,
+            abi.encodePacked(_debtId)
+        );
+
+        // Will pass if the borrower is not the actual borrower.
+        // The borrower for this function must be verified prior to calling this function.
+        // Given the onERC721Received function can only be derived from a LoanContract call,
+        // this should be safe.
+        // collateralVaultHarness.onERC721Received(
+        //     address(debtBookHarness),
+        //     _altBorrower,
+        //     _collateralId,
+        //     abi.encodePacked(_debtId)
+        // );
+
+        // Fail due to invalid collateral ID.
+        vm.expectRevert(_UNALLOWED_DEPOSIT_);
+        unchecked {
+            // Allow overflow.
+            collateralVaultHarness.onERC721Received(
+                address(debtBookHarness),
+                borrower,
+                _collateralId + 1,
+                abi.encodePacked(_debtId)
+            );
+        }
+
+        // Fail due to invalid debt ID.
+        vm.expectRevert(_UNALLOWED_DEPOSIT_);
+        collateralVaultHarness.onERC721Received(
+            address(debtBookHarness),
+            borrower,
+            _collateralId,
+            abi.encodePacked(_debtId + 1)
+        );
+
+        // Successful deposit expected.
+        vm.expectEmit(true, true, true, false, address(collateralVaultHarness));
+        emit DepositedCollateral(borrower, address(_demoToken), _collateralId);
+        collateralVaultHarness.onERC721Received(
+            address(debtBookHarness),
+            borrower,
+            _collateralId,
+            abi.encodePacked(_debtId)
+        );
+        vm.stopPrank();
+    }
+}

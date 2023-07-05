@@ -135,7 +135,11 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
     function collateralDebtAt(
         uint256 _debtId,
         uint256 _index
-    ) public view returns (uint256, uint256) {
+    )
+        public
+        view
+        returns (uint256 /* debtID */, uint256 /* collateralNonce */)
+    {
         ICollateralVault.Collateral memory _collateral = _collateralVault
             .getCollateral(_debtId);
 
@@ -168,7 +172,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         public
         view
         onlyValidCollateral(_collateralAddress)
-        returns (uint256, uint256)
+        returns (uint256 /* debtID */, uint256 /* collateralNonce */)
     {
         DebtMap[] memory _debtMaps = __debtMaps[_collateralAddress][
             _collateralId

@@ -12,6 +12,7 @@ import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.s
 
 import {LoanCodec} from "@services/LoanCodec.sol";
 import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
+import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
 import {_OVERFLOW_CAST_SELECTOR_} from "@base/libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
@@ -54,7 +55,7 @@ contract LoanCodecHarness is LoanCodec {
 
     function exposed__updateLoanTimes(
         uint256 _debtId,
-        uint256 _updateType
+        ILoanManager.LoanStateUpdateKind _updateType
     ) public {
         _updateLoanTimes(_debtId, _updateType);
     }
@@ -89,7 +90,7 @@ interface ILoanCodecHarness is ILoanCodec, IDebtTerms {
 
     function exposed__updateLoanTimes(
         uint256 _debtId,
-        uint256 _updateType
+        ILoanManager.LoanStateUpdateKind _updateType
     ) external;
 }
 
@@ -176,7 +177,7 @@ contract LoanCodecUtils is Setup {
                 false,
                 abi.encodePacked(
                     _INVALID_LOAN_PARAMETER_SELECTOR_,
-                    _TIME_EXPIRY_ERROR_ID_
+                    _TERMS_EXPIRY_ERROR_ID_
                 )
             );
         }
@@ -204,7 +205,7 @@ contract LoanCodecUtils is Setup {
         else if (
             (_loanStart +
                 uint256(_contractTerms.duration) +
-                uint256(_contractTerms.gracePeriod)) > type(uint32).max
+                uint256(_contractTerms.gracePeriod)) > type(uint64).max
         ) {
             return (
                 false,
@@ -409,6 +410,7 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
                 _contractTerms.principal
             )
         {
+            console.logBytes(_expectedData);
             assertTrue(_expectedSuccess, "0 :: expected success is false.");
         } catch (bytes memory _err) {
             assertFalse(_expectedSuccess, "1 :: expected success is true.");
@@ -612,7 +614,10 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         vm.warp(uint256(_now));
 
         // Update the loan times.
-        loanCodecHarness.exposed__updateLoanTimes(_debtId, 0);
+        loanCodecHarness.exposed__updateLoanTimes(
+            _debtId,
+            ILoanManager.LoanStateUpdateKind.UNDEFINED
+        );
 
         // Loan close should remain unchanged.
         assertEq(
