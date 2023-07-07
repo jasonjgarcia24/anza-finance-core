@@ -26,8 +26,8 @@ abstract contract PaymentBook is
     }
 
     /**
-     * Public function to deposit funds into the `_payee` addresses
-     * withdrawable balance.
+     * Public function to deposit funds into the withdrawable balance of the
+     * `_payee`.
      *
      * @notice This function is payable.
      *
@@ -35,8 +35,8 @@ abstract contract PaymentBook is
      *
      * @dev The _depositFunds function is non-reentrant.
      */
-    function depositFunds(address _payee) public payable nonReentrant {
-        _depositFunds(type(uint256).max, msg.sender, _payee, msg.value);
+    function depositFunds(address _payee) public payable returns (bool) {
+        return _depositFunds(type(uint256).max, msg.sender, _payee, msg.value);
     }
 
     /**
@@ -55,8 +55,8 @@ abstract contract PaymentBook is
         uint256 _debtId,
         address _payer,
         address _payee
-    ) public payable nonReentrant {
-        _depositFunds(_debtId, _payer, _payee, msg.value);
+    ) public payable returns (bool) {
+        return _depositFunds(_debtId, _payer, _payee, msg.value);
     }
 
     /**
@@ -93,10 +93,12 @@ abstract contract PaymentBook is
         address _payer,
         address _payee,
         uint256 _amount
-    ) internal {
+    ) internal returns (bool) {
         __withdrawableBalance[_payee] += _amount;
 
         emit Deposited(_debtId, _payer, _payee, _amount);
+
+        return true;
     }
 
     /**
@@ -155,6 +157,7 @@ abstract contract PaymentBook is
         uint256 _payment
     ) internal virtual returns (uint256) {
         address _lender = _anzaToken.lenderOf(_debtId);
+
         uint256 _balance = _anzaToken.totalSupply(
             _anzaToken.lenderTokenId(_debtId)
         );
@@ -174,7 +177,6 @@ abstract contract PaymentBook is
 
             return 0;
         } else {
-            console.log("burning lender token");
             __withdrawableBalance[_lender] += _balance;
 
             _anzaToken.burnLenderToken(_debtId, _balance);

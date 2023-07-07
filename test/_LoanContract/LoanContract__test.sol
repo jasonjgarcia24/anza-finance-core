@@ -73,10 +73,9 @@ contract LoanContractHarness is LoanContract {
     }
 
     function exposed__updateLoanTimes(
-        uint256 _debtId,
-        ILoanManager.LoanStateUpdateKind _updateType
+        uint256 _debtId
     ) public {
-        _updateLoanTimes(_debtId, _updateType);
+        _updateLoanTimes(_debtId);
     }
 
     /* Abstract functions */
@@ -126,8 +125,8 @@ abstract contract LoanContractInit is DebtTermsInit {
 
         // Set LoanTreasurey access control roles
         loanTreasurer.setAnzaToken(address(anzaToken));
-        loanTreasurer.setLoanContract(address(loanContractHarness));
-        loanTreasurer.setCollateralVault(address(collateralVault));
+        loanTreasurer.grantRole(_LOAN_CONTRACT_, address(loanContractHarness));
+        loanTreasurer.grantRole(_COLLATERAL_VAULT_, address(collateralVault));
 
         // Set CollateralVault access control roles
         collateralVault.setLoanContract(address(loanContractHarness));
@@ -575,7 +574,7 @@ contract LoanContractUtils is
     }
 }
 
-contract LoanContractViewsUnitTest is
+contract LoanContractUnitTest is
     LoanContractInit,
     ERC1155EventsSuite,
     ERC721EventsSuite,

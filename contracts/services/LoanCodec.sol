@@ -15,12 +15,9 @@ import "@custom-errors/StdLoanErrors.sol";
 import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
 import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
-import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
 
 abstract contract LoanCodec is ILoanCodec, DebtTerms {
-    using TypeUtils for uint256;
-
     function supportsInterface(
         bytes4 _interfaceId
     ) public view virtual override(DebtTerms) returns (bool) {
@@ -29,20 +26,23 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             _interfaceId == type(ILoanCodec).interfaceId;
     }
 
+    /**
+     * Function to get the total fixed interest rate intervals passed since
+     * the `_start` time.
+     *
+     * @param _debtId The debt ID of the loan.
+     * @param _timeElapsed The time elapsed to calculate the total number of
+     * FIR intervals.
+     *
+     * @return The total number of FIR intervals throughout the `_timeElapsed`
+     * time.
+     */
     function totalFirIntervals(
         uint256 _debtId,
-        uint256 _seconds
+        uint256 _timeElapsed
     ) public view returns (uint256) {
-        // Verify _seconds fits into a uint32.
-        _seconds.verifyUint32();
-
-        // Determine the max number of seconds that can be calculated.
-        _seconds = (_seconds + loanLastChecked(_debtId)) <= loanClose(_debtId)
-            ? _seconds
-            : loanDuration(_debtId);
-
         // Return the total number of FIR intervals.
-        return _getTotalFirIntervals(firInterval(_debtId), _seconds);
+        return _getTotalFirIntervals(firInterval(_debtId), _timeElapsed);
     }
 
     function _validateLoanTerms(
@@ -409,13 +409,8 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
      * TODO: Need to account for grace periods.
      *
      * @param _debtId The debt id.
-     * @param _updateType The type of update. If this is invoked, it will be
-     * returned directly by the caller.
      */
-    function _updateLoanTimes(
-        uint256 _debtId,
-        ILoanManager.LoanStateUpdateKind _updateType
-    ) internal returns (uint256) {
+    function _updateLoanTimes(uint256 _debtId) internal returns (uint256) {
         bytes32 _contractTerms = debtTerms(_debtId);
 
         assembly {
@@ -436,8 +431,9 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             let _now := timestamp()
             if iszero(gt(_now, _loanStart)) {
                 // Note: This will exit the current context entirely.
-                // Therefore, we need to supply the return data directly.
-                mstore(0x20, _updateType)
+                // Therefore, we need to supply the loan state return
+                // data directly.
+                mstore(0x20, and(_LOAN_STATE_MAP_, _contractTerms))
                 return(0x20, 0x20)
             }
 

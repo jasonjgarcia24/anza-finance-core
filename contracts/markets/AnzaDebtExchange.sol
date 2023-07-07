@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
+import {_ADMIN_} from "@lending-constants/LoanContractRoles.sol";
 import {_DEBT_MARKET_} from "@markets-constants/AnzaDebtMarketRoles.sol";
 import {_DEBT_TRANSFER_} from "@tokens-constants/AnzaTokenTransferTypes.sol";
 import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
@@ -19,6 +20,22 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
         return
             _interfaceId == type(IAnzaDebtExchange).interfaceId ||
             LoanAccountant.supportsInterface(_interfaceId);
+    }
+
+    /**
+     * Call to seet the Anza Token contract.._
+     *
+     * @param _anzaTokenAddress The address of the Anza Token contract.
+     *
+     * See {PaymentBookAccessController._setAnzaToken} for more details.
+     *
+     * @dev This function can only be called by the admin.
+     * @dev This function overrides PaymentBookAccessController.setAnzaToken.
+     */
+    function setAnzaToken(
+        address _anzaTokenAddress
+    ) public override onlyRole(_ADMIN_) {
+        super._setAnzaToken(_anzaTokenAddress);
     }
 
     /**

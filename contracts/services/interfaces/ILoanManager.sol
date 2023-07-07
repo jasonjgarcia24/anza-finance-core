@@ -2,16 +2,6 @@
 pragma solidity 0.8.20;
 
 interface ILoanManager {
-    enum LoanStateUpdateKind {
-        GRACE_ACTIVE,
-        GRACE_EXPIRED,
-        ACTIVE,
-        PAID,
-        DEFAULT,
-        CLOSED,
-        UNDEFINED
-    }
-
     event LoanTermsRevoked(
         address indexed borrower,
         bytes32 indexed hashedTerms
@@ -24,9 +14,7 @@ interface ILoanManager {
 
     function maxRefinances() external pure returns (uint256);
 
-    function updateLoanState(
-        uint256 _debtId
-    ) external returns (LoanStateUpdateKind);
+    function updateLoanState(uint256 _debtId) external returns (uint8);
 
     function verifyLoanActive(uint256 _debtId) external view;
 

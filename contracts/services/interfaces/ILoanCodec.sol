@@ -10,6 +10,6 @@ interface ILoanCodec {
 
     function totalFirIntervals(
         uint256 _debtId,
-        uint256 _seconds
+        uint256 _start
     ) external view returns (uint256);
 }

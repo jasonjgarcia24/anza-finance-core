@@ -16,14 +16,14 @@ bytes32 constant DEPOSITED_EVENT_SIG = keccak256(
 bytes32 constant WITHDRAWN_EVENT_SIG = keccak256("Withdrawn(address,uint256)");
 
 interface IPaymentBookEvents {
-    event DepositedFields(
+    event Deposited(
         uint256 indexed debtId,
         address indexed payer,
         address indexed payee,
         uint256 weiAmount
     );
 
-    event WithdrawnFields(address indexed payee, uint256 weiAmount);
+    event Withdrawn(address indexed payee, uint256 weiAmount);
 }
 
 library PaymentBookEventsParse {

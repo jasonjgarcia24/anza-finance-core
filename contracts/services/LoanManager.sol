@@ -93,44 +93,52 @@ abstract contract LoanManager is
      */
     function updateLoanState(
         uint256 _debtId
-    ) external onlyRole(_TREASURER_) returns (LoanStateUpdateKind) {
+    ) external onlyRole(_TREASURER_) returns (uint8) {
         // Loan closed.
         if (checkLoanClosed(_debtId)) {
-            return LoanStateUpdateKind.CLOSED;
+            console.log("Closed loan: %s", _debtId);
+            return type(uint8).max;
         }
 
         if (!checkLoanActive(_debtId)) {
+            console.log("Inactive loan: %s", _debtId);
             revert StdCodecErrors.InactiveLoanState();
         }
 
         // Loan defaulted.
         if (checkLoanExpired(_debtId)) {
-            _updateLoanTimes(_debtId, LoanStateUpdateKind.DEFAULT);
+            console.log("Defaulted loan: %s", _debtId);
+            _updateLoanTimes(_debtId);
             _updateLoanState(_debtId, _DEFAULT_STATE_);
-            return LoanStateUpdateKind.DEFAULT;
+            return _DEFAULT_STATE_;
         }
         // Loan fully paid off.
         else if (debtBalance(_debtId) <= 0) {
+            console.log("Paid loan: %s", _debtId);
             _updateLoanState(_debtId, _PAID_STATE_);
-            return LoanStateUpdateKind.PAID;
+            return _PAID_STATE_;
         }
         // Loan active and interest compounding.
         else if (loanState(_debtId) == _ACTIVE_STATE_) {
-            _updateLoanTimes(_debtId, LoanStateUpdateKind.ACTIVE);
-            return LoanStateUpdateKind.ACTIVE;
+            console.log("Active loan: %s", _debtId);
+            _updateLoanTimes(_debtId);
+            return _ACTIVE_STATE_;
         }
         // Loan no longer in grace period.
         else if (!_checkLoanGracePeriod(_debtId)) {
+            console.log("Grace period expired: %s", _debtId);
             _updateLoanState(_debtId, _ACTIVE_STATE_);
-            _updateLoanTimes(_debtId, LoanStateUpdateKind.GRACE_EXPIRED);
-            return LoanStateUpdateKind.GRACE_EXPIRED;
+            _updateLoanTimes(_debtId);
+            return _ACTIVE_STATE_;
         }
         // Loan in grace period.
         else if (_checkLoanGracePeriod(_debtId)) {
-            return LoanStateUpdateKind.GRACE_ACTIVE;
+            console.log("Grace period ongoing: %s", _debtId);
+            return _ACTIVE_GRACE_STATE_;
         }
 
-        return LoanStateUpdateKind.UNDEFINED;
+        console.log("State undefined: %s", _debtId);
+        return _UNDEFINED_STATE_;
     }
 
     function verifyLoanActive(uint256 _debtId) public view {

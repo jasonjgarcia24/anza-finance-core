@@ -53,11 +53,8 @@ contract LoanCodecHarness is LoanCodec {
         _updateLoanState(_debtId, _newLoanState);
     }
 
-    function exposed__updateLoanTimes(
-        uint256 _debtId,
-        ILoanManager.LoanStateUpdateKind _updateType
-    ) public {
-        _updateLoanTimes(_debtId, _updateType);
+    function exposed__updateLoanTimes(uint256 _debtId) public {
+        _updateLoanTimes(_debtId);
     }
 
     /* Abstract functions */
@@ -88,10 +85,7 @@ interface ILoanCodecHarness is ILoanCodec, IDebtTerms {
         uint8 _newLoanState
     ) external;
 
-    function exposed__updateLoanTimes(
-        uint256 _debtId,
-        ILoanManager.LoanStateUpdateKind _updateType
-    ) external;
+    function exposed__updateLoanTimes(uint256 _debtId) external;
 }
 
 abstract contract LoanCodecInit is Setup {
@@ -614,10 +608,7 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         vm.warp(uint256(_now));
 
         // Update the loan times.
-        loanCodecHarness.exposed__updateLoanTimes(
-            _debtId,
-            ILoanManager.LoanStateUpdateKind.UNDEFINED
-        );
+        loanCodecHarness.exposed__updateLoanTimes(_debtId);
 
         // Loan close should remain unchanged.
         assertEq(

@@ -11,13 +11,13 @@ interface IPaymentBook {
 
     event Withdrawn(address indexed payee, uint256 weiAmount);
 
-    function depositFunds(address _payee) external payable;
+    function depositFunds(address _payee) external payable returns (bool);
 
     function depositFunds(
         uint256 _debtId,
         address _payer,
         address _payee
-    ) external payable;
+    ) external payable returns (bool);
 
     function withdrawableBalance(
         address _account

@@ -9,6 +9,7 @@
 
     @base=contracts/
     @helper-libraries=contracts/libraries/helper-libraries/
+    @compound-libraries=contracts/libraries/compound-libraries/
     @custom-errors=contracts/databases/globals/custom-errors/
     @universal-numbers=contracts/databases/globals/universal-numbers/
 

@@ -325,8 +325,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
         if (_contractTerms.gracePeriod > 1) {
             vm.warp(_now + _contractTerms.gracePeriod / 2);
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.GRACE_ACTIVE),
+                loanManagerHarness.updateLoanState(_debtId),
+                _ACTIVE_GRACE_STATE_,
                 "0 :: _testLoanManager_UpdateLoanState :: loan should be updated successfully."
             );
             assertEq(
@@ -339,12 +339,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
         // Update loan state with time progression past grace period.
         vm.warp(_now + _contractTerms.gracePeriod);
         assertEq(
-            uint8(loanManagerHarness.updateLoanState(_debtId)),
-            uint8(
-                _contractTerms.gracePeriod > 0
-                    ? ILoanManager.LoanStateUpdateKind.GRACE_EXPIRED
-                    : ILoanManager.LoanStateUpdateKind.ACTIVE
-            ),
+            loanManagerHarness.updateLoanState(_debtId),
+            _ACTIVE_STATE_,
             "2 :: _testLoanManager_UpdateLoanState :: loan should be updated successfully."
         );
         assertEq(
@@ -356,8 +352,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
         // Update loan state with time progression past duration.
         vm.warp(_now + _contractTerms.gracePeriod + _contractTerms.duration);
         assertEq(
-            uint8(loanManagerHarness.updateLoanState(_debtId)),
-            uint8(ILoanManager.LoanStateUpdateKind.DEFAULT),
+            loanManagerHarness.updateLoanState(_debtId),
+            _DEFAULT_STATE_,
             "4 :: _testLoanManager_UpdateLoanState :: loan state should be updated."
         );
         assertEq(
@@ -430,8 +426,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
         // Update loan state without time progression.
         if (_contractTerms.gracePeriod > 0) {
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.GRACE_ACTIVE),
+                loanManagerHarness.updateLoanState(_debtId),
+                _ACTIVE_GRACE_STATE_,
                 "0 :: loan should be in an active grace state."
             );
             assertEq(
@@ -441,8 +437,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
             );
         } else {
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.ACTIVE),
+                loanManagerHarness.updateLoanState(_debtId),
+                _ACTIVE_STATE_,
                 "0 :: loan should be in an active state."
             );
             assertEq(
@@ -522,8 +518,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
         // Update loan state without time progression.
         if (_contractTerms.gracePeriod > 0) {
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.GRACE_ACTIVE),
+                loanManagerHarness.updateLoanState(_debtId),
+                _ACTIVE_GRACE_STATE_,
                 "0 :: loan should be in an active grace state."
             );
             assertEq(
@@ -533,8 +529,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
             );
         } else {
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.ACTIVE),
+                loanManagerHarness.updateLoanState(_debtId),
+                _ACTIVE_STATE_,
                 "0 :: loan should be in an active state."
             );
             assertEq(
@@ -561,8 +557,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
             // If grace period is 0, then no time update occurs here.
             vm.warp(_now + _contractTerms.gracePeriod / 2);
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.PAID),
+                loanManagerHarness.updateLoanState(_debtId),
+                _PAID_STATE_,
                 "4 :: loan should be updated successfully."
             );
             assertEq(
@@ -574,8 +570,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
             // Update loan state with time progression past grace period.
             vm.warp(_now + _contractTerms.gracePeriod);
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.CLOSED),
+                loanManagerHarness.updateLoanState(_debtId),
+                type(uint8).max,
                 "6 :: loan should be not be updated."
             );
             assertEq(
@@ -589,8 +585,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
                 _now + _contractTerms.gracePeriod + _contractTerms.duration
             );
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.CLOSED),
+                loanManagerHarness.updateLoanState(_debtId),
+                type(uint8).max,
                 "8 :: loan state should not be updated."
             );
             assertEq(
@@ -602,8 +598,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
             // Attempt to revert loan state back to active.
             vm.warp(_now);
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.CLOSED),
+                loanManagerHarness.updateLoanState(_debtId),
+                type(uint8).max,
                 "10 :: loan state should not be updated."
             );
             assertEq(
@@ -681,8 +677,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
         // Update loan state without time progression.
         if (_contractTerms.gracePeriod > 0) {
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.GRACE_ACTIVE),
+                loanManagerHarness.updateLoanState(_debtId),
+                _ACTIVE_GRACE_STATE_,
                 "0 :: loan should be in an active grace state."
             );
             assertEq(
@@ -692,8 +688,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
             );
         } else {
             assertEq(
-                uint8(loanManagerHarness.updateLoanState(_debtId)),
-                uint8(ILoanManager.LoanStateUpdateKind.ACTIVE),
+                loanManagerHarness.updateLoanState(_debtId),
+                _ACTIVE_STATE_,
                 "2 :: loan should be in an active state."
             );
             assertEq(
@@ -709,8 +705,8 @@ contract LoanManagerUnitTest is LoanManagerInit {
         // Update loan state with time progression past duration.
         vm.warp(_now + _contractTerms.gracePeriod + _contractTerms.duration);
         assertEq(
-            uint8(loanManagerHarness.updateLoanState(_debtId)),
-            uint8(ILoanManager.LoanStateUpdateKind.DEFAULT),
+            loanManagerHarness.updateLoanState(_debtId),
+            _DEFAULT_STATE_,
             "4 :: loan state should be updated."
         );
         assertEq(

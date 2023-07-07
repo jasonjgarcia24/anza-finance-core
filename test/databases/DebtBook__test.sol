@@ -76,18 +76,18 @@ abstract contract DebtBookInit is Setup {
 
         vm.startPrank(admin);
 
-        // Deploy DebtBook
+        // Deploy DebtBook.
         debtBookHarness = new DebtBookHarness();
 
-        // Deploy AnzaToken
+        // Deploy AnzaToken.
         anzaTokenHarness = new AnzaTokenHarness();
 
-        // Deploy CollateralVault
+        // Deploy CollateralVault.
         collateralVaultHarness = new CollateralVaultHarness(
             address(anzaTokenHarness)
         );
 
-        // Set AnzaToken access control roles
+        // Set AnzaToken access control roles.
         anzaTokenHarness.grantRole(_LOAN_CONTRACT_, address(loanContract));
         anzaTokenHarness.grantRole(_TREASURER_, address(loanTreasurer));
         anzaTokenHarness.grantRole(
@@ -95,15 +95,22 @@ abstract contract DebtBookInit is Setup {
             address(collateralVaultHarness)
         );
 
-        // Set LoanContract access control roles
+        // Set LoanContract access control roles.
         loanContract.setAnzaToken(address(anzaTokenHarness));
         loanContract.setCollateralVault(address(collateralVaultHarness));
 
-        // Set LoanTreasurey access control roles
+        // Set LoanTreasurey access control roles.
         loanTreasurer.setAnzaToken(address(anzaTokenHarness));
-        loanTreasurer.setCollateralVault(address(collateralVaultHarness));
+        loanTreasurer.grantRole(
+            _LOAN_CONTRACT_,
+            address(loanContract)
+        );
+        loanTreasurer.grantRole(
+            _COLLATERAL_VAULT_,
+            address(collateralVaultHarness)
+        );
 
-        // Set CollateralVault access control roles
+        // Set CollateralVault access control roles.
         collateralVaultHarness.setLoanContract(address(debtBookHarness));
         collateralVaultHarness.grantRole(_TREASURER_, address(loanTreasurer));
 
@@ -125,7 +132,7 @@ abstract contract DebtBookInit is Setup {
             address(loanTreasurer)
         );
 
-        // Set harnessed DebtBook access control roles
+        // Set harnessed DebtBook access control roles.
         debtBookHarness.exposed__setAnzaToken(address(anzaTokenHarness));
         debtBookHarness.exposed__setCollateralVault(
             address(collateralVaultHarness)
