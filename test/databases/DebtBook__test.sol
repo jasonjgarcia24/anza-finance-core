@@ -16,6 +16,7 @@ import {CollateralVault} from "@services/CollateralVault.sol";
 import {AnzaDebtStorefront} from "@storefronts/AnzaDebtStorefront.sol";
 import {AnzaSponsorshipStorefront} from "@storefronts/AnzaSponsorshipStorefront.sol";
 import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
@@ -101,10 +102,7 @@ abstract contract DebtBookInit is Setup {
 
         // Set LoanTreasurey access control roles.
         loanTreasurer.setAnzaToken(address(anzaTokenHarness));
-        loanTreasurer.grantRole(
-            _LOAN_CONTRACT_,
-            address(loanContract)
-        );
+        loanTreasurer.grantRole(_LOAN_CONTRACT_, address(loanContract));
         loanTreasurer.grantRole(
             _COLLATERAL_VAULT_,
             address(collateralVaultHarness)
@@ -187,6 +185,8 @@ contract DebtBookAccessControlTest is DebtBookInit {
 }
 
 contract DebtBookUnitTest is DebtBookInit {
+    using AnzaTokenIndexer for uint256;
+
     struct FuzzCollateralInput {
         address collateralAddress;
         uint256 collateralId;
@@ -259,7 +259,7 @@ contract DebtBookUnitTest is DebtBookInit {
         uint256 _amount,
         uint256 _tokenId
     ) public {
-        uint256 _debtId = anzaTokenHarness.debtId(_tokenId);
+        uint256 _debtId = _tokenId.tokenIdToDebtId();
 
         try anzaTokenHarness.exposed__mint(lender, _tokenId, _amount) {
             assertEq(
@@ -329,7 +329,7 @@ contract DebtBookUnitTest is DebtBookInit {
         uint256 _amount,
         uint256 _tokenId
     ) public {
-        uint256 _debtId = anzaTokenHarness.debtId(_tokenId);
+        uint256 _debtId = _tokenId.tokenIdToDebtId();
 
         try anzaTokenHarness.exposed__mint(lender, _tokenId, _amount) {
             try loanContract.lenderDebtBalance(_debtId) returns (
@@ -386,7 +386,7 @@ contract DebtBookUnitTest is DebtBookInit {
         uint256 _amount,
         uint256 _tokenId
     ) public {
-        uint256 _debtId = anzaTokenHarness.debtId(_tokenId);
+        uint256 _debtId = _tokenId.tokenIdToDebtId();
 
         try anzaTokenHarness.exposed__mint(borrower, _tokenId, _amount) {
             try loanContract.borrowerDebtBalance(_debtId) returns (
@@ -453,9 +453,7 @@ contract DebtBookUnitTest is DebtBookInit {
             if (_collateral.collateralAddress != address(0)) {
                 for (uint256 i; i < _collateral.amounts.length; ++i) {
                     uint256 _debtId = debtBookHarness.exposed__totalDebts() + 1;
-                    uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(
-                        _debtId
-                    );
+                    uint256 _lenderTokenId = _debtId.debtIdToLenderTokenId();
 
                     // Limit debt balance to max debt principal.
                     _collateral.amounts[i] = bound(
@@ -610,9 +608,8 @@ contract DebtBookUnitTest is DebtBookInit {
 
         // Store debt
         for (uint256 i; i < _amounts.length; ++i) {
-            uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(
-                ++_debtCount
-            );
+            ++_debtCount;
+            uint256 _lenderTokenId = _debtCount.debtIdToLenderTokenId();
             _amounts[i] = bound(_amounts[i], 0, _MAX_DEBT_PRINCIPAL_);
 
             try
@@ -771,9 +768,8 @@ contract DebtBookUnitTest is DebtBookInit {
         uint256[] memory _collateralNonces = new uint256[](_amounts.length);
 
         for (uint256 i; i < _amounts.length; ++i) {
-            uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(
-                ++_debtCount
-            );
+            ++_debtCount;
+            uint256 _lenderTokenId = _debtCount.debtIdToLenderTokenId();
             _amounts[i] = bound(_amounts[i], 0, _MAX_DEBT_PRINCIPAL_);
 
             try
@@ -944,9 +940,11 @@ contract DebtBookUnitTest is DebtBookInit {
                     _collateral.collateralAddress
                 ][_collateral.collateralId];
 
-                uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(
-                    ++_collateralData.debtCount
-                );
+                ++_collateralData.debtCount;
+
+                uint256 _lenderTokenId = _collateralData
+                    .debtCount
+                    .debtIdToLenderTokenId();
                 _amounts[i] = bound(_amounts[i], 0, _MAX_DEBT_PRINCIPAL_);
 
                 try
@@ -1136,9 +1134,11 @@ contract DebtBookUnitTest is DebtBookInit {
             ][_collateral.collateralId];
 
             for (uint256 i; i < _amountLoops; ++i) {
-                uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(
-                    ++_collateralData.debtCount
-                );
+                ++_collateralData.debtCount;
+
+                uint256 _lenderTokenId = _collateralData
+                    .debtCount
+                    .debtIdToLenderTokenId();
                 _collateral.amounts[i] = bound(
                     _collateral.amounts[i],
                     0,

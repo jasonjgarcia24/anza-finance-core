@@ -12,6 +12,7 @@ import {_UINT64_MAX_, _UINT128_MAX_, _SECP256K1_CURVE_ORDER_} from "@universal-n
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {LoanAccountant} from "@services/LoanAccountant.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {LoanManagerHarness} from "@test-manager/LoanManager__test.sol";
@@ -125,6 +126,8 @@ abstract contract LoanAccountantInit is Setup {
 }
 
 contract LoanAccountantUnitTest is LoanAccountantInit {
+    using AnzaTokenIndexer for uint256;
+
     function _validateStateChangesWithoutTimeWarp(uint256 _debtId) internal {
         assertTrue(
             loanAccountantHarness.exposed__updatePermitted(),
@@ -236,7 +239,7 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         // Mint lender tokens.
         anzaTokenHarness.exposed__mint(
             lender,
-            anzaTokenHarness.lenderTokenId(_debtId),
+            _debtId.debtIdToLenderTokenId(),
             _contractTerms.principal
         );
 
@@ -373,7 +376,7 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         // Mint lender tokens.
         anzaTokenHarness.exposed__mint(
             lender,
-            anzaTokenHarness.lenderTokenId(_debtId),
+            _debtId.debtIdToLenderTokenId(),
             _contractTerms.principal
         );
 

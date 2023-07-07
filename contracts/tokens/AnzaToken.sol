@@ -9,9 +9,12 @@ import {StdAnzaTokenErrors} from "@custom-errors/StdAnzaTokenErrors.sol";
 
 import {IAnzaTokenLite} from "@tokens-interfaces/IAnzaToken.sol";
 import {AnzaBaseToken} from "./AnzaBaseToken.sol";
-import {AnzaTokenIndexer} from "./AnzaTokenIndexer.sol";
+import {AnzaTokenCatalog} from "./AnzaTokenCatalog.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
-contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
+contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenCatalog {
+    using AnzaTokenIndexer for uint256;
+
     constructor(
         string memory _baseURI
     ) AnzaBaseToken("Anza Debt Token", "ADT", _baseURI) {}
@@ -22,13 +25,13 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         public
         view
         virtual
-        override(AnzaBaseToken, AnzaTokenIndexer)
+        override(AnzaBaseToken, AnzaTokenCatalog)
         returns (bool)
     {
         return
             _interfaceId == type(IAnzaTokenLite).interfaceId ||
             AnzaBaseToken.supportsInterface(_interfaceId) ||
-            AnzaTokenIndexer.supportsInterface(_interfaceId);
+            AnzaTokenCatalog.supportsInterface(_interfaceId);
     }
 
     modifier onlyValidMint(uint256 _amount) {
@@ -102,10 +105,10 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         bytes calldata _collateralURI
     ) external onlyRole(_LOAN_CONTRACT_) {
         // Mint ADT for lender
-        _mint(_lender, lenderTokenId(_debtId), _amount);
+        _mint(_lender, _debtId.debtIdToLenderTokenId(), _amount);
 
         // Mint ADT for borrower
-        _mint(_borrower, borrowerTokenId(_debtId), 1, _collateralURI);
+        _mint(_borrower, _debtId.debtIdToBorrowerTokenId(), 1, _collateralURI);
     }
 
     function mint(
@@ -113,22 +116,22 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256 _amount
     ) external onlyRole(_TREASURER_) {
         // Mint ADT for lender
-        _mint(lenderOf(_debtId), lenderTokenId(_debtId), _amount);
+        _mint(lenderOf(_debtId), _debtId.debtIdToLenderTokenId(), _amount);
     }
 
     function burnBorrowerToken(uint256 _debtId) external onlyRole(_TREASURER_) {
-        uint256 _borrowerTokenId = borrowerTokenId(_debtId);
+        // uint256 _borrowerTokenId = borrowerTokenId(_debtId);
 
-        _burn(borrowerOf(_debtId), _borrowerTokenId, 1);
+        _burn(borrowerOf(_debtId), _debtId.debtIdToBorrowerTokenId(), 1);
     }
 
     function burnLenderToken(
         uint256 _debtId,
         uint256 _amount
     ) external onlyRole(_TREASURER_) {
-        uint256 _lenderTokenId = lenderTokenId(_debtId);
+        // uint256 _lenderTokenId = lenderTokenId(_debtId);
 
-        _burn(lenderOf(_debtId), _lenderTokenId, _amount);
+        _burn(lenderOf(_debtId), _debtId.debtIdToLenderTokenId(), _amount);
     }
 
     /**
@@ -244,7 +247,13 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         uint256 /* _amount */,
         bytes memory /* _data */
     ) private {
-        super._safeTransferFrom(_from, _to, borrowerTokenId(_debtId), 1, "");
+        super._safeTransferFrom(
+            _from,
+            _to,
+            _debtId.debtIdToBorrowerTokenId(),
+            1,
+            ""
+        );
     }
 
     function __debtBatchTransferFrom(
@@ -268,7 +277,7 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenIndexer {
         super._safeTransferFrom(
             _from,
             _to,
-            lenderTokenId(_debtId),
+            _debtId.debtIdToLenderTokenId(),
             _amount,
             ""
         );

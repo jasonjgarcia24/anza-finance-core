@@ -15,6 +15,7 @@ import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 import {AnzaDebtMarket} from "@markets/AnzaDebtMarket.sol";
 import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol";
 import {IAnzaBaseMarketParticipant} from "@markets-databases/interfaces/IAnzaBaseMarketParticipant.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup, Settings} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
@@ -144,6 +145,8 @@ contract RefinanceNotaryUtils is Settings {
 }
 
 abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
+    using AnzaTokenIndexer for uint256;
+
     function setUp() public virtual override {
         super.setUp();
     }
@@ -178,7 +181,7 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
 
         // Mint debt
         address _borrower = vm.addr(_borrowerPrivKey);
-        uint256 _borrowerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Pack contract terms.
@@ -245,7 +248,7 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
 
         // Mint debt
-        uint256 _borrowerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Create contract params.
@@ -311,7 +314,7 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
 
         // Mint debt
-        uint256 _borrowerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Create contract params.
@@ -370,7 +373,7 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
 
         // Mint debt
-        uint256 _borrowerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Mint alternate debt
@@ -436,7 +439,7 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         ];
 
         // Mint debt
-        uint256 _borrowerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Mint alternate debt

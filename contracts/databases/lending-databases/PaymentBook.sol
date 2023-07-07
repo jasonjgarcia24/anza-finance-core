@@ -7,6 +7,7 @@ import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 
 import {IPaymentBook} from "@lending-databases/interfaces/IPaymentBook.sol";
 import {PaymentBookAccessController} from "@lending-access/PaymentBookAccessController.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -15,6 +16,8 @@ abstract contract PaymentBook is
     PaymentBookAccessController,
     ReentrancyGuard
 {
+    using AnzaTokenIndexer for uint256;
+
     mapping(address account => uint256) private __withdrawableBalance;
 
     function supportsInterface(
@@ -159,7 +162,7 @@ abstract contract PaymentBook is
         address _lender = _anzaToken.lenderOf(_debtId);
 
         uint256 _balance = _anzaToken.totalSupply(
-            _anzaToken.lenderTokenId(_debtId)
+            _debtId.debtIdToLenderTokenId()
         );
 
         // If either the balance or payment is 0, return the payment

@@ -200,7 +200,7 @@ contract AnzaDebtStorefront is
                 termsExpiry: _termsExpiry
             }),
             _sellerSignature,
-            _anzaTokenIndexer.borrowerOf
+            _anzaTokenCatalog.borrowerOf
         );
 
         // Update listing nonce
@@ -260,7 +260,7 @@ contract AnzaDebtStorefront is
                 termsExpiry: _termsExpiry
             }),
             _sellerSignature,
-            _anzaTokenIndexer.ownerOf
+            _anzaTokenCatalog.ownerOf
         );
 
         // Transfer debt

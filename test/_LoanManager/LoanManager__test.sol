@@ -15,6 +15,7 @@ import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {AnzaDebtStorefront} from "@storefronts/AnzaDebtStorefront.sol";
 import {AnzaSponsorshipStorefront} from "@storefronts/AnzaSponsorshipStorefront.sol";
 import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {LoanCodecInit} from "@test-base/_LoanCodec/LoanCodec__test.sol";
@@ -147,6 +148,8 @@ abstract contract LoanManagerInit is Setup {
 }
 
 contract LoanManagerUnitTest is LoanManagerInit {
+    using AnzaTokenIndexer for uint256;
+
     function setUp() public virtual override {
         super.setUp();
     }
@@ -418,7 +421,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
         );
 
         // Mint debt tokens.
-        uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+        uint256 _lenderTokenId = _debtId.debtIdToLenderTokenId();
         anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
 
         vm.startPrank(address(loanTreasurer));
@@ -510,7 +513,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
         );
 
         // Mint debt tokens.
-        uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+        uint256 _lenderTokenId = _debtId.debtIdToLenderTokenId();
         anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
 
         vm.startPrank(address(loanTreasurer));
@@ -543,9 +546,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
         // Conduct payoff
         anzaTokenHarness.burnLenderToken(_debtId, _amountPayoff);
         assertEq(
-            anzaTokenHarness.totalSupply(
-                anzaTokenHarness.lenderTokenId(_debtId)
-            ),
+            anzaTokenHarness.totalSupply(_debtId.debtIdToLenderTokenId()),
             _amount - _amountPayoff,
             "3 :: lender token supply should be updated."
         );
@@ -669,7 +670,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
         );
 
         // Mint debt tokens.
-        uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+        uint256 _lenderTokenId = _debtId.debtIdToLenderTokenId();
         anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
 
         vm.startPrank(address(loanTreasurer));
@@ -868,7 +869,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
 
         // Mint debt tokens.
         if (_amount > 0) {
-            uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+            uint256 _lenderTokenId = _debtId.debtIdToLenderTokenId();
             anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
         }
 
@@ -1230,7 +1231,7 @@ contract LoanManagerUnitTest is LoanManagerInit {
         );
 
         // Mint debt tokens.
-        uint256 _lenderTokenId = anzaTokenHarness.lenderTokenId(_debtId);
+        uint256 _lenderTokenId = _debtId.debtIdToLenderTokenId();
         anzaTokenHarness.exposed__mint(lender, _lenderTokenId, _amount);
 
         assertFalse(

@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 import {StdManagerErrors} from "@custom-errors/StdManagerErrors.sol";
 
 import {IAnzaDebtStorefrontAccessController} from "@markets-access/interfaces/IAnzaDebtStorefrontAccessController.sol";
-import {IAnzaTokenIndexer} from "@tokens-interfaces/IAnzaTokenIndexer.sol";
+import {IAnzaTokenCatalog} from "@tokens-interfaces/IAnzaTokenCatalog.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {DebtNotary} from "@services/LoanNotary.sol";
@@ -17,7 +17,7 @@ abstract contract AnzaDebtStorefrontAccessController is
 {
     address public immutable loanTreasurerAddress;
 
-    IAnzaTokenIndexer immutable _anzaTokenIndexer;
+    IAnzaTokenCatalog immutable _anzaTokenCatalog;
     IDebtBook immutable _loanContract;
     ILoanManager immutable _loanManager;
 
@@ -26,7 +26,7 @@ abstract contract AnzaDebtStorefrontAccessController is
         address _loanContractAddress,
         address _loanTreasurerAddress
     ) DebtNotary("AnzaDebtStorefront", "0", _anzaTokenAddress) {
-        _anzaTokenIndexer = IAnzaTokenIndexer(_anzaTokenAddress);
+        _anzaTokenCatalog = IAnzaTokenCatalog(_anzaTokenAddress);
         _loanContract = IDebtBook(_loanContractAddress);
         _loanManager = ILoanManager(_loanContractAddress);
 
@@ -43,10 +43,10 @@ abstract contract AnzaDebtStorefrontAccessController is
     }
 
     /**
-     * Returns the address of the AnzaTokenIndexer.
+     * Returns the address of the AnzaTokenCatalog.
      */
     function anzaToken() public view returns (address) {
-        return address(_anzaTokenIndexer);
+        return address(_anzaTokenCatalog);
     }
 
     /**
@@ -72,7 +72,7 @@ abstract contract AnzaDebtStorefrontAccessController is
      * @dev Reverts if the caller is not the borrower of the debt ID.
      */
     function _verifySeller(uint256 _debtId) internal view {
-        if (_anzaTokenIndexer.borrowerOf(_debtId) != msg.sender)
+        if (_anzaTokenCatalog.borrowerOf(_debtId) != msg.sender)
             revert StdManagerErrors.InvalidParticipant();
     }
 }

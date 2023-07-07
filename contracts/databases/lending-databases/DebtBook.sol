@@ -8,6 +8,7 @@ import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
 import {IDebtBook} from "@lending-databases/interfaces/IDebtBook.sol";
 import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
 import {DebtBookAccessController} from "@lending-access/DebtBookAccessController.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 /**
  * @title DebtBook
@@ -15,6 +16,8 @@ import {DebtBookAccessController} from "@lending-access/DebtBookAccessController
  * @notice A contract for managing debt.
  */
 abstract contract DebtBook is IDebtBook, DebtBookAccessController {
+    using AnzaTokenIndexer for uint256;
+
     // Count of total inactive/active debts
     uint256 internal _totalDebts;
 
@@ -49,7 +52,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
      * @return The total debt balance for the debt ID.
      */
     function debtBalance(uint256 _debtId) public view returns (uint256) {
-        return _anzaToken.totalSupply(_anzaToken.lenderTokenId(_debtId));
+        return _anzaToken.totalSupply(_debtId.debtIdToLenderTokenId());
     }
 
     /**
@@ -63,7 +66,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         return
             _anzaToken.balanceOf(
                 _anzaToken.lenderOf(_debtId),
-                _anzaToken.lenderTokenId(_debtId)
+                _debtId.debtIdToLenderTokenId()
             );
     }
 
@@ -80,7 +83,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
         return
             _anzaToken.balanceOf(
                 _anzaToken.borrowerOf(_debtId),
-                _anzaToken.borrowerTokenId(_debtId)
+                _debtId.debtIdToBorrowerTokenId()
             );
     }
 
@@ -108,7 +111,7 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
 
         for (uint256 i; i < _debtMaps.length; ) {
             _debtBalance += _anzaToken.totalSupply(
-                _anzaToken.lenderTokenId(_debtMaps[i].debtId)
+                _debtMaps[i].debtId.debtIdToLenderTokenId()
             );
 
             unchecked {

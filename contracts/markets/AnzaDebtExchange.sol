@@ -10,8 +10,11 @@ import {StdTreasureyErrors} from "@custom-errors/StdTreasureyErrors.sol";
 
 import {IAnzaDebtExchange} from "@markets-interfaces//IAnzaDebtExchange.sol";
 import {LoanAccountant} from "@services/LoanAccountant.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
+    using AnzaTokenIndexer for uint256;
+
     constructor() LoanAccountant() {}
 
     function supportsInterface(
@@ -175,7 +178,7 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
             _payment = __depositPayment(_beneficiary, _debtId, _payment);
 
             // Add debt tokens to transfer list.
-            _ids[i] = _anzaToken.borrowerTokenId(_debtId);
+            _ids[i] = _debtId.debtIdToBorrowerTokenId();
             _amounts[i] = 1;
 
             unchecked {

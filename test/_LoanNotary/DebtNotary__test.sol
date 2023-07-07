@@ -15,6 +15,7 @@ import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 import {AnzaDebtMarket} from "@markets/AnzaDebtMarket.sol";
 import {AnzaDebtStorefront} from "@storefronts/AnzaDebtStorefront.sol";
 import {IAnzaBaseMarketParticipant} from "@markets-databases/interfaces/IAnzaBaseMarketParticipant.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup, Settings} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
@@ -235,6 +236,8 @@ contract DebtNotaryUtils is Settings {
 }
 
 abstract contract DebtNotaryGetSignerUnitTest is DebtNotaryInit {
+    using AnzaTokenIndexer for uint256;
+
     function setUp() public virtual override {
         super.setUp();
     }
@@ -273,7 +276,7 @@ abstract contract DebtNotaryGetSignerUnitTest is DebtNotaryInit {
 
         // Mint debt
         address _seller = vm.addr(_sellerPrivKey);
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
@@ -336,7 +339,7 @@ abstract contract DebtNotaryGetSignerUnitTest is DebtNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
@@ -406,7 +409,7 @@ abstract contract DebtNotaryGetSignerUnitTest is DebtNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
@@ -469,7 +472,7 @@ abstract contract DebtNotaryGetSignerUnitTest is DebtNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Mint alternate debt
@@ -539,7 +542,7 @@ abstract contract DebtNotaryGetSignerUnitTest is DebtNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Mint alternate debt

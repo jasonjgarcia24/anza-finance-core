@@ -15,6 +15,7 @@ import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 import {AnzaDebtMarket} from "@markets/AnzaDebtMarket.sol";
 import {AnzaSponsorshipStorefront} from "@storefronts/AnzaSponsorshipStorefront.sol";
 import {IAnzaBaseMarketParticipant} from "@markets-databases/interfaces/IAnzaBaseMarketParticipant.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup, Settings} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
@@ -231,6 +232,8 @@ contract SponsorshipNotaryUtils is Settings {
 }
 
 abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
+    using AnzaTokenIndexer for uint256;
+
     function setUp() public virtual override {
         super.setUp();
     }
@@ -265,7 +268,7 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
 
         // Mint debt
         address _seller = vm.addr(_sellerPrivKey);
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
@@ -321,7 +324,7 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
@@ -384,7 +387,7 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Create contract params.
@@ -440,7 +443,7 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId);
+        uint256 _sellerTokenId = _debtId.debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Mint alternate debt
@@ -503,7 +506,7 @@ abstract contract SponsorshipNotaryGetSignerUnitTest is SponsorshipNotaryInit {
         address _seller = vm.addr(_sellerPrivKey);
 
         // Mint debt
-        uint256 _sellerTokenId = anzaTokenHarness.borrowerTokenId(_debtId[0]);
+        uint256 _sellerTokenId = _debtId[0].debtIdToBorrowerTokenId();
         anzaTokenHarness.exposed__mint(_seller, _sellerTokenId, 1);
 
         // Mint alternate debt

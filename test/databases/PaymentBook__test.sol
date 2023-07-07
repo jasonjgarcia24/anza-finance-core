@@ -8,6 +8,7 @@ import "@lending-constants/LoanContractRoles.sol";
 import {_MAX_DEBT_PRINCIPAL_, _MAX_DEBT_ID_} from "@lending-constants/LoanContractNumbers.sol";
 
 import {PaymentBook} from "@lending-databases/PaymentBook.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
@@ -72,6 +73,8 @@ contract PaymentBookUnitTest is
     IPaymentBookEvents,
     PaymentBookEventsSuite
 {
+    using AnzaTokenIndexer for uint256;
+
     function setUp() public override {
         super.setUp();
     }
@@ -300,7 +303,7 @@ contract PaymentBookUnitTest is
         // Test with lender Anza Tokens minted.
         anzaTokenHarness.exposed__mint(
             lender,
-            anzaTokenHarness.lenderTokenId(_debtId),
+            _debtId.debtIdToLenderTokenId(),
             _balance
         );
 
@@ -351,7 +354,7 @@ contract PaymentBookUnitTest is
             assertEq(
                 anzaTokenHarness.balanceOf(
                     lender,
-                    anzaTokenHarness.lenderTokenId(_debtId)
+                    _debtId.debtIdToLenderTokenId()
                 ),
                 0,
                 "6 :: lender AnzaTokens should be 0."

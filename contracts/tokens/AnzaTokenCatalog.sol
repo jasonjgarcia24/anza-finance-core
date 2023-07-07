@@ -3,12 +3,12 @@ pragma solidity 0.8.20;
 
 import {console} from "forge-std/console.sol";
 
-import {_MAX_DEBT_ID_} from "@lending-constants/LoanContractNumbers.sol";
-import {_INVALID_TOKEN_ID_SELECTOR_} from "@custom-errors/StdAnzaTokenErrors.sol";
+import {IAnzaTokenCatalog} from "@tokens-interfaces/IAnzaTokenCatalog.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
-import {IAnzaTokenIndexer} from "@tokens-interfaces/IAnzaTokenIndexer.sol";
+abstract contract AnzaTokenCatalog is IAnzaTokenCatalog {
+    using AnzaTokenIndexer for uint256;
 
-abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     /* ------------------------------------------------ *
      *                    Databases                     *
      * ------------------------------------------------ */
@@ -19,51 +19,19 @@ abstract contract AnzaTokenIndexer is IAnzaTokenIndexer {
     function supportsInterface(
         bytes4 _interfaceId
     ) public view virtual returns (bool) {
-        return _interfaceId == type(IAnzaTokenIndexer).interfaceId;
+        return _interfaceId == type(IAnzaTokenCatalog).interfaceId;
     }
 
     function ownerOf(uint256 _tokenId) public view returns (address) {
         return __owners[_tokenId];
     }
 
-    function debtId(uint256 _tokenId) public pure returns (uint256) {
-        unchecked {
-            return _tokenId / 2;
-        }
-    }
-
     function borrowerOf(uint256 _debtId) public view returns (address) {
-        return __owners[borrowerTokenId(_debtId)];
+        return __owners[_debtId.debtIdToBorrowerTokenId()];
     }
 
     function lenderOf(uint256 _debtId) public view returns (address) {
-        return __owners[lenderTokenId(_debtId)];
-    }
-
-    function borrowerTokenId(
-        uint256 _debtId
-    ) public pure returns (uint256 _tokenId) {
-        assembly {
-            if gt(_debtId, _MAX_DEBT_ID_) {
-                mstore(0x20, _INVALID_TOKEN_ID_SELECTOR_)
-                revert(0x20, 0x04)
-            }
-
-            _tokenId := add(mul(_debtId, 2), 1)
-        }
-    }
-
-    function lenderTokenId(
-        uint256 _debtId
-    ) public pure returns (uint256 _tokenId) {
-        assembly {
-            if gt(_debtId, _MAX_DEBT_ID_) {
-                mstore(0x20, _INVALID_TOKEN_ID_SELECTOR_)
-                revert(0x20, 0x04)
-            }
-
-            _tokenId := mul(_debtId, 2)
-        }
+        return __owners[_debtId.debtIdToLenderTokenId()];
     }
 
     /**

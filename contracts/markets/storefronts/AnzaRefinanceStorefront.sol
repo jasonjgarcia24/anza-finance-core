@@ -9,6 +9,7 @@ import {IAnzaRefinanceStorefront} from "@storefronts-interfaces/IAnzaRefinanceSt
 import {AnzaBaseMarketParticipant, NonceLocker} from "@markets-databases/AnzaBaseMarketParticipant.sol";
 import {AnzaRefinanceStorefrontAccessController} from "@markets-access/AnzaRefinanceStorefrontAccessController.sol";
 import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 contract AnzaRefinanceStorefront is
     IAnzaRefinanceStorefront,
@@ -16,6 +17,7 @@ contract AnzaRefinanceStorefront is
     AnzaRefinanceStorefrontAccessController
 {
     using NonceLocker for NonceLocker.Nonce;
+    using AnzaTokenIndexer for uint256;
 
     constructor(
         address _anzaToken,
@@ -199,7 +201,7 @@ contract AnzaRefinanceStorefront is
                 contractTerms: _contractTerms
             }),
             _sellerSignature,
-            _anzaTokenIndexer.borrowerOf
+            _anzaTokenCatalog.borrowerOf
         );
 
         // Update listing nonce
@@ -214,8 +216,8 @@ contract AnzaRefinanceStorefront is
         emit ListingPurchased(
             msg.sender,
             uint8(ListingType.REFINANCE),
-            address(_anzaTokenIndexer),
-            _anzaTokenIndexer.borrowerTokenId(_debtId)
+            address(_anzaTokenCatalog),
+            _debtId.debtIdToBorrowerTokenId()
         );
     }
 
@@ -253,7 +255,7 @@ contract AnzaRefinanceStorefront is
                 contractTerms: _contractTerms
             }),
             _sellerSignature,
-            _anzaTokenIndexer.borrowerOf
+            _anzaTokenCatalog.borrowerOf
         );
 
         // Transfer debt
@@ -263,8 +265,8 @@ contract AnzaRefinanceStorefront is
         emit ListingPurchased(
             msg.sender,
             uint8(ListingType.REFINANCE),
-            address(_anzaTokenIndexer),
-            _anzaTokenIndexer.borrowerTokenId(_debtId)
+            address(_anzaTokenCatalog),
+            _debtId.debtIdToBorrowerTokenId()
         );
     }
 

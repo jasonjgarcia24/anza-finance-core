@@ -19,6 +19,7 @@ import {ILoanNotary, IRefinanceNotary} from "@services/interfaces/ILoanNotary.so
 import {AnzaToken} from "@tokens/AnzaToken.sol";
 import {CollateralVault} from "@services/CollateralVault.sol";
 import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {LoanCodecHarness} from "@test-base/_LoanCodec/LoanCodec__test.sol";
@@ -72,9 +73,7 @@ contract LoanContractHarness is LoanContract {
         _updateLoanState(_debtId, _newLoanState);
     }
 
-    function exposed__updateLoanTimes(
-        uint256 _debtId
-    ) public {
+    function exposed__updateLoanTimes(uint256 _debtId) public {
         _updateLoanTimes(_debtId);
     }
 
@@ -584,6 +583,7 @@ contract LoanContractUnitTest is
     PaymentBookEventsSuite
 {
     using BytesUtils for bytes[2];
+    using AnzaTokenIndexer for uint256;
 
     uint256 public localCollateralId = collateralId;
 
@@ -712,7 +712,7 @@ contract LoanContractUnitTest is
                     operator: address(loanContractHarness),
                     from: address(0),
                     to: lender,
-                    id: anzaToken.lenderTokenId(_debtId),
+                    id: _debtId.debtIdToLenderTokenId(),
                     value: _contractTerms.principal
                 })
             );
@@ -724,7 +724,7 @@ contract LoanContractUnitTest is
                     operator: address(loanContractHarness),
                     from: address(0),
                     to: _borrower,
-                    id: anzaToken.borrowerTokenId(_debtId),
+                    id: _debtId.debtIdToBorrowerTokenId(),
                     value: 1
                 })
             );
@@ -734,7 +734,7 @@ contract LoanContractUnitTest is
                 _entries[6],
                 URIFields({
                     value: _demoToken.tokenURI(_collateralId),
-                    id: anzaToken.borrowerTokenId(_debtId)
+                    id: _debtId.debtIdToBorrowerTokenId()
                 })
             );
 
@@ -856,7 +856,7 @@ contract LoanContractUnitTest is
                     operator: address(loanTreasurer),
                     from: lender,
                     to: address(0),
-                    id: anzaToken.lenderTokenId(_prevDebtId),
+                    id: _prevDebtId.debtIdToLenderTokenId(),
                     value: _contractTerms.principal
                 })
             );
@@ -891,7 +891,7 @@ contract LoanContractUnitTest is
                     operator: address(loanContractHarness),
                     from: address(0),
                     to: _lender,
-                    id: anzaToken.lenderTokenId(_debtId),
+                    id: _debtId.debtIdToLenderTokenId(),
                     value: _contractTerms.principal
                 })
             );
@@ -903,7 +903,7 @@ contract LoanContractUnitTest is
                     operator: address(loanContractHarness),
                     from: address(0),
                     to: _borrower,
-                    id: anzaToken.borrowerTokenId(_debtId),
+                    id: _debtId.debtIdToBorrowerTokenId(),
                     value: 1
                 })
             );
@@ -913,7 +913,7 @@ contract LoanContractUnitTest is
                 _entries[5],
                 URIFields({
                     value: _demoToken.tokenURI(_collateralId),
-                    id: anzaToken.borrowerTokenId(_debtId)
+                    id: _debtId.debtIdToBorrowerTokenId()
                 })
             );
 
@@ -1039,7 +1039,7 @@ contract LoanContractUnitTest is
                     operator: address(loanTreasurer),
                     from: lender,
                     to: address(0),
-                    id: anzaToken.lenderTokenId(_prevDebtId),
+                    id: _prevDebtId.debtIdToLenderTokenId(),
                     value: _contractTerms.principal
                 })
             );
@@ -1074,7 +1074,7 @@ contract LoanContractUnitTest is
                     operator: address(loanContractHarness),
                     from: address(0),
                     to: _lender,
-                    id: anzaToken.lenderTokenId(_debtId),
+                    id: _debtId.debtIdToLenderTokenId(),
                     value: _contractTerms.principal
                 })
             );
@@ -1086,7 +1086,7 @@ contract LoanContractUnitTest is
                     operator: address(loanContractHarness),
                     from: address(0),
                     to: _borrower,
-                    id: anzaToken.borrowerTokenId(_debtId),
+                    id: _debtId.debtIdToBorrowerTokenId(),
                     value: 1
                 })
             );
@@ -1096,7 +1096,7 @@ contract LoanContractUnitTest is
                 _entries[5],
                 URIFields({
                     value: _demoToken.tokenURI(_collateralId),
-                    id: anzaToken.borrowerTokenId(_debtId)
+                    id: _debtId.debtIdToBorrowerTokenId()
                 })
             );
 

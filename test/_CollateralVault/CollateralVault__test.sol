@@ -10,6 +10,7 @@ import {_INVALID_COLLATERAL_SELECTOR_} from "@custom-errors/StdLoanErrors.sol";
 import {LoanTreasurey} from "@base/services/LoanTreasurey.sol";
 import {CollateralVault} from "@services/CollateralVault.sol";
 import {ICollateralVault} from "@services-interfaces/ICollateralVault.sol";
+import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {DebtBookHarness} from "@test-databases/DebtBook__test.sol";
@@ -105,6 +106,8 @@ contract CollateralVaultUnitTest is
     ICollateralVaultEvents,
     CollateralVaultEventsSuite
 {
+    using AnzaTokenIndexer for uint256;
+
     function setUp() public virtual override {
         super.setUp();
     }
@@ -200,12 +203,12 @@ contract CollateralVaultUnitTest is
         );
         anzaTokenHarness.exposed__mint(
             _borrower,
-            anzaTokenHarness.borrowerTokenId(_debtId),
+            _debtId.debtIdToBorrowerTokenId(),
             _debtId
         );
         anzaTokenHarness.exposed__mint(
             lender,
-            anzaTokenHarness.lenderTokenId(_debtId),
+            _debtId.debtIdToLenderTokenId(),
             _amount
         );
     }
@@ -441,12 +444,12 @@ contract CollateralVaultUnitTest is
 
         anzaTokenHarness.exposed__mint(
             _borrower,
-            anzaTokenHarness.borrowerTokenId(_debtId),
+            _debtId.debtIdToBorrowerTokenId(),
             _debtId
         );
         anzaTokenHarness.exposed__mint(
             lender,
-            anzaTokenHarness.lenderTokenId(_debtId),
+            _debtId.debtIdToLenderTokenId(),
             _principal
         );
 
