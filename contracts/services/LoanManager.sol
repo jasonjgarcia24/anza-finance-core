@@ -6,6 +6,7 @@ import {console} from "forge-std/console.sol";
 import {_ADMIN_, _TREASURER_} from "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
 import {_MAX_REFINANCES_} from "@lending-constants/LoanContractNumbers.sol";
+import {StdManagerErrors} from "@custom-errors/StdManagerErrors.sol";
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
 
 import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
@@ -21,6 +22,12 @@ abstract contract LoanManager is
     ManagerAccessController
 {
     constructor() ManagerAccessController() {}
+
+    modifier onlyUncommittedDebt(uint256 _debtId) {
+        if (checkCommitted(_debtId))
+            revert StdManagerErrors.InvalidCommittedDebt();
+        _;
+    }
 
     function supportsInterface(
         bytes4 _interfaceId

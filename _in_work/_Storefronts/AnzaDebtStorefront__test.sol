@@ -307,7 +307,7 @@ pragma solidity 0.8.20;
 //                 firInterval: _FIR_INTERVAL_,
 //                 fixedInterestRate: _FIXED_INTEREST_RATE_,
 //                 isFixed: _IS_FIXED_,
-//                 commital: _COMMITAL_,
+//                 commitalRatio: _COMMITAL_RATIO_,
 //                 principal: _PRINCIPAL_ / 2,
 //                 gracePeriod: _GRACE_PERIOD_,
 //                 duration: _DURATION_,

@@ -452,7 +452,7 @@ contract LoanContractUtils is
         address _lender,
         uint256 _debtId,
         ContractTerms memory _contractTerms
-    ) public virtual {
+    ) public virtual returns (ContractTerms memory) {
         bytes32 _packedContractTerms;
         (_packedContractTerms, _contractTerms) = createPackedContractTerms(
             _contractTerms
@@ -468,6 +468,8 @@ contract LoanContractUtils is
         );
 
         handleFailedContractCreation(_success, _data, _contractTerms);
+
+        return _contractTerms;
     }
 
     /* ------- Sponsorship Loan Contract Setup ------- */
@@ -766,20 +768,34 @@ contract LoanContractUnitTest is
             _UINT128_MAX_
         );
 
-        (
-            _debtId,
-            _contractTerms
-        ) = _testLoanContract__InitContract_Fuzz_InitialLoan(
+        (_debtId, ) = _testLoanContract__InitContract_Fuzz_InitialLoan(
             _borrowerPrivKey,
             _collateralId,
-            _contractTerms
+            ContractTerms({
+                firInterval: _contractTerms.firInterval,
+                fixedInterestRate: _contractTerms.fixedInterestRate,
+                isFixed: _contractTerms.isFixed,
+                commitalRatio: _contractTerms.commitalRatio,
+                commitalPeriod: _contractTerms.commitalPeriod,
+                principal: _contractTerms.principal,
+                gracePeriod: _contractTerms.gracePeriod,
+                duration: _contractTerms.duration,
+                termsExpiry: _contractTerms.termsExpiry,
+                lenderRoyalties: _contractTerms.lenderRoyalties
+            })
         );
+
+        // Clean up contract terms.
+        // This is normally handled by the _testLoanContract__InitContract_Fuzz_InitialLoan
+        // function as it returns the cleaned contract terms. However, we need to keep the
+        // original contract terms for the refinancing.
+        _contractTerms = loanContractUtils.cleanContractTermsForCommitalRatio(_contractTerms);
 
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Create loan contract.
         vm.recordLogs();
-        loanContractUtils.refinanceLoanContract(
+        _contractTerms = loanContractUtils.refinanceLoanContract(
             _borrower,
             _lender,
             _debtId,

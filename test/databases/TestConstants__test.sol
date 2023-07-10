@@ -7,7 +7,7 @@ pragma solidity 0.8.20;
 uint8 constant _FIR_INTERVAL_ = 14;
 uint8 constant _FIXED_INTEREST_RATE_ = 10; // 0.10
 uint8 constant _IS_FIXED_ = 0; // false
-uint8 constant _COMMITAL_ = 25; // 0.25
+uint8 constant _COMMITAL_RATIO_ = 25; // 0.25
 uint256 constant _PRINCIPAL_ = 10000000000; // WEI
 uint32 constant _GRACE_PERIOD_ = 86400;
 uint32 constant _DURATION_ = 1209600;

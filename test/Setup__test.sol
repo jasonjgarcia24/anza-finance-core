@@ -122,8 +122,8 @@ abstract contract Settings is Utils {
         uint8 firInterval;
         uint8 fixedInterestRate;
         uint8 isFixed;
-        uint8 commital;
-        uint256 commitalDuration;
+        uint8 commitalRatio;
+        uint256 commitalPeriod;
         uint256 principal;
         uint32 gracePeriod;
         uint32 duration;
@@ -133,10 +133,14 @@ abstract contract Settings is Utils {
 
     function setCommitalDuration(
         ContractTerms memory _contractTerms
-    ) public pure returns (ContractTerms memory) {
-        _contractTerms.commitalDuration =
-            (uint256(_contractTerms.duration) * _contractTerms.commital) /
-            0x64;
+    ) public view returns (ContractTerms memory) {
+        uint256 _start = block.timestamp + _contractTerms.gracePeriod;
+        uint256 _commitalDuration = (uint256(_contractTerms.duration) *
+            _contractTerms.commitalRatio) / 0x64;
+
+        _contractTerms.commitalPeriod = _commitalDuration > 0
+            ? _start + _commitalDuration
+            : _start;
 
         return _contractTerms;
     }
@@ -163,8 +167,8 @@ abstract contract Settings is Utils {
                     firInterval: _FIR_INTERVAL_,
                     fixedInterestRate: _FIXED_INTEREST_RATE_,
                     isFixed: _IS_FIXED_,
-                    commital: _COMMITAL_,
-                    commitalDuration: 0x00,
+                    commitalRatio: _COMMITAL_RATIO_,
+                    commitalPeriod: 0x00,
                     principal: _PRINCIPAL_,
                     gracePeriod: _GRACE_PERIOD_,
                     duration: _DURATION_,
@@ -180,7 +184,7 @@ abstract contract Settings is Utils {
         uint8 _firInterval = _contractTerms.firInterval;
         uint8 _fixedInterestRate = _contractTerms.fixedInterestRate;
         uint8 _isDirect = _contractTerms.isFixed;
-        uint8 _commital = _contractTerms.commital;
+        uint8 _commitalRatio = _contractTerms.commitalRatio;
         uint32 _gracePeriod = _contractTerms.gracePeriod;
         uint32 _duration = _contractTerms.duration;
         uint32 _termsExpiry = _contractTerms.termsExpiry;
@@ -193,9 +197,9 @@ abstract contract Settings is Utils {
             mstore(0x1f, _fixedInterestRate)
 
             if eq(_isDirect, 0x01) {
-                _commital := add(0x65, _commital)
+                _commitalRatio := add(0x65, _commitalRatio)
             }
-            mstore(0x1e, _commital)
+            mstore(0x1e, _commitalRatio)
 
             mstore(0x0d, _gracePeriod)
             mstore(0x09, _duration)

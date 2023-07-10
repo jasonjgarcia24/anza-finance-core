@@ -44,7 +44,7 @@ library DebtTermIndexer {
      * @param _packedDebtTerms The initialized debt terms.
      */
     modifier onlyUnlocked(bytes32 _packedDebtTerms) {
-        __checkUnlocked(_packedDebtTerms);
+        __verifyUnlocked(_packedDebtTerms);
         _;
     }
 
@@ -264,8 +264,8 @@ library DebtTermIndexer {
      * @param _map The debt term map.
      * @param _debtId The debt ID.
      *
-     * See {lending-constants/LoanContractTermMaps} for `_COMMITAL_POS_` and
-     * `_COMMITAL_MAP_`.
+     * See {lending-constants/LoanContractTermMaps} for `_LOAN_COMMITAL_POS_` and
+     * `_LOAN_COMMITAL_MAP_`.
      *
      * @return _uLoanCommital The unpacked loan commital duration.
      */
@@ -276,40 +276,14 @@ library DebtTermIndexer {
         bytes32 _contractTerms = _map.packedDebtTerms[_debtId];
 
         assembly {
-            _uLoanCommital := shr(
-                _COMMITAL_POS_,
-                and(_contractTerms, _COMMITAL_MAP_)
+            _uLoanCommital := add(
+                shr(_LOAN_START_POS_, and(_contractTerms, _LOAN_START_MAP_)),
+                shr(
+                    _LOAN_COMMITAL_POS_,
+                    and(_contractTerms, _LOAN_COMMITAL_MAP_)
+                )
             )
         }
-    }
-
-    /**
-     * Returns the loan commital time for a given debt ID.
-     *
-     * TODO: This is a nice method, but currently unused. Remove?
-     *
-     * @dev The loan commital is the time commitment of the borrower to the
-     * lender. Therefore, the if the current timestamp is within the loan
-     * commital time, the borrower cannot sale the debt nor refinance it.
-     *
-     * @param _map The debt term map.
-     * @param _debtId The debt ID.
-     *
-     * @return _uLoanCommitalTime The unpacked loan commital time.
-     */
-    function _loanCommitalTime(
-        DebtTermMap storage _map,
-        uint256 _debtId
-    ) internal view returns (uint256) {
-        int128 _uLoanStart = ABDKMath64x64.fromUInt(_loanStart(_map, _debtId));
-        int128 _uLoanDuration = ABDKMath64x64.fromUInt(
-            _loanDuration(_map, _debtId)
-        );
-        int128 _ratio = ABDKMath64x64.divu(_loanCommital(_map, _debtId), 100);
-        int128 _commitalPeriod = ABDKMath64x64.mul(_uLoanDuration, _ratio);
-        int128 _commitalTime = ABDKMath64x64.add(_uLoanStart, _commitalPeriod);
-
-        return ABDKMath64x64.toUInt(_commitalTime);
     }
 
     /**
@@ -400,12 +374,27 @@ library DebtTermIndexer {
     }
 
     /**
+     * Returns the committed status of the current debt.
+     *
+     * @param _map The debt term map.
+     * @param _debtId The debt ID.
+     *
+     * @return True if the debt is committed, false if not.
+     */
+    function _checkCommitted(
+        DebtTermMap storage _map,
+        uint256 _debtId
+    ) internal view returns (bool) {
+        return _loanCommital(_map, _debtId) <= block.timestamp;
+    }
+
+    /**
      * Reverts with a illegal terms update error if the debt ID terms are
      * already in use.
      *
      * @param _packedDebtTerms The packed debt terms.
      */
-    function __checkUnlocked(bytes32 _packedDebtTerms) private pure {
+    function __verifyUnlocked(bytes32 _packedDebtTerms) private pure {
         assembly {
             if gt(_packedDebtTerms, 0) {
                 mstore(0x20, _ILLEGAL_TERMS_UPDATE_SELECTOR_)

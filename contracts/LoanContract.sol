@@ -167,9 +167,12 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *  > 008 - [244..255] `lenderRoyalties`
      *
      * @dev This function is only callable by the treasurer.
-     * @dev This function is loanTermsValidator(_contractTerms) and will revert
-     * if the loan terms are invalid. See {LoanCodec.__validateTerms} for more
-     * information.
+     * @dev This function is onlyUncommittedDebt(_debtId) modified and will
+     * revert if the debt is committed to the lender. See
+     * {DebtTermsIndexer._checkCommitted} for more information.
+     * @dev This function is loanTermsValidator(_contractTerms) modified and will
+     * revert if the loan terms are invalid. See {LoanCodec.__validateTerms} for
+     * more information.
      *
      * @param _debtId The ID of the debt to refinance.
      * @param _borrower The address of the borrower.
@@ -187,6 +190,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         external
         payable
         onlyRole(_TREASURER_)
+        onlyUncommittedDebt(_debtId)
         loanTermsValidator(_contractTerms)
     {
         // Verify existing loan is in good standing

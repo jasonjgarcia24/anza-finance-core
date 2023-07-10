@@ -204,4 +204,8 @@ abstract contract DebtTerms is IDebtTerms {
     function activeLoanCount(uint256 _debtId) public view returns (uint256) {
         return __packedDebtTerms._activeLoanCount(_debtId);
     }
+
+    function checkCommitted(uint256 _debtId) public view returns (bool) {
+        return __packedDebtTerms._checkCommitted(_debtId);
+    }
 }

@@ -8,7 +8,7 @@ import "@lending-constants/LoanContractStates.sol";
 import "@lending-constants/LoanContractFIRIntervals.sol";
 import "@custom-errors/StdLoanErrors.sol";
 import "@custom-errors/StdCodecErrors.sol";
-import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
+import {_ILLEGAL_TERMS_UPDATE_SELECTOR_, _INVALID_COMMITTED_DEBT_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
 import {LoanCodec} from "@services/LoanCodec.sol";
 import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
@@ -194,7 +194,8 @@ contract LoanCodecUtils is Setup {
         }
         // Commital revert check
         else if (
-            ((_contractTerms.isFixed * 101) + _contractTerms.commital) > 201
+            ((_contractTerms.isFixed * 101) + _contractTerms.commitalRatio) >
+            201
         ) {
             return (
                 false,
@@ -294,6 +295,17 @@ contract LoanCodecUtils is Setup {
     }
 
     /* ----------- Contract Setup Helpers ------------ */
+    function cleanContractTermsForCommitalRatio(
+        ContractTerms memory _contractTerms
+    ) public pure returns (ContractTerms memory) {
+        _contractTerms.isFixed = _contractTerms.commitalRatio > 100 ? 1 : 0;
+        _contractTerms.commitalRatio = _contractTerms.commitalRatio > 100
+            ? _contractTerms.commitalRatio - 101
+            : _contractTerms.commitalRatio;
+
+        return _contractTerms;
+    }
+
     /**
      * Function to "clean" the contract terms per the LoanCodec's `_validateLoanTerms`
      * function.
@@ -302,7 +314,7 @@ contract LoanCodecUtils is Setup {
      * this run's fuzz inputs and generate new ones.
      *
      * @notice This function also "cleans" the `_contractTerms.firInterval`,
-     * `_contractTerms.isFixed`, and `_contractTerms.commital` values.
+     * `_contractTerms.isFixed`, and `_contractTerms.commitalRatio` values.
      *
      * @param _loanCodecHarness The loan codec harness.
      * @param _contractTerms The contract terms.
@@ -313,10 +325,7 @@ contract LoanCodecUtils is Setup {
         ILoanCodecHarness _loanCodecHarness,
         ContractTerms memory _contractTerms
     ) public view virtual returns (ContractTerms memory) {
-        _contractTerms.isFixed = _contractTerms.commital > 100 ? 1 : 0;
-        _contractTerms.commital = _contractTerms.commital > 100
-            ? _contractTerms.commital - 101
-            : _contractTerms.commital;
+        _contractTerms = cleanContractTermsForCommitalRatio(_contractTerms);
 
         // Clean contract terms.
         // Need to create new struct to prevent unwanted update to `_contractTerms`.
@@ -326,8 +335,8 @@ contract LoanCodecUtils is Setup {
                 firInterval: _contractTerms.firInterval,
                 fixedInterestRate: _contractTerms.fixedInterestRate,
                 isFixed: _contractTerms.isFixed,
-                commital: _contractTerms.commital,
-                commitalDuration: _contractTerms.commitalDuration,
+                commitalRatio: _contractTerms.commitalRatio,
+                commitalPeriod: _contractTerms.commitalPeriod,
                 principal: _contractTerms.principal,
                 gracePeriod: _contractTerms.gracePeriod,
                 duration: _contractTerms.duration,
@@ -440,7 +449,9 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         ContractTerms memory _contractTerms
     ) public {
         _contractTerms.isFixed = uint8(bound(_contractTerms.isFixed, 0, 1));
-        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 155));
+        _contractTerms.commitalRatio = uint8(
+            bound(_contractTerms.commitalRatio, 0, 155)
+        );
 
         // Get expected pass/fail status
         (bool _expectedSuccess, bytes memory _expectedData) = loanCodecUtils
@@ -646,6 +657,7 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         (_packedContractTerms, _contractTerms) = createPackedContractTerms(
             _contractTerms
         );
+
         loanCodecHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
@@ -687,6 +699,14 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         if (_now > _loanStart) {
             // Update expected terms.
             _expectedLoanStart = _now > _loanClose ? _loanClose : _now;
+
+            // If commital period is greater than the updated loan start, the loan
+            // commital should remain unchanged, otherwise it should be the updated
+            // loan start.
+            _contractTerms.commitalPeriod = _contractTerms.commitalPeriod >
+                loanCodecHarness.loanStart(_debtId)
+                ? _contractTerms.commitalPeriod
+                : loanCodecHarness.loanStart(_debtId);
 
             // If the current time is greater than the loan start, the grace period
             // is past and should be 0.
@@ -765,14 +785,14 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
             "9 :: 'loanClose' mismatch."
         );
 
-        // // Check the updated unpacked contract terms.
-        // debtTermsUtils.checkLoanTerms(
-        //     address(loanCodecHarness),
-        //     _debtId,
-        //     _activeLoanIndex,
-        //     _now > _loanStart ? _expectedLoanStart : _now,
-        //     _expectedLoanState,
-        //     _contractTerms
-        // );
+        // Check the updated unpacked contract terms.
+        debtTermsUtils.checkLoanTerms(
+            address(loanCodecHarness),
+            _debtId,
+            _activeLoanIndex,
+            _now > _loanStart ? _expectedLoanStart : _now,
+            _expectedLoanState,
+            _contractTerms
+        );
     }
 }

@@ -60,13 +60,15 @@ abstract contract DebtTermsInit is Setup {
         );
 
         // Commital must be no greater than 100.
-        vm.assume(_contractTerms.commital <= 100);
+        vm.assume(_contractTerms.commitalRatio <= 100);
 
         // Duration must be greater than grace period.
         vm.assume(_contractTerms.duration >= _contractTerms.gracePeriod);
 
         // Commital must be no greater than 100%.
-        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
+        _contractTerms.commitalRatio = uint8(
+            bound(_contractTerms.commitalRatio, 0, 100)
+        );
 
         // Lender royalties must be no greater than 100%.
         _contractTerms.lenderRoyalties = uint8(
@@ -154,7 +156,7 @@ contract DebtTermsUtils is Test {
 
         assertEq(
             _loanCodecHarness.loanCommital(_debtId),
-            _contractTerms.commitalDuration,
+            _contractTerms.commitalPeriod,
             "7 :: loan commital does not equal expected loan commital."
         );
 

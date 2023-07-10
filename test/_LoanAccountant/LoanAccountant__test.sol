@@ -260,11 +260,6 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
                 _now + _contractTerms.gracePeriod,
                 "1 :: loan last checked should be updated."
             );
-
-            console.log(
-                "2) balance: ",
-                loanManagerHarness.debtBalance(_debtId)
-            );
         }
 
         vm.warp(_now + _contractTerms.gracePeriod + _contractTerms.duration);
@@ -283,8 +278,8 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
             firInterval: _FIR_INTERVAL_,
             fixedInterestRate: _FIXED_INTEREST_RATE_,
             isFixed: _IS_FIXED_,
-            commital: _COMMITAL_,
-            commitalDuration: 0,
+            commitalRatio: _COMMITAL_RATIO_,
+            commitalPeriod: 0,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,

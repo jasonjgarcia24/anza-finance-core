@@ -259,16 +259,16 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
      *
      * @dev The `_loanAgreement` is a packed bytes32 array of the following
      * values:
-     *  > 004 - [0..3]     `loanState`
-     *  > 004 - [4..7]     `firInterval`
-     *  > 008 - [8..15]    `fixedInterestRate`
-     *  > 064 - [16..79]   `loanStart`
-     *  > 032 - [80..111]  `loanDuration`
-     *  > 004 - [112..115] `isFixed`
-     *  > 008 - [116..123] `commital`
-     *  > 116 - [124..239]  unused
-     *  > 008 - [240..247] `lenderRoyalties`
-     *  > 008 - [248..255] `loanCount`
+     *  > 004 - [0..3]     `loanState`          - Current state of the loan.
+     *  > 004 - [4..7]     `firInterval`        - The fixed interest interval rate interval.
+     *  > 004 - [8..11]    `isFixed`            - Whether the loan interest rate is fixed.
+     *  > 008 - [12..19]   `fixedInterestRate`  - The fixed interest rate.
+     *  > 064 - [20..83]   `loanStart`          - The loan start time.
+     *  > 064 - [84..147]  `loanCommital`       - The loan commital to the current lender.
+     *  > 032 - [148..179] `loanDuration`       - The loan duration.
+     *  > 116 - [180..239]  unused              - Unused.
+     *  > 008 - [240..247] `lenderRoyalties`    - The lender royalties.
+     *  > 008 - [248..255] `loanCount`          - The number of loans for a given collateral.
      */
     function _setLoanAgreement(
         uint64 _now,
@@ -299,6 +299,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             // Get packed grace period
             mstore(0x13, _contractTerms)
             let _gracePeriod := and(mload(0), _UINT32_MAX_)
+            let _start := add(_now, _gracePeriod)
 
             // Get packed duration
             mstore(0x17, _contractTerms)
@@ -341,7 +342,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
                 _LOAN_START_MASK_,
                 _LOAN_START_MAP_,
                 _LOAN_START_POS_,
-                add(_now, _gracePeriod)
+                _start
             )
 
             // Pack loan duration time (uint32)
@@ -363,10 +364,11 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             )
 
             // Pack commital (uint32)
+            // loan duration * (commital / 100)
             __packTerm(
-                _COMMITAL_MASK_,
-                _COMMITAL_MAP_,
-                _COMMITAL_POS_,
+                _LOAN_COMMITAL_MASK_,
+                _LOAN_COMMITAL_MAP_,
+                _LOAN_COMMITAL_POS_,
                 div(mul(_duration, mod(_isDirect_Commital, 0x65)), 0x64)
             )
 
@@ -458,7 +460,9 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
     /**
      * Updates the loan times.
      *
-     * TODO: Need to account for grace periods.
+     * @dev By storing the loan duration and loan commital as a relative periods
+     * of uint32, we can save on storage and accomodate a loan close up to
+     * max(uint64) + max(uint32).
      *
      * @param _debtId The debt id.
      */
@@ -467,6 +471,13 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         bool _isTimeUpdate;
 
         assembly {
+            function __packTerm(_mask, _map, _pos, _val) {
+                mstore(
+                    0x20,
+                    xor(and(_mask, mload(0x20)), and(_map, shl(_pos, _val)))
+                )
+            }
+
             // If loan state is beyond active, do nothing.
             if gt(and(_LOAN_STATE_MAP_, _contractTerms), _ACTIVE_STATE_) {
                 mstore(0x20, _ILLEGAL_TERMS_UPDATE_SELECTOR_)
@@ -482,6 +493,8 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             )
 
             let _now := timestamp()
+
+            // Accounts for grace period.
             _isTimeUpdate := gt(_now, _loanStart)
 
             if _isTimeUpdate {
@@ -494,28 +507,54 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
                     )
                 )
 
+                // Store loan duration
+                let _duration := shr(
+                    _LOAN_DURATION_POS_,
+                    and(_contractTerms, _LOAN_DURATION_MAP_)
+                )
+
+                // Store loan commital
+                let _commital := shr(
+                    _LOAN_COMMITAL_POS_,
+                    and(_contractTerms, _LOAN_COMMITAL_MAP_)
+                )
+
                 if gt(_now, _loanClose) {
                     _now := _loanClose
                 }
 
-                mstore(
-                    0x20,
-                    xor(
-                        and(_LOAN_START_MASK_, mload(0x20)),
-                        and(_LOAN_START_MAP_, shl(_LOAN_START_POS_, _now))
-                    )
+                // Update loan start to now (i.e. last updated).
+                __packTerm(
+                    _LOAN_START_MASK_,
+                    _LOAN_START_MAP_,
+                    _LOAN_START_POS_,
+                    _now
                 )
 
-                mstore(
-                    0x20,
-                    xor(
-                        and(_LOAN_DURATION_MASK_, mload(0x20)),
-                        and(
-                            _LOAN_DURATION_MAP_,
-                            shl(_LOAN_DURATION_POS_, sub(_loanClose, _now))
-                        )
-                    )
+                // Update loan duration.
+                __packTerm(
+                    _LOAN_DURATION_MASK_,
+                    _LOAN_DURATION_MAP_,
+                    _LOAN_DURATION_POS_,
+                    sub(_loanClose, _now)
                 )
+
+                if gt(_commital, 0) {
+                    // Time difference between now and previous update.
+                    let _timeDiff := sub(_duration, sub(_loanClose, _now))
+
+                    if gt(_timeDiff, _commital) {
+                        _timeDiff := _commital
+                    }
+
+                    // Update loan commital.
+                    __packTerm(
+                        _LOAN_COMMITAL_MASK_,
+                        _LOAN_COMMITAL_MAP_,
+                        _LOAN_COMMITAL_POS_,
+                        sub(_commital, _timeDiff)
+                    )
+                }
 
                 _contractTerms := mload(0x20)
             }

@@ -80,8 +80,8 @@ library LibLoanContractTermMaps {
     uint256 public constant LOAN_DURATION_MAP = _LOAN_DURATION_MAP_;
     uint256 public constant IS_FIXED_MASK = _IS_FIXED_MASK_;
     uint256 public constant IS_FIXED_MAP = _IS_FIXED_MAP_;
-    uint256 public constant COMMITAL_MASK = _COMMITAL_MASK_;
-    uint256 public constant COMMITAL_MAP = _COMMITAL_MAP_;
+    uint256 public constant COMMITAL_MASK = _LOAN_COMMITAL_MASK_;
+    uint256 public constant COMMITAL_MAP = _LOAN_COMMITAL_MAP_;
     uint256 public constant LENDER_ROYALTIES_MASK = _LENDER_ROYALTIES_MASK_;
     uint256 public constant LENDER_ROYALTIES_MAP = _LENDER_ROYALTIES_MAP_;
     uint256 public constant LOAN_COUNT_MASK = _LOAN_COUNT_MASK_;
