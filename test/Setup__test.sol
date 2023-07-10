@@ -123,6 +123,7 @@ abstract contract Settings is Utils {
         uint8 fixedInterestRate;
         uint8 isFixed;
         uint8 commital;
+        uint256 commitalDuration;
         uint256 principal;
         uint32 gracePeriod;
         uint32 duration;
@@ -130,34 +131,62 @@ abstract contract Settings is Utils {
         uint8 lenderRoyalties;
     }
 
-    function createContractTerms()
-        public
-        virtual
-        returns (bytes32 _contractTerms)
-    {
-        assembly {
-            mstore(0x20, _FIR_INTERVAL_)
-            mstore(0x1f, _FIXED_INTEREST_RATE_)
-            mstore(0x0d, _GRACE_PERIOD_)
-            mstore(0x09, _DURATION_)
-            mstore(0x05, _TERMS_EXPIRY_)
-            mstore(0x01, _LENDER_ROYALTIES_)
+    function setCommitalDuration(
+        ContractTerms memory _contractTerms
+    ) public pure returns (ContractTerms memory) {
+        _contractTerms.commitalDuration =
+            (uint256(_contractTerms.duration) * _contractTerms.commital) /
+            0x64;
 
-            _contractTerms := mload(0x20)
-        }
+        return _contractTerms;
     }
 
-    function createContractTerms(
-        ContractTerms memory _terms
-    ) public view virtual returns (bytes32 _contractTerms) {
-        uint8 _firInterval = _terms.firInterval;
-        uint8 _fixedInterestRate = _terms.fixedInterestRate;
-        uint8 _isDirect = _terms.isFixed;
-        uint8 _commital = _terms.commital;
-        uint32 _gracePeriod = _terms.gracePeriod;
-        uint32 _duration = _terms.duration;
-        uint32 _termsExpiry = _terms.termsExpiry;
-        uint8 _lenderRoyalties = _terms.lenderRoyalties;
+    function setDurationLessGracePeriod(
+        ContractTerms memory _contractTerms
+    ) public pure returns (ContractTerms memory) {
+        _contractTerms.duration = _contractTerms.gracePeriod <=
+            _contractTerms.duration
+            ? _contractTerms.duration - _contractTerms.gracePeriod
+            : _contractTerms.duration;
+
+        return _contractTerms;
+    }
+
+    function createPackedContractTerms()
+        public
+        virtual
+        returns (bytes32, ContractTerms memory)
+    {
+        return
+            createPackedContractTerms(
+                ContractTerms({
+                    firInterval: _FIR_INTERVAL_,
+                    fixedInterestRate: _FIXED_INTEREST_RATE_,
+                    isFixed: _IS_FIXED_,
+                    commital: _COMMITAL_,
+                    commitalDuration: 0x00,
+                    principal: _PRINCIPAL_,
+                    gracePeriod: _GRACE_PERIOD_,
+                    duration: _DURATION_,
+                    termsExpiry: _TERMS_EXPIRY_,
+                    lenderRoyalties: _LENDER_ROYALTIES_
+                })
+            );
+    }
+
+    function createPackedContractTerms(
+        ContractTerms memory _contractTerms
+    ) public view virtual returns (bytes32, ContractTerms memory) {
+        uint8 _firInterval = _contractTerms.firInterval;
+        uint8 _fixedInterestRate = _contractTerms.fixedInterestRate;
+        uint8 _isDirect = _contractTerms.isFixed;
+        uint8 _commital = _contractTerms.commital;
+        uint32 _gracePeriod = _contractTerms.gracePeriod;
+        uint32 _duration = _contractTerms.duration;
+        uint32 _termsExpiry = _contractTerms.termsExpiry;
+        uint8 _lenderRoyalties = _contractTerms.lenderRoyalties;
+
+        bytes32 _packedContractTerms;
 
         assembly {
             mstore(0x20, _firInterval)
@@ -173,8 +202,13 @@ abstract contract Settings is Utils {
             mstore(0x05, _termsExpiry)
             mstore(0x01, _lenderRoyalties)
 
-            _contractTerms := mload(0x20)
+            _packedContractTerms := mload(0x20)
         }
+
+        _contractTerms = setDurationLessGracePeriod(_contractTerms);
+        _contractTerms = setCommitalDuration(_contractTerms);
+
+        return (_packedContractTerms, _contractTerms);
     }
 }
 

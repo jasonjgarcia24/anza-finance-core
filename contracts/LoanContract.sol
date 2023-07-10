@@ -159,8 +159,8 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      * following values:
      *  > 004 - [0..3]     `firInterval`
      *  > 004 - [4..11]    `fixedInterestRate`
-     *  > 008 - [12..19]   unused space
-     *  > 128 - [20..147]  `principal`
+     *  > 008 - [12..19]   `isFixed` and `commital`
+     *  > 008 - [20..27]   `loanCurrency`
      *  > 032 - [148..179] `gracePeriod`
      *  > 032 - [180..211] `duration`
      *  > 032 - [212..243] `termsExpiry`
@@ -270,17 +270,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      * and shall only be callable by the treasurer. It is required that the
      * treasurer verifies the loan contract with the borrower before calling
      * this function.
-     *
-     * @dev The `_contractTerms` parameter is a packed bytes32 array of the
-     * following values:
-     *  > 004 - [0..3]     `firInterval`
-     *  > 004 - [4..11]    `fixedInterestRate`
-     *  > 008 - [12..19]   unused space
-     *  > 128 - [20..147]  `principal`
-     *  > 032 - [148..179] `gracePeriod`
-     *  > 032 - [180..211] `duration`
-     *  > 032 - [212..243] `termsExpiry`
-     *  > 008 - [244..255] `lenderRoyalties`
      *
      * @dev This function is only callable by the treasurer.
      * @dev This function will not alter existing loan terms. Therefore, it

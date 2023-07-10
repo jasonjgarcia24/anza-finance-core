@@ -185,7 +185,10 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
 
         // Clean contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         try
             loanManagerHarness.exposed__validateLoanTerms(
@@ -281,6 +284,7 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
             fixedInterestRate: _FIXED_INTEREST_RATE_,
             isFixed: _IS_FIXED_,
             commital: _COMMITAL_,
+            commitalDuration: 0,
             principal: _PRINCIPAL_,
             gracePeriod: _GRACE_PERIOD_,
             duration: _DURATION_,
@@ -289,7 +293,10 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         });
 
         // Clean contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         loanManagerHarness.exposed__validateLoanTerms(
             _packedContractTerms,
@@ -442,7 +449,10 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         vm.assume(_contractTerms.principal > 0);
 
         // Clean contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         try
             loanManagerHarness.exposed__validateLoanTerms(

@@ -290,8 +290,17 @@ contract LoanContractUtils is
         uint256 _borrowerPrivKey,
         address _collateralAddress,
         uint256 _collateralId
-    ) public virtual returns (bool, bytes memory) {
-        bytes32 _packedContractTerms = createContractTerms();
+    )
+        public
+        virtual
+        returns (
+            bool _success,
+            bytes memory _data,
+            ContractTerms memory _contractTerms
+        )
+    {
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms();
 
         uint256 _collateralNonce = _loanContract.collateralNonce(
             _collateralAddress,
@@ -315,14 +324,13 @@ contract LoanContractUtils is
         );
 
         // Create loan contract.
-        return
-            initContract(
-                _PRINCIPAL_,
-                _collateralAddress,
-                _collateralId,
-                _packedContractTerms,
-                _signature
-            );
+        (_success, _data) = initContract(
+            _PRINCIPAL_,
+            _collateralAddress,
+            _collateralId,
+            _packedContractTerms,
+            _signature
+        );
     }
 
     /**
@@ -338,20 +346,21 @@ contract LoanContractUtils is
         address _collateralAddress,
         uint256 _collateralId,
         ContractTerms memory _contractTerms
-    ) public virtual {
+    ) public virtual returns (ContractTerms memory) {
         uint256 _collateralNonce = _loanContract.collateralNonce(
             _collateralAddress,
             _collateralId
         );
 
         // Create loan contract.
-        createLoanContract(
-            _borrowerPrivKey,
-            _collateralAddress,
-            _collateralId,
-            _collateralNonce,
-            _contractTerms
-        );
+        return
+            createLoanContract(
+                _borrowerPrivKey,
+                _collateralAddress,
+                _collateralId,
+                _collateralNonce,
+                _contractTerms
+            );
     }
 
     /**
@@ -369,8 +378,11 @@ contract LoanContractUtils is
         uint256 _collateralId,
         uint256 _collateralNonce,
         ContractTerms memory _contractTerms
-    ) public virtual {
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+    ) public virtual returns (ContractTerms memory) {
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Create contract params.
         ILoanNotary.ContractParams memory _contractParams = ILoanNotary
@@ -398,6 +410,8 @@ contract LoanContractUtils is
         );
 
         handleFailedContractCreation(_success, _data, _contractTerms);
+
+        return _contractTerms;
     }
 
     /* ------- Refinance Loan Contract Setup ------- */
@@ -439,7 +453,10 @@ contract LoanContractUtils is
         uint256 _debtId,
         ContractTerms memory _contractTerms
     ) public virtual {
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Create loan contract.
         (bool _success, bytes memory _data) = refinanceContract(
@@ -616,7 +633,7 @@ contract LoanContractUnitTest is
 
         // Create loan contract.
         vm.recordLogs();
-        loanContractUtils.createLoanContract(
+        _contractTerms = loanContractUtils.createLoanContract(
             _borrowerPrivKey,
             address(_demoToken),
             _collateralId,
@@ -1029,10 +1046,6 @@ contract LoanContractUnitTest is
             _contractTerms
         );
 
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
-
         // Check the unpacked contract terms.
         loanContractUtils.checkLoanTerms(
             address(loanContractHarness),
@@ -1068,10 +1081,6 @@ contract LoanContractUnitTest is
             _contractTerms
         );
 
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
-
         // Check the unpacked contract terms.
         loanContractUtils.checkLoanTerms(
             address(loanContractHarness),
@@ -1106,10 +1115,6 @@ contract LoanContractUnitTest is
             _collateralId,
             _contractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         loanContractUtils.checkLoanTerms(
@@ -1155,7 +1160,10 @@ contract LoanContractUnitTest is
         );
 
         address _borrower = vm.addr(_borrowerPrivKey);
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Get collateral nonce.
         uint256 _collateralNonce = loanContractHarness.collateralNonce(

@@ -100,11 +100,13 @@ contract LoanNotaryUtils is Settings {
             _collateralId
         );
 
+        (bytes32 _packedContractTerms, ) = createPackedContractTerms();
+
         // Create contract params.
         ILoanNotary.ContractParams memory _contractParams = ILoanNotary
             .ContractParams({
                 principal: _PRINCIPAL_,
-                contractTerms: createContractTerms(),
+                contractTerms: _packedContractTerms,
                 collateralAddress: _demoTokenAddress,
                 collateralId: _collateralId,
                 collateralNonce: _collateralNonce
@@ -199,7 +201,10 @@ abstract contract LoanNotaryGetBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);
@@ -264,7 +269,10 @@ abstract contract LoanNotaryGetBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);
@@ -328,7 +336,10 @@ abstract contract LoanNotaryGetBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);
@@ -393,10 +404,15 @@ abstract contract LoanNotaryGetBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
-        bytes32 _altPackedContractTerms = createContractTerms(
-            _altContractTerms
+        bytes32 _packedContractTerms;
+        bytes32 _altPackedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
         );
+        (
+            _altPackedContractTerms,
+            _altContractTerms
+        ) = createPackedContractTerms(_altContractTerms);
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);
@@ -515,7 +531,10 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);
@@ -580,7 +599,10 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);
@@ -644,7 +666,10 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);
@@ -711,10 +736,15 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
-        bytes32 _altPackedContractTerms = createContractTerms(
-            _altContractTerms
+        bytes32 _packedContractTerms;
+        bytes32 _altPackedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
         );
+        (
+            _altPackedContractTerms,
+            _altContractTerms
+        ) = createPackedContractTerms(_altContractTerms);
 
         // Mint collateral
         DemoToken _demoToken = new DemoToken(0);

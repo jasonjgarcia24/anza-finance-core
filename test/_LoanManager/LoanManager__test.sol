@@ -142,27 +142,6 @@ abstract contract LoanManagerInit is Setup {
 
         loanManagerUtils = new LoanManagerUtils();
     }
-
-    // function cleanContractTerms(
-    //     ContractTerms memory _contractTerms
-    // ) public view {
-    //     // Only allow valid fir intervals.
-    //     vm.assume(
-    //         _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
-    //     );
-
-    //     // Duration must be greater than grace period.
-    //     // TODO: Need to check if there are test cases missed by not using >=.
-    //     vm.assume(_contractTerms.duration > _contractTerms.gracePeriod);
-
-    //     // Commital must be no greater than 100%.
-    //     _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
-
-    //     // Lender royalties must be no greater than 100%.
-    //     _contractTerms.lenderRoyalties = uint8(
-    //         bound(_contractTerms.lenderRoyalties, 0, 100)
-    //     );
-    // }
 }
 
 contract LoanManagerUtils is LoanCodecUtils {}
@@ -422,17 +401,16 @@ contract LoanManagerUnitTest is LoanManagerInit {
         uint256 _activeLoanIndex = 1;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -517,17 +495,16 @@ contract LoanManagerUnitTest is LoanManagerInit {
         uint256 _amountPayoff = (_amount * _partialPayoff) / 100;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -677,17 +654,16 @@ contract LoanManagerUnitTest is LoanManagerInit {
         uint256 _amountPayoff = (_amount * _partialPayoff) / 100;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -804,17 +780,16 @@ contract LoanManagerUnitTest is LoanManagerInit {
             _newLoanState != _ACTIVE_STATE_;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -881,17 +856,16 @@ contract LoanManagerUnitTest is LoanManagerInit {
             _newLoanState != _ACTIVE_STATE_;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -1054,17 +1028,16 @@ contract LoanManagerUnitTest is LoanManagerInit {
             _newLoanState == _ACTIVE_STATE_;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -1124,17 +1097,16 @@ contract LoanManagerUnitTest is LoanManagerInit {
             _newLoanState <= _AWARDED_STATE_;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -1193,17 +1165,14 @@ contract LoanManagerUnitTest is LoanManagerInit {
         bool _isClosedState = _newLoanState >= _PAID_PENDING_STATE_;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(_contractTerms);
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -1256,17 +1225,14 @@ contract LoanManagerUnitTest is LoanManagerInit {
         uint256 _activeLoanIndex = 1;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(_contractTerms);
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(
@@ -1346,17 +1312,14 @@ contract LoanManagerUnitTest is LoanManagerInit {
         uint256 _activeLoanIndex = 1;
 
         // Pack and store the contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(_contractTerms);
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(

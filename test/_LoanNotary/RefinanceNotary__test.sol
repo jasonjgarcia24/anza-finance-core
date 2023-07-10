@@ -185,7 +185,10 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         anzaTokenHarness.exposed__mint(_borrower, _borrowerTokenId, 1);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Create contract params.
         IRefinanceNotary.RefinanceParams
@@ -245,7 +248,10 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint debt
         uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
@@ -311,7 +317,10 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint debt
         uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
@@ -370,7 +379,10 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Mint debt
         uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();
@@ -433,10 +445,22 @@ abstract contract RefinanceNotaryGetBorrowererUnitTest is RefinanceNotaryInit {
         address _borrower = vm.addr(_borrowerPrivKey);
 
         // Pack contract terms.
+        bytes32 _packedContractTerms0;
+        bytes32 _packedContractTerms1;
+        (_packedContractTerms0, _contractTerms[0]) = createPackedContractTerms(
+            _contractTerms[0]
+        );
+        (_packedContractTerms1, _contractTerms[1]) = createPackedContractTerms(
+            _contractTerms[1]
+        );
+
         bytes32[2] memory _packedContractTerms = [
-            createContractTerms(_contractTerms[0]),
-            createContractTerms(_contractTerms[1])
+            _packedContractTerms0,
+            _packedContractTerms1
         ];
+
+        delete _packedContractTerms0;
+        delete _packedContractTerms1;
 
         // Mint debt
         uint256 _borrowerTokenId = _debtId.debtIdToBorrowerTokenId();

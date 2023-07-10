@@ -363,13 +363,13 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
      * @param _debtId The ID of the debt being paid.
      * @param _payment The amount of the payment.
      *
-     * @return The amount of the payment that was not deposited.
+     * @return _remaining The amount of the payment that was not deposited.
      */
     function __depositPayment(
         address _payer,
         uint256 _debtId,
         uint256 _payment
-    ) private debtUpdater(_debtId) returns (uint256) {
-        return _depositPayment(_payer, _debtId, _payment);
+    ) private debtUpdater(_debtId) returns (uint256 _remaining) {
+        _remaining = _depositPayment(_payer, _debtId, _payment);
     }
 }

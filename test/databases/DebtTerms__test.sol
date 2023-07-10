@@ -146,30 +146,34 @@ contract DebtTermsUtils is Test {
             "5 :: loan start does not equal expected loan start."
         );
 
-        console.log("loan commital: %s", _contractTerms.commital);
+        assertEq(
+            _loanCodecHarness.loanDuration(_debtId),
+            _contractTerms.duration,
+            "6 :: loan duration does not equal expected loan duration."
+        );
 
         assertEq(
             _loanCodecHarness.loanCommital(_debtId),
-            _contractTerms.commital,
-            "6 :: loan commital does not equal expected loan commital."
+            _contractTerms.commitalDuration,
+            "7 :: loan commital does not equal expected loan commital."
         );
 
         assertEq(
             _loanCodecHarness.loanClose(_debtId),
             _now + _contractTerms.duration + _contractTerms.gracePeriod,
-            "7 :: loan close does not equal expected loan close."
+            "8 :: loan close does not equal expected loan close."
         );
 
         assertEq(
             _loanCodecHarness.lenderRoyalties(_debtId),
             _contractTerms.lenderRoyalties & 0xff, // Should only be 8 bits.
-            "8 :: lender royalties does not equal expected lender royalties."
+            "9 :: lender royalties does not equal expected lender royalties."
         );
 
         assertEq(
             _loanCodecHarness.activeLoanCount(_debtId),
             _activeLoanIndex,
-            "9 :: active loan contract does not equal expected active loan contract."
+            "10 :: active loan contract does not equal expected active loan contract."
         );
     }
 }
@@ -276,17 +280,16 @@ contract DebtTermsUnitTest is DebtTermsInit {
 
         // Pack and store the contract terms.
         uint64 _now = uint64(block.timestamp);
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanCodecHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
             _activeLoanIndex,
             _packedContractTerms
         );
-
-        // Setting the loan agreement updates the duration to account for the grace
-        // period. We need to do that here too.
-        _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
         debtTermsUtils.checkLoanTerms(

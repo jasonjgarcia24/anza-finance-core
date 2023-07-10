@@ -157,6 +157,7 @@ contract DebtNotaryUtils is Settings {
                     fixedInterestRate: _FIXED_INTEREST_RATE_,
                     isFixed: _IS_FIXED_,
                     commital: _COMMITAL_,
+                    commitalDuration: 0,
                     principal: _PRINCIPAL_,
                     gracePeriod: _GRACE_PERIOD_,
                     duration: _DURATION_,
@@ -173,10 +174,14 @@ contract DebtNotaryUtils is Settings {
         ContractTerms memory _contractTerms
     ) public virtual returns (bool _success, bytes memory _data) {
         uint256 _termsExpiry = uint256(_TERMS_EXPIRY_);
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
         uint256 _listingNonce = IAnzaBaseMarketParticipant(
             __anzaDebtStorefrontAddress
         ).nonce();
+
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
 
         // Create contract params.
         IDebtNotary.DebtParams memory _debtParams = IDebtNotary.DebtParams({

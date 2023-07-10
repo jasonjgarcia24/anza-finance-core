@@ -251,6 +251,25 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         }
     }
 
+    /**
+     * Sets the loan agreement for a given debt.
+     *
+     * This function sets the loan agreement by parsing and packing the loan
+     * contract terms.
+     *
+     * @dev The `_loanAgreement` is a packed bytes32 array of the following
+     * values:
+     *  > 004 - [0..3]     `loanState`
+     *  > 004 - [4..7]     `firInterval`
+     *  > 008 - [8..15]    `fixedInterestRate`
+     *  > 064 - [16..79]   `loanStart`
+     *  > 032 - [80..111]  `loanDuration`
+     *  > 004 - [112..115] `isFixed`
+     *  > 008 - [116..123] `commital`
+     *  > 116 - [124..239]  unused
+     *  > 008 - [240..247] `lenderRoyalties`
+     *  > 008 - [248..255] `loanCount`
+     */
     function _setLoanAgreement(
         uint64 _now,
         uint256 _debtId,
@@ -326,11 +345,13 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             )
 
             // Pack loan duration time (uint32)
+            _duration := sub(_duration, _gracePeriod)
+
             __packTerm(
                 _LOAN_DURATION_MASK_,
                 _LOAN_DURATION_MAP_,
                 _LOAN_DURATION_POS_,
-                sub(_duration, _gracePeriod)
+                _duration
             )
 
             // Pack is direct (uint4)
@@ -341,12 +362,12 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
                 gt(_isDirect_Commital, 0x64)
             )
 
-            // Pack commital (uint8)
+            // Pack commital (uint32)
             __packTerm(
                 _COMMITAL_MASK_,
                 _COMMITAL_MAP_,
                 _COMMITAL_POS_,
-                mod(_isDirect_Commital, 0x65)
+                div(mul(_duration, mod(_isDirect_Commital, 0x65)), 0x64)
             )
 
             // Pack lender royalties (uint8)
