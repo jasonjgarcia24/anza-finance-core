@@ -18,7 +18,7 @@ import {AnzaRefinanceStorefront} from "@storefronts/AnzaRefinanceStorefront.sol"
 import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
-import {LoanCodecInit} from "@test-base/_LoanCodec/LoanCodec__test.sol";
+import {ILoanCodecHarness, LoanCodecInit, LoanCodecUtils} from "@test-base/_LoanCodec/LoanCodec__test.sol";
 import {DebtTermsUtils} from "@test-databases/DebtTerms__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
 
@@ -32,6 +32,21 @@ contract LoanManagerHarness is LoanManager {
     }
 
     /* ----- LoanCodec Expose Functions ----- */
+    function exposed__validateLoanTerms(
+        bytes32 _contractTerms,
+        uint64 _loanState,
+        uint256 _principal
+    ) public pure {
+        _validateLoanTerms(_contractTerms, _loanState, _principal);
+    }
+
+    function exposed__getTotalFirIntervals(
+        uint256 _firInterval,
+        uint256 _seconds
+    ) public pure returns (uint256) {
+        return _getTotalFirIntervals(_firInterval, _seconds);
+    }
+
     function exposed__setLoanAgreement(
         uint64 _now,
         uint256 _debtId,
@@ -68,6 +83,7 @@ abstract contract LoanManagerInit is Setup {
     LoanManagerHarness public loanManagerHarness;
     DebtTermsUtils public debtTermsUtils;
     AnzaTokenHarness public anzaTokenHarness;
+    LoanManagerUtils public loanManagerUtils;
 
     function setUp() public virtual override {
         super.setUp();
@@ -123,29 +139,33 @@ abstract contract LoanManagerInit is Setup {
         loanManagerHarness.setAnzaToken(address(anzaTokenHarness));
 
         vm.stopPrank();
+
+        loanManagerUtils = new LoanManagerUtils();
     }
 
-    function cleanContractTerms(
-        ContractTerms memory _contractTerms
-    ) public view {
-        // Only allow valid fir intervals.
-        vm.assume(
-            _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
-        );
+    // function cleanContractTerms(
+    //     ContractTerms memory _contractTerms
+    // ) public view {
+    //     // Only allow valid fir intervals.
+    //     vm.assume(
+    //         _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
+    //     );
 
-        // Duration must be greater than grace period.
-        // TODO: Need to check if there are test cases missed by not using >=.
-        vm.assume(_contractTerms.duration > _contractTerms.gracePeriod);
+    //     // Duration must be greater than grace period.
+    //     // TODO: Need to check if there are test cases missed by not using >=.
+    //     vm.assume(_contractTerms.duration > _contractTerms.gracePeriod);
 
-        // Commital must be no greater than 100%.
-        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
+    //     // Commital must be no greater than 100%.
+    //     _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
 
-        // Lender royalties must be no greater than 100%.
-        _contractTerms.lenderRoyalties = uint8(
-            bound(_contractTerms.lenderRoyalties, 0, 100)
-        );
-    }
+    //     // Lender royalties must be no greater than 100%.
+    //     _contractTerms.lenderRoyalties = uint8(
+    //         bound(_contractTerms.lenderRoyalties, 0, 100)
+    //     );
+    // }
 }
+
+contract LoanManagerUtils is LoanCodecUtils {}
 
 contract LoanManagerUnitTest is LoanManagerInit {
     using AnzaTokenIndexer for uint256;
@@ -393,7 +413,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
     ) public {
         vm.assume(_amount > 0);
         vm.assume(_debtId <= _MAX_DEBT_ID_);
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -484,7 +507,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
         _partialPayoff = uint8(bound(_partialPayoff, 0, 100));
         vm.assume(_amount > 0 && _amount <= (_UINT256_MAX_ / 100));
         vm.assume(_debtId <= _MAX_DEBT_ID_);
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -641,7 +667,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
         _partialPayoff = uint8(bound(_partialPayoff, 0, 99));
         vm.assume(_amount > 0 && _amount <= (_UINT256_MAX_ / 100));
         vm.assume(_debtId <= _MAX_DEBT_ID_);
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -758,7 +787,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
         uint8 _newLoanState,
         ContractTerms memory _contractTerms
     ) public {
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -833,7 +865,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
         _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -1003,7 +1038,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
         _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -1070,7 +1108,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
         _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -1137,7 +1178,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
         _newLoanState = uint8(bound(_newLoanState, 0, 0x0f));
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -1203,7 +1247,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
         vm.assume(_amount > 0);
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -1290,7 +1337,10 @@ contract LoanManagerUnitTest is LoanManagerInit {
         ContractTerms memory _contractTerms
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanManagerUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanManagerHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;

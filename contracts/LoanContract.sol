@@ -39,12 +39,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     /**
      * Initialize a loan contract for an uncollateralized ERC721 token.
      *
-     * @param _collateralAddress The address of the ERC721 collateral token.
-     * @param _collateralId The ID of the ERC721 collateral token.
-     * @param _contractTerms The loan contract terms.
-     * @param _borrowerSignature The borrower's signature of the loan contract
-     * terms.
-     *
      * @dev The `_contractTerms` parameter is a packed bytes32 array of the
      * following values:
      *  > 004 - [0..3]     `firInterval`
@@ -56,6 +50,16 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
      *
+     * @dev This function is loanTermsValidator(_contractTerms) and will revert
+     * if the loan terms are invalid. See {LoanCodec.__validateTerms} for more
+     * information.
+     *
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     * @param _collateralId The ID of the ERC721 collateral token.
+     * @param _contractTerms The loan contract terms.
+     * @param _borrowerSignature The borrower's signature of the loan contract
+     * terms.
+     *
      * Emits a {LoanContractInitialized} event.
      */
     function initContract(
@@ -63,15 +67,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         uint256 _collateralId,
         bytes32 _contractTerms,
         bytes calldata _borrowerSignature
-    ) external payable {
-        // Validate loan terms
-        uint256 _principal = msg.value;
-        _validateLoanTerms(
-            _contractTerms,
-            block.timestamp.toUint64(),
-            _principal
-        );
-
+    ) external payable loanTermsValidator(_contractTerms) {
         // Set debt
         // Note: This will increment `_totalDebts` by 1
         (, uint256 _collateralNonce) = _writeDebt(
@@ -84,7 +80,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         address _borrower = _getBorrower(
             ContractParams({
-                principal: _principal,
+                principal: msg.value,
                 contractTerms: _contractTerms,
                 collateralAddress: _collateralAddress,
                 collateralId: _collateralId,
@@ -111,7 +107,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         );
 
         // Transfer funds to borrower's account in treasurey
-        (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
+        (bool _success, ) = _loanTreasurerAddress.call{value: msg.value}(
             abi.encodeWithSignature(
                 "depositFunds(uint256,address,address)",
                 _totalDebts,
@@ -130,7 +126,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             msg.sender,
             _borrower,
             _totalDebts,
-            _principal,
+            msg.value,
             _collateralURI
         );
 
@@ -144,8 +140,10 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     }
 
     /**
-     * Refinance fractions of debt with a new loan. This will alter and create
-     * a new debt agreement for the collateralized ERC721 token.
+     * Refinance fractions of debt with a new loan.
+     *
+     * This will alter and create a new debt agreement for the collateralized
+     * ERC721 token.
      *
      * @dev The call stack of this function is:
      * > AnzaDebtStorefront:buyRefinance(uint256,uint256,{uint256},bytes)
@@ -156,11 +154,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      * and shall only be callable by the treasurer. It is required that the
      * treasurer verifies the loan contract with the borrower before calling
      * this function.
-     *
-     * @param _debtId The ID of the debt to refinance.
-     * @param _borrower The address of the borrower.
-     * @param _lender The address of the new lender.
-     * @param _contractTerms The new loan contract terms.
      *
      * @dev The `_contractTerms` parameter is a packed bytes32 array of the
      * following values:
@@ -173,6 +166,16 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
      *
+     * @dev This function is only callable by the treasurer.
+     * @dev This function is loanTermsValidator(_contractTerms) and will revert
+     * if the loan terms are invalid. See {LoanCodec.__validateTerms} for more
+     * information.
+     *
+     * @param _debtId The ID of the debt to refinance.
+     * @param _borrower The address of the borrower.
+     * @param _lender The address of the new lender.
+     * @param _contractTerms The new loan contract terms.
+     *
      * Emits a {ContractInitialized} event.
      */
     function initContract(
@@ -180,17 +183,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
         address _borrower,
         address _lender,
         bytes32 _contractTerms
-    ) external payable onlyRole(_TREASURER_) {
+    )
+        external
+        payable
+        onlyRole(_TREASURER_)
+        loanTermsValidator(_contractTerms)
+    {
         // Verify existing loan is in good standing
         if (checkLoanDefault(_debtId)) revert StdLoanErrors.InvalidCollateral();
-
-        // Validate loan terms
-        uint256 _principal = msg.value;
-        _validateLoanTerms(
-            _contractTerms,
-            block.timestamp.toUint64(),
-            _principal
-        );
 
         // Get collateral from vault
         ICollateralVault.Collateral memory _collateral = _collateralVault
@@ -221,7 +221,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
-        (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
+        (bool _success, ) = _loanTreasurerAddress.call{value: msg.value}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
                 _lender,
@@ -241,7 +241,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             _lender,
             _borrower,
             _totalDebts,
-            _principal,
+            msg.value,
             _collateralURI
         );
 
@@ -255,11 +255,11 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     }
 
     /**
+     * Transfer debt to a new lender.
+     *
      * TODO: Revisit to check if we can just transfer the debt tokens to the
      * new lender and transfer the payment directly to the previous lender's
      * withdrawable balance.
-     *
-     * Transfer debt to a new lender. This will not alter existing loan terms.
      *
      * @dev The call stack of this function is:
      * > AnzaDebtStorefront:buySponsorship(uint256,uint256,{uint256},bytes)
@@ -270,10 +270,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      * and shall only be callable by the treasurer. It is required that the
      * treasurer verifies the loan contract with the borrower before calling
      * this function.
-     *
-     * @param _debtId The ID of the debt to refinance.
-     * @param _borrower The address of the borrower.
-     * @param _lender The address of the new lender.
      *
      * @dev The `_contractTerms` parameter is a packed bytes32 array of the
      * following values:
@@ -286,6 +282,14 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
      *  > 032 - [212..243] `termsExpiry`
      *  > 008 - [244..255] `lenderRoyalties`
      *
+     * @dev This function is only callable by the treasurer.
+     * @dev This function will not alter existing loan terms. Therefore, it
+     * is not necessary to validate the loan terms.
+     *
+     * @param _debtId The ID of the debt to refinance.
+     * @param _borrower The address of the borrower.
+     * @param _lender The address of the new lender.
+     *
      * Emits a {ContractInitialized} event.
      */
     function initContract(
@@ -295,11 +299,6 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
     ) external payable onlyRole(_TREASURER_) {
         // Verify existing loan is in good standing
         if (checkLoanDefault(_debtId)) revert StdLoanErrors.InvalidCollateral();
-
-        // Validate loan terms
-        // Unnecessary since the terms are existing and have already been
-        // validated.
-        uint256 _principal = msg.value;
 
         // Get collateral from vault
         ICollateralVault.Collateral memory _collateral = _collateralVault
@@ -331,7 +330,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         // Replace or reduce previous debt. Any excess funds will
         // be available for withdrawal in the treasurey.
-        (bool _success, ) = _loanTreasurerAddress.call{value: _principal}(
+        (bool _success, ) = _loanTreasurerAddress.call{value: msg.value}(
             abi.encodeWithSignature(
                 "sponsorPayment(address,uint256)",
                 _lender,
@@ -351,7 +350,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             _lender,
             _borrower,
             _totalDebts,
-            _principal >= _balance ? _balance : _principal,
+            msg.value >= _balance ? _balance : msg.value,
             _collateralURI
         );
 

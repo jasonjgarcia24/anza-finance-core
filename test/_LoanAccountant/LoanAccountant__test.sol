@@ -10,10 +10,14 @@ import {_MAX_DEBT_ID_} from "@lending-constants/LoanContractNumbers.sol";
 import {_SECONDS_PER_24_MINUTES_RATIO_SCALED_} from "@lending-constants/LoanContractNumbers.sol";
 import {_UINT64_MAX_, _UINT128_MAX_, _SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
 import {StdCodecErrors} from "@custom-errors/StdCodecErrors.sol";
+import "@custom-errors/StdLoanErrors.sol";
 
 import {LoanAccountant} from "@services/LoanAccountant.sol";
 import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
+import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
+import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 
+import "@test-databases/TestConstants__test.sol";
 import {Setup} from "@test-base/Setup__test.sol";
 import {LoanManagerHarness} from "@test-manager/LoanManager__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
@@ -25,28 +29,20 @@ contract LoanAccountantHarness is LoanAccountant, StdAssertions {
 
     function implementer_debtUpdater(
         uint256 _debtId
-    ) public debtUpdater(_debtId) {
-        assertFalse(
-            _updatePermitted(),
-            "update permitted expected to be false."
-        );
-    }
+    ) public debtUpdater(_debtId) {}
 
     function implementer_updatePermittedLocker(
         uint256 _debtId
-    ) public updatePermittedLocker(_debtId) {
-        assertFalse(
-            _updatePermitted(),
-            "update permitted expected to be false."
-        );
-    }
+    ) public updatePermittedLocker(_debtId) {}
 
     function implementer_onlyActiveLoan(
         uint256 _debtId
     ) public onlyActiveLoan(_debtId) {}
 
     /* Abstract functions */
-    function setAnzaToken(address _anzaTokenAddress) public override {}
+    function setAnzaToken(address _anzaTokenAddress) public override {
+        _setAnzaToken(_anzaTokenAddress);
+    }
     /* ^^^^^^^^^^^^^^^^^^ */
 }
 
@@ -74,6 +70,7 @@ abstract contract LoanAccountantInit is Setup {
             _LOAN_CONTRACT_,
             address(loanManagerHarness)
         );
+        anzaTokenHarness.grantRole(_TREASURER_, address(loanAccountantHarness));
 
         // Set LoanManagerHarness access control roles.
         loanManagerHarness.setAnzaToken(address(anzaTokenHarness));
@@ -91,41 +88,10 @@ abstract contract LoanAccountantInit is Setup {
 
         vm.stopPrank();
     }
-
-    function cleanContractTerms(
-        ContractTerms memory _contractTerms
-    ) public view virtual {
-        // Only allow valid principal
-        vm.assume(
-            _contractTerms.principal > 100 &&
-                _contractTerms.principal <= _UINT128_MAX_
-        );
-
-        // Only allow valid fir intervals.
-        vm.assume(
-            _contractTerms.firInterval == 0
-            // _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
-        );
-
-        // Duration must be greater than grace period.
-        vm.assume(_contractTerms.duration > _contractTerms.gracePeriod);
-
-        // Commital must be no greater than 100%.
-        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
-
-        // Terms expiry must be greater than 24 minutes.
-        vm.assume(
-            _contractTerms.termsExpiry > _SECONDS_PER_24_MINUTES_RATIO_SCALED_
-        );
-
-        // Lender royalties must be no greater than 100%.
-        _contractTerms.lenderRoyalties = uint8(
-            bound(_contractTerms.lenderRoyalties, 0, 100)
-        );
-    }
 }
 
 contract LoanAccountantUnitTest is LoanAccountantInit {
+    using TypeUtils for uint256;
     using AnzaTokenIndexer for uint256;
 
     function _validateStateChangesWithoutTimeWarp(uint256 _debtId) internal {
@@ -216,8 +182,20 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         uint256 _debtId,
         ContractTerms memory _contractTerms
     ) public {
-        cleanContractTerms(_contractTerms);
         vm.assume(_debtId <= _MAX_DEBT_ID_);
+
+        // Clean contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        try
+            loanManagerHarness.exposed__validateLoanTerms(
+                _packedContractTerms,
+                block.timestamp.toUint64(),
+                _contractTerms.principal
+            )
+        {} catch (bytes memory) {
+            vm.assume(false);
+        }
 
         // Initial update without any contract terms should revert.
         vm.startPrank(address(loanAccountantHarness));
@@ -228,7 +206,6 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         // Add contract terms.
         uint256 _activeLoanIndex = 1;
         uint64 _now = uint64(block.timestamp);
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
@@ -245,8 +222,6 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
 
         uint256 _loanState = loanManagerHarness.loanState(_debtId);
         uint256 _loanLastChecked = loanManagerHarness.loanLastChecked(_debtId);
-
-        console.log("1) balance: ", loanManagerHarness.debtBalance(_debtId));
 
         // Test without time change.
         vm.startPrank(address(loanAccountantHarness));
@@ -293,11 +268,116 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         vm.startPrank(address(loanAccountantHarness));
         loanAccountantHarness.implementer_debtUpdater(_debtId);
         vm.stopPrank();
+    }
 
-        console.log(loanManagerHarness.loanState(_debtId));
-        console.log("2) balance: ", loanManagerHarness.debtBalance(_debtId));
+    /**
+     * Test the debt updater modifier.
+     */
+    function testLoanAccountant_DebtUpdater() public {
+        uint256 _debtId = _MAX_DEBT_ID_;
 
-        if (_contractTerms.fixedInterestRate > 10) fail("force fail.");
+        ContractTerms memory _contractTerms = ContractTerms({
+            firInterval: _FIR_INTERVAL_,
+            fixedInterestRate: _FIXED_INTEREST_RATE_,
+            isFixed: _IS_FIXED_,
+            commital: _COMMITAL_,
+            principal: _PRINCIPAL_,
+            gracePeriod: _GRACE_PERIOD_,
+            duration: _DURATION_,
+            termsExpiry: _TERMS_EXPIRY_,
+            lenderRoyalties: _LENDER_ROYALTIES_
+        });
+
+        // Clean contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        loanManagerHarness.exposed__validateLoanTerms(
+            _packedContractTerms,
+            block.timestamp.toUint64(),
+            _contractTerms.principal
+        );
+
+        // Initial update without any contract terms should revert.
+        vm.startPrank(address(loanAccountantHarness));
+        vm.expectRevert(StdCodecErrors.InactiveLoanState.selector);
+        loanAccountantHarness.implementer_debtUpdater(_debtId);
+        vm.stopPrank();
+
+        assertFalse(
+            loanAccountantHarness.exposed__updatePermitted(),
+            "0 :: update permitted expected to be false."
+        );
+
+        // Add contract terms.
+        uint256 _activeLoanIndex = 1;
+        uint64 _now = uint64(block.timestamp);
+        loanManagerHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        // Mint lender tokens.
+        anzaTokenHarness.exposed__mint(
+            lender,
+            _debtId.debtIdToLenderTokenId(),
+            _contractTerms.principal
+        );
+
+        uint256 _loanState = loanManagerHarness.loanState(_debtId);
+        uint256 _loanLastChecked = loanManagerHarness.loanLastChecked(_debtId);
+
+        // Test without time change.
+        vm.startPrank(address(loanAccountantHarness));
+        loanAccountantHarness.implementer_debtUpdater(_debtId);
+        vm.stopPrank();
+
+        assertFalse(
+            loanAccountantHarness.exposed__updatePermitted(),
+            "1 :: update permitted expected to be false."
+        );
+
+        assertEq(
+            loanManagerHarness.loanState(_debtId),
+            _loanState,
+            "1 :: loan state should remain unchanged."
+        );
+
+        assertEq(
+            loanManagerHarness.loanLastChecked(_debtId),
+            _loanLastChecked,
+            "2 :: loan last checked should remain unchanged."
+        );
+
+        if (_contractTerms.gracePeriod > 0) {
+            vm.warp(_now + _contractTerms.gracePeriod);
+            vm.startPrank(address(loanAccountantHarness));
+            loanAccountantHarness.implementer_debtUpdater(_debtId);
+            vm.stopPrank();
+
+            assertFalse(
+                loanAccountantHarness.exposed__updatePermitted(),
+                "3 :: update permitted expected to be false."
+            );
+
+            assertEq(
+                loanManagerHarness.loanState(_debtId),
+                _ACTIVE_STATE_,
+                "4 :: loan state should be updated."
+            );
+
+            assertEq(
+                loanManagerHarness.loanLastChecked(_debtId),
+                _now + _contractTerms.gracePeriod,
+                "5 :: loan last checked should be updated."
+            );
+        }
+
+        vm.warp(_now + _contractTerms.gracePeriod + _contractTerms.duration);
+        vm.startPrank(address(loanAccountantHarness));
+        loanAccountantHarness.implementer_debtUpdater(_debtId);
+        vm.stopPrank();
     }
 
     /* ------------ LoanAccountant.updatePermittedLocker() ------------ */
@@ -358,14 +438,26 @@ contract LoanAccountantUnitTest is LoanAccountantInit {
         uint256 _debtId,
         ContractTerms memory _contractTerms
     ) public {
-        cleanContractTerms(_contractTerms);
         vm.assume(_debtId <= _MAX_DEBT_ID_);
+        vm.assume(_contractTerms.principal > 0);
+
+        // Clean contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        try
+            loanManagerHarness.exposed__validateLoanTerms(
+                _packedContractTerms,
+                block.timestamp.toUint64(),
+                _contractTerms.principal
+            )
+        {} catch (bytes memory) {
+            vm.assume(false);
+        }
 
         uint256 _activeLoanIndex = 1;
 
         // Pack and store the contract terms.
         uint64 _now = uint64(block.timestamp);
-        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,

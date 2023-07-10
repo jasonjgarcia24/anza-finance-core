@@ -59,6 +59,9 @@ abstract contract DebtTermsInit is Setup {
             _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
         );
 
+        // Commital must be no greater than 100.
+        vm.assume(_contractTerms.commital <= 100);
+
         // Duration must be greater than grace period.
         vm.assume(_contractTerms.duration >= _contractTerms.gracePeriod);
 
@@ -142,6 +145,8 @@ contract DebtTermsUtils is Test {
             _now + _contractTerms.gracePeriod,
             "5 :: loan start does not equal expected loan start."
         );
+
+        console.log("loan commital: %s", _contractTerms.commital);
 
         assertEq(
             _loanCodecHarness.loanCommital(_debtId),

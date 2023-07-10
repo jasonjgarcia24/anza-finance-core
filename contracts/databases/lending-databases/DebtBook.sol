@@ -27,6 +27,11 @@ abstract contract DebtBook is IDebtBook, DebtBookAccessController {
 
     constructor() DebtBookAccessController() {}
 
+    /**
+     * Modifier to ensure the collateral address is not the zero address.
+     *
+     * @param _collateralAddress The address of the ERC721 collateral token.
+     */
     modifier onlyValidCollateral(address _collateralAddress) {
         if (_collateralAddress == address(0))
             revert StdLoanErrors.InvalidCollateral();

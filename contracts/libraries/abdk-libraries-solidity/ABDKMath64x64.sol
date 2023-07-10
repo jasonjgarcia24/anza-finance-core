@@ -459,11 +459,12 @@ library ABDKMath64x64 {
                     y >>= 1;
                 }
 
-                require(resultShift < 64);
+                require(resultShift < 64, "nah 1");
                 absResult >>= 64 - resultShift;
             }
+
             int256 result = negative ? -int256(absResult) : int256(absResult);
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= MIN_64x64 && result <= MAX_64x64, "nah 2");
             return int128(result);
         }
     }

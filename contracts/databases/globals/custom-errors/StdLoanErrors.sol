@@ -7,6 +7,7 @@ pragma solidity 0.8.20;
 // Example: bytes4(keccak256("_LOAN_STATE_ERROR_ID_"))
 bytes4 constant _LOAN_STATE_ERROR_ID_ = 0xd06c1bad;
 bytes4 constant _FIR_INTERVAL_ERROR_ID_ = 0xfcacf94a;
+bytes4 constant _COMMITAL_ERROR_ID_ = 0xd64cbdad;
 bytes4 constant _DURATION_ERROR_ID_ = 0x7cde7ce7;
 bytes4 constant _PRINCIPAL_ERROR_ID_ = 0xbbc5f09e;
 bytes4 constant _FIXED_INTEREST_RATE_ERROR_ID_ = 0xbfe4482e;

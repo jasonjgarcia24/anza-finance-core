@@ -16,6 +16,7 @@ import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {IDebtTerms} from "@lending-databases/interfaces/IDebtTerms.sol";
 import {_OVERFLOW_CAST_SELECTOR_} from "@base/libraries/TypeUtils.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
+import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 
 import {Setup} from "@test-base/Setup__test.sol";
 import {DebtTermsUtils} from "@test-databases/DebtTerms__test.sol";
@@ -101,29 +102,11 @@ abstract contract LoanCodecInit is Setup {
         // Deploy DebtTermsUtils.
         debtTermsUtils = new DebtTermsUtils();
     }
-
-    function cleanContractTerms(
-        ContractTerms memory _contractTerms
-    ) public view {
-        // Only allow valid fir intervals.
-        vm.assume(
-            _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
-        );
-
-        // Duration must be greater than grace period.
-        vm.assume(_contractTerms.duration >= _contractTerms.gracePeriod);
-
-        // Commital must be no greater than 100%.
-        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
-
-        // Lender royalties must be no greater than 100%.
-        _contractTerms.lenderRoyalties = uint8(
-            bound(_contractTerms.lenderRoyalties, 0, 100)
-        );
-    }
 }
 
 contract LoanCodecUtils is Setup {
+    using TypeUtils for uint256;
+
     /**
      * Utility function to establish the expected contract terms validity.
      *
@@ -209,6 +192,18 @@ contract LoanCodecUtils is Setup {
                 )
             );
         }
+        // Commital revert check
+        else if (
+            ((_contractTerms.isFixed * 101) + _contractTerms.commital) > 201
+        ) {
+            return (
+                false,
+                abi.encodePacked(
+                    _INVALID_LOAN_PARAMETER_SELECTOR_,
+                    _COMMITAL_ERROR_ID_
+                )
+            );
+        }
         // FIR interval revert check
         else if (_contractTerms.firInterval > 15) {
             return (
@@ -228,21 +223,20 @@ contract LoanCodecUtils is Setup {
                 )
             returns (uint256 _firInterval) {
                 try
-                    Interest.compoundWithTopoff(
+                    Interest.compound(
                         _contractTerms.principal,
                         _contractTerms.fixedInterestRate,
                         _firInterval
                     )
                 returns (uint256) {} catch (bytes memory) {
                     // Fixed interest rate revert
-                    if (_contractTerms.firInterval != 0)
-                        return (
-                            false,
-                            abi.encodePacked(
-                                _INVALID_LOAN_PARAMETER_SELECTOR_,
-                                _FIXED_INTEREST_RATE_ERROR_ID_
-                            )
-                        );
+                    return (
+                        false,
+                        abi.encodePacked(
+                            _INVALID_LOAN_PARAMETER_SELECTOR_,
+                            _FIXED_INTEREST_RATE_ERROR_ID_
+                        )
+                    );
                 }
             } catch (bytes memory) {
                 // FIR interval rate revert
@@ -298,6 +292,53 @@ contract LoanCodecUtils is Setup {
             revert StdCodecErrors.InvalidLoanParameter(_FIR_INTERVAL_ERROR_ID_);
         }
     }
+
+    /* ----------- Contract Setup Helpers ------------ */
+    /**
+     * Function to "clean" the contract terms per the LoanCodec's `_validateLoanTerms`
+     * function.
+     *
+     * @dev If the `_validateLoanTerms` function reverts, the `vm.assume` will discard
+     * this run's fuzz inputs and generate new ones.
+     *
+     * @notice This function also "cleans" the `_contractTerms.firInterval`,
+     * `_contractTerms.isFixed`, and `_contractTerms.commital` values.
+     *
+     * @param _loanCodecHarness The loan codec harness.
+     * @param _contractTerms The contract terms.
+     *
+     * @return The "cleaned" contract terms.
+     */
+    function cleanContractTerms(
+        ILoanCodecHarness _loanCodecHarness,
+        ContractTerms memory _contractTerms
+    ) public view virtual returns (ContractTerms memory) {
+        _contractTerms.isFixed = _contractTerms.commital > 100 ? 1 : 0;
+        _contractTerms.commital = _contractTerms.commital > 100
+            ? _contractTerms.commital - 101
+            : _contractTerms.commital;
+
+        // Clean contract terms.
+        bytes32 _packedContractTerms = createContractTerms(_contractTerms);
+
+        // Only allow valid fir intervals.
+        vm.assume(
+            _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
+        );
+
+        // Check all contract terms.
+        try
+            _loanCodecHarness.exposed__validateLoanTerms(
+                _packedContractTerms,
+                block.timestamp.toUint64(),
+                _contractTerms.principal
+            )
+        {} catch (bytes memory) {
+            vm.assume(false);
+        }
+
+        return _contractTerms;
+    }
 }
 
 contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
@@ -326,7 +367,10 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         uint256 _seconds,
         ContractTerms memory _contractTerms
     ) public {
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanCodecUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanCodecHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -352,13 +396,9 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
                 _contractTerms.firInterval
             );
 
-            uint256 _expectedFirIntervals = _seconds <= _contractTerms.duration
-                ? _seconds / _firMultiplier
-                : _contractTerms.duration / _firMultiplier;
-
             assertEq(
                 _firIntervals,
-                _expectedFirIntervals,
+                _seconds / _firMultiplier,
                 "0 :: unexpected total FIR intervals."
             );
         } catch (bytes memory _err) {
@@ -385,6 +425,9 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         uint64 _loanStart,
         ContractTerms memory _contractTerms
     ) public {
+        _contractTerms.isFixed = uint8(bound(_contractTerms.isFixed, 0, 1));
+        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 155));
+
         // Get expected pass/fail status
         (bool _expectedSuccess, bytes memory _expectedData) = loanCodecUtils
             .expectedContractTermsValidity(
@@ -488,7 +531,10 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         uint8 _newLoanState,
         ContractTerms memory _contractTerms
     ) public {
-        cleanContractTerms(_contractTerms);
+        _contractTerms = loanCodecUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanCodecHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;
@@ -567,7 +613,11 @@ contract LoanCodecUnitTest is ILoanCodecEvents, LoanCodecInit {
         ContractTerms memory _contractTerms
     ) public {
         vm.assume(_warpTime > 0);
-        cleanContractTerms(_contractTerms);
+
+        _contractTerms = loanCodecUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanCodecHarness)),
+            _contractTerms
+        );
 
         uint64 _now = uint64(block.timestamp);
         uint256 _activeLoanIndex = 1;

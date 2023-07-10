@@ -153,6 +153,10 @@ abstract contract LoanAccountant is PaymentBook, AccountantAccessController {
     /**
      * Private function to Add debt to the debt ID.
      *
+     * This function implements "lazy" compounding interest. In other words,
+     * accrual is performed only when a transaction that requires the current prinicial
+     * balance is invoked.
+     *
      * TODO: Need to revisit to ensure accuracy at larger total debt values
      * (e.g. 10000 * 10**18).
      *
@@ -173,26 +177,28 @@ abstract contract LoanAccountant is PaymentBook, AccountantAccessController {
         uint256 _debtId,
         uint256 _loanLastChecked
     ) private updatePermittedLocker(_debtId) {
+        if (block.timestamp <= _loanLastChecked) return;
+
         // Find time intervals passed.
         uint256 _firIntervals = _loanCodec.totalFirIntervals(
             _debtId,
             block.timestamp - _loanLastChecked
         );
-        console.log("firIntervals: %s", _firIntervals);
+        uint256 _fixedInterestRate = _loanDebtTerms.fixedInterestRate(_debtId);
 
         // If intervals passed, update the debt.
-        if (_firIntervals > 0) {
+        if (_firIntervals > 0 && _fixedInterestRate > 0) {
             uint256 _totalDebt = _loanContract.debtBalance(_debtId);
 
             // Calculate the updated debt.
-            uint256 _updatedDebt = Interest.compoundWithTopoff(
+            uint256 _newDebt = Interest.compound(
                 _totalDebt,
-                _loanDebtTerms.fixedInterestRate(_debtId),
+                _fixedInterestRate,
                 _firIntervals
-            );
+            ) - _totalDebt;
 
             // Update the debt balance.
-            _anzaToken.mint(_debtId, _updatedDebt - _totalDebt);
+            if (_newDebt > 0) _anzaToken.mint(_debtId, _newDebt);
         }
     }
 }

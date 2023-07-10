@@ -16,8 +16,27 @@ import {ILoanCodec} from "@services-interfaces/ILoanCodec.sol";
 import {ILoanManager} from "@services-interfaces/ILoanManager.sol";
 import {DebtTerms} from "@lending-databases/DebtTerms.sol";
 import {InterestCalculator as Interest} from "@lending-libraries/InterestCalculator.sol";
+import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 
 abstract contract LoanCodec is ILoanCodec, DebtTerms {
+    using TypeUtils for uint256;
+
+    /**
+     * Modifier to validate loan contract terms.
+     *
+     * @param _contractTerms The contract terms.
+     *
+     * See {_validateLoanTerms} for more information.
+     */
+    modifier loanTermsValidator(bytes32 _contractTerms) {
+        _validateLoanTerms(
+            _contractTerms,
+            block.timestamp.toUint64(),
+            msg.value
+        );
+        _;
+    }
+
     function supportsInterface(
         bytes4 _interfaceId
     ) public view virtual override(DebtTerms) returns (bool) {
@@ -27,8 +46,8 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
     }
 
     /**
-     * Function to get the total fixed interest rate intervals passed since
-     * the `_start` time.
+     * Function to get the total fixed interest rate intervals passed during
+     * `_timeElapsed`.
      *
      * @param _debtId The debt ID of the loan.
      * @param _timeElapsed The time elapsed to calculate the total number of
@@ -45,6 +64,24 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
         return _getTotalFirIntervals(firInterval(_debtId), _timeElapsed);
     }
 
+    /**
+     * Function to validate the loan contract terms.
+     *
+     * @param _contractTerms The contract terms.
+     * @param _loanStart The loan start time.
+     * @param _principal The loan principal.
+     *
+     * @dev Reverts if:
+     *  > The lender royalties are greater than 100.
+     *  > The terms expiry is less than 24 minutes.
+     *  > The duration is zero.
+     *  > The grace period is greater than the duration.
+     *  > The loan close time is greater than uint64 max from loan start.
+     *  > The commital is greater than 201.
+     *  > The FIR interval is greater than 15.
+     *  > The compound interest calculation at the maximum accumulated interest
+     *    is greater than the allowed amount for the given loan terms.
+     */
     function _validateLoanTerms(
         bytes32 _contractTerms,
         uint64 _loanStart,
@@ -68,6 +105,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             mstore(0x1f, _contractTerms)
             let _lenderRoyalties := and(mload(0), _UINT8_MAX_)
 
+            // Lender royalties must be no greater than 100.
             if gt(_lenderRoyalties, 0x64) {
                 __revert(_LENDER_ROYALTIES_ERROR_ID_)
             }
@@ -76,6 +114,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             mstore(0x1b, _contractTerms)
             let _termsExpiry := and(mload(0), _UINT32_MAX_)
 
+            // Terms expiry must be no less than 24 minutes.
             if lt(_termsExpiry, _SECONDS_PER_24_MINUTES_RATIO_SCALED_) {
                 __revert(_TERMS_EXPIRY_ERROR_ID_)
             }
@@ -84,6 +123,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             mstore(0x17, _contractTerms)
             _duration := and(mload(0), _UINT32_MAX_)
 
+            // Duration must not be zero.
             if iszero(_duration) {
                 __revert(_DURATION_ERROR_ID_)
             }
@@ -92,6 +132,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             mstore(0x13, _contractTerms)
             let _gracePeriod := and(mload(0), _UINT32_MAX_)
 
+            // Grace period must be less than duration.
             // This will effectively eliminate flash loans.
             // TODO: Consider adding in an acceptable condition where both are
             // zero for flash loans.
@@ -99,8 +140,18 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
                 __revert(_GRACE_PERIOD_ERROR_ID_)
             }
 
+            // Loan close time must be less than uint64 max from loan start.
             if gt(add(add(_loanStart, _duration), _gracePeriod), _UINT64_MAX_) {
                 __revert(_DURATION_ERROR_ID_)
+            }
+
+            // Get commital
+            mstore(0x02, _contractTerms)
+            let _isDirect_Commital := and(mload(0), _UINT8_MAX_)
+
+            // Packed `isDirect` and loan commital must be no greater than 201.
+            if gt(_isDirect_Commital, 0xc9) {
+                __revert(_COMMITAL_ERROR_ID_)
             }
 
             // Get fixed interest rate
@@ -111,23 +162,23 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             mstore(0x00, _contractTerms)
             _firInterval := and(mload(0), _UINT8_MAX_)
 
-            if gt(_firInterval, 15) {
+            // FIR interval must be no greater than 15.
+            if gt(_firInterval, 0x0f) {
                 __revert(_FIR_INTERVAL_ERROR_ID_)
             }
         }
 
         // Check max compounded debt
         try
-            Interest.compoundWithTopoff(
+            Interest.compound(
                 _principal,
                 _fixedInterestRate,
                 _getTotalFirIntervals(_firInterval, _duration)
             )
         returns (uint256) {} catch {
-            if (_firInterval != 0)
-                revert StdCodecErrors.InvalidLoanParameter(
-                    _FIXED_INTEREST_RATE_ERROR_ID_
-                );
+            revert StdCodecErrors.InvalidLoanParameter(
+                _FIXED_INTEREST_RATE_ERROR_ID_
+            );
         }
     }
 
@@ -282,41 +333,21 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
                 sub(_duration, _gracePeriod)
             )
 
-            switch gt(_isDirect_Commital, 0x64)
-            case true {
-                // Pack is direct (uint4) - true
-                __packTerm(
-                    _IS_FIXED_MASK_,
-                    _IS_FIXED_MAP_,
-                    _IS_FIXED_POS_,
-                    0x01
-                )
+            // Pack is direct (uint4)
+            __packTerm(
+                _IS_FIXED_MASK_,
+                _IS_FIXED_MAP_,
+                _IS_FIXED_POS_,
+                gt(_isDirect_Commital, 0x64)
+            )
 
-                // Pack commital (uint8)
-                __packTerm(
-                    _COMMITAL_MASK_,
-                    _COMMITAL_MAP_,
-                    _COMMITAL_POS_,
-                    sub(_isDirect_Commital, 0x65)
-                )
-            }
-            case false {
-                // Pack is direct (uint4) - false
-                __packTerm(
-                    _IS_FIXED_MASK_,
-                    _IS_FIXED_MAP_,
-                    _IS_FIXED_POS_,
-                    0x00
-                )
-
-                // Pack commital (uint8)
-                __packTerm(
-                    _COMMITAL_MASK_,
-                    _COMMITAL_MAP_,
-                    _COMMITAL_POS_,
-                    _isDirect_Commital
-                )
-            }
+            // Pack commital (uint8)
+            __packTerm(
+                _COMMITAL_MASK_,
+                _COMMITAL_MAP_,
+                _COMMITAL_POS_,
+                mod(_isDirect_Commital, 0x65)
+            )
 
             // Pack lender royalties (uint8)
             __packTerm(
@@ -412,6 +443,7 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
      */
     function _updateLoanTimes(uint256 _debtId) internal returns (uint256) {
         bytes32 _contractTerms = debtTerms(_debtId);
+        bool _isTimeUpdate;
 
         assembly {
             // If loan state is beyond active, do nothing.
@@ -429,51 +461,48 @@ abstract contract LoanCodec is ILoanCodec, DebtTerms {
             )
 
             let _now := timestamp()
-            if iszero(gt(_now, _loanStart)) {
-                // Note: This will exit the current context entirely.
-                // Therefore, we need to supply the loan state return
-                // data directly.
-                mstore(0x20, and(_LOAN_STATE_MAP_, _contractTerms))
-                return(0x20, 0x20)
-            }
+            _isTimeUpdate := gt(_now, _loanStart)
 
-            // Store loan close time
-            let _loanClose := add(
-                _loanStart,
-                shr(
-                    _LOAN_DURATION_POS_,
-                    and(_contractTerms, _LOAN_DURATION_MAP_)
-                )
-            )
-
-            if gt(_now, _loanClose) {
-                _now := _loanClose
-            }
-
-            mstore(
-                0x20,
-                xor(
-                    and(_LOAN_START_MASK_, mload(0x20)),
-                    and(_LOAN_START_MAP_, shl(_LOAN_START_POS_, _now))
-                )
-            )
-
-            mstore(
-                0x20,
-                xor(
-                    and(_LOAN_DURATION_MASK_, mload(0x20)),
-                    and(
-                        _LOAN_DURATION_MAP_,
-                        shl(_LOAN_DURATION_POS_, sub(_loanClose, _now))
+            if _isTimeUpdate {
+                // Store loan close time
+                let _loanClose := add(
+                    _loanStart,
+                    shr(
+                        _LOAN_DURATION_POS_,
+                        and(_contractTerms, _LOAN_DURATION_MAP_)
                     )
                 )
-            )
 
-            _contractTerms := mload(0x20)
+                if gt(_now, _loanClose) {
+                    _now := _loanClose
+                }
+
+                mstore(
+                    0x20,
+                    xor(
+                        and(_LOAN_START_MASK_, mload(0x20)),
+                        and(_LOAN_START_MAP_, shl(_LOAN_START_POS_, _now))
+                    )
+                )
+
+                mstore(
+                    0x20,
+                    xor(
+                        and(_LOAN_DURATION_MASK_, mload(0x20)),
+                        and(
+                            _LOAN_DURATION_MAP_,
+                            shl(_LOAN_DURATION_POS_, sub(_loanClose, _now))
+                        )
+                    )
+                )
+
+                _contractTerms := mload(0x20)
+            }
         }
 
-        _updateDebtTerms(_debtId, _contractTerms);
+        // If no time was not updated, do nothing.
+        if (_isTimeUpdate) _updateDebtTerms(_debtId, _contractTerms);
 
-        return 1;
+        return loanState(_debtId);
     }
 }

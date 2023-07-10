@@ -8,7 +8,10 @@ typechain-types
 venv/*
 venv
 
-#Hardhat files
+# Foundry files
+.gas-snapshot
+
+# Hardhat files
 cache
 cache_hardhat
 artifacts

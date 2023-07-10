@@ -115,6 +115,9 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenCatalog {
         uint256 _debtId,
         uint256 _amount
     ) external onlyRole(_TREASURER_) {
+        console.log("minting debtId: %s", _debtId);
+        console.log("minting amount: %s", _amount);
+
         // Mint ADT for lender
         _mint(lenderOf(_debtId), _debtId.debtIdToLenderTokenId(), _amount);
     }

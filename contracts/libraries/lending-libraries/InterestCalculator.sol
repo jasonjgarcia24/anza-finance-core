@@ -3,6 +3,8 @@ pragma solidity 0.8.20;
 
 import "@abdk-libraries/ABDKMath64x64.sol";
 
+import {console} from "forge-std/console.sol";
+
 /**
  * @title InterestCalculator
  * @author jjgarcia.eth
@@ -31,7 +33,7 @@ library InterestCalculator {
     ) public pure returns (uint256) {
         return
             ABDKMath64x64.mulu(
-                pow(
+                ABDKMath64x64.pow(
                     ABDKMath64x64.add(
                         ABDKMath64x64.fromUInt(1),
                         ABDKMath64x64.divu(_ratio, 100)

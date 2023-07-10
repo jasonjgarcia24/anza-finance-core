@@ -9,7 +9,7 @@ import "@lending-constants/LoanContractRoles.sol";
 import "@lending-constants/LoanContractStates.sol";
 import {_SECONDS_PER_24_MINUTES_RATIO_SCALED_} from "@lending-constants/LoanContractNumbers.sol";
 import {_INVALID_SIGNER_SELECTOR_} from "@custom-errors/StdNotaryErrors.sol";
-import {_UINT64_MAX_, _UINT128_MAX_, _SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
+import {_UINT64_MAX_, _UINT128_MAX_, _UINT256_MAX_, _SECP256K1_CURVE_ORDER_} from "@universal-numbers/StdNumbers.sol";
 
 import {LoanContract} from "@base/LoanContract.sol";
 import {LoanTreasurey} from "@base/services/LoanTreasurey.sol";
@@ -20,13 +20,15 @@ import {AnzaToken} from "@tokens/AnzaToken.sol";
 import {CollateralVault} from "@services/CollateralVault.sol";
 import {AnzaNotary as Notary} from "@lending-libraries/AnzaNotary.sol";
 import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
+import {TypeUtils} from "@base/libraries/TypeUtils.sol";
 
+import "@test-databases/TestConstants__test.sol";
 import {Setup} from "@test-base/Setup__test.sol";
 import {LoanCodecHarness} from "@test-base/_LoanCodec/LoanCodec__test.sol";
 import {LoanNotaryUtils} from "@test-base/_LoanNotary/LoanNotary__test.sol";
 import {RefinanceNotaryUtils} from "@test-base/_LoanNotary/RefinanceNotary__test.sol";
 import {SponsorshipNotaryUtils} from "@test-base/_LoanNotary/SponsorshipNotary__test.sol";
-import {LoanCodecUtils} from "@test-base/_LoanCodec/LoanCodec__test.sol";
+import {ILoanCodecHarness, LoanCodecUtils} from "@test-base/_LoanCodec/LoanCodec__test.sol";
 import {DebtTermsInit, DebtTermsUtils} from "@test-databases/DebtTerms__test.sol";
 import {DemoToken} from "@test-utils/DemoToken.sol";
 import {CONTRACT_INTIALIZED_EVENT_SIG} from "@test-base/_LoanContract/interfaces/ILoanContractEvents__test.sol";
@@ -42,6 +44,7 @@ string constant LOAN_CONTRACT_NAME = "LoanContract";
 string constant LOAN_CONTRACT_VERSION = "0";
 
 contract LoanContractHarness is LoanContract {
+    /* ----- LoanCodec Expose Functions ----- */
     function exposed__validateLoanTerms(
         bytes32 _contractTerms,
         uint64 _loanStart,
@@ -168,43 +171,6 @@ abstract contract LoanContractInit is DebtTermsInit {
             _sponsorshipDomainSeparator
         );
     }
-
-    function cleanContractTerms(
-        uint256 _borrowerPrivKey,
-        ContractTerms memory _contractTerms
-    ) public view virtual {
-        // Only allow valid principal
-        vm.assume(
-            _contractTerms.principal > 0 &&
-                _contractTerms.principal <= _UINT128_MAX_
-        );
-
-        // Only allow valid fir intervals.
-        vm.assume(
-            _contractTerms.firInterval <= 8 || _contractTerms.firInterval == 14
-        );
-
-        // Duration must be greater than grace period.
-        vm.assume(_contractTerms.duration > _contractTerms.gracePeriod);
-
-        // Commital must be no greater than 100%.
-        _contractTerms.commital = uint8(bound(_contractTerms.commital, 0, 100));
-
-        // Terms expiry must be greater than 24 minutes.
-        vm.assume(
-            _contractTerms.termsExpiry > _SECONDS_PER_24_MINUTES_RATIO_SCALED_
-        );
-
-        // Lender royalties must be no greater than 100%.
-        _contractTerms.lenderRoyalties = uint8(
-            bound(_contractTerms.lenderRoyalties, 0, 100)
-        );
-
-        // Borrower private key must be valid.
-        vm.assume(
-            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
-        );
-    }
 }
 
 contract LoanContractUtils is
@@ -214,6 +180,9 @@ contract LoanContractUtils is
     LoanCodecUtils,
     DebtTermsUtils
 {
+    using TypeUtils for uint256;
+    using BytesUtils for bytes[2];
+
     LoanContract internal immutable _loanContract;
     LoanTreasurey internal immutable _loanTreasurer;
 
@@ -319,12 +288,13 @@ contract LoanContractUtils is
      */
     function createLoanContract(
         uint256 _borrowerPrivKey,
+        address _collateralAddress,
         uint256 _collateralId
     ) public virtual returns (bool, bytes memory) {
         bytes32 _packedContractTerms = createContractTerms();
 
         uint256 _collateralNonce = _loanContract.collateralNonce(
-            _demoTokenAddress,
+            _collateralAddress,
             _collateralId
         );
 
@@ -333,7 +303,7 @@ contract LoanContractUtils is
             .ContractParams({
                 principal: _PRINCIPAL_,
                 contractTerms: _packedContractTerms,
-                collateralAddress: _demoTokenAddress,
+                collateralAddress: _collateralAddress,
                 collateralId: _collateralId,
                 collateralNonce: _collateralNonce
             });
@@ -348,42 +318,10 @@ contract LoanContractUtils is
         return
             initContract(
                 _PRINCIPAL_,
-                _demoTokenAddress,
+                _collateralAddress,
                 _collateralId,
                 _packedContractTerms,
                 _signature
-            );
-    }
-
-    /**
-     * Create a loan contract with contract values and the collateral ID
-     * specified.
-     *
-     * @param _borrowerPrivKey The borrower's private key.
-     * @param _collateralId The collateral's token ID.
-     * @param _contractTerms The contract terms.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
-     */
-    function createLoanContract(
-        uint256 _borrowerPrivKey,
-        uint256 _collateralId,
-        ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
-        uint256 _collateralNonce = _loanContract.collateralNonce(
-            _demoTokenAddress,
-            _collateralId
-        );
-
-        // Create loan contract.
-        return
-            createLoanContract(
-                _borrowerPrivKey,
-                _demoTokenAddress,
-                _collateralId,
-                _collateralNonce,
-                _contractTerms
             );
     }
 
@@ -394,30 +332,26 @@ contract LoanContractUtils is
      * @param _collateralAddress The collateral's address.
      * @param _collateralId The collateral's token ID.
      * @param _contractTerms The contract terms.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
      */
     function createLoanContract(
         uint256 _borrowerPrivKey,
         address _collateralAddress,
         uint256 _collateralId,
         ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
+    ) public virtual {
         uint256 _collateralNonce = _loanContract.collateralNonce(
             _collateralAddress,
             _collateralId
         );
 
         // Create loan contract.
-        return
-            createLoanContract(
-                _borrowerPrivKey,
-                _collateralAddress,
-                _collateralId,
-                _collateralNonce,
-                _contractTerms
-            );
+        createLoanContract(
+            _borrowerPrivKey,
+            _collateralAddress,
+            _collateralId,
+            _collateralNonce,
+            _contractTerms
+        );
     }
 
     /**
@@ -428,9 +362,6 @@ contract LoanContractUtils is
      * @param _collateralId The collateral's token ID.
      * @param _collateralNonce The collateral's nonce.
      * @param _contractTerms The contract terms.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
      */
     function createLoanContract(
         uint256 _borrowerPrivKey,
@@ -438,7 +369,7 @@ contract LoanContractUtils is
         uint256 _collateralId,
         uint256 _collateralNonce,
         ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
+    ) public virtual {
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
 
         // Create contract params.
@@ -458,14 +389,15 @@ contract LoanContractUtils is
         );
 
         // Create loan contract.
-        return
-            initContract(
-                _contractTerms.principal,
-                _contractParams.collateralAddress,
-                _contractParams.collateralId,
-                _contractParams.contractTerms,
-                _signature
-            );
+        (bool _success, bytes memory _data) = initContract(
+            _contractTerms.principal,
+            _contractParams.collateralAddress,
+            _contractParams.collateralId,
+            _contractParams.contractTerms,
+            _signature
+        );
+
+        handleFailedContractCreation(_success, _data, _contractTerms);
     }
 
     /* ------- Refinance Loan Contract Setup ------- */
@@ -500,27 +432,25 @@ contract LoanContractUtils is
      * @param _lender The lender's address.
      * @param _debtId The debt ID.
      * @param _contractTerms The contract terms.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
      */
     function refinanceLoanContract(
         address _borrower,
         address _lender,
         uint256 _debtId,
         ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
+    ) public virtual {
         bytes32 _packedContractTerms = createContractTerms(_contractTerms);
 
         // Create loan contract.
-        return
-            refinanceContract(
-                _contractTerms.principal,
-                _borrower,
-                _lender,
-                _debtId,
-                _packedContractTerms
-            );
+        (bool _success, bytes memory _data) = refinanceContract(
+            _contractTerms.principal,
+            _borrower,
+            _lender,
+            _debtId,
+            _packedContractTerms
+        );
+
+        handleFailedContractCreation(_success, _data, _contractTerms);
     }
 
     /* ------- Sponsorship Loan Contract Setup ------- */
@@ -552,24 +482,68 @@ contract LoanContractUtils is
      * @param _borrower The borrower's address.
      * @param _lender The lender's address.
      * @param _debtId The debt ID.
-     *
-     * @return _success The success of the transaction.
-     * @return _data The data returned from the transaction.
+     * @param _contractTerms The contract terms.
      */
     function sponsorshipLoanContract(
         address _borrower,
         address _lender,
         uint256 _debtId,
         ContractTerms memory _contractTerms
-    ) public virtual returns (bool, bytes memory) {
+    ) public virtual {
         // Create loan contract.
-        return
-            sponsorshipContract(
-                _contractTerms.principal,
-                _borrower,
-                _lender,
-                _debtId
+        (bool _success, bytes memory _data) = sponsorshipContract(
+            _contractTerms.principal,
+            _borrower,
+            _lender,
+            _debtId
+        );
+
+        handleFailedContractCreation(_success, _data, _contractTerms);
+    }
+
+    /**
+     * Function to handle failed contract creations.
+     *
+     * @dev If a contract's creation failed, this function will check the expected
+     * faiulure versus the actual failure to ensure the failure was expected.
+     *
+     * @param _success The success of the contract creation.
+     * @param _data The error message of the contract creation.
+     * @param _contractTerms The contract terms.
+     */
+    function handleFailedContractCreation(
+        bool _success,
+        bytes memory _data,
+        ContractTerms memory _contractTerms
+    ) public {
+        if (_success) return;
+
+        // Set contract initialization expectation.
+        (
+            bool _expectedSuccess,
+            bytes memory _expectedData
+        ) = expectedContractTermsValidity(
+                _contractTerms,
+                address(_loanContract),
+                uint64(block.timestamp)
             );
+
+        // Get expected return data.
+        (_expectedData, _data) = [_expectedData, _data].normalizeBytesMSB();
+
+        assertEq(
+            _expectedSuccess,
+            _success,
+            "0 :: init loan contract expected failure."
+        );
+        assertEq(
+            _expectedData,
+            _data,
+            "1 :: init loan contract error message mismatch."
+        );
+
+        // Force rerun.
+        vm.assume(_success);
     }
 }
 
@@ -613,14 +587,16 @@ contract LoanContractUnitTest is
         uint256 _borrowerPrivKey,
         uint256 _collateralId,
         ContractTerms memory _contractTerms
-    ) public returns (bool _success, uint256 _debtId) {
-        cleanContractTerms(_borrowerPrivKey, _contractTerms);
+    ) public returns (uint256, ContractTerms memory) {
+        uint256 _debtId;
 
-        // Limit principal for vm.deal limitations.
-        _contractTerms.principal = bound(
-            _contractTerms.principal,
-            1,
-            _UINT128_MAX_
+        vm.assume(
+            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
+        );
+
+        _contractTerms = loanContractUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanContractHarness)),
+            _contractTerms
         );
 
         address _borrower = vm.addr(_borrowerPrivKey);
@@ -638,18 +614,9 @@ contract LoanContractUnitTest is
             _collateralId
         );
 
-        // Set contract initialization expectation.
-        (bool _expectedSuccess, bytes memory _expectedData) = loanContractUtils
-            .expectedContractTermsValidity(
-                _contractTerms,
-                address(loanContractHarness),
-                uint64(block.timestamp)
-            );
-
         // Create loan contract.
         vm.recordLogs();
-        bytes memory _data;
-        (_success, _data) = loanContractUtils.createLoanContract(
+        loanContractUtils.createLoanContract(
             _borrowerPrivKey,
             address(_demoToken),
             _collateralId,
@@ -660,111 +627,92 @@ contract LoanContractUnitTest is
         // Get logs.
         Vm.Log[] memory _entries = vm.getRecordedLogs();
 
-        // Get expected return data.
-        (_expectedData, _data) = [_expectedData, _data].normalizeBytesMSB();
-
         // Verify successful contract creation results.
-        if (_success) {
-            (_debtId, ) = loanContractHarness.collateralDebtAt(
-                address(_demoToken),
-                _collateralId,
-                type(uint256).max
-            );
+        (_debtId, ) = loanContractHarness.collateralDebtAt(
+            address(_demoToken),
+            _collateralId,
+            type(uint256).max
+        );
 
-            // Transfer event for collateral into CollateralVault.
-            _testTransfer(
-                _entries[0],
-                TransferFields({
-                    from: _borrower,
-                    to: address(collateralVault),
-                    tokenId: _collateralId
-                })
-            );
+        // Transfer event for collateral into CollateralVault.
+        _testTransfer(
+            _entries[0],
+            TransferFields({
+                from: _borrower,
+                to: address(collateralVault),
+                tokenId: _collateralId
+            })
+        );
 
-            // Ignore DemoToken convenience approval event.
-            // _entries[1]
+        // Ignore DemoToken convenience approval event.
+        // _entries[1]
 
-            // DepositedCollateral event for collateral into CollateralVault.
-            _testDepositedCollateral(
-                _entries[2],
-                DepositedCollateralFields({
-                    from: _borrower,
-                    collateralAddress: address(_demoToken),
-                    collateralId: _collateralId
-                })
-            );
+        // DepositedCollateral event for collateral into CollateralVault.
+        _testDepositedCollateral(
+            _entries[2],
+            DepositedCollateralFields({
+                from: _borrower,
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId
+            })
+        );
 
-            // Deposited event for funds into LoanTreasurer.
-            _testDeposited(
-                _entries[3],
-                DepositedFields({
-                    debtId: _debtId,
-                    payer: lender,
-                    payee: _borrower,
-                    weiAmount: _contractTerms.principal
-                })
-            );
+        // Deposited event for funds into LoanTreasurer.
+        _testDeposited(
+            _entries[3],
+            DepositedFields({
+                debtId: _debtId,
+                payer: lender,
+                payee: _borrower,
+                weiAmount: _contractTerms.principal
+            })
+        );
 
-            // TransferSingle event for lender token mints.
-            _testTransferSingle(
-                _entries[4],
-                TransferSingleFields({
-                    operator: address(loanContractHarness),
-                    from: address(0),
-                    to: lender,
-                    id: _debtId.debtIdToLenderTokenId(),
-                    value: _contractTerms.principal
-                })
-            );
+        // TransferSingle event for lender token mints.
+        _testTransferSingle(
+            _entries[4],
+            TransferSingleFields({
+                operator: address(loanContractHarness),
+                from: address(0),
+                to: lender,
+                id: _debtId.debtIdToLenderTokenId(),
+                value: _contractTerms.principal
+            })
+        );
 
-            // TransferSingle event for borrower token mints.
-            _testTransferSingle(
-                _entries[5],
-                TransferSingleFields({
-                    operator: address(loanContractHarness),
-                    from: address(0),
-                    to: _borrower,
-                    id: _debtId.debtIdToBorrowerTokenId(),
-                    value: 1
-                })
-            );
+        // TransferSingle event for borrower token mints.
+        _testTransferSingle(
+            _entries[5],
+            TransferSingleFields({
+                operator: address(loanContractHarness),
+                from: address(0),
+                to: _borrower,
+                id: _debtId.debtIdToBorrowerTokenId(),
+                value: 1
+            })
+        );
 
-            // URI event for setting borrower token URI.
-            _testURI(
-                _entries[6],
-                URIFields({
-                    value: _demoToken.tokenURI(_collateralId),
-                    id: _debtId.debtIdToBorrowerTokenId()
-                })
-            );
+        // URI event for setting borrower token URI.
+        _testURI(
+            _entries[6],
+            URIFields({
+                value: _demoToken.tokenURI(_collateralId),
+                id: _debtId.debtIdToBorrowerTokenId()
+            })
+        );
 
-            // ContractInitialized event.
-            _testContractInitialized(
-                _entries[7],
-                ContractInitializedFields({
-                    collateralAddress: address(_demoToken),
-                    collateralId: _collateralId,
-                    debtId: _debtId,
-                    activeLoanIndex: 1
-                })
-            );
-        }
-        // Verify failed contract creation results.
-        else {
-            assertEq(
-                _expectedSuccess,
-                _success,
-                "0 :: init loan contract expected failure."
-            );
-            assertEq(
-                _expectedData,
-                _data,
-                "1 :: init loan contract error message mismatch."
-            );
+        // ContractInitialized event.
+        _testContractInitialized(
+            _entries[7],
+            ContractInitializedFields({
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                debtId: _debtId,
+                activeLoanIndex: 1
+            })
+        );
 
-            // Force rerun.
-            vm.assume(_success);
-        }
+        return (_debtId, _contractTerms);
     }
 
     /**
@@ -791,8 +739,8 @@ contract LoanContractUnitTest is
         address _lender,
         uint256 _collateralId,
         ContractTerms memory _contractTerms
-    ) public returns (bool _success, uint256 _debtId) {
-        vm.assume(_lender != address(0));
+    ) public returns (uint256, ContractTerms memory) {
+        uint256 _debtId;
 
         // Limit principal for vm.deal limitations.
         _contractTerms.principal = bound(
@@ -801,7 +749,10 @@ contract LoanContractUnitTest is
             _UINT128_MAX_
         );
 
-        (_success, _debtId) = _testLoanContract__InitContract_Fuzz_InitialLoan(
+        (
+            _debtId,
+            _contractTerms
+        ) = _testLoanContract__InitContract_Fuzz_InitialLoan(
             _borrowerPrivKey,
             _collateralId,
             _contractTerms
@@ -809,141 +760,113 @@ contract LoanContractUnitTest is
 
         address _borrower = vm.addr(_borrowerPrivKey);
 
-        // Set contract initialization expectation.
-        (bool _expectedSuccess, bytes memory _expectedData) = loanContractUtils
-            .expectedContractTermsValidity(
-                _contractTerms,
-                address(loanContractHarness),
-                uint64(block.timestamp)
-            );
-
         // Create loan contract.
         vm.recordLogs();
-        bytes memory _data;
-        (_success, _data) = loanContractUtils.refinanceLoanContract(
+        loanContractUtils.refinanceLoanContract(
             _borrower,
             _lender,
             _debtId,
             _contractTerms
         );
 
-        // Get expected return data.
-        (_expectedData, _data) = [_expectedData, _data].normalizeBytesMSB();
-
         // Get logs.
         Vm.Log[] memory _entries = vm.getRecordedLogs();
 
-        if (_success) {
-            uint256 _prevDebtId = _debtId;
+        uint256 _prevDebtId = _debtId;
 
-            (_debtId, ) = loanContractHarness.collateralDebtAt(
-                address(_demoToken),
-                _collateralId,
-                type(uint256).max
-            );
+        (_debtId, ) = loanContractHarness.collateralDebtAt(
+            address(_demoToken),
+            _collateralId,
+            type(uint256).max
+        );
 
-            // Test updated debt ID.
-            assertEq(
-                _prevDebtId + 1,
-                _debtId,
-                "1 :: debt id should increment by 1."
-            );
+        // Test updated debt ID.
+        assertEq(
+            _prevDebtId + 1,
+            _debtId,
+            "1 :: debt id should increment by 1."
+        );
 
-            // TransferSingle event for lender token mints.
-            _testTransferSingle(
-                _entries[0],
-                TransferSingleFields({
-                    operator: address(loanTreasurer),
-                    from: lender,
-                    to: address(0),
-                    id: _prevDebtId.debtIdToLenderTokenId(),
-                    value: _contractTerms.principal
-                })
-            );
+        // TransferSingle event for lender token mints.
+        _testTransferSingle(
+            _entries[0],
+            TransferSingleFields({
+                operator: address(loanTreasurer),
+                from: lender,
+                to: address(0),
+                id: _prevDebtId.debtIdToLenderTokenId(),
+                value: _contractTerms.principal
+            })
+        );
 
-            // Deposited event for funds into LoanTreasurer.
-            _testDeposited(
-                _entries[1],
-                DepositedFields({
-                    debtId: _prevDebtId,
-                    payer: _lender,
-                    payee: lender,
-                    weiAmount: _contractTerms.principal
-                })
-            );
+        // Deposited event for funds into LoanTreasurer.
+        _testDeposited(
+            _entries[1],
+            DepositedFields({
+                debtId: _prevDebtId,
+                payer: _lender,
+                payee: lender,
+                weiAmount: _contractTerms.principal
+            })
+        );
 
-            // LoanStateChanged event for prev debt ID payoff.
-            _testLoanStateChanged(
-                _entries[2],
-                LoanStateChangedFields({
-                    debtId: _prevDebtId,
-                    newLoanState: _PAID_STATE_,
-                    oldLoanState: _contractTerms.gracePeriod == 0
-                        ? _ACTIVE_STATE_
-                        : _ACTIVE_GRACE_STATE_
-                })
-            );
+        // LoanStateChanged event for prev debt ID payoff.
+        _testLoanStateChanged(
+            _entries[2],
+            LoanStateChangedFields({
+                debtId: _prevDebtId,
+                newLoanState: _PAID_STATE_,
+                oldLoanState: _contractTerms.gracePeriod == 0
+                    ? _ACTIVE_STATE_
+                    : _ACTIVE_GRACE_STATE_
+            })
+        );
 
-            // TransferSingle event for lender token mints.
-            _testTransferSingle(
-                _entries[3],
-                TransferSingleFields({
-                    operator: address(loanContractHarness),
-                    from: address(0),
-                    to: _lender,
-                    id: _debtId.debtIdToLenderTokenId(),
-                    value: _contractTerms.principal
-                })
-            );
+        // TransferSingle event for lender token mints.
+        _testTransferSingle(
+            _entries[3],
+            TransferSingleFields({
+                operator: address(loanContractHarness),
+                from: address(0),
+                to: _lender,
+                id: _debtId.debtIdToLenderTokenId(),
+                value: _contractTerms.principal
+            })
+        );
 
-            // TransferSingle event for borrower token mints.
-            _testTransferSingle(
-                _entries[4],
-                TransferSingleFields({
-                    operator: address(loanContractHarness),
-                    from: address(0),
-                    to: _borrower,
-                    id: _debtId.debtIdToBorrowerTokenId(),
-                    value: 1
-                })
-            );
+        // TransferSingle event for borrower token mints.
+        _testTransferSingle(
+            _entries[4],
+            TransferSingleFields({
+                operator: address(loanContractHarness),
+                from: address(0),
+                to: _borrower,
+                id: _debtId.debtIdToBorrowerTokenId(),
+                value: 1
+            })
+        );
 
-            // URI event for setting borrower token URI.
-            _testURI(
-                _entries[5],
-                URIFields({
-                    value: _demoToken.tokenURI(_collateralId),
-                    id: _debtId.debtIdToBorrowerTokenId()
-                })
-            );
+        // URI event for setting borrower token URI.
+        _testURI(
+            _entries[5],
+            URIFields({
+                value: _demoToken.tokenURI(_collateralId),
+                id: _debtId.debtIdToBorrowerTokenId()
+            })
+        );
 
-            // ContractInitialized event.
-            _testContractInitialized(
-                _entries[6],
-                ContractInitializedFields({
-                    collateralAddress: address(_demoToken),
-                    collateralId: _collateralId,
-                    debtId: _debtId,
-                    activeLoanIndex: 2
-                })
-            );
-        }
-        // Verify failed contract creation results.
-        else {
-            assertEq(
-                _expectedSuccess,
-                _success,
-                "0 :: init loan contract expected failure."
-            );
-            assertEq(
-                _expectedData,
-                _data,
-                "1 :: init loan contract error message mismatch."
-            );
+        // ContractInitialized event.
+        _testContractInitialized(
+            _entries[6],
+            ContractInitializedFields({
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                debtId: _debtId,
+                activeLoanIndex: 2
+            })
+        );
 
-            // Force rerun.
-            vm.assume(_success);
-        }
+        return (_debtId, _contractTerms);
     }
 
     /**
@@ -970,17 +893,13 @@ contract LoanContractUnitTest is
         address _lender,
         uint256 _collateralId,
         ContractTerms memory _contractTerms
-    ) public returns (bool _success, uint256 _debtId) {
-        vm.assume(_lender != address(0));
+    ) public returns (uint256, ContractTerms memory) {
+        uint256 _debtId;
 
-        // Limit principal for vm.deal limitations.
-        _contractTerms.principal = bound(
-            _contractTerms.principal,
-            1,
-            _UINT128_MAX_
-        );
-
-        (_success, _debtId) = _testLoanContract__InitContract_Fuzz_InitialLoan(
+        (
+            _debtId,
+            _contractTerms
+        ) = _testLoanContract__InitContract_Fuzz_InitialLoan(
             _borrowerPrivKey,
             _collateralId,
             _contractTerms
@@ -988,145 +907,105 @@ contract LoanContractUnitTest is
 
         address _borrower = vm.addr(_borrowerPrivKey);
 
-        // Set contract initialization expectation.
-        (bool _expectedSuccess, bytes memory _expectedData) = loanContractUtils
-            .expectedContractTermsValidity(
-                _contractTerms,
-                address(loanContractHarness),
-                uint64(block.timestamp)
-            );
-
         // Create loan contract.
         vm.recordLogs();
-        bytes memory _data;
-        (_success, _data) = loanContractUtils.sponsorshipLoanContract(
+        loanContractUtils.sponsorshipLoanContract(
             _borrower,
             _lender,
             _debtId,
             _contractTerms
         );
 
-        // Get expected return data.
-        (_expectedData, _data) = [_expectedData, _data].normalizeBytesMSB();
-
         // Get logs.
         Vm.Log[] memory _entries = vm.getRecordedLogs();
 
-        if (_success) {
-            uint256 _prevDebtId = _debtId;
+        // if (_success) {
+        (_debtId, ) = loanContractHarness.collateralDebtAt(
+            address(_demoToken),
+            _collateralId,
+            _UINT256_MAX_
+        );
 
-            for (uint256 i; i < _entries.length; ++i) {
-                console.logBytes32(_entries[i].topics[0]);
-            }
+        // TransferSingle event for lender token mints.
+        _testTransferSingle(
+            _entries[0],
+            TransferSingleFields({
+                operator: address(loanTreasurer),
+                from: lender,
+                to: address(0),
+                id: (_debtId - 1).debtIdToLenderTokenId(),
+                value: _contractTerms.principal
+            })
+        );
 
-            (_debtId, ) = loanContractHarness.collateralDebtAt(
-                address(_demoToken),
-                _collateralId,
-                type(uint256).max
-            );
+        // Deposited event for funds into LoanTreasurer.
+        _testDeposited(
+            _entries[1],
+            DepositedFields({
+                debtId: _debtId - 1,
+                payer: _lender,
+                payee: lender,
+                weiAmount: _contractTerms.principal
+            })
+        );
 
-            // Test updated debt ID.
-            assertEq(
-                _prevDebtId + 1,
-                _debtId,
-                "1 :: debt id should increment by 1."
-            );
+        // LoanStateChanged event for prev debt ID payoff.
+        _testLoanStateChanged(
+            _entries[2],
+            LoanStateChangedFields({
+                debtId: _debtId - 1,
+                newLoanState: _PAID_STATE_,
+                oldLoanState: _contractTerms.gracePeriod == 0
+                    ? _ACTIVE_STATE_
+                    : _ACTIVE_GRACE_STATE_
+            })
+        );
 
-            // TransferSingle event for lender token mints.
-            _testTransferSingle(
-                _entries[0],
-                TransferSingleFields({
-                    operator: address(loanTreasurer),
-                    from: lender,
-                    to: address(0),
-                    id: _prevDebtId.debtIdToLenderTokenId(),
-                    value: _contractTerms.principal
-                })
-            );
+        // TransferSingle event for lender token mints.
+        _testTransferSingle(
+            _entries[3],
+            TransferSingleFields({
+                operator: address(loanContractHarness),
+                from: address(0),
+                to: _lender,
+                id: _debtId.debtIdToLenderTokenId(),
+                value: _contractTerms.principal
+            })
+        );
 
-            // Deposited event for funds into LoanTreasurer.
-            _testDeposited(
-                _entries[1],
-                DepositedFields({
-                    debtId: _prevDebtId,
-                    payer: _lender,
-                    payee: lender,
-                    weiAmount: _contractTerms.principal
-                })
-            );
+        // TransferSingle event for borrower token mints.
+        _testTransferSingle(
+            _entries[4],
+            TransferSingleFields({
+                operator: address(loanContractHarness),
+                from: address(0),
+                to: _borrower,
+                id: _debtId.debtIdToBorrowerTokenId(),
+                value: 1
+            })
+        );
 
-            // LoanStateChanged event for prev debt ID payoff.
-            _testLoanStateChanged(
-                _entries[2],
-                LoanStateChangedFields({
-                    debtId: _prevDebtId,
-                    newLoanState: _PAID_STATE_,
-                    oldLoanState: _contractTerms.gracePeriod == 0
-                        ? _ACTIVE_STATE_
-                        : _ACTIVE_GRACE_STATE_
-                })
-            );
+        // URI event for setting borrower token URI.
+        _testURI(
+            _entries[5],
+            URIFields({
+                value: _demoToken.tokenURI(_collateralId),
+                id: _debtId.debtIdToBorrowerTokenId()
+            })
+        );
 
-            // TransferSingle event for lender token mints.
-            _testTransferSingle(
-                _entries[3],
-                TransferSingleFields({
-                    operator: address(loanContractHarness),
-                    from: address(0),
-                    to: _lender,
-                    id: _debtId.debtIdToLenderTokenId(),
-                    value: _contractTerms.principal
-                })
-            );
+        // ContractInitialized event.
+        _testContractInitialized(
+            _entries[6],
+            ContractInitializedFields({
+                collateralAddress: address(_demoToken),
+                collateralId: _collateralId,
+                debtId: _debtId,
+                activeLoanIndex: 2
+            })
+        );
 
-            // TransferSingle event for borrower token mints.
-            _testTransferSingle(
-                _entries[4],
-                TransferSingleFields({
-                    operator: address(loanContractHarness),
-                    from: address(0),
-                    to: _borrower,
-                    id: _debtId.debtIdToBorrowerTokenId(),
-                    value: 1
-                })
-            );
-
-            // URI event for setting borrower token URI.
-            _testURI(
-                _entries[5],
-                URIFields({
-                    value: _demoToken.tokenURI(_collateralId),
-                    id: _debtId.debtIdToBorrowerTokenId()
-                })
-            );
-
-            // ContractInitialized event.
-            _testContractInitialized(
-                _entries[6],
-                ContractInitializedFields({
-                    collateralAddress: address(_demoToken),
-                    collateralId: _collateralId,
-                    debtId: _debtId,
-                    activeLoanIndex: 2
-                })
-            );
-        }
-        // Verify failed contract creation results.
-        else {
-            assertEq(
-                _expectedSuccess,
-                _success,
-                "0 :: init loan contract expected failure."
-            );
-            assertEq(
-                _expectedData,
-                _data,
-                "1 :: init loan contract error message mismatch."
-            );
-
-            // Force rerun.
-            vm.assume(_success);
-        }
+        return (_debtId, _contractTerms);
     }
 
     /* --------------- LoanContract.initContract() --------------- */
@@ -1138,19 +1017,17 @@ contract LoanContractUnitTest is
         uint256 _collateralId,
         ContractTerms memory _contractTerms
     ) public {
+        uint256 _debtId;
         uint64 _now = uint64(block.timestamp);
 
         (
-            bool _success,
-            uint256 _debtId
+            _debtId,
+            _contractTerms
         ) = _testLoanContract__InitContract_Fuzz_InitialLoan(
-                _borrowerPrivKey,
-                _collateralId,
-                _contractTerms
-            );
-
-        // Force rerun.
-        vm.assume(_success);
+            _borrowerPrivKey,
+            _collateralId,
+            _contractTerms
+        );
 
         // Setting the loan agreement updates the duration to account for the grace
         // period. We need to do that here too.
@@ -1176,20 +1053,20 @@ contract LoanContractUnitTest is
         uint256 _collateralId,
         ContractTerms memory _contractTerms
     ) public {
+        uint256 _debtId;
+
+        vm.assume(_lender != address(0));
         uint64 _now = uint64(block.timestamp);
 
         (
-            bool _success,
-            uint256 _debtId
+            _debtId,
+            _contractTerms
         ) = _testLoanContract__InitContract_Fuzz_RefinanceLoan(
-                _borrowerPrivKey,
-                _lender,
-                _collateralId,
-                _contractTerms
-            );
-
-        // Force rerun.
-        vm.assume(_success);
+            _borrowerPrivKey,
+            _lender,
+            _collateralId,
+            _contractTerms
+        );
 
         // Setting the loan agreement updates the duration to account for the grace
         // period. We need to do that here too.
@@ -1215,33 +1092,26 @@ contract LoanContractUnitTest is
         uint256 _collateralId,
         ContractTerms memory _contractTerms
     ) public {
+        uint256 _debtId;
+
+        vm.assume(_lender != address(0));
         uint64 _now = uint64(block.timestamp);
 
         (
-            bool _success,
-            uint256 _debtId
+            _debtId,
+            _contractTerms
         ) = _testLoanContract__InitContract_Fuzz_SponshorshipLoan(
-                _borrowerPrivKey,
-                _lender,
-                _collateralId,
-                _contractTerms
-            );
-
-        // Force rerun.
-        vm.assume(_success);
+            _borrowerPrivKey,
+            _lender,
+            _collateralId,
+            _contractTerms
+        );
 
         // Setting the loan agreement updates the duration to account for the grace
         // period. We need to do that here too.
         _contractTerms.duration -= _contractTerms.gracePeriod;
 
         // Check the unpacked contract terms.
-        console.log("2 - _debtId: ", _debtId);
-
-        console.log(
-            "loanContractHarness.loanState(_debtId): ",
-            loanContractHarness.loanState(_debtId)
-        );
-
         loanContractUtils.checkLoanTerms(
             address(loanContractHarness),
             _debtId,
@@ -1275,11 +1145,13 @@ contract LoanContractUnitTest is
         uint256 _collateralId,
         ContractTerms memory _contractTerms
     ) public {
-        cleanContractTerms(_borrowerPrivKey, _contractTerms);
+        vm.assume(
+            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
+        );
 
-        // Set FIR to ensure compounding interest failure doesn't assert.
-        _contractTerms.fixedInterestRate = uint8(
-            bound(_contractTerms.fixedInterestRate, 0, 0)
+        _contractTerms = loanContractUtils.cleanContractTerms(
+            ILoanCodecHarness(address(loanContractHarness)),
+            _contractTerms
         );
 
         address _borrower = vm.addr(_borrowerPrivKey);
@@ -1331,7 +1203,7 @@ contract LoanContractUnitTest is
         );
 
         // FAIL :: Create loan contract
-        vm.deal(lender, _contractTerms.principal + 1 ether);
+        vm.deal(lender, _contractTerms.principal);
         vm.startPrank(lender);
         (bool _success, bytes memory _data) = address(loanContractHarness).call{
             value: _contractTerms.principal
