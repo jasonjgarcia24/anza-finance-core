@@ -1,0 +1,3008 @@
+{
+  "debt_map_0": {
+    "debt_terms": {
+      "debt_id": 1998094678091086749231811793091796087729536087516245192,
+      "debt_terms": "0x00fffffffffffffffd000006aa0000000000000000000000000000000020040e"
+    },
+    "terms": {
+      "commital_period": 3063436602,
+      "commital_ratio": 32,
+      "duration": 4294965587,
+      "fir_interval": 14,
+      "fixed_interest_rate": 4,
+      "grace_period": 1706,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 14370119563379793794810183353817728087835780400,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_1": {
+    "debt_terms": {
+      "debt_id": 666263305,
+      "debt_terms": "0x29064fe77b000000020000000000000000000000000000000000000000050000"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 5,
+      "duration": 2,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 41,
+      "principal": 3191634895491540829330125089081842776460732053,
+      "terms_expiry": 105899899
+    }
+  },
+  "debt_map_10": {
+    "debt_terms": {
+      "debt_id": 12589790281945933289359171738511913521649392873610373,
+      "debt_terms": "0x01fffffffdffffffff0000000000000000000000000000000000000000000002"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 4294967295,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 5656125257882098922491286786543476458168,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_100": {
+    "debt_terms": {
+      "debt_id": 2291,
+      "debt_terms": "0x0f0000222600003bac00000be90000000000000000000000000000000080b808"
+    },
+    "terms": {
+      "commital_period": 1689052259,
+      "commital_ratio": 27,
+      "duration": 12227,
+      "fir_interval": 8,
+      "fixed_interest_rate": 184,
+      "grace_period": 3049,
+      "is_fixed": 1,
+      "lender_royalties": 15,
+      "principal": 1914,
+      "terms_expiry": 8742
+    }
+  },
+  "debt_map_101": {
+    "debt_terms": {
+      "debt_id": 11090630007438629283172456788154788626121910981,
+      "debt_terms": "0x3900000db1000000050000000100000000000000000000000000000000200003"
+    },
+    "terms": {
+      "commital_period": 1689045911,
+      "commital_ratio": 32,
+      "duration": 4,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 57,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639932,
+      "terms_expiry": 3505
+    }
+  },
+  "debt_map_102": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x1bfffffffe0000000f0000000000000000000000000000000000000000010200"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 1,
+      "duration": 15,
+      "fir_interval": 0,
+      "fixed_interest_rate": 2,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 27,
+      "principal": 775946063784318381356517993815952868477581,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_103": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x060812b62e000000070000000300000000000000000000000000000000010900"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 1,
+      "duration": 4,
+      "fir_interval": 0,
+      "fixed_interest_rate": 9,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 6,
+      "principal": 1,
+      "terms_expiry": 135444014
+    }
+  },
+  "debt_map_104": {
+    "debt_terms": {
+      "debt_id": 3231,
+      "debt_terms": "0x5000000fd700000b8b0000085300000000000000000000000000000000a5b902"
+    },
+    "terms": {
+      "commital_period": 1689048567,
+      "commital_ratio": 64,
+      "duration": 824,
+      "fir_interval": 2,
+      "fixed_interest_rate": 185,
+      "grace_period": 2131,
+      "is_fixed": 1,
+      "lender_royalties": 80,
+      "principal": 6674,
+      "terms_expiry": 4055
+    }
+  },
+  "debt_map_105": {
+    "debt_terms": {
+      "debt_id": 561035083657287,
+      "debt_terms": "0x57fffffffc00003fba0000000300000000000000000000000000000000000001"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 0,
+      "duration": 16311,
+      "fir_interval": 1,
+      "fixed_interest_rate": 0,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 87,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639934,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_106": {
+    "debt_terms": {
+      "debt_id": 15449859814685515641252488257730424710676419,
+      "debt_terms": "0x03ffffffff54dc012d250b7bbd00000000000000000000000000000000090000"
+    },
+    "terms": {
+      "commital_period": 2382753006,
+      "commital_ratio": 9,
+      "duration": 802194800,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 621509565,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 4411969596977785,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_107": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x4a0000c836fffffffe0000000100000000000000000000000000000000030000"
+    },
+    "terms": {
+      "commital_period": 1817894928,
+      "commital_ratio": 3,
+      "duration": 4294967293,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 74,
+      "principal": 358946572347659207091477460052012307725211821462970,
+      "terms_expiry": 51254
+    }
+  },
+  "debt_map_108": {
+    "debt_terms": {
+      "debt_id": 8795169942918681521515,
+      "debt_terms": "0x0000cc870e000000030000000100000000000000000000000000000000000205"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 2,
+      "fir_interval": 5,
+      "fixed_interest_rate": 2,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 148876550430751568666371454227960463931816623370712746,
+      "terms_expiry": 13403918
+    }
+  },
+  "debt_map_109": {
+    "debt_terms": {
+      "debt_id": 2091940257477690644161171518295704231803,
+      "debt_terms": "0x0e01e613500000a5b30000044300000000000000000000000000000000020000"
+    },
+    "terms": {
+      "commital_period": 1689047826,
+      "commital_ratio": 2,
+      "duration": 41328,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 1091,
+      "is_fixed": 0,
+      "lender_royalties": 14,
+      "principal": 177278530223458115047174118583221947,
+      "terms_expiry": 31855440
+    }
+  },
+  "debt_map_11": {
+    "debt_terms": {
+      "debt_id": 18674651746388142732383909070978862337222888104434170878076445274048582,
+      "debt_terms": "0x0c00004169fffffffc00135626000000000000000000000000000000000d0000"
+    },
+    "terms": {
+      "commital_period": 2248494154,
+      "commital_ratio": 13,
+      "duration": 4293700054,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 1267238,
+      "is_fixed": 0,
+      "lender_royalties": 12,
+      "principal": 1,
+      "terms_expiry": 16745
+    }
+  },
+  "debt_map_110": {
+    "debt_terms": {
+      "debt_id": 2651064136496948386093956236188303528136955244123,
+      "debt_terms": "0x030103670a6dec515200000c1300000000000000000000000000000000020001"
+    },
+    "terms": {
+      "commital_period": 1725933015,
+      "commital_ratio": 2,
+      "duration": 1844200767,
+      "fir_interval": 1,
+      "fixed_interest_rate": 0,
+      "grace_period": 3091,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 960,
+      "terms_expiry": 17000202
+    }
+  },
+  "debt_map_111": {
+    "debt_terms": {
+      "debt_id": 1317313413428279200924378488241860196,
+      "debt_terms": "0x0000000775fffffffd1346595000000000000000000000000000000000020000"
+    },
+    "terms": {
+      "commital_period": 2091855193,
+      "commital_ratio": 2,
+      "duration": 3971589805,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 323377488,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 3,
+      "terms_expiry": 1909
+    }
+  },
+  "debt_map_112": {
+    "debt_terms": {
+      "debt_id": 98236029410555848958,
+      "debt_terms": "0x1afffffffffffffffe01b518f700000000000000000000000000000000110000"
+    },
+    "terms": {
+      "commital_period": 2442966216,
+      "commital_ratio": 17,
+      "duration": 4266321671,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 28645623,
+      "is_fixed": 0,
+      "lender_royalties": 26,
+      "principal": 3766,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_113": {
+    "debt_terms": {
+      "debt_id": 375724982355323136600990876281842376112936859637640377676381,
+      "debt_terms": "0x02a3c20255000001200000000100000000000000000000000000000000030803"
+    },
+    "terms": {
+      "commital_period": 1689045918,
+      "commital_ratio": 3,
+      "duration": 287,
+      "fir_interval": 3,
+      "fixed_interest_rate": 8,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 2747400789
+    }
+  },
+  "debt_map_114": {
+    "debt_terms": {
+      "debt_id": 157767487574139050578079407295,
+      "debt_terms": "0x030000e05f00005c690000067800000000000000000000000000000000031c06"
+    },
+    "terms": {
+      "commital_period": 1689048225,
+      "commital_ratio": 3,
+      "duration": 22001,
+      "fir_interval": 6,
+      "fixed_interest_rate": 28,
+      "grace_period": 1656,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 2,
+      "terms_expiry": 57439
+    }
+  },
+  "debt_map_115": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x1902780dc6000000060000000000000000000000000000000000000000000202"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 6,
+      "fir_interval": 2,
+      "fixed_interest_rate": 2,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 25,
+      "principal": 189336311908758673710594935678604703352093235325694202114379946320397387,
+      "terms_expiry": 41422278
+    }
+  },
+  "debt_map_116": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x03fffffffc000000020000000100000000000000000000000000000000040103"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 4,
+      "duration": 1,
+      "fir_interval": 3,
+      "fixed_interest_rate": 1,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 142941564222330306121229039544292810006463,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_117": {
+    "debt_terms": {
+      "debt_id": 161184283935599745051203409656529112066940235836935916359312750841896786,
+      "debt_terms": "0x3d000029bcffffffff0000012000000000000000000000000000000000070003"
+    },
+    "terms": {
+      "commital_period": 1989693887,
+      "commital_ratio": 7,
+      "duration": 4294967007,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 288,
+      "is_fixed": 0,
+      "lender_royalties": 61,
+      "principal": 52072511060542386613037014858489547092047197920576822644618137659539095396,
+      "terms_expiry": 10684
+    }
+  },
+  "debt_map_118": {
+    "debt_terms": {
+      "debt_id": 18448,
+      "debt_terms": "0x000003cb3b0000001800000002000000000000000000000000000000005cc300"
+    },
+    "terms": {
+      "commital_period": 1689045931,
+      "commital_ratio": 92,
+      "duration": 22,
+      "fir_interval": 0,
+      "fixed_interest_rate": 195,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 2622434748719911957204412921070462563711733804638451460560436192,
+      "terms_expiry": 248635
+    }
+  },
+  "debt_map_119": {
+    "debt_terms": {
+      "debt_id": 13986128411996869095337822357845148455312621051894923630058664948544331318,
+      "debt_terms": "0x00fffffffc07e9c8e500001c0b00000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689053088,
+      "commital_ratio": 0,
+      "duration": 132754650,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 7179,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 735127018822494,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_12": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x00fffffffc1bba116b000007f800000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689047949,
+      "commital_ratio": 0,
+      "duration": 465176947,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 2040,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 3637019660672046453774435721376266468132631461831404726,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_120": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x0006fc7e80ffffffff0000d2a900000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689099838,
+      "commital_ratio": 0,
+      "duration": 4294913366,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 53929,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639934,
+      "terms_expiry": 117210752
+    }
+  },
+  "debt_map_121": {
+    "debt_terms": {
+      "debt_id": 139729301829685826512987800760330166048083616744472368626624,
+      "debt_terms": "0x01fffffffcffffffff0beeb0ee00000000000000000000000000000000020003"
+    },
+    "terms": {
+      "commital_period": 1971133648,
+      "commital_ratio": 2,
+      "duration": 4094775057,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 200192238,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 11,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_122": {
+    "debt_terms": {
+      "debt_id": 2584866157301827102331211064479063722513316736,
+      "debt_terms": "0x01fffffffc006e47160004dd150000000000000000000000000000000000fd0e"
+    },
+    "terms": {
+      "commital_period": 1689364650,
+      "commital_ratio": 0,
+      "duration": 6908417,
+      "fir_interval": 14,
+      "fixed_interest_rate": 253,
+      "grace_period": 318741,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 117567802901397675193777221486880015,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_123": {
+    "debt_terms": {
+      "debt_id": 9989136644105295221425611097071618658222861497881088981,
+      "debt_terms": "0x01fffffffd00000123000000090000000000000000000000000000000002fc02"
+    },
+    "terms": {
+      "commital_period": 1689045923,
+      "commital_ratio": 2,
+      "duration": 282,
+      "fir_interval": 2,
+      "fixed_interest_rate": 252,
+      "grace_period": 9,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 252637205743341320145447621370518837050365,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_124": {
+    "debt_terms": {
+      "debt_id": 80918424550240434116200171177228460153322,
+      "debt_terms": "0x000006b9defffffffce5a329bd00000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 5541721426,
+      "commital_ratio": 0,
+      "duration": 442291775,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 3852675517,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 20957337,
+      "terms_expiry": 440798
+    }
+  },
+  "debt_map_125": {
+    "debt_terms": {
+      "debt_id": 288,
+      "debt_terms": "0x49b297e021000017e2000001f6000000000000000000000000000000000c0803"
+    },
+    "terms": {
+      "commital_period": 1689047084,
+      "commital_ratio": 12,
+      "duration": 5612,
+      "fir_interval": 3,
+      "fixed_interest_rate": 8,
+      "grace_period": 502,
+      "is_fixed": 0,
+      "lender_royalties": 73,
+      "principal": 1878,
+      "terms_expiry": 2996297761
+    }
+  },
+  "debt_map_126": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x1100e6ce4d00f376e400000001000000000000000000000000000000002efd07"
+    },
+    "terms": {
+      "commital_period": 1696385524,
+      "commital_ratio": 46,
+      "duration": 15955683,
+      "fir_interval": 7,
+      "fixed_interest_rate": 253,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 17,
+      "principal": 3,
+      "terms_expiry": 15126093
+    }
+  },
+  "debt_map_127": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x0cfffffffe0000030c0000000200000000000000000000000000000000011401"
+    },
+    "terms": {
+      "commital_period": 1689045918,
+      "commital_ratio": 1,
+      "duration": 778,
+      "fir_interval": 1,
+      "fixed_interest_rate": 20,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 12,
+      "principal": 42906528144441036605338052644215077700128018493046191,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_128": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x03fffffffe000000030000000000000000000000000000000000000000080200"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 8,
+      "duration": 3,
+      "fir_interval": 0,
+      "fixed_interest_rate": 2,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 3,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_129": {
+    "debt_terms": {
+      "debt_id": 3131321206849,
+      "debt_terms": "0x01000bf6b0000000090000000000000000000000000000000000000000010103"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 1,
+      "duration": 9,
+      "fir_interval": 3,
+      "fixed_interest_rate": 1,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 2,
+      "terms_expiry": 784048
+    }
+  },
+  "debt_map_13": {
+    "debt_terms": {
+      "debt_id": 1060847298101839197193855158841,
+      "debt_terms": "0x200000a716ffffffff0000328f00000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689058852,
+      "commital_ratio": 0,
+      "duration": 4294954352,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 12943,
+      "is_fixed": 0,
+      "lender_royalties": 32,
+      "principal": 2,
+      "terms_expiry": 42774
+    }
+  },
+  "debt_map_130": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x01ffffffff1417e8e3000000010000000000000000000000000000000000020e"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 337111266,
+      "fir_interval": 14,
+      "fixed_interest_rate": 2,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 3,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_131": {
+    "debt_terms": {
+      "debt_id": 4355494731942173630380604511957966286974876042245,
+      "debt_terms": "0x2afffffffe00000003000000000000000000000000000000000000000002fc00"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 2,
+      "duration": 3,
+      "fir_interval": 0,
+      "fixed_interest_rate": 252,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 42,
+      "principal": 1580557022896092015452298323549819487360430960030670,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_132": {
+    "debt_terms": {
+      "debt_id": 3523987586616354,
+      "debt_terms": "0x01fffffffd0000000f00000001000000000000000000000000000000000e0101"
+    },
+    "terms": {
+      "commital_period": 1689045911,
+      "commital_ratio": 14,
+      "duration": 14,
+      "fir_interval": 1,
+      "fixed_interest_rate": 1,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 213,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_133": {
+    "debt_terms": {
+      "debt_id": 84410,
+      "debt_terms": "0x0000e572580000cca10000000000000000000000000000000000000000000006"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 52385,
+      "fir_interval": 6,
+      "fixed_interest_rate": 0,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 1,
+      "terms_expiry": 15037016
+    }
+  },
+  "debt_map_134": {
+    "debt_terms": {
+      "debt_id": 45392188860541854653494205564783536284431334427383210679552261446738,
+      "debt_terms": "0x0200d9967b000000030000000100000000000000000000000000000000beff00"
+    },
+    "terms": {
+      "commital_period": 1689045911,
+      "commital_ratio": 89,
+      "duration": 2,
+      "fir_interval": 0,
+      "fixed_interest_rate": 255,
+      "grace_period": 1,
+      "is_fixed": 1,
+      "lender_royalties": 2,
+      "principal": 2,
+      "terms_expiry": 14259835
+    }
+  },
+  "debt_map_135": {
+    "debt_terms": {
+      "debt_id": 5420,
+      "debt_terms": "0x3dffffffff000078ba000000720000000000000000000000000000000000fd07"
+    },
+    "terms": {
+      "commital_period": 1689046023,
+      "commital_ratio": 0,
+      "duration": 30792,
+      "fir_interval": 7,
+      "fixed_interest_rate": 253,
+      "grace_period": 114,
+      "is_fixed": 0,
+      "lender_royalties": 61,
+      "principal": 4869562013143442645501449009578908355546085460583396033085656,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_136": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x010002aaec000002aa0000016600000000000000000000000000000000040003"
+    },
+    "terms": {
+      "commital_period": 1689046279,
+      "commital_ratio": 4,
+      "duration": 324,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 358,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 21361712480996700062358038074180984002735835553891101846508138603680918,
+      "terms_expiry": 174828
+    }
+  },
+  "debt_map_137": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x02ffffffffffffffff0000000300000000000000000000000000000000000206"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 0,
+      "duration": 4294967292,
+      "fir_interval": 6,
+      "fixed_interest_rate": 2,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 2,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_138": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x00ffffffff000000690000000300000000000000000000000000000000000203"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 0,
+      "duration": 102,
+      "fir_interval": 3,
+      "fixed_interest_rate": 2,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 3,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_139": {
+    "debt_terms": {
+      "debt_id": 28651400929003006235628441136310529,
+      "debt_terms": "0x01ffffffff000126fc0000000000000000000000000000000000000000010f02"
+    },
+    "terms": {
+      "commital_period": 1689046664,
+      "commital_ratio": 1,
+      "duration": 75516,
+      "fir_interval": 2,
+      "fixed_interest_rate": 15,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 407512164587251780438376686567386333440123795686126809402494622548623097,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_14": {
+    "debt_terms": {
+      "debt_id": 14474201891721754946925656556047564524945924098,
+      "debt_terms": "0x37fffffffe006ac2a30007bad100000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689552486,
+      "commital_ratio": 0,
+      "duration": 6490066,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 506577,
+      "is_fixed": 0,
+      "lender_royalties": 55,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639934,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_140": {
+    "debt_terms": {
+      "debt_id": 684172905164946452294220510986341150844,
+      "debt_terms": "0x0500037f5700000003000000010000000000000000000000000000000001e103"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 1,
+      "duration": 2,
+      "fir_interval": 3,
+      "fixed_interest_rate": 225,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 5,
+      "principal": 324484679504333261735339341488611803671836965115943125245933069621482789,
+      "terms_expiry": 229207
+    }
+  },
+  "debt_map_141": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x040cb007f5125c160c00125f0700000000000000000000000000000000000005"
+    },
+    "terms": {
+      "commital_period": 1690249884,
+      "commital_ratio": 0,
+      "duration": 306820869,
+      "fir_interval": 5,
+      "fixed_interest_rate": 0,
+      "grace_period": 1203975,
+      "is_fixed": 0,
+      "lender_royalties": 4,
+      "principal": 7919360494061946623857211931527271161812157758153240374179564735279106700032,
+      "terms_expiry": 212862965
+    }
+  },
+  "debt_map_142": {
+    "debt_terms": {
+      "debt_id": 32039804539379309371984497563820902034168718583704198296695396,
+      "debt_terms": "0x06fffffffdfffffffffffffffe00000000000000000000000000000000030000"
+    },
+    "terms": {
+      "commital_period": 5984013203,
+      "commital_ratio": 3,
+      "duration": 1,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 4294967294,
+      "is_fixed": 0,
+      "lender_royalties": 6,
+      "principal": 8158644903881762658863,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_143": {
+    "debt_terms": {
+      "debt_id": 443,
+      "debt_terms": "0x3f0000209d000015330000108c0000000000000000000000000000000034e102"
+    },
+    "terms": {
+      "commital_period": 1689050764,
+      "commital_ratio": 52,
+      "duration": 1191,
+      "fir_interval": 2,
+      "fixed_interest_rate": 225,
+      "grace_period": 4236,
+      "is_fixed": 0,
+      "lender_royalties": 63,
+      "principal": 2234534618,
+      "terms_expiry": 8349
+    }
+  },
+  "debt_map_144": {
+    "debt_terms": {
+      "debt_id": 24773615468417492338154223845851458003716226437531060292,
+      "debt_terms": "0x3e0013a260000000020000000000000000000000000000000000000000000200"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 2,
+      "fir_interval": 0,
+      "fixed_interest_rate": 2,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 62,
+      "principal": 7418094,
+      "terms_expiry": 1286752
+    }
+  },
+  "debt_map_145": {
+    "debt_terms": {
+      "debt_id": 896,
+      "debt_terms": "0x33000008dd00001aa000000827000000000000000000000000000000002f7f02"
+    },
+    "terms": {
+      "commital_period": 1689050218,
+      "commital_ratio": 47,
+      "duration": 4729,
+      "fir_interval": 2,
+      "fixed_interest_rate": 127,
+      "grace_period": 2087,
+      "is_fixed": 0,
+      "lender_royalties": 51,
+      "principal": 3386,
+      "terms_expiry": 2269
+    }
+  },
+  "debt_map_146": {
+    "debt_terms": {
+      "debt_id": 1689787926456,
+      "debt_terms": "0x00fffffffcfffffffd0000001200000000000000000000000000000000010007"
+    },
+    "terms": {
+      "commital_period": 1731995599,
+      "commital_ratio": 1,
+      "duration": 4294967275,
+      "fir_interval": 7,
+      "fixed_interest_rate": 0,
+      "grace_period": 18,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 1475669115036474131030991991937714208,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_147": {
+    "debt_terms": {
+      "debt_id": 2000178855530050649560065530568741,
+      "debt_terms": "0x19fffffffd0b56251508de9bae00000000000000000000000000000000010000"
+    },
+    "terms": {
+      "commital_period": 1838266366,
+      "commital_ratio": 1,
+      "duration": 41388391,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 148806574,
+      "is_fixed": 0,
+      "lender_royalties": 25,
+      "principal": 899658157638142,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_148": {
+    "debt_terms": {
+      "debt_id": 1755691063,
+      "debt_terms": "0x11000007aa00000761000004590000000000000000000000000000000096b308"
+    },
+    "terms": {
+      "commital_period": 1689047402,
+      "commital_ratio": 49,
+      "duration": 776,
+      "fir_interval": 8,
+      "fixed_interest_rate": 179,
+      "grace_period": 1113,
+      "is_fixed": 1,
+      "lender_royalties": 17,
+      "principal": 16960,
+      "terms_expiry": 1962
+    }
+  },
+  "debt_map_149": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x3dfffffffd2babdd290000005e00000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689046003,
+      "commital_ratio": 0,
+      "duration": 732683467,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 94,
+      "is_fixed": 0,
+      "lender_royalties": 61,
+      "principal": 20438440760688951309022435244141386,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_15": {
+    "debt_terms": {
+      "debt_id": 15781061972875,
+      "debt_terms": "0x00ffffffff001a78d0000000000000000000000000000000000000000003ff0e"
+    },
+    "terms": {
+      "commital_period": 1689097954,
+      "commital_ratio": 3,
+      "duration": 1734864,
+      "fir_interval": 14,
+      "fixed_interest_rate": 255,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639934,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_150": {
+    "debt_terms": {
+      "debt_id": 2418753732059543711581785245518965536152303301605411,
+      "debt_terms": "0x5a03959861fffffffefffffffd00000000000000000000000000000000020003"
+    },
+    "terms": {
+      "commital_period": 5984013202,
+      "commital_ratio": 2,
+      "duration": 1,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 4294967293,
+      "is_fixed": 0,
+      "lender_royalties": 90,
+      "principal": 1,
+      "terms_expiry": 60135521
+    }
+  },
+  "debt_map_151": {
+    "debt_terms": {
+      "debt_id": 350964649033946533542696842899845797927314965553409139955,
+      "debt_terms": "0x03fffffffd000004b90000000300000000000000000000000000000000010003"
+    },
+    "terms": {
+      "commital_period": 1689045924,
+      "commital_ratio": 1,
+      "duration": 1206,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 839766439755538804164453164878026782206434748250,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_152": {
+    "debt_terms": {
+      "debt_id": 10271427940668554517159172413850356,
+      "debt_terms": "0x01ffffffff00082a7d0001d80300000000000000000000000000000000030203"
+    },
+    "terms": {
+      "commital_period": 1689179173,
+      "commital_ratio": 3,
+      "duration": 414330,
+      "fir_interval": 3,
+      "fixed_interest_rate": 2,
+      "grace_period": 120835,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 890282684194665093758212884490622146538655593076318503831221302,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_153": {
+    "debt_terms": {
+      "debt_id": 931,
+      "debt_terms": "0x1d3f7286f400000d3c0000005b000000000000000000000000000000007f4402"
+    },
+    "terms": {
+      "commital_period": 1689046857,
+      "commital_ratio": 26,
+      "duration": 3297,
+      "fir_interval": 2,
+      "fixed_interest_rate": 68,
+      "grace_period": 91,
+      "is_fixed": 1,
+      "lender_royalties": 29,
+      "principal": 4025644588,
+      "terms_expiry": 1064470260
+    }
+  },
+  "debt_map_154": {
+    "debt_terms": {
+      "debt_id": 162315739232137243969249941891,
+      "debt_terms": "0x00fffffffe0000d95b000000010000000000000000000000000000000028fc02"
+    },
+    "terms": {
+      "commital_period": 1689068166,
+      "commital_ratio": 40,
+      "duration": 55642,
+      "fir_interval": 2,
+      "fixed_interest_rate": 252,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 14107342496060250683845459028360,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_155": {
+    "debt_terms": {
+      "debt_id": 763666294980634854055882818700652339,
+      "debt_terms": "0x00fffffffc00cce2330000002600000000000000000000000000000000010905"
+    },
+    "terms": {
+      "commital_period": 1689180219,
+      "commital_ratio": 1,
+      "duration": 13427213,
+      "fir_interval": 5,
+      "fixed_interest_rate": 9,
+      "grace_period": 38,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 6912938375967768123343753142807781968694848,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_156": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x01fffffffe001b18c10000001500000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689045930,
+      "commital_ratio": 0,
+      "duration": 1775788,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 21,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 3,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_157": {
+    "debt_terms": {
+      "debt_id": 8864753422315552865792506071892,
+      "debt_terms": "0x0300003e2a0000000c0000000100000000000000000000000000000000001c02"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 11,
+      "fir_interval": 2,
+      "fixed_interest_rate": 28,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 740504800760432339963529517033976434695607162310393567316821399289241125,
+      "terms_expiry": 15914
+    }
+  },
+  "debt_map_158": {
+    "debt_terms": {
+      "debt_id": 249457775985195412,
+      "debt_terms": "0x00fffffffdfffffffd5680cce300000000000000000000000000000000020003"
+    },
+    "terms": {
+      "commital_period": 3197201257,
+      "commital_ratio": 2,
+      "duration": 2843685658,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 1451281635,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_159": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x03002a3cecfffffffd000002de00000000000000000000000000000000000106"
+    },
+    "terms": {
+      "commital_period": 1689046643,
+      "commital_ratio": 0,
+      "duration": 4294966559,
+      "fir_interval": 6,
+      "fixed_interest_rate": 1,
+      "grace_period": 734,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 33297461900978180082,
+      "terms_expiry": 2768108
+    }
+  },
+  "debt_map_16": {
+    "debt_terms": {
+      "debt_id": 1274933887026961940251884,
+      "debt_terms": "0x07000375360000000100000000000000000000000000000000000000000afc01"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 10,
+      "duration": 1,
+      "fir_interval": 1,
+      "fixed_interest_rate": 252,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 7,
+      "principal": 16002476356878310506641955,
+      "terms_expiry": 226614
+    }
+  },
+  "debt_map_160": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x020000769600000001000000000000000000000000000000000000000026fe02"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 38,
+      "duration": 1,
+      "fir_interval": 2,
+      "fixed_interest_rate": 254,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 30358
+    }
+  },
+  "debt_map_161": {
+    "debt_terms": {
+      "debt_id": 1132674827761529565627372943905604482384803640609871488425923,
+      "debt_terms": "0x0100d8639e00000002000000000000000000000000000000000000000008fd01"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 8,
+      "duration": 2,
+      "fir_interval": 1,
+      "fixed_interest_rate": 253,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 2,
+      "terms_expiry": 14181278
+    }
+  },
+  "debt_map_162": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x000022fe790000003f00000001000000000000000000000000000000001e0201"
+    },
+    "terms": {
+      "commital_period": 1689045928,
+      "commital_ratio": 30,
+      "duration": 62,
+      "fir_interval": 1,
+      "fixed_interest_rate": 2,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 21100550016189156434310872125803254620521853981131538112544686,
+      "terms_expiry": 2293369
+    }
+  },
+  "debt_map_163": {
+    "debt_terms": {
+      "debt_id": 1375684679,
+      "debt_terms": "0x380a2c6a650000096b00000545000000000000000000000000000000004bb607"
+    },
+    "terms": {
+      "commital_period": 1689048054,
+      "commital_ratio": 75,
+      "duration": 1062,
+      "fir_interval": 7,
+      "fixed_interest_rate": 182,
+      "grace_period": 1349,
+      "is_fixed": 0,
+      "lender_royalties": 56,
+      "principal": 1249,
+      "terms_expiry": 170682981
+    }
+  },
+  "debt_map_164": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x32fffffffc000000030000000000000000000000000000000000000000392803"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 57,
+      "duration": 3,
+      "fir_interval": 3,
+      "fixed_interest_rate": 40,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 50,
+      "principal": 1,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_165": {
+    "debt_terms": {
+      "debt_id": 2149230848599725695,
+      "debt_terms": "0x03fffffffffffffffc0000000200000000000000000000000000000000010002"
+    },
+    "terms": {
+      "commital_period": 1731995583,
+      "commital_ratio": 1,
+      "duration": 4294967290,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 57942507,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_166": {
+    "debt_terms": {
+      "debt_id": 100000000000000000000000000000000,
+      "debt_terms": "0x5100005a5a00002bf400000161000000000000000000000000000000003eeb07"
+    },
+    "terms": {
+      "commital_period": 1689053019,
+      "commital_ratio": 62,
+      "duration": 10899,
+      "fir_interval": 7,
+      "fixed_interest_rate": 235,
+      "grace_period": 353,
+      "is_fixed": 0,
+      "lender_royalties": 81,
+      "principal": 2213,
+      "terms_expiry": 23130
+    }
+  },
+  "debt_map_17": {
+    "debt_terms": {
+      "debt_id": 38028839631947933644247288713387266745759550353026259562,
+      "debt_terms": "0x01fffffffc065b962200018cd900000000000000000000000000000000040000"
+    },
+    "terms": {
+      "commital_period": 1693410058,
+      "commital_ratio": 4,
+      "duration": 106563913,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 101593,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 505372881452092246475958574587365374907681516247685876454188515,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_18": {
+    "debt_terms": {
+      "debt_id": 111555911030202777789956758469170162207283589278421072680245,
+      "debt_terms": "0x01ffffffff0000029c00000001000000000000000000000000000000003d0302"
+    },
+    "terms": {
+      "commital_period": 1689046316,
+      "commital_ratio": 61,
+      "duration": 667,
+      "fir_interval": 2,
+      "fixed_interest_rate": 3,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 21136052795414455304054831503355318386207032731624285094199658080,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_19": {
+    "debt_terms": {
+      "debt_id": 24434594884989,
+      "debt_terms": "0x1d077317d9000000030000000000000000000000000000000000000000013001"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 1,
+      "duration": 3,
+      "fir_interval": 1,
+      "fixed_interest_rate": 48,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 29,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "terms_expiry": 124983257
+    }
+  },
+  "debt_map_2": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x2efffffffc000001940000000200000000000000000000000000000000020002"
+    },
+    "terms": {
+      "commital_period": 1689045919,
+      "commital_ratio": 2,
+      "duration": 402,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 46,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_20": {
+    "debt_terms": {
+      "debt_id": 653,
+      "debt_terms": "0x1a0000153a000047710000027a00000000000000000000000000000000083b0e"
+    },
+    "terms": {
+      "commital_period": 1689047955,
+      "commital_ratio": 8,
+      "duration": 17655,
+      "fir_interval": 14,
+      "fixed_interest_rate": 59,
+      "grace_period": 634,
+      "is_fixed": 0,
+      "lender_royalties": 26,
+      "principal": 843674023034825839068099616257830899484959771054,
+      "terms_expiry": 5434
+    }
+  },
+  "debt_map_21": {
+    "debt_terms": {
+      "debt_id": 4671827952513445699602501438286973190045023063296182545093743204004429801,
+      "debt_terms": "0x11ffffffff000000030000000100000000000000000000000000000000020002"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 2,
+      "duration": 2,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 17,
+      "principal": 133269669275652951837520588146606795,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_22": {
+    "debt_terms": {
+      "debt_id": 14355356590608284430987602061027990186168,
+      "debt_terms": "0x0101f752bb00000003000000010000000000000000000000000000000022fd01"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 34,
+      "duration": 2,
+      "fir_interval": 1,
+      "fixed_interest_rate": 253,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 19109179861591435468138440052305033237983976637674694062787158197672825,
+      "terms_expiry": 32985787
+    }
+  },
+  "debt_map_23": {
+    "debt_terms": {
+      "debt_id": 7530,
+      "debt_terms": "0x590000389600000ec5000000140000000000000000000000000000000000e705"
+    },
+    "terms": {
+      "commital_period": 1689045929,
+      "commital_ratio": 0,
+      "duration": 3761,
+      "fir_interval": 5,
+      "fixed_interest_rate": 231,
+      "grace_period": 20,
+      "is_fixed": 0,
+      "lender_royalties": 89,
+      "principal": 6744,
+      "terms_expiry": 14486
+    }
+  },
+  "debt_map_24": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x0100002bb9000000030000000100000000000000000000000000000000010003"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 1,
+      "duration": 2,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 13023651678933136199776639475149076624902734230870,
+      "terms_expiry": 11193
+    }
+  },
+  "debt_map_25": {
+    "debt_terms": {
+      "debt_id": 15173,
+      "debt_terms": "0x3100002e06000008860000073e00000000000000000000000000000000c71e06"
+    },
+    "terms": {
+      "commital_period": 1689048084,
+      "commital_ratio": 98,
+      "duration": 328,
+      "fir_interval": 6,
+      "fixed_interest_rate": 30,
+      "grace_period": 1854,
+      "is_fixed": 1,
+      "lender_royalties": 49,
+      "principal": 2748,
+      "terms_expiry": 11782
+    }
+  },
+  "debt_map_26": {
+    "debt_terms": {
+      "debt_id": 1449590681362894114476,
+      "debt_terms": "0x02000076dafffffffd0000000100000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 4294967292,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 30426
+    }
+  },
+  "debt_map_27": {
+    "debt_terms": {
+      "debt_id": 170544412438612054615893,
+      "debt_terms": "0x0201457c42fffffffc266f56ef00000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 2333876868,
+      "commital_ratio": 0,
+      "duration": 3650136333,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 644830959,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 1683234080666492786081413033996712504618193206978404044169923689977787859907,
+      "terms_expiry": 21331010
+    }
+  },
+  "debt_map_28": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x2dfffffffe0024fcba0000001700000000000000000000000000000000020008"
+    },
+    "terms": {
+      "commital_period": 1689094411,
+      "commital_ratio": 2,
+      "duration": 2423971,
+      "fir_interval": 8,
+      "fixed_interest_rate": 0,
+      "grace_period": 23,
+      "is_fixed": 0,
+      "lender_royalties": 45,
+      "principal": 1669242836431370333865549758284,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_29": {
+    "debt_terms": {
+      "debt_id": 69313395,
+      "debt_terms": "0x12fffffffd000000280000001200000000000000000000000000000000010000"
+    },
+    "terms": {
+      "commital_period": 1689045927,
+      "commital_ratio": 1,
+      "duration": 22,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 18,
+      "is_fixed": 0,
+      "lender_royalties": 18,
+      "principal": 4350711222246206944181556545682724265,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_3": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x00fffffffc000000030000000200000000000000000000000000000000450500"
+    },
+    "terms": {
+      "commital_period": 1689045911,
+      "commital_ratio": 69,
+      "duration": 1,
+      "fir_interval": 0,
+      "fixed_interest_rate": 5,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 48525264841183989214350294140403112503893050246735377310009818973495,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_30": {
+    "debt_terms": {
+      "debt_id": 901198000519775898514550935108,
+      "debt_terms": "0x0bfffffffd007e1ae50000000100000000000000000000000000000000630305"
+    },
+    "terms": {
+      "commital_period": 1697227685,
+      "commital_ratio": 99,
+      "duration": 8264420,
+      "fir_interval": 5,
+      "fixed_interest_rate": 3,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 11,
+      "principal": 127330581909076042302731446795601353566761,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_31": {
+    "debt_terms": {
+      "debt_id": 9775871562573648544409223,
+      "debt_terms": "0x0e00008e8e00002a560000000100000000000000000000000000000000000203"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 10837,
+      "fir_interval": 3,
+      "fixed_interest_rate": 2,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 14,
+      "principal": 1,
+      "terms_expiry": 36494
+    }
+  },
+  "debt_map_32": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x05fffffffe000e83ae000bb60600000000000000000000000000000000151805"
+    },
+    "terms": {
+      "commital_period": 1689851984,
+      "commital_ratio": 21,
+      "duration": 183720,
+      "fir_interval": 5,
+      "fixed_interest_rate": 24,
+      "grace_period": 767494,
+      "is_fixed": 0,
+      "lender_royalties": 5,
+      "principal": 1,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_33": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x00031e76ac00000002000000000000000000000000000000000000000000fc02"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 2,
+      "fir_interval": 2,
+      "fixed_interest_rate": 252,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 52328108
+    }
+  },
+  "debt_map_34": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x0afffffffc00000f230000000200000000000000000000000000000000020001"
+    },
+    "terms": {
+      "commital_period": 1689045988,
+      "commital_ratio": 2,
+      "duration": 3873,
+      "fir_interval": 1,
+      "fixed_interest_rate": 0,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 10,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639932,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_35": {
+    "debt_terms": {
+      "debt_id": 4608898350022496327716272583460839323162554444775727959480567678571020001951,
+      "debt_terms": "0x00ffffffff000f5a130000856a00000000000000000000000000000000000206"
+    },
+    "terms": {
+      "commital_period": 1689080063,
+      "commital_ratio": 0,
+      "duration": 971945,
+      "fir_interval": 6,
+      "fixed_interest_rate": 2,
+      "grace_period": 34154,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 3,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_36": {
+    "debt_terms": {
+      "debt_id": 9007,
+      "debt_terms": "0x280000069a0000361b0000084f00000000000000000000000000000000016f05"
+    },
+    "terms": {
+      "commital_period": 1689048153,
+      "commital_ratio": 1,
+      "duration": 11724,
+      "fir_interval": 5,
+      "fixed_interest_rate": 111,
+      "grace_period": 2127,
+      "is_fixed": 0,
+      "lender_royalties": 40,
+      "principal": 7025,
+      "terms_expiry": 1690
+    }
+  },
+  "debt_map_37": {
+    "debt_terms": {
+      "debt_id": 45413689826644189611339874685916583726417595398080,
+      "debt_terms": "0x02fffffffe00000701000000a000000000000000000000000000000000040101"
+    },
+    "terms": {
+      "commital_period": 1689046134,
+      "commital_ratio": 4,
+      "duration": 1633,
+      "fir_interval": 1,
+      "fixed_interest_rate": 1,
+      "grace_period": 160,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 1,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_38": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x30ffffffff000005d90000000d00000000000000000000000000000000000100"
+    },
+    "terms": {
+      "commital_period": 1689045922,
+      "commital_ratio": 0,
+      "duration": 1484,
+      "fir_interval": 0,
+      "fixed_interest_rate": 1,
+      "grace_period": 13,
+      "is_fixed": 0,
+      "lender_royalties": 48,
+      "principal": 110620113664368608293274745392549167522070409400308194229214,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_39": {
+    "debt_terms": {
+      "debt_id": 1922662116843745555001827345600478,
+      "debt_terms": "0x06ffffffff1f46eb8d0000000300000000000000000000000000000000000002"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 0,
+      "duration": 524741514,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 6,
+      "principal": 158008927249379603067956784008927337412559,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_4": {
+    "debt_terms": {
+      "debt_id": 899840341256274464280352213855457885866176847245427290551,
+      "debt_terms": "0x01fffffffd000000070000000200000000000000000000000000000000010200"
+    },
+    "terms": {
+      "commital_period": 1689045911,
+      "commital_ratio": 1,
+      "duration": 5,
+      "fir_interval": 0,
+      "fixed_interest_rate": 2,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 12132197,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_40": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x0166432a5b0001fdc20000000100000000000000000000000000000000060107"
+    },
+    "terms": {
+      "commital_period": 1689053739,
+      "commital_ratio": 6,
+      "duration": 130497,
+      "fir_interval": 7,
+      "fixed_interest_rate": 1,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "terms_expiry": 1715677787
+    }
+  },
+  "debt_map_41": {
+    "debt_terms": {
+      "debt_id": 5671491924839623111751969397729509042919910966585758853155900231019166691,
+      "debt_terms": "0x01fffffffd000000270000000000000000000000000000000000000000011100"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 1,
+      "duration": 39,
+      "fir_interval": 0,
+      "fixed_interest_rate": 17,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 3,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_42": {
+    "debt_terms": {
+      "debt_id": 16221,
+      "debt_terms": "0x17c5f000310000389a00001c4700000000000000000000000000000000275104"
+    },
+    "terms": {
+      "commital_period": 1689055975,
+      "commital_ratio": 39,
+      "duration": 7251,
+      "fir_interval": 4,
+      "fixed_interest_rate": 81,
+      "grace_period": 7239,
+      "is_fixed": 0,
+      "lender_royalties": 23,
+      "principal": 73625689575030350321102520939722850803808806053879313388950413191472466139672,
+      "terms_expiry": 3320840241
+    }
+  },
+  "debt_map_43": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x00fffffffe000000150000000600000000000000000000000000000000080301"
+    },
+    "terms": {
+      "commital_period": 1689045916,
+      "commital_ratio": 8,
+      "duration": 15,
+      "fir_interval": 1,
+      "fixed_interest_rate": 3,
+      "grace_period": 6,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 33493492501764444811718159361174657434542,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_44": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x18fffffffd000000030000000000000000000000000000000000000000070200"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 7,
+      "duration": 3,
+      "fir_interval": 0,
+      "fixed_interest_rate": 2,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 24,
+      "principal": 73149454790655642809306345859319686695000007785058136,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_45": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x02fffffffefffffffc0000000200000000000000000000000000000000090105"
+    },
+    "terms": {
+      "commital_period": 2075592967,
+      "commital_ratio": 9,
+      "duration": 4294967290,
+      "fir_interval": 5,
+      "fixed_interest_rate": 1,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 11840816001995322658141719731252934275569468024035,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_46": {
+    "debt_terms": {
+      "debt_id": 6483663766114,
+      "debt_terms": "0x03fffffffffffffffc0000000000000000000000000000000000000000120000"
+    },
+    "terms": {
+      "commital_period": 2462140021,
+      "commital_ratio": 18,
+      "duration": 4294967292,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 230569721372133398647,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_47": {
+    "debt_terms": {
+      "debt_id": 39,
+      "debt_terms": "0x4b00001f0800000b92000000000000000000000000000000000000000077af0e"
+    },
+    "terms": {
+      "commital_period": 1689046442,
+      "commital_ratio": 18,
+      "duration": 2962,
+      "fir_interval": 14,
+      "fixed_interest_rate": 175,
+      "grace_period": 0,
+      "is_fixed": 1,
+      "lender_royalties": 75,
+      "principal": 5933,
+      "terms_expiry": 7944
+    }
+  },
+  "debt_map_48": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x32001eb23efffffffefffffffc00000000000000000000000000000000030000"
+    },
+    "terms": {
+      "commital_period": 5984013201,
+      "commital_ratio": 3,
+      "duration": 2,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 4294967292,
+      "is_fixed": 0,
+      "lender_royalties": 50,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 2011710
+    }
+  },
+  "debt_map_49": {
+    "debt_terms": {
+      "debt_id": 62140561206840506821565811957903293370450471,
+      "debt_terms": "0x0100017e3ffffffffc0000000300000000000000000000000000000000090005"
+    },
+    "terms": {
+      "commital_period": 2075592968,
+      "commital_ratio": 9,
+      "duration": 4294967289,
+      "fir_interval": 5,
+      "fixed_interest_rate": 0,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "terms_expiry": 97855
+    }
+  },
+  "debt_map_5": {
+    "debt_terms": {
+      "debt_id": 91124615726011194036425077167838485143624028327838420043434785965,
+      "debt_terms": "0x070004c585000000030000000000000000000000000000000000000000003f02"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 3,
+      "fir_interval": 2,
+      "fixed_interest_rate": 63,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 7,
+      "principal": 213462329561799529102126196326655361335927406173,
+      "terms_expiry": 312709
+    }
+  },
+  "debt_map_50": {
+    "debt_terms": {
+      "debt_id": 2846902935067338019522207086,
+      "debt_terms": "0x000f96c014000000b1000000000000000000000000000000000000000002fc07"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 2,
+      "duration": 177,
+      "fir_interval": 7,
+      "fixed_interest_rate": 252,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639934,
+      "terms_expiry": 261537812
+    }
+  },
+  "debt_map_51": {
+    "debt_terms": {
+      "debt_id": 5440766571261312746782905604530790226,
+      "debt_terms": "0x02fffffffc000000550000000100000000000000000000000000000000020103"
+    },
+    "terms": {
+      "commital_period": 1689045911,
+      "commital_ratio": 2,
+      "duration": 84,
+      "fir_interval": 3,
+      "fixed_interest_rate": 1,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 6478487,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_52": {
+    "debt_terms": {
+      "debt_id": 112,
+      "debt_terms": "0x3700004fcd000039f9000002f4000000000000000000000000000000003a0003"
+    },
+    "terms": {
+      "commital_period": 1689054834,
+      "commital_ratio": 58,
+      "duration": 14085,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 756,
+      "is_fixed": 0,
+      "lender_royalties": 55,
+      "principal": 9233,
+      "terms_expiry": 20429
+    }
+  },
+  "debt_map_53": {
+    "debt_terms": {
+      "debt_id": 13111658213476491611989763647042461519819346,
+      "debt_terms": "0x05be0e6c9cfffffffc00000001000000000000000000000000000000000d0000"
+    },
+    "terms": {
+      "commital_period": 2247391657,
+      "commital_ratio": 13,
+      "duration": 4294967291,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 5,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639932,
+      "terms_expiry": 3188616348
+    }
+  },
+  "debt_map_54": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x00b066b98c000d87da0000017d00000000000000000000000000000000000103"
+    },
+    "terms": {
+      "commital_period": 1689046290,
+      "commital_ratio": 0,
+      "duration": 886365,
+      "fir_interval": 3,
+      "fixed_interest_rate": 1,
+      "grace_period": 381,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 101209410074275680164763242742490644173723444323841935579239362962,
+      "terms_expiry": 2959522188
+    }
+  },
+  "debt_map_55": {
+    "debt_terms": {
+      "debt_id": 111638,
+      "debt_terms": "0x0cfffffffd000000020000000000000000000000000000000000000000021b02"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 2,
+      "duration": 2,
+      "fir_interval": 2,
+      "fixed_interest_rate": 27,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 12,
+      "principal": 23235766581743751961803356101286746312740099516799119056229218637,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_56": {
+    "debt_terms": {
+      "debt_id": 659136334857479441553346286595346117247,
+      "debt_terms": "0x0100024452fffffffe00072b9600000000000000000000000000000000010000"
+    },
+    "terms": {
+      "commital_period": 1732460792,
+      "commital_ratio": 1,
+      "duration": 4294497384,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 469910,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 12875707085092375255617399826581745532367339412657381608945333144652,
+      "terms_expiry": 148562
+    }
+  },
+  "debt_map_57": {
+    "debt_terms": {
+      "debt_id": 351584,
+      "debt_terms": "0x2afffffffd000000220000000000000000000000000000000000000000294b01"
+    },
+    "terms": {
+      "commital_period": 1689045922,
+      "commital_ratio": 41,
+      "duration": 34,
+      "fir_interval": 1,
+      "fixed_interest_rate": 75,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 42,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639932,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_58": {
+    "debt_terms": {
+      "debt_id": 2568302706357901920846930382813089680,
+      "debt_terms": "0x03020ce3a7c6b00afb000e930100000000000000000000000000000000250004"
+    },
+    "terms": {
+      "commital_period": 2923015233,
+      "commital_ratio": 37,
+      "duration": 3332470778,
+      "fir_interval": 4,
+      "fixed_interest_rate": 0,
+      "grace_period": 955137,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 1827031858743575482644485427860449066877735003639476,
+      "terms_expiry": 34399143
+    }
+  },
+  "debt_map_59": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x0109ac622c000382e60000000300000000000000000000000000000000040003"
+    },
+    "terms": {
+      "commital_period": 1689055116,
+      "commital_ratio": 4,
+      "duration": 230115,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "terms_expiry": 162292268
+    }
+  },
+  "debt_map_6": {
+    "debt_terms": {
+      "debt_id": 119637505,
+      "debt_terms": "0x00000014ee000000360000000100000000000000000000000000000000000002"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 53,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 147253681035977242892774998889507,
+      "terms_expiry": 5358
+    }
+  },
+  "debt_map_60": {
+    "debt_terms": {
+      "debt_id": 1412489845797424624127113013612485276050490596155322234536,
+      "debt_terms": "0x03fffffffcfffffffe000d307500000000000000000000000000000000000007"
+    },
+    "terms": {
+      "commital_period": 1689910282,
+      "commital_ratio": 0,
+      "duration": 4294102921,
+      "fir_interval": 7,
+      "fixed_interest_rate": 0,
+      "grace_period": 864373,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 1,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_61": {
+    "debt_terms": {
+      "debt_id": 51998578527878771167406398481969817184488762560977515942692031011,
+      "debt_terms": "0x02ffffffff000000050000000000000000000000000000000000000000020105"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 2,
+      "duration": 5,
+      "fir_interval": 5,
+      "fixed_interest_rate": 1,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_62": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x00000005d000338b770000000e00000000000000000000000000000000000707"
+    },
+    "terms": {
+      "commital_period": 1689045923,
+      "commital_ratio": 0,
+      "duration": 3378025,
+      "fir_interval": 7,
+      "fixed_interest_rate": 7,
+      "grace_period": 14,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 2,
+      "terms_expiry": 1488
+    }
+  },
+  "debt_map_63": {
+    "debt_terms": {
+      "debt_id": 14,
+      "debt_terms": "0x01fffffffe0000742c000000ca00000000000000000000000000000000000003"
+    },
+    "terms": {
+      "commital_period": 1689046111,
+      "commital_ratio": 0,
+      "duration": 29538,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 202,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 3370514764,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_64": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x03fffffffe7091f3270000000d00000000000000000000000000000000020000"
+    },
+    "terms": {
+      "commital_period": 1726818184,
+      "commital_ratio": 2,
+      "duration": 1888613146,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 13,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 3,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_65": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x03941b2116000000030000000000000000000000000000000000000000001100"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 3,
+      "fir_interval": 0,
+      "fixed_interest_rate": 17,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 2,
+      "terms_expiry": 2484805910
+    }
+  },
+  "debt_map_66": {
+    "debt_terms": {
+      "debt_id": 1580645,
+      "debt_terms": "0x0001676bef000009950000000100000000000000000000000000000000000003"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 2452,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 23555055
+    }
+  },
+  "debt_map_67": {
+    "debt_terms": {
+      "debt_id": 109299346713512076970394531527742674,
+      "debt_terms": "0x01000012cb001006cd0000000000000000000000000000000000000000000203"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 1050317,
+      "fir_interval": 3,
+      "fixed_interest_rate": 2,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 17917619302660171715,
+      "terms_expiry": 4811
+    }
+  },
+  "debt_map_68": {
+    "debt_terms": {
+      "debt_id": 118708,
+      "debt_terms": "0x174352abf200002ced0000000300000000000000000000000000000000010101"
+    },
+    "terms": {
+      "commital_period": 1689046026,
+      "commital_ratio": 1,
+      "duration": 11498,
+      "fir_interval": 1,
+      "fixed_interest_rate": 1,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 23,
+      "principal": 19004049094801716873531508718139725119038878678857023609831713017704509347,
+      "terms_expiry": 1129491442
+    }
+  },
+  "debt_map_69": {
+    "debt_terms": {
+      "debt_id": 134506679674097710575373820650623,
+      "debt_terms": "0x5900003eda000000030000000000000000000000000000000000000000000700"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 3,
+      "fir_interval": 0,
+      "fixed_interest_rate": 7,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 89,
+      "principal": 74157155754434182589067204803449435,
+      "terms_expiry": 16090
+    }
+  },
+  "debt_map_7": {
+    "debt_terms": {
+      "debt_id": 92992247916120568156958931,
+      "debt_terms": "0x00ffffffff0000001a0000001300000000000000000000000000000000090b00"
+    },
+    "terms": {
+      "commital_period": 1689045928,
+      "commital_ratio": 9,
+      "duration": 7,
+      "fir_interval": 0,
+      "fixed_interest_rate": 11,
+      "grace_period": 19,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 3,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_70": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x0f5a35764e11072f180000a30a00000000000000000000000000000000191305"
+    },
+    "terms": {
+      "commital_period": 1760498082,
+      "commital_ratio": 25,
+      "duration": 285641742,
+      "fir_interval": 5,
+      "fixed_interest_rate": 19,
+      "grace_period": 41738,
+      "is_fixed": 0,
+      "lender_royalties": 15,
+      "principal": 3,
+      "terms_expiry": 1513453134
+    }
+  },
+  "debt_map_71": {
+    "debt_terms": {
+      "debt_id": 12171747868531743221434411531357002466642345660743237048428582395,
+      "debt_terms": "0x03293acfbfffffffff03ea557f00000000000000000000000000000000000108"
+    },
+    "terms": {
+      "commital_period": 1754734868,
+      "commital_ratio": 0,
+      "duration": 4229278336,
+      "fir_interval": 8,
+      "fixed_interest_rate": 1,
+      "grace_period": 65688959,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 68686938225059136333266431488080778376,
+      "terms_expiry": 691720127
+    }
+  },
+  "debt_map_72": {
+    "debt_terms": {
+      "debt_id": 41388645352581295226072158573914739671301953,
+      "debt_terms": "0x01797e05c6fffffffe09d7899800000000000000000000000000000000010001"
+    },
+    "terms": {
+      "commital_period": 1895464785,
+      "commital_ratio": 1,
+      "duration": 4129846886,
+      "fir_interval": 1,
+      "fixed_interest_rate": 0,
+      "grace_period": 165120408,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639934,
+      "terms_expiry": 2038302150
+    }
+  },
+  "debt_map_73": {
+    "debt_terms": {
+      "debt_id": 365295873746562701371909294421073622573105951257498530940780369983141143146,
+      "debt_terms": "0x4c05560f200000000200000001000000000000000000000000000000000b0701"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 11,
+      "duration": 1,
+      "fir_interval": 1,
+      "fixed_interest_rate": 7,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 76,
+      "principal": 2,
+      "terms_expiry": 89526048
+    }
+  },
+  "debt_map_74": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x0300134ccbfffffffc0017e98400000000000000000000000000000000000000"
+    },
+    "terms": {
+      "commital_period": 1690613017,
+      "commital_ratio": 0,
+      "duration": 4293400184,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 1567108,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639932,
+      "terms_expiry": 1264843
+    }
+  },
+  "debt_map_75": {
+    "debt_terms": {
+      "debt_id": 10590020035391156498536454381531641131990,
+      "debt_terms": "0x02000791a7000016db00000002000000000000000000000000000000007e0201"
+    },
+    "terms": {
+      "commital_period": 1689047373,
+      "commital_ratio": 25,
+      "duration": 5849,
+      "fir_interval": 1,
+      "fixed_interest_rate": 2,
+      "grace_period": 2,
+      "is_fixed": 1,
+      "lender_royalties": 2,
+      "principal": 9088586921554840898707287968833013996747101109079770,
+      "terms_expiry": 496039
+    }
+  },
+  "debt_map_76": {
+    "debt_terms": {
+      "debt_id": 10861,
+      "debt_terms": "0x6200000bc200003c2a000029e8000000000000000000000000000000006d7506"
+    },
+    "terms": {
+      "commital_period": 1689057010,
+      "commital_ratio": 8,
+      "duration": 4674,
+      "fir_interval": 6,
+      "fixed_interest_rate": 117,
+      "grace_period": 10728,
+      "is_fixed": 1,
+      "lender_royalties": 98,
+      "principal": 23185,
+      "terms_expiry": 3010
+    }
+  },
+  "debt_map_77": {
+    "debt_terms": {
+      "debt_id": 528,
+      "debt_terms": "0x00fffffffc0014724b0000001d0000000000000000000000000000000003fe03"
+    },
+    "terms": {
+      "commital_period": 1689086136,
+      "commital_ratio": 3,
+      "duration": 1339950,
+      "fir_interval": 3,
+      "fixed_interest_rate": 254,
+      "grace_period": 29,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 15415885885117343110653318741727725668835263132062,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_78": {
+    "debt_terms": {
+      "debt_id": 46446905049496779,
+      "debt_terms": "0x27fffffffffffffffe0000000200000000000000000000000000000000020001"
+    },
+    "terms": {
+      "commital_period": 1774945256,
+      "commital_ratio": 2,
+      "duration": 4294967292,
+      "fir_interval": 1,
+      "fixed_interest_rate": 0,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 39,
+      "principal": 23832293852240668378923863434352211058398864095046931757697284,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_79": {
+    "debt_terms": {
+      "debt_id": 1000747395640,
+      "debt_terms": "0x02016aa1c4000000230000000100000000000000000000000000000000004c02"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 0,
+      "duration": 34,
+      "fir_interval": 2,
+      "fixed_interest_rate": 76,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639933,
+      "terms_expiry": 23765444
+    }
+  },
+  "debt_map_8": {
+    "debt_terms": {
+      "debt_id": 10560605393225967610405244085236082622831,
+      "debt_terms": "0x020000339a001459b5000514b9000000000000000000000000000000000efc03"
+    },
+    "terms": {
+      "commital_period": 1689518992,
+      "commital_ratio": 14,
+      "duration": 1000700,
+      "fir_interval": 3,
+      "fixed_interest_rate": 252,
+      "grace_period": 332985,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 3,
+      "terms_expiry": 13210
+    }
+  },
+  "debt_map_80": {
+    "debt_terms": {
+      "debt_id": 738088243300089506391968524805049,
+      "debt_terms": "0x0a0b35e2f300016fcc000000030000000000000000000000000000000000a602"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 0,
+      "duration": 94153,
+      "fir_interval": 2,
+      "fixed_interest_rate": 166,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 10,
+      "principal": 7,
+      "terms_expiry": 188080883
+    }
+  },
+  "debt_map_81": {
+    "debt_terms": {
+      "debt_id": 1582847935854,
+      "debt_terms": "0x04000028e3000000030000000100000000000000000000000000000000036b00"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 3,
+      "duration": 2,
+      "fir_interval": 0,
+      "fixed_interest_rate": 107,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 4,
+      "principal": 1,
+      "terms_expiry": 10467
+    }
+  },
+  "debt_map_82": {
+    "debt_terms": {
+      "debt_id": 66867900,
+      "debt_terms": "0x00fffffffc000000020000000100000000000000000000000000000000570201"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 87,
+      "duration": 1,
+      "fir_interval": 1,
+      "fixed_interest_rate": 2,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639932,
+      "terms_expiry": 4294967292
+    }
+  },
+  "debt_map_83": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x01001a74490000002b0000000a00000000000000000000000000000000020200"
+    },
+    "terms": {
+      "commital_period": 1689045919,
+      "commital_ratio": 2,
+      "duration": 33,
+      "fir_interval": 0,
+      "fixed_interest_rate": 2,
+      "grace_period": 10,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 38514191704709705018807419,
+      "terms_expiry": 1733705
+    }
+  },
+  "debt_map_84": {
+    "debt_terms": {
+      "debt_id": 89513221674816766608393804870419381393477308638337805540054333244857308,
+      "debt_terms": "0x0a00577257003063c10000000300000000000000000000000000000000053c04"
+    },
+    "terms": {
+      "commital_period": 1689204475,
+      "commital_ratio": 5,
+      "duration": 3171262,
+      "fir_interval": 4,
+      "fixed_interest_rate": 60,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 10,
+      "principal": 17995997747836371413028785254895732403435329062736189108586708,
+      "terms_expiry": 5730903
+    }
+  },
+  "debt_map_85": {
+    "debt_terms": {
+      "debt_id": 1278179727737441411423160856908428129160946853155380742497983,
+      "debt_terms": "0x03fffffffd0f9ea3a70000a1e000000000000000000000000000000000640000"
+    },
+    "terms": {
+      "commital_period": 1951100732,
+      "commital_ratio": 100,
+      "duration": 262013383,
+      "fir_interval": 0,
+      "fixed_interest_rate": 0,
+      "grace_period": 41440,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 213,
+      "terms_expiry": 4294967293
+    }
+  },
+  "debt_map_86": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x01fffffffe00005b2f000000000000000000000000000000000000000000ff02"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 23343,
+      "fir_interval": 2,
+      "fixed_interest_rate": 255,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 1,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_87": {
+    "debt_terms": {
+      "debt_id": 126103997934009978469078220537090438983154,
+      "debt_terms": "0x000296fc13000000030000000100000000000000000000000000000000050203"
+    },
+    "terms": {
+      "commital_period": 1689045910,
+      "commital_ratio": 5,
+      "duration": 2,
+      "fir_interval": 3,
+      "fixed_interest_rate": 2,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "terms_expiry": 43449363
+    }
+  },
+  "debt_map_88": {
+    "debt_terms": {
+      "debt_id": 7427,
+      "debt_terms": "0x2f00000d8c00038e9300000f12000000000000000000000000000000001bc204"
+    },
+    "terms": {
+      "commital_period": 1689111664,
+      "commital_ratio": 27,
+      "duration": 229249,
+      "fir_interval": 4,
+      "fixed_interest_rate": 194,
+      "grace_period": 3858,
+      "is_fixed": 0,
+      "lender_royalties": 47,
+      "principal": 11830,
+      "terms_expiry": 3468
+    }
+  },
+  "debt_map_89": {
+    "debt_terms": {
+      "debt_id": 14571549309266805334450873404292761182773476800808919274158265,
+      "debt_terms": "0x07000011cd000097100000042a00000000000000000000000000000000030302"
+    },
+    "terms": {
+      "commital_period": 1689048103,
+      "commital_ratio": 3,
+      "duration": 37606,
+      "fir_interval": 2,
+      "fixed_interest_rate": 3,
+      "grace_period": 1066,
+      "is_fixed": 0,
+      "lender_royalties": 7,
+      "principal": 14921313168577,
+      "terms_expiry": 4557
+    }
+  },
+  "debt_map_9": {
+    "debt_terms": {
+      "debt_id": 37309499001819801388167,
+      "debt_terms": "0x02fffffffffffffffe0000000000000000000000000000000000000000000004"
+    },
+    "terms": {
+      "commital_period": 1689045909,
+      "commital_ratio": 0,
+      "duration": 4294967294,
+      "fir_interval": 4,
+      "fixed_interest_rate": 0,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 2,
+      "terms_expiry": 4294967295
+    }
+  },
+  "debt_map_90": {
+    "debt_terms": {
+      "debt_id": 884505036132561162795557958422752195873743662023830,
+      "debt_terms": "0x00fffffffe030006240000000700000000000000000000000000000000000002"
+    },
+    "terms": {
+      "commital_period": 1689045916,
+      "commital_ratio": 0,
+      "duration": 50333213,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 7,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 145,
+      "terms_expiry": 4294967294
+    }
+  },
+  "debt_map_91": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x0a0165656cfffffffd00000a6b00000000000000000000000000000000090003"
+    },
+    "terms": {
+      "commital_period": 2075595392,
+      "commital_ratio": 9,
+      "duration": 4294964626,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 2667,
+      "is_fixed": 0,
+      "lender_royalties": 10,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639932,
+      "terms_expiry": 23422316
+    }
+  },
+  "debt_map_92": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x140065c79200027ad80000000000000000000000000000000000000000031503"
+    },
+    "terms": {
+      "commital_period": 1689050784,
+      "commital_ratio": 3,
+      "duration": 162520,
+      "fir_interval": 3,
+      "fixed_interest_rate": 21,
+      "grace_period": 0,
+      "is_fixed": 0,
+      "lender_royalties": 20,
+      "principal": 19943675637129726,
+      "terms_expiry": 6670226
+    }
+  },
+  "debt_map_93": {
+    "debt_terms": {
+      "debt_id": 2591,
+      "debt_terms": "0x37000007e100002e9400000c6b00000000000000000000000000000000c9ee04"
+    },
+    "terms": {
+      "commital_period": 1689057833,
+      "commital_ratio": 100,
+      "duration": 8745,
+      "fir_interval": 4,
+      "fixed_interest_rate": 238,
+      "grace_period": 3179,
+      "is_fixed": 1,
+      "lender_royalties": 55,
+      "principal": 9662,
+      "terms_expiry": 2017
+    }
+  },
+  "debt_map_94": {
+    "debt_terms": {
+      "debt_id": 1,
+      "debt_terms": "0x03f4eeea22000002cf00000001000000000000000000000000000000001f6c03"
+    },
+    "terms": {
+      "commital_period": 1689046132,
+      "commital_ratio": 31,
+      "duration": 718,
+      "fir_interval": 3,
+      "fixed_interest_rate": 108,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 3,
+      "principal": 115792089237316195423570985008687907853269984665640564039457584007913129639934,
+      "terms_expiry": 4109298210
+    }
+  },
+  "debt_map_95": {
+    "debt_terms": {
+      "debt_id": 41296297447444273647477910839784491986534578150609287071,
+      "debt_terms": "0x09004c313ffffffffc0000043e00000000000000000000000000000000010002"
+    },
+    "terms": {
+      "commital_period": 1731996657,
+      "commital_ratio": 1,
+      "duration": 4294966206,
+      "fir_interval": 2,
+      "fixed_interest_rate": 0,
+      "grace_period": 1086,
+      "is_fixed": 0,
+      "lender_royalties": 9,
+      "principal": 3946687519251272266977374252800,
+      "terms_expiry": 4993343
+    }
+  },
+  "debt_map_96": {
+    "debt_terms": {
+      "debt_id": 1316182278175363037764150158547740720043826463091714950979624249410218547,
+      "debt_terms": "0x080a51772c0000e1a30000000300000000000000000000000000000000010003"
+    },
+    "terms": {
+      "commital_period": 1689046489,
+      "commital_ratio": 1,
+      "duration": 57760,
+      "fir_interval": 3,
+      "fixed_interest_rate": 0,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 8,
+      "principal": 31317250,
+      "terms_expiry": 173111084
+    }
+  },
+  "debt_map_97": {
+    "debt_terms": {
+      "debt_id": 2,
+      "debt_terms": "0x020001bb23000000450000000300000000000000000000000000000000000001"
+    },
+    "terms": {
+      "commital_period": 1689045912,
+      "commital_ratio": 0,
+      "duration": 66,
+      "fir_interval": 1,
+      "fixed_interest_rate": 0,
+      "grace_period": 3,
+      "is_fixed": 0,
+      "lender_royalties": 2,
+      "principal": 4762325986,
+      "terms_expiry": 113443
+    }
+  },
+  "debt_map_98": {
+    "debt_terms": {
+      "debt_id": 5938952355788619841283801492934331194793864230940308439187922756871793123,
+      "debt_terms": "0x01082880ba0000001a0000000100000000000000000000000000000000050100"
+    },
+    "terms": {
+      "commital_period": 1689045911,
+      "commital_ratio": 5,
+      "duration": 25,
+      "fir_interval": 0,
+      "fixed_interest_rate": 1,
+      "grace_period": 1,
+      "is_fixed": 0,
+      "lender_royalties": 1,
+      "principal": 2,
+      "terms_expiry": 136872122
+    }
+  },
+  "debt_map_99": {
+    "debt_terms": {
+      "debt_id": 3,
+      "debt_terms": "0x00001212a81447b71d0000000200000000000000000000000000000000100103"
+    },
+    "terms": {
+      "commital_period": 1743484991,
+      "commital_ratio": 16,
+      "duration": 340244251,
+      "fir_interval": 3,
+      "fixed_interest_rate": 1,
+      "grace_period": 2,
+      "is_fixed": 0,
+      "lender_royalties": 0,
+      "principal": 45504628352263768285655784504275182342666413,
+      "terms_expiry": 1184424
+    }
+  }
+}

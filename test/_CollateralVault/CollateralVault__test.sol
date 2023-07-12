@@ -204,7 +204,7 @@ contract CollateralVaultUnitTest is
         anzaTokenHarness.exposed__mint(
             _borrower,
             _debtId.debtIdToBorrowerTokenId(),
-            _debtId
+            1
         );
         anzaTokenHarness.exposed__mint(
             lender,

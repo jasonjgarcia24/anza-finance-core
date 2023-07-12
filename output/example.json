@@ -1,0 +1,10 @@
+{
+  "boolean": true,
+  "number": 342,
+  "object1": {
+    "title obj2": "finally json serialization"
+  },
+  "object2": {
+    "title obj3": "hi there"
+  }
+}

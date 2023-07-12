@@ -121,10 +121,6 @@ abstract contract LoanContractInit is DebtTermsInit {
         loanContractHarness.grantRole(_TREASURER_, address(loanTreasurer));
         loanContractHarness.setCollateralVault(address(collateralVault));
 
-        // Set LoanContract access control roles
-        loanContractHarness.setAnzaToken(address(anzaToken));
-        loanContractHarness.setCollateralVault(address(collateralVault));
-
         // Set LoanTreasurey access control roles
         loanTreasurer.setAnzaToken(address(anzaToken));
         loanTreasurer.grantRole(_LOAN_CONTRACT_, address(loanContractHarness));
@@ -789,7 +785,9 @@ contract LoanContractUnitTest is
         // This is normally handled by the _testLoanContract__InitContract_Fuzz_InitialLoan
         // function as it returns the cleaned contract terms. However, we need to keep the
         // original contract terms for the refinancing.
-        _contractTerms = loanContractUtils.cleanContractTermsForCommitalRatio(_contractTerms);
+        _contractTerms = loanContractUtils.cleanContractTermsForCommitalRatio(
+            _contractTerms
+        );
 
         address _borrower = vm.addr(_borrowerPrivKey);
 

@@ -2,6 +2,7 @@
 local = "http://127.0.0.1:8545"
 
 [profile.default]
+fs_permissions = [{ access = "read-write", path = "./"}]
 src = 'contracts'
 out = 'anza/src/artifacts'
 libs = ["node_modules", "lib"]

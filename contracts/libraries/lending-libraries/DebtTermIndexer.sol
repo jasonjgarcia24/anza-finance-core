@@ -1,6 +1,8 @@
 // SPDX-Liscense-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {console} from "forge-std/console.sol";
+
 import "@lending-constants/LoanContractTermMaps.sol";
 import {_ILLEGAL_TERMS_UPDATE_SELECTOR_} from "@custom-errors/StdManagerErrors.sol";
 
@@ -385,7 +387,7 @@ library DebtTermIndexer {
         DebtTermMap storage _map,
         uint256 _debtId
     ) internal view returns (bool) {
-        return _loanCommital(_map, _debtId) <= block.timestamp;
+        return _loanCommital(_map, _debtId) > block.timestamp;
     }
 
     /**

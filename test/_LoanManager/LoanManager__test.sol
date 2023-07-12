@@ -1166,7 +1166,9 @@ contract LoanManagerUnitTest is LoanManagerInit {
 
         // Pack and store the contract terms.
         bytes32 _packedContractTerms;
-        (_packedContractTerms, _contractTerms) = createPackedContractTerms(_contractTerms);
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
@@ -1226,7 +1228,9 @@ contract LoanManagerUnitTest is LoanManagerInit {
 
         // Pack and store the contract terms.
         bytes32 _packedContractTerms;
-        (_packedContractTerms, _contractTerms) = createPackedContractTerms(_contractTerms);
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,
@@ -1313,7 +1317,9 @@ contract LoanManagerUnitTest is LoanManagerInit {
 
         // Pack and store the contract terms.
         bytes32 _packedContractTerms;
-        (_packedContractTerms, _contractTerms) = createPackedContractTerms(_contractTerms);
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
         loanManagerHarness.exposed__setLoanAgreement(
             _now,
             _debtId,

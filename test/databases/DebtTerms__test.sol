@@ -190,7 +190,7 @@ contract DebtTermsUnitTest is DebtTermsInit {
         debtTermsUtils = new DebtTermsUtils();
     }
 
-    /* ----------- DebtTerms.debtTerms() ----------- */
+    /* ------------- DebtTerms.debtTerms() -------------- */
     /**
      * Fuzz test the storage of debt terms for random debt IDs and packed contract
      * terms.
@@ -251,17 +251,58 @@ contract DebtTermsUnitTest is DebtTermsInit {
         );
     }
 
-    /* ----------- DebtTerms._setTerms() ----------- */
+    /* ----------- DebtTerms.checkCommitted() ----------- */
+    /**
+     * Fuzz test the status of the loan commitment for random debt IDs and packed
+     * contract terms.
+     *
+     * @param _debtId The debt ID key to store the debt terms under.
+     * @param _contractTerms The contract terms to store.
+     *
+     * @dev Full pass if the debt terms are equal to the expected packed contract
+     * terms.
+     */
+    function testDebtTerms__CheckCommitted_Fuzz(
+        uint256 _debtId,
+        Setup.ContractTerms memory _contractTerms
+    ) public {
+        // Test overflows in testLoanCodec__Fuzz_ValidateLoanTerms
+        cleanContractTerms(_contractTerms);
+
+        uint256 _activeLoanIndex = 1;
+
+        // Pack and store the contract terms.
+        uint64 _now = uint64(block.timestamp);
+        bytes32 _packedContractTerms;
+        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
+            _contractTerms
+        );
+
+        loanCodecHarness.exposed__setLoanAgreement(
+            _now,
+            _debtId,
+            _activeLoanIndex,
+            _packedContractTerms
+        );
+
+        assertEq(
+            loanCodecHarness.checkCommitted(_debtId),
+            _contractTerms.commitalPeriod > _now,
+            "0 :: commital status is not expected."
+        );
+    }
+
+    /* -------------- DebtTerms._setTerms() ------------- */
     /**
      * See {testDebtTerms__DebtTerms_Fuzz}.
      */
 
-    /* ----------- DebtTerms._updateTerms() ----------- */
+    /* ------------ DebtTerms._updateTerms() ------------ */
     /**
      * See {testDebtTerms__DebtTerms_Fuzz}.
      */
 
-    /* ----------- DebtTerms getters ----------- */
+    /* ---------------- DebtTerms getters --------------- */
     /**
      * Fuzz test the debt term indexer getters for random debt IDs and contract
      * terms.
