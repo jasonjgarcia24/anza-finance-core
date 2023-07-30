@@ -159,6 +159,7 @@ abstract contract PaymentBook is
         uint256 _debtId,
         uint256 _payment
     ) internal virtual returns (uint256) {
+        console.log("!!!!!!!!!!!!!!!1 here");
         address _lender = _anzaToken.lenderOf(_debtId);
 
         uint256 _balance = _anzaToken.totalSupply(
@@ -178,6 +179,9 @@ abstract contract PaymentBook is
 
             emit Deposited(_debtId, _payer, _lender, _payment);
 
+            console.log("Payment: %s", _payment);
+            console.log("Balance: %s", _balance);
+
             return 0;
         } else {
             __withdrawableBalance[_lender] += _balance;
@@ -185,6 +189,9 @@ abstract contract PaymentBook is
             _anzaToken.burnLenderToken(_debtId, _balance);
 
             emit Deposited(_debtId, _payer, _lender, _balance);
+
+            console.log("Payment: %s", _payment);
+            console.log("Balance: %s", _balance);
 
             return _payment - _balance;
         }

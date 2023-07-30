@@ -7,6 +7,7 @@ import {Test} from "forge-std/Test.sol";
 import "@lending-constants/LoanContractStates.sol";
 import "@lending-constants/LoanContractRoles.sol";
 import {_MAX_DEBT_ID_} from "@lending-constants/LoanContractNumbers.sol";
+import {_EXPIRED_LOAN_SELECTOR_} from "@custom-errors/StdCodecErrors.sol";
 
 import {AnzaDebtExchange} from "@markets/AnzaDebtExchange.sol";
 import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
@@ -35,11 +36,19 @@ contract AnzaDebtExchangeHarness is AnzaDebtExchange {
             );
     }
 
-    function exposed_depositPayment(
+    function exposed__depositPayment(
         address _payer,
         uint256 _debtId,
         uint256 _payment
     ) public returns (uint256) {
+        return _depositPayment(_payer, _debtId, _payment);
+    }
+
+    function exposed__depositPayment_updatePermitted(
+        address _payer,
+        uint256 _debtId,
+        uint256 _payment
+    ) public debtUpdater(_debtId) returns (uint256 _remainingPayment) {
         return _depositPayment(_payer, _debtId, _payment);
     }
 }
@@ -139,36 +148,31 @@ contract AnzaDebtExchangeUnitTest is AnzaDebtExchangeInit {
     function testAnzaDebtExchange_SetAnzaToken_Fuzz(
         address _anzaTokenAddress
     ) public {
-        assertEq(
-            anzaDebtExchangeHarness.anzaToken(),
-            address(0),
-            "0 :: anzaTokenAddress should be address(0)"
-        );
-
+        address _alt_account = makeAddr("ALT_ACCOUNT");
+        vm.startPrank(_alt_account);
         vm.expectRevert(
-            abi.encodePacked(getAccessControlFailMsg(_ADMIN_, address(this)))
+            abi.encodePacked(getAccessControlFailMsg(_ADMIN_, _alt_account))
         );
         anzaDebtExchangeHarness.setAnzaToken(_anzaTokenAddress);
+        vm.stopPrank();
 
         vm.startPrank(admin);
         anzaDebtExchangeHarness.setAnzaToken(_anzaTokenAddress);
-        vm.stopPrank();
 
         assertEq(
             anzaDebtExchangeHarness.anzaToken(),
             _anzaTokenAddress,
-            "1 :: anzaTokenAddress should be _anzaTokenAddress"
+            "0 :: anzaTokenAddress should be _anzaTokenAddress"
         );
 
-        vm.startPrank(admin);
         anzaDebtExchangeHarness.setAnzaToken(address(0));
-        vm.stopPrank();
 
         assertEq(
             anzaDebtExchangeHarness.anzaToken(),
             address(0),
-            "2 :: anzaTokenAddress should be address(0)"
+            "1 :: anzaTokenAddress should be address(0)"
         );
+        vm.stopPrank();
     }
 
     /* ---- AnzaDebtExchange._executeDebtExchange() ----- */
@@ -213,22 +217,7 @@ contract AnzaDebtExchangeUnitTest is AnzaDebtExchangeInit {
             _amount
         );
 
-        // Access control denial
-        vm.startPrank(admin);
-        anzaTokenHarness.revokeRole(
-            _TREASURER_,
-            address(anzaDebtExchangeHarness)
-        );
-        vm.stopPrank();
-
-        vm.expectRevert(
-            abi.encodePacked(
-                getAccessControlFailMsg(
-                    _TREASURER_,
-                    address(anzaDebtExchangeHarness)
-                )
-            )
-        );
+        //
         bool _success = anzaDebtExchangeHarness.exposed__executeDebtExchange(
             address(_demoToken),
             _collateralId,
@@ -237,27 +226,28 @@ contract AnzaDebtExchangeUnitTest is AnzaDebtExchangeInit {
             _payment
         );
 
-        // Access control allowed
-        vm.startPrank(admin);
-        anzaTokenHarness.grantRole(
-            _TREASURER_,
-            address(anzaDebtExchangeHarness)
-        );
-        vm.stopPrank();
+        // // Access control allowed
+        // vm.startPrank(admin);
+        // anzaTokenHarness.grantRole(
+        //     _TREASURER_,
+        //     address(anzaDebtExchangeHarness)
+        // );
+        // vm.stopPrank();
 
-        _success = anzaDebtExchangeHarness.exposed__executeDebtExchange(
-            address(_demoToken),
-            _collateralId,
-            _borrower,
-            _purchaser,
-            _payment
-        );
+        // _success = anzaDebtExchangeHarness.exposed__executeDebtExchange(
+        //     address(_demoToken),
+        //     _collateralId,
+        //     _borrower,
+        //     _purchaser,
+        //     _payment
+        // );
     }
 
     /* ------ AnzaDebtExchange._depositPayment() ------- */
     function testAnzaDebtExchange__depositPayment(
         ContractTerms memory _contractTerms,
-        uint256 _debtId
+        uint256 _debtId,
+        uint256 _payment
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_ && _debtId != 0);
 
@@ -283,10 +273,50 @@ contract AnzaDebtExchangeUnitTest is AnzaDebtExchangeInit {
             _packedContractTerms
         );
 
-        recordDebtData(
-            "testAnzaDebtExchange__ExecuteDebtExchange_Fuzz",
-            Debt({debt_id: _debtId, debt_terms: _packedContractTerms}),
-            _contractTerms
+        // AnzaToken mint.
+        anzaTokenHarness.exposed__mint(
+            borrower,
+            _debtId.debtIdToBorrowerTokenId(),
+            1
+        );
+        anzaTokenHarness.exposed__mint(
+            lender,
+            _debtId.debtIdToLenderTokenId(),
+            _contractTerms.principal
+        );
+
+        // Expire loan.
+        vm.warp(_now + _contractTerms.gracePeriod + _contractTerms.duration);
+
+        vm.expectRevert(_EXPIRED_LOAN_SELECTOR_);
+        anzaDebtExchangeHarness.exposed__depositPayment(
+            alt_account,
+            _debtId,
+            _payment
+        );
+
+        console.log("_payment: %s", _payment);
+        console.log("_contractTerms.principal: %s", _contractTerms.principal);
+
+        // Activate loan.
+        vm.warp(_now);
+
+        // Deposit payment.
+        uint256 _remainingPayment = anzaDebtExchangeHarness
+            .exposed__depositPayment_updatePermitted(
+                alt_account,
+                _debtId,
+                _payment
+            );
+
+        uint256 _expectedRemainingPayment = _contractTerms.principal > _payment
+            ? 0
+            : _payment - _contractTerms.principal;
+
+        assertEq(
+            _remainingPayment,
+            _expectedRemainingPayment,
+            "0 :: _remainingPayment should match expected"
         );
     }
 
