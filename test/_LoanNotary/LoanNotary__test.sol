@@ -23,17 +23,23 @@ contract LoanNotaryHarness is LoanNotary {
     function exposed__getBorrower(
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
-        function(uint256) external view returns (address) ownerOf
+        function(uint256) external view returns (address) _ownerOf
     ) public view returns (address) {
-        return _getBorrower(_contractParams, _borrowerSignature, ownerOf);
+        return _getBorrower(_contractParams, _borrowerSignature, _ownerOf);
     }
 
     function exposed__verifyBorrower(
+        address _expectedBorrower,
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
-        function(uint256) external view returns (address) ownerOf
-    ) public view returns (address) {
-        return _verifyBorrower(_contractParams, _borrowerSignature, ownerOf);
+        function(uint256) external view returns (address) _ownerOf
+    ) public view {
+        _verifyBorrower(
+            _expectedBorrower,
+            _contractParams,
+            _borrowerSignature,
+            _ownerOf
+        );
     }
 
     function exposed__recoverSigner(
@@ -240,67 +246,6 @@ abstract contract LoanNotaryGetBorrowerUnitTest is LoanNotaryInit {
             vm.addr(_borrowerPrivKey),
             "0 :: borrower mismatch"
         );
-    }
-
-    /**
-     * Test the get borrower function.
-     *
-     * This test is a fuzz test that generates random inputs for the loan notary's
-     * get borrower function. This test is intended to fail signature validation due
-     * to the caller of the _getBorrower() function being the borrower.
-     *
-     * @param _borrowerPrivKey The private key of the borrower.
-     * @param _collateralId The id of the collateral.
-     * @param _collateralNonce The nonce of the collateral.
-     * @param _contractTerms The contract terms.
-     *
-     * @dev Full pass if the function reverts as expected.
-     */
-    function testLoanNotary__GetBorrower_Fuzz_FailCaller(
-        uint256 _borrowerPrivKey,
-        uint256 _collateralId,
-        uint256 _collateralNonce,
-        ContractTerms memory _contractTerms
-    ) public {
-        vm.assume(
-            _borrowerPrivKey != 0 && _borrowerPrivKey < _SECP256K1_CURVE_ORDER_
-        );
-
-        address _borrower = vm.addr(_borrowerPrivKey);
-
-        // Pack contract terms.
-        bytes32 _packedContractTerms;
-        (_packedContractTerms, _contractTerms) = createPackedContractTerms(
-            _contractTerms
-        );
-
-        // Mint collateral
-        DemoToken _demoToken = new DemoToken(0);
-        _demoToken.exposed__mint(_borrower, _collateralId);
-
-        // Create contract params.
-        ILoanNotary.ContractParams memory _contractParams = ILoanNotary
-            .ContractParams({
-                principal: _contractTerms.principal,
-                contractTerms: _packedContractTerms,
-                collateralAddress: address(_demoToken),
-                collateralId: _collateralId,
-                collateralNonce: _collateralNonce
-            });
-
-        // Sign contract.
-        bytes memory _borrowerSignature = loanNotaryUtils
-            .createContractSignature(_borrowerPrivKey, _contractParams);
-
-        // Verify and get borrower.
-        vm.startPrank(_borrower); //*
-        vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = loanNotaryHarness.exposed__getBorrower(
-            _contractParams,
-            _borrowerSignature,
-            _demoToken.ownerOf
-        );
-        vm.stopPrank();
     }
 
     /**
@@ -561,7 +506,7 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         // Verify and get borrower.
         vm.startPrank(_borrower);
         assertEq(
-            loanNotaryHarness.exposed__verifyBorrower(
+            loanNotaryHarness.exposed__getBorrower(
                 _contractParams,
                 _borrowerSignature,
                 _demoToken.ownerOf
@@ -623,14 +568,13 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
             .createContractSignature(_borrowerPrivKey, _contractParams);
 
         // Verify and get borrower.
-        vm.startPrank(admin); //*
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = loanNotaryHarness.exposed__verifyBorrower(
+        loanNotaryHarness.exposed__verifyBorrower(
+            admin,
             _contractParams,
             _borrowerSignature,
             _demoToken.ownerOf
         );
-        vm.stopPrank();
     }
 
     /**
@@ -692,14 +636,13 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         );
 
         // Verify and get borrower.
-        vm.startPrank(_borrower);
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
-        _borrower = loanNotaryHarness.exposed__verifyBorrower(
+        loanNotaryHarness.exposed__verifyBorrower(
+            borrower,
             _contractParams,
             _randomSignature, //*
             _demoToken.ownerOf
         );
-        vm.stopPrank();
     }
 
     /**
@@ -772,9 +715,9 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         _contractParams.principal = _altContractTerms.principal; //*
 
         // Verify and get borrower.
-        vm.startPrank(_borrower);
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         loanNotaryHarness.exposed__verifyBorrower(
+            _borrower,
             _contractParams, //*
             _borrowerSignature,
             _demoToken.ownerOf
@@ -787,6 +730,7 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         loanNotaryHarness.exposed__verifyBorrower(
+            _borrower,
             _contractParams, //*
             _borrowerSignature,
             _demoToken.ownerOf
@@ -799,6 +743,7 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidOwnerMethod.selector);
         loanNotaryHarness.exposed__verifyBorrower(
+            _borrower,
             _contractParams, //*
             _borrowerSignature,
             _demoToken.ownerOf
@@ -814,6 +759,7 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         // Verify and get borrower.
         vm.expectRevert("ERC721: invalid token ID");
         loanNotaryHarness.exposed__verifyBorrower(
+            _borrower,
             _contractParams, //*
             _borrowerSignature,
             _demoToken.ownerOf
@@ -826,11 +772,11 @@ abstract contract LoanNotaryVerifyBorrowerUnitTest is LoanNotaryInit {
         // Verify and get borrower.
         vm.expectRevert(StdNotaryErrors.InvalidSigner.selector);
         loanNotaryHarness.exposed__verifyBorrower(
+            _borrower,
             _contractParams, //*
             _borrowerSignature,
             _demoToken.ownerOf
         );
-        vm.stopPrank();
     }
 }
 

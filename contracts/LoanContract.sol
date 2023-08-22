@@ -5,6 +5,7 @@ import {console} from "forge-std/console.sol";
 
 import {_TREASURER_} from "@lending-constants/LoanContractRoles.sol";
 import {StdLoanErrors} from "@custom-errors/StdLoanErrors.sol";
+import {StdNotaryErrors} from "@custom-errors/StdNotaryErrors.sol";
 import {StdMonetaryErrors} from "@custom-errors/StdMonetaryErrors.sol";
 
 import {ILoanContract} from "@base/interfaces/ILoanContract.sol";
@@ -89,6 +90,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
             _borrowerSignature,
             _collateralToken.ownerOf
         );
+        if (_borrower == msg.sender) revert StdNotaryErrors.InvalidSigner();
 
         // Add debt to database
         __sealContract(
@@ -398,6 +400,7 @@ contract LoanContract is ILoanContract, LoanManager, LoanNotary {
 
         // If this fails, the whole transaction will revert.
         _verifyBorrower(
+            msg.sender,
             ContractParams({
                 principal: _principal,
                 contractTerms: _contractTerms,

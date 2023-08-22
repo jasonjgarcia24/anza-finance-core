@@ -12,6 +12,11 @@ bytes32 constant DEPOSITED_EVENT_SIG = keccak256(
     "Deposited(uint256,address,address,uint256)"
 );
 
+// 0xdd964f4acb8f706d81d4c25ea78991ac4ab3d72ed57a425733041a4014a0289f
+bytes32 constant DEBT_EXCHANGED_EVENT_SIG = keccak256(
+    "DebtExchanged(address,uint256,address,address,uint256)"
+);
+
 // 0x7084f5476618d8e60b11ef0d7d3f06914655adb8793e28ff7f018d4c76d505d5
 bytes32 constant WITHDRAWN_EVENT_SIG = keccak256("Withdrawn(address,uint256)");
 
@@ -20,6 +25,14 @@ interface IPaymentBookEvents {
         uint256 indexed debtId,
         address indexed payer,
         address indexed payee,
+        uint256 weiAmount
+    );
+
+    event DebtExchanged(
+        address indexed collateralAddress,
+        uint256 indexed collateralId,
+        address indexed payer,
+        address payee,
         uint256 weiAmount
     );
 
@@ -48,8 +61,31 @@ library PaymentBookEventsParse {
 
         _debtId = uint256(_entry.topics[1]);
         _payer = _entry.topics[2].addressFromLast20Bytes();
-        _payee = _entry.topics[3].addressFromLast20Bytes();
-        _weiAmount = abi.decode(_entry.data, (uint256));
+        (_payee, _weiAmount) = abi.decode(_entry.data, (address, uint256));
+    }
+
+    function parseDebtExchanged(
+        Vm.Log memory _entry
+    )
+        public
+        pure
+        returns (
+            address _collateralAddress,
+            uint256 _collateralId,
+            address _payer,
+            address _payee,
+            uint256 _weiAmount
+        )
+    {
+        require(
+            _entry.topics[0] == DEBT_EXCHANGED_EVENT_SIG,
+            "PaymentBookEventsParse: invalid DebtExchangedFields topic"
+        );
+
+        _collateralAddress = _entry.topics[1].addressFromLast20Bytes();
+        _collateralId = uint256(_entry.topics[2]);
+        _payer = _entry.topics[3].addressFromLast20Bytes();
+        (_payee, _weiAmount) = abi.decode(_entry.data, (address, uint256));
     }
 
     function parseWithdrawn(
@@ -68,6 +104,14 @@ library PaymentBookEventsParse {
 abstract contract PaymentBookEventsSuite is Test {
     struct DepositedFields {
         uint256 debtId;
+        address payer;
+        address payee;
+        uint256 weiAmount;
+    }
+
+    struct DebtExchangedFields {
+        address collateralAddress;
+        uint256 collateralId;
         address payer;
         address payee;
         uint256 weiAmount;
@@ -108,6 +152,45 @@ abstract contract PaymentBookEventsSuite is Test {
             _weiAmount,
             _expectedValues.weiAmount,
             "3 :: _testDeposited :: emitted event weiAmount mismatch."
+        );
+    }
+
+    function _testDebtExchange(
+        Vm.Log memory _entry,
+        DebtExchangedFields memory _expectedValues
+    ) internal {
+        (
+            address _collateralAddress,
+            uint256 _collateralId,
+            address _payer,
+            address _payee,
+            uint256 _weiAmount
+        ) = PaymentBookEventsParse.parseDebtExchanged(_entry);
+
+        assertEq(
+            _collateralAddress,
+            _expectedValues.collateralAddress,
+            "0 :: _testDebtExchange :: emitted event collateralAddress mismatch."
+        );
+        assertEq(
+            _collateralId,
+            _expectedValues.collateralId,
+            "1 :: _testDebtExchange :: emitted event collateralId mismatch."
+        );
+        assertEq(
+            _payer,
+            _expectedValues.payer,
+            "2 :: _testDebtExchange :: emitted event payer mismatch."
+        );
+        assertEq(
+            _payee,
+            _expectedValues.payee,
+            "3 :: _testDebtExchange :: emitted event payee mismatch."
+        );
+        assertEq(
+            _weiAmount,
+            _expectedValues.weiAmount,
+            "4 :: _testDebtExchange :: emitted event weiAmount mismatch."
         );
     }
 

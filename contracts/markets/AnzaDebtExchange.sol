@@ -188,13 +188,10 @@ abstract contract AnzaDebtExchange is IAnzaDebtExchange, LoanAccountant {
 
         // If there is payment balance remaining, deposit it to the
         // borrower's withdrawable balance.
-        if (_payment > 0)
-            _depositFunds(
-                type(uint256).max,
-                address(this),
-                _borrower,
-                _payment
-            );
+        if (_payment > 0) {
+            console.log("depositing remaining payment to borrower");
+            _depositFunds(type(uint256).max, _beneficiary, _borrower, _payment);
+        }
 
         // Transfer debt tokens to beneficiary.
         _anzaToken.safeBatchTransferFrom(

@@ -132,8 +132,6 @@ contract AnzaToken is IAnzaTokenLite, AnzaBaseToken, AnzaTokenCatalog {
         uint256 _debtId,
         uint256 _amount
     ) external onlyRole(_TREASURER_) {
-        // uint256 _lenderTokenId = lenderTokenId(_debtId);
-
         _burn(lenderOf(_debtId), _debtId.debtIdToLenderTokenId(), _amount);
     }
 

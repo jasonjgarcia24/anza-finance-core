@@ -5,7 +5,15 @@ interface IPaymentBook {
     event Deposited(
         uint256 indexed debtId,
         address indexed payer,
-        address indexed payee,
+        address payee,
+        uint256 weiAmount
+    );
+
+    event DebtExchanged(
+        address indexed collateralAddress,
+        uint256 indexed collateralId,
+        address indexed payer,
+        address payee,
         uint256 weiAmount
     );
 

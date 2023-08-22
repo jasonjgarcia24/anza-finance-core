@@ -54,7 +54,7 @@ abstract contract LoanNotary is ILoanNotary {
      *
      * @param _contractParams the loan contract terms.
      * @param _borrowerSignature the signed loan contract terms.
-     * @param ownerOf the function used to identify the recorded borrower. If
+     * @param _ownerOf the function used to identify the recorded borrower. If
      * this is called as an original loan contract for a new loan, this should
      * be a IERC721.ownerOf call on the collateral contract. If this is called
      * as a loan contract refinance for existing debt, this should be a
@@ -65,51 +65,49 @@ abstract contract LoanNotary is ILoanNotary {
     function _getBorrower(
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
-        function(uint256) external view returns (address) ownerOf
+        function(uint256) external view returns (address) _ownerOf
     ) internal view returns (address) {
-        if (_contractParams.collateralAddress != ownerOf.address)
+        if (_contractParams.collateralAddress != _ownerOf.address)
             revert StdNotaryErrors.InvalidOwnerMethod();
 
-        address _borrower = ownerOf(_contractParams.collateralId);
+        address _borrower = _ownerOf(_contractParams.collateralId);
 
-        if (
-            _borrower == msg.sender ||
-            _borrower != _recoverSigner(_contractParams, _borrowerSignature)
-        ) revert StdNotaryErrors.InvalidSigner();
+        if (_borrower == _recoverSigner(_contractParams, _borrowerSignature))
+            return _borrower;
 
-        return _borrower;
+        revert StdNotaryErrors.InvalidSigner();
     }
 
     /**
      * Verifies the sender is the owner of the collateral and borrower of a signed
      * set of loan contract terms.
      *
+     * @param _expectedBorrower the expected borrower of the loan contract.
      * @param _contractParams the loan contract terms.
      * @param _borrowerSignature the signed loan contract terms.
-     * @param ownerOf the function used to identify the recorded borrower. If
+     * @param _ownerOf the function used to identify the recorded borrower. If
      * this is called as an original loan contract for a new loan, this should
      * be a IERC721.ownerOf call on the collateral contract. If this is called
      * as a loan contract refinance for existing debt, this should be a
      * IAnzaToken.borrowerOf call on the debt contract.
      *
-     * @return the address of the borrower.
+     * @dev This function is used to verify the borrower of a loan contract. If
+     * the borrower is not the expected borrower, the function will revert.
      */
     function _verifyBorrower(
+        address _expectedBorrower,
         ContractParams memory _contractParams,
         bytes memory _borrowerSignature,
-        function(uint256) external view returns (address) ownerOf
-    ) internal view returns (address) {
-        if (_contractParams.collateralAddress != ownerOf.address)
-            revert StdNotaryErrors.InvalidOwnerMethod();
+        function(uint256) external view returns (address) _ownerOf
+    ) internal view {
+        address _borrower = _getBorrower(
+            _contractParams,
+            _borrowerSignature,
+            _ownerOf
+        );
 
-        address _borrower = ownerOf(_contractParams.collateralId);
-
-        if (
-            _borrower != msg.sender ||
-            _borrower != _recoverSigner(_contractParams, _borrowerSignature)
-        ) revert StdNotaryErrors.InvalidSigner();
-
-        return _borrower;
+        if (_borrower != _expectedBorrower)
+            revert StdNotaryErrors.InvalidSigner();
     }
 
     /**
@@ -231,7 +229,7 @@ abstract contract DebtNotary is IDebtNotary {
      * @param _assetId the debt ID of the asset.
      * @param _debtParams the debt terms.
      * @param _sellerSignature the signed debt listing terms.
-     * @param ownerOf the function used to identify the recorded borrower.
+     * @param _ownerOf the function used to identify the recorded borrower.
      *
      * @return the address of the signer.
      */
@@ -239,19 +237,19 @@ abstract contract DebtNotary is IDebtNotary {
         uint256 _assetId,
         DebtParams memory _debtParams,
         bytes memory _sellerSignature,
-        function(uint256) external view returns (address) ownerOf
+        function(uint256) external view returns (address) _ownerOf
     ) internal view returns (address) {
-        if (__debtNotary_anzaTokenAddress != ownerOf.address)
+        if (__debtNotary_anzaTokenAddress != _ownerOf.address)
             revert StdNotaryErrors.InvalidOwnerMethod();
 
-        address _seller = ownerOf(_assetId);
+        address _seller = _ownerOf(_assetId);
 
         if (
-            _seller == msg.sender ||
-            _seller != _recoverSigner(_debtParams, _sellerSignature)
-        ) revert StdNotaryErrors.InvalidSigner();
+            _seller != msg.sender &&
+            _seller == _recoverSigner(_debtParams, _sellerSignature)
+        ) return _seller;
 
-        return _seller;
+        revert StdNotaryErrors.InvalidSigner();
     }
 
     /**
@@ -376,26 +374,26 @@ abstract contract RefinanceNotary is IRefinanceNotary {
      *
      * @param _refinanceParams The debt refinance listing terms.
      * @param _sellerSignature The signed debt refinance listing terms.
-     * @param ownerOf The function used to identify the recorded borrower.
+     * @param _ownerOf The function used to identify the recorded borrower.
      *
      * @return The address of the borrower.
      */
     function _getBorrower(
         RefinanceParams memory _refinanceParams,
         bytes memory _sellerSignature,
-        function(uint256) external view returns (address) ownerOf
+        function(uint256) external view returns (address) _ownerOf
     ) internal view returns (address) {
-        if (__refinanceNotary_anzaTokenAddress != ownerOf.address)
+        if (__refinanceNotary_anzaTokenAddress != _ownerOf.address)
             revert StdNotaryErrors.InvalidOwnerMethod();
 
-        address _borrower = ownerOf(_refinanceParams.debtId);
+        address _borrower = _ownerOf(_refinanceParams.debtId);
 
         if (
-            _borrower == msg.sender ||
-            _borrower != _recoverSigner(_refinanceParams, _sellerSignature)
-        ) revert StdNotaryErrors.InvalidSigner();
+            _borrower != msg.sender &&
+            _borrower == _recoverSigner(_refinanceParams, _sellerSignature)
+        ) return _borrower;
 
-        return _borrower;
+        revert StdNotaryErrors.InvalidSigner();
     }
 
     /**
@@ -519,26 +517,26 @@ abstract contract SponsorshipNotary is ISponsorshipNotary {
      *
      * @param _sponsorshipParams the debt listing terms.
      * @param _sellerSignature the signed debt listing terms.
-     * @param ownerOf the function used to identify the recorded borrower.
+     * @param _ownerOf the function used to identify the recorded borrower.
      *
      * @return the verified signer of the signed debt listing terms.
      */
     function _getSigner(
         SponsorshipParams memory _sponsorshipParams,
         bytes memory _sellerSignature,
-        function(uint256) external view returns (address) ownerOf
+        function(uint256) external view returns (address) _ownerOf
     ) internal view returns (address) {
-        if (__sponsorshipNotary_anzaTokenAddress != ownerOf.address)
+        if (__sponsorshipNotary_anzaTokenAddress != _ownerOf.address)
             revert StdNotaryErrors.InvalidOwnerMethod();
 
-        address _seller = ownerOf(_sponsorshipParams.debtId);
+        address _seller = _ownerOf(_sponsorshipParams.debtId);
 
         if (
-            _seller == msg.sender ||
-            _seller != _recoverSigner(_sponsorshipParams, _sellerSignature)
-        ) revert StdNotaryErrors.InvalidSigner();
+            _seller != msg.sender &&
+            _seller == _recoverSigner(_sponsorshipParams, _sellerSignature)
+        ) return _seller;
 
-        return _seller;
+        revert StdNotaryErrors.InvalidSigner();
     }
 
     /**

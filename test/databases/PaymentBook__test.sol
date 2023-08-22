@@ -13,6 +13,7 @@ import {AnzaTokenIndexer} from "@tokens-libraries/AnzaTokenIndexer.sol";
 import {Setup} from "@test-base/Setup__test.sol";
 import {AnzaTokenHarness} from "@test-tokens/AnzaToken__test.sol";
 import {IPaymentBookEvents, PaymentBookEventsSuite} from "@test-utils/events/PaymentBookEventsSuite__test.sol";
+import {ERC1155EventsSuite} from "@test-utils/events/ERC1155EventsSuite__test.sol";
 
 contract PaymentBookHarness is PaymentBook {
     function exposed__depositFunds(
@@ -71,7 +72,8 @@ abstract contract PaymentBookInit is Setup {
 contract PaymentBookUnitTest is
     PaymentBookInit,
     IPaymentBookEvents,
-    PaymentBookEventsSuite
+    PaymentBookEventsSuite,
+    ERC1155EventsSuite
 {
     using AnzaTokenIndexer for uint256;
 
@@ -271,6 +273,7 @@ contract PaymentBookUnitTest is
         uint128 _payment
     ) public {
         vm.assume(_debtId <= _MAX_DEBT_ID_);
+        address _lender = makeAddr("LENDER");
         _balance = bound(_balance, 0, _MAX_DEBT_PRINCIPAL_);
 
         assertEq(
@@ -293,7 +296,7 @@ contract PaymentBookUnitTest is
         assertEq(_excess, _payment, "1 :: excess should be equal to payment.");
         assertEq(_entries.length, 0, "2 :: no logs should be emitted.");
         assertEq(
-            paymentBookHarness.withdrawableBalance(lender),
+            paymentBookHarness.withdrawableBalance(_lender),
             0,
             "3 :: withdrawable balance should be 0."
         );
@@ -302,26 +305,44 @@ contract PaymentBookUnitTest is
 
         // Test with lender Anza Tokens minted.
         anzaTokenHarness.exposed__mint(
-            lender,
+            _lender,
             _debtId.debtIdToLenderTokenId(),
             _balance
         );
 
-        vm.expectEmit(true, true, true, true, address(paymentBookHarness));
-        emit Deposited(
-            _debtId,
-            _payer,
-            lender,
-            _payment > _balance ? _balance : _payment
-        );
+        vm.recordLogs();
         _excess = paymentBookHarness.exposed__depositPayment(
             _payer,
             _debtId,
             uint256(_payment)
         );
 
+        // Get logs.
+        _entries = vm.getRecordedLogs();
+        _testTransferSingle(
+            _entries[0],
+            TransferSingleFields({
+                operator: address(paymentBookHarness),
+                from: _lender,
+                to: address(0),
+                id: _debtId.debtIdToLenderTokenId(),
+                value: _payment > _balance ? _balance : _payment
+            })
+        );
+
+        // PaymentBook._depositPayment
+        _testDeposited(
+            _entries[1],
+            DepositedFields({
+                debtId: _debtId,
+                payer: _payer,
+                payee: _lender,
+                weiAmount: _payment > _balance ? _balance : _payment
+            })
+        );
+
         assertEq(
-            paymentBookHarness.withdrawableBalance(lender),
+            paymentBookHarness.withdrawableBalance(_lender),
             _payment > _balance ? _balance : _payment,
             "4 :: withdrawable balance should be equal to amount deposited."
         );
@@ -333,16 +354,55 @@ contract PaymentBookUnitTest is
 
         // Payoff if necessary.
         if (_balance > _payment) {
-            vm.expectEmit(true, true, true, true, address(paymentBookHarness));
-            emit Deposited(_debtId, _payer, lender, _balance - _payment);
+            vm.recordLogs();
             _excess = paymentBookHarness.exposed__depositPayment(
                 _payer,
                 _debtId,
                 _balance
             );
 
+            // Get logs.
+            _entries = vm.getRecordedLogs();
+
             assertEq(
-                paymentBookHarness.withdrawableBalance(lender),
+                paymentBookHarness.withdrawableBalance(_lender),
+                _balance,
+                "6 :: withdrawable balance should be equal to amount deposited."
+            );
+            assertEq(_excess, 0, "7 :: excess should be equal to 0.");
+
+            uint256 _currentEntry = 0;
+            if (_payment != 0) {
+                uint256 _expectedPayment = _balance > _payment
+                    ? _payment
+                    : _balance;
+
+                // Burn lender token (PaymentBook._depositPayment).
+                _testTransferSingle(
+                    _entries[_currentEntry++],
+                    TransferSingleFields({
+                        operator: address(paymentBookHarness),
+                        from: _lender,
+                        to: address(0),
+                        id: _debtId.debtIdToLenderTokenId(),
+                        value: _expectedPayment
+                    })
+                );
+
+                // PaymentBook._depositPayment
+                _testDeposited(
+                    _entries[_currentEntry++],
+                    DepositedFields({
+                        debtId: _debtId,
+                        payer: _payer,
+                        payee: _lender,
+                        weiAmount: _expectedPayment
+                    })
+                );
+            }
+
+            assertEq(
+                paymentBookHarness.withdrawableBalance(_lender),
                 _balance,
                 "4 :: withdrawable balance should be equal to total amount of AnzaTokens minted."
             );
@@ -353,7 +413,7 @@ contract PaymentBookUnitTest is
             );
             assertEq(
                 anzaTokenHarness.balanceOf(
-                    lender,
+                    _lender,
                     _debtId.debtIdToLenderTokenId()
                 ),
                 0,

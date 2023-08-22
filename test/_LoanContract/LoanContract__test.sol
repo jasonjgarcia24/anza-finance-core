@@ -80,6 +80,15 @@ contract LoanContractHarness is LoanContract {
         _updateLoanTimes(_debtId);
     }
 
+    /* ----- DebtBook Expose Functions ----- */
+    function exposed__writeDebt(
+        address _collateralAddress,
+        uint256 _collateralId,
+        uint256 _debtId
+    ) public {
+        _writeDebt(_collateralAddress, _collateralId, _debtId);
+    }
+
     /* Abstract functions */
     /* ^^^^^^^^^^^^^^^^^^ */
 }
